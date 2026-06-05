@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        PlantPal – Liquibase Master Changelog
+        Migration files are included here in strict order.
+        Each migration lives in db/changelog/migrations/ and is numbered sequentially.
+
+        Example (uncomment when migrations are added in Phase 1):
+        <include file="db/changelog/migrations/001_users.sql"
+                 relativeToChangelogFile="false"/>
+        <include file="db/changelog/migrations/002_plants.sql"
+                 relativeToChangelogFile="false"/>
+    -->
+
+</databaseChangeLog>
