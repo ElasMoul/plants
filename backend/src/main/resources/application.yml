@@ -1,0 +1,53 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PlantPal – Base Application Configuration
+# Profile-specific files (application-dev.yml, application-prod.yml, etc.)
+# override values defined here. Never put secrets in this file.
+# ──────────────────────────────────────────────────────────────────────────────
+
+spring:
+  application:
+    name: plantpal
+
+  # Active profile is set via SPRING_PROFILES_ACTIVE env var or -Dspring.profiles.active
+  profiles:
+    active: dev
+
+  # Disable open-in-view to avoid lazy-loading surprises across HTTP boundaries
+  jpa:
+    open-in-view: false
+
+  # Jackson: ISO-8601 dates, omit null fields globally
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# ──── Server ──────────────────────────────────────────────────────────────────
+server:
+  port: 8080
+
+# ──── Actuator ────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# ──── Logging ─────────────────────────────────────────────────────────────────
+# Includes correlationId from MDC — populated by CorrelationIdFilter
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+
+# ──── SpringDoc / Swagger ─────────────────────────────────────────────────────
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+  api-docs:
+    path: /v3/api-docs
