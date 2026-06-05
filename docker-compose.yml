@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+
+  # ─────────────────────────────────────────
+  # PostgreSQL 15
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: plantpal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: plantpal_dev
+      POSTGRES_USER: plantpal_user
+      POSTGRES_PASSWORD: plantpal_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plantpal_user -d plantpal_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - plantpal-network
+
+  # ─────────────────────────────────────────
+  # Redis (cache + rate limiting via Bucket4j)
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: plantpal-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - plantpal-network
+
+# ─────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ─────────────────────────────────────────
+# Network
+# ─────────────────────────────────────────
+networks:
+  plantpal-network:
+    driver: bridge
