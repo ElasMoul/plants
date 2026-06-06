@@ -26,17 +26,16 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
-              "src/favicon.ico",
-              "src/assets",
+              { "glob": "**/*", "input": "src/assets", "output": "assets" },
               "src/manifest.webmanifest"
             ],
             "styles": ["src/styles.scss"],
-            "scripts": [],
-            "serviceWorker": true,
-            "ngswConfigPath": "ngsw-config.json"
+            "scripts": []
           },
           "configurations": {
             "production": {
+              "serviceWorker": true,
+              "ngswConfigPath": "ngsw-config.json",
               "budgets": [
                 {
                   "type": "initial",
@@ -77,10 +76,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "plantpal:build:production"
+              "browserTarget": "plantpal:build:production"
             },
             "development": {
-              "buildTarget": "plantpal:build:development"
+              "browserTarget": "plantpal:build:development"
             }
           },
           "defaultConfiguration": "development",

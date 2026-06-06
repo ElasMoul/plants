@@ -1,4 +1,26 @@
-// CSS Reset
+// Angular Material must be @use'd before any other rules
+@use '@angular/material' as mat;
+
+// Theme setup
+@include mat.core();
+
+$plantpal-primary: mat.define-palette(mat.$indigo-palette);
+$plantpal-accent:  mat.define-palette(mat.$pink-palette, A200, A100, A400);
+$plantpal-warn:    mat.define-palette(mat.$red-palette);
+
+$plantpal-theme: mat.define-light-theme((
+  color: (
+    primary: $plantpal-primary,
+    accent:  $plantpal-accent,
+    warn:    $plantpal-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+@include mat.all-component-themes($plantpal-theme);
+
+// CSS Reset (after @use/@include)
 *,
 *::before,
 *::after {
@@ -43,27 +65,6 @@ h5,
 h6 {
   overflow-wrap: break-word;
 }
-
-// Angular Material indigo-pink theme
-@use '@angular/material' as mat;
-
-@include mat.core();
-
-$plantpal-primary: mat.define-palette(mat.$indigo-palette);
-$plantpal-accent:  mat.define-palette(mat.$pink-palette, A200, A100, A400);
-$plantpal-warn:    mat.define-palette(mat.$red-palette);
-
-$plantpal-theme: mat.define-light-theme((
-  color: (
-    primary: $plantpal-primary,
-    accent:  $plantpal-accent,
-    warn:    $plantpal-warn,
-  ),
-  typography: mat.define-typography-config(),
-  density: 0,
-));
-
-@include mat.all-component-themes($plantpal-theme);
 
 // Global layout helpers
 .page-container {
