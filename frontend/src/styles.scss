@@ -1,0 +1,86 @@
+// CSS Reset
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+// Angular Material indigo-pink theme
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$plantpal-primary: mat.define-palette(mat.$indigo-palette);
+$plantpal-accent:  mat.define-palette(mat.$pink-palette, A200, A100, A400);
+$plantpal-warn:    mat.define-palette(mat.$red-palette);
+
+$plantpal-theme: mat.define-light-theme((
+  color: (
+    primary: $plantpal-primary,
+    accent:  $plantpal-accent,
+    warn:    $plantpal-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+@include mat.all-component-themes($plantpal-theme);
+
+// Global layout helpers
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
