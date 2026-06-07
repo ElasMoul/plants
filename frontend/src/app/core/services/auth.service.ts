@@ -27,7 +27,7 @@ const USER_KEY  = 'plantpal_user';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly baseUrl = `${environment.apiUrl}/auth`;
+  private readonly baseUrl = `${environment.apiUrl}/v1/auth`;
 
   constructor(private http: HttpClient) {}
 

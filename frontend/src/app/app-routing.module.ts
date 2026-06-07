@@ -3,33 +3,23 @@ import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
+  // Exact empty path redirect
   {
     path: '',
     redirectTo: 'ai-test',
     pathMatch: 'full',
   },
-  {
-    path: 'login',
-    loadChildren: () =>
-      import('./features/auth/auth.module').then(m => m.AuthModule),
-  },
-  {
-    path: 'register',
-    loadChildren: () =>
-      import('./features/auth/auth.module').then(m => m.AuthModule),
-  },
+  // Guarded feature routes — declared BEFORE the auth catch-all
+  // so the prefix '' route below never steals them
   {
     path: 'plants',
-    loadChildren: () =>
-      import('./features/plant/plant.module').then(m => m.PlantModule),
+    loadChildren: () => import('./features/plant/plant.module').then(m => m.PlantModule),
     canActivate: [AuthGuard],
   },
   {
     path: 'identify',
     loadChildren: () =>
-      import('./features/identification/identification.module').then(
-        m => m.IdentificationModule,
-      ),
+      import('./features/identification/identification.module').then(m => m.IdentificationModule),
     canActivate: [AuthGuard],
   },
   {
@@ -40,8 +30,7 @@ const routes: Routes = [
   },
   {
     path: 'chat',
-    loadChildren: () =>
-      import('./features/chat/chat.module').then(m => m.ChatModule),
+    loadChildren: () => import('./features/chat/chat.module').then(m => m.ChatModule),
     canActivate: [AuthGuard],
   },
   {
@@ -49,9 +38,12 @@ const routes: Routes = [
     loadChildren: () =>
       import('./features/ai-test/ai-test.module').then(m => m.AiTestModule),
   },
+  // Auth catch-all — prefix '' matches /login, /register, and unknown paths.
+  // Auth-routing handles login, register, and ** (fallback to ai-test).
+  // Must be last so specific routes above take priority.
   {
-    path: '**',
-    redirectTo: 'ai-test',
+    path: '',
+    loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule),
   },
 ];
 
