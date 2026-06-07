@@ -1,0 +1,52 @@
+<mat-card class="plant-card">
+  <div class="plant-photo" [routerLink]="['/plants', plant.id]">
+    <img
+      *ngIf="plant.photoUrl; else photoPlaceholder"
+      [src]="plant.photoUrl"
+      [alt]="plant.nickname"
+      class="photo-img"
+    />
+    <ng-template #photoPlaceholder>
+      <div class="photo-placeholder">
+        <mat-icon>local_florist</mat-icon>
+      </div>
+    </ng-template>
+  </div>
+
+  <mat-card-content>
+    <div class="card-header">
+      <h3 class="nickname" [routerLink]="['/plants', plant.id]">{{ plant.nickname }}</h3>
+      <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Plant actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #actionMenu="matMenu">
+        <button mat-menu-item [routerLink]="['/plants', plant.id, 'edit']">
+          <mat-icon>edit</mat-icon>
+          <span>Edit</span>
+        </button>
+        <button mat-menu-item class="archive-action" (click)="archive.emit(plant.id)">
+          <mat-icon>archive</mat-icon>
+          <span>Archive</span>
+        </button>
+      </mat-menu>
+    </div>
+
+    <p class="species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
+
+    <div class="meta-row" *ngIf="plant.location">
+      <mat-icon class="meta-icon">place</mat-icon>
+      <span>{{ plant.location }}</span>
+    </div>
+
+    <div class="meta-row" *ngIf="plant.acquiredAt">
+      <mat-icon class="meta-icon">calendar_today</mat-icon>
+      <span>Since {{ plant.acquiredAt | date:'mediumDate' }}</span>
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-button color="primary" [routerLink]="['/plants', plant.id]">
+      View details
+    </button>
+  </mat-card-actions>
+</mat-card>

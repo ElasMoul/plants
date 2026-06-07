@@ -1,0 +1,53 @@
+<div class="list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <h1 class="page-title">My Plants</h1>
+    <button mat-raised-button color="primary" routerLink="/plants/new">
+      <mat-icon>add</mat-icon>
+      Add plant
+    </button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div *ngIf="loading" class="plant-grid">
+    <div *ngFor="let _ of skeletons" class="skeleton-card">
+      <div class="skeleton skeleton-photo"></div>
+      <div class="skeleton-body">
+        <div class="skeleton skeleton-line wide"></div>
+        <div class="skeleton skeleton-line narrow"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && plants.length === 0" class="empty-state">
+    <mat-icon class="empty-icon">local_florist</mat-icon>
+    <h2>No plants yet</h2>
+    <p>Add your first plant to start tracking its care.</p>
+    <button mat-raised-button color="primary" routerLink="/plants/new">
+      <mat-icon>add</mat-icon>
+      Add your first plant
+    </button>
+  </div>
+
+  <!-- Plant grid -->
+  <div *ngIf="!loading && plants.length > 0" class="plant-grid">
+    <app-plant-card
+      *ngFor="let plant of plants"
+      [plant]="plant"
+      (archive)="onArchive($event)"
+    ></app-plant-card>
+  </div>
+
+  <!-- Pagination -->
+  <mat-paginator
+    *ngIf="page && page.totalElements > pageSize"
+    [length]="page.totalElements"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[10, 20, 50]"
+    [pageIndex]="currentPage"
+    (page)="onPageChange($event)"
+    showFirstLastButtons
+  ></mat-paginator>
+</div>
