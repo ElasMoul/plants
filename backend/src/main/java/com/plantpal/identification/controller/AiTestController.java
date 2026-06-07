@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/test")
+@RequestMapping("/api/v1/test")
 @Tag(name = "AI Test", description = "Dev-only endpoint to verify Ollama connectivity")
 public class AiTestController {
 

@@ -1,15 +1,16 @@
+# syntax=docker/dockerfile:1
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /api
 
-# Cache dependency resolution — only re-downloads when pom.xml changes
 COPY pom.xml .
-RUN mvn dependency:go-offline -q
-
-# Copy source and package, skipping tests and code-quality gates
-# (quality gates run in CI, not inside the Docker build)
 COPY src/ src/
-RUN mvn clean package \
+
+# BuildKit cache mount: the /root/.m2 directory is reused across builds.
+# Dependencies downloaded on the first build are cached; subsequent builds skip them.
+# -DskipTests: tests run in CI, not inside the Docker image build.
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package \
       -DskipTests \
       -Dspotless.check.skip=true \
       -Dcheckstyle.skip=true \

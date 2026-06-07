@@ -8,6 +8,7 @@ import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.mapper.PlantMapper;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.plant.service.PlantService;
+import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +79,9 @@ public class PlantServiceImpl implements PlantService {
       key = "'u:' + #userId + ':p:' + #pageable.pageNumber + ':s:' + #pageable.pageSize")
   public Page<PlantResponse> getUserPlants(Long userId, Pageable pageable) {
     log.info("Fetching plants for userId={}, page={}", userId, pageable.getPageNumber());
-    return plantRepository
+    return new RestPage<>(plantRepository
         .findAllByUserIdAndStatus(userId, PlantStatus.ACTIVE, pageable)
-        .map(plantMapper::toResponse);
+        .map(plantMapper::toResponse));
   }
 
   @Override
