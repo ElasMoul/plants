@@ -45,6 +45,11 @@ const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'ai-test',
+    loadChildren: () =>
+      import('./features/ai-test/ai-test.module').then(m => m.AiTestModule),
+  },
+  {
     path: '**',
     redirectTo: 'plants',
   },

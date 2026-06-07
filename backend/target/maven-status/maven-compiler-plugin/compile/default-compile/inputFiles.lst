@@ -9,6 +9,8 @@ C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\pl
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\shared\filter\CorrelationIdFilter.java
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\shared\config\CacheConfig.java
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\shared\exception\ValidationException.java
+C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\identification\client\OllamaClient.java
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\PlantPalApplication.java
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\shared\exception\GlobalExceptionHandler.java
 C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\shared\dto\ApiResponse.java
+C:\Users\moulo\OneDrive\Desktop\project list\plants\backend\src\main\java\com\plantpal\identification\controller\AiTestController.java

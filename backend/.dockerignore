@@ -1,0 +1,26 @@
+# ── Build output ──────────────────────────────────────────────────────────────
+# Rebuilt inside the Docker build stage — never copy host artifacts in
+target/
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# CRITICAL: never bake secrets into the image
+.env
+
+# ── IDE / tooling ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+
+# ── Maven wrapper ─────────────────────────────────────────────────────────────
+# Not needed — the build stage uses the Maven Docker image directly
+.mvn/
+mvnw
+mvnw.cmd
+
+# ── Docker meta-files (no need to copy into the image) ────────────────────────
+Dockerfile
+.dockerignore
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+*.md
+.env.example
