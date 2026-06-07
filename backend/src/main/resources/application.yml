@@ -44,6 +44,13 @@ logging:
   level:
     root: INFO
 
+# ──── CORS ────────────────────────────────────────────────────────────────────
+# Comma-separated list of allowed origins. Override with CORS_ALLOWED_ORIGINS env var.
+# Production example: CORS_ALLOWED_ORIGINS=https://plantpal.app
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
 # ──── SpringDoc / Swagger ─────────────────────────────────────────────────────
 springdoc:
   swagger-ui:

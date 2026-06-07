@@ -1,0 +1,105 @@
+package com.plantpal.user.service.impl;
+
+import com.plantpal.shared.exception.UnauthorizedException;
+import com.plantpal.shared.exception.ValidationException;
+import com.plantpal.shared.util.JwtUtil;
+import com.plantpal.user.dto.AuthResponse;
+import com.plantpal.user.dto.LoginRequest;
+import com.plantpal.user.dto.RegisterRequest;
+import com.plantpal.user.entity.User;
+import com.plantpal.user.entity.UserStatus;
+import com.plantpal.user.repository.UserRepository;
+import com.plantpal.user.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class UserServiceImpl implements UserService, UserDetailsService {
+
+  private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
+
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final JwtUtil jwtUtil;
+
+  @Value("${app.jwt.expiration-ms}")
+  private long jwtExpirationMs;
+
+  public UserServiceImpl(
+      UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    this.userRepository = userRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.jwtUtil = jwtUtil;
+  }
+
+  @Override
+  @Transactional
+  public AuthResponse register(RegisterRequest request) {
+    if (userRepository.existsByEmail(request.getEmail())) {
+      throw new ValidationException("Email already registered");
+    }
+
+    User user =
+        User.builder()
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .firstName(request.getFirstName())
+            .lastName(request.getLastName())
+            .status(UserStatus.ACTIVE)
+            .build();
+
+    user = userRepository.save(user);
+    log.info("New user registered: id={}, email={}", user.getId(), user.getEmail());
+
+    String token = jwtUtil.generateToken(user, user.getId());
+    return buildAuthResponse(user, token);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AuthResponse login(LoginRequest request) {
+    User user =
+        userRepository
+            .findByEmail(request.getEmail())
+            .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
+
+    if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+      log.warn("Failed login attempt for email={}", request.getEmail());
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.isEnabled()) {
+      throw new UnauthorizedException("Account is not active");
+    }
+
+    log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
+
+    String token = jwtUtil.generateToken(user, user.getId());
+    return buildAuthResponse(user, token);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    return userRepository
+        .findByEmail(email)
+        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+  }
+
+  private AuthResponse buildAuthResponse(User user, String token) {
+    return AuthResponse.builder()
+        .token(token)
+        .expiresIn(jwtExpirationMs)
+        .userId(user.getId())
+        .email(user.getEmail())
+        .firstName(user.getFirstName())
+        .build();
+  }
+}
