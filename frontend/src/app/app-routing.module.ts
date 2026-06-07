@@ -5,7 +5,7 @@ import { AuthGuard } from './core/guards/auth.guard';
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'plants',
+    redirectTo: 'ai-test',
     pathMatch: 'full',
   },
   {
@@ -51,7 +51,7 @@ const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'plants',
+    redirectTo: 'ai-test',
   },
 ];
 
