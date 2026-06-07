@@ -53,7 +53,7 @@ plantpal/
 │   │   │   │   │   ├── service/
 │   │   │   │   │   │   ├── IdentificationService.java
 │   │   │   │   │   │   └── impl/IdentificationServiceImpl.java
-│   │   │   │   │   ├── client/ClaudeApiClient.java   # Anthropic SDK wrapper
+│   │   │   │   │   ├── client/OllamaClient.java      # Spring RestClient → Ollama (phi3)
 │   │   │   │   │   ├── repository/IdentificationRepository.java
 │   │   │   │   │   ├── entity/Identification.java
 │   │   │   │   │   ├── dto/
@@ -703,7 +703,9 @@ open backend/target/site/jacoco/index.html
 |---|---|---|
 | 0 — Project Setup | ✅ Complete | pom.xml, shared infra, all 5 module skeletons, YAML configs |
 | 1 — DB Migrations | ✅ Complete | 5 Liquibase SQL files, master changelog wired, Ollama phi3 replacing Anthropic |
-| 2 — Auth + Plant CRUD | 🔲 Not started | |
+| 1 — Auth + User module | ✅ Complete | JWT, Spring Security 6, UserService, AuthController |
+| 1 — Plant CRUD | ✅ Complete | Entity, DTOs, MapStruct mapper, service, controller, Redis cache |
+| 1 — Unit + Integration Tests | ✅ Complete | UserService & PlantService unit tests; Auth & Plant controller ITs |
 | 2 — AI Identification | 🔲 Not started | |
 | 3 — Reminders + Push | 🔲 Not started | |
 | 4 — AI Chat | 🔲 Not started | |

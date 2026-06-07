@@ -35,8 +35,7 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(
-                        HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login")
+                auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login")
                     .permitAll()
                     .requestMatchers(
                         "/actuator/health",
@@ -47,7 +46,13 @@ public class SecurityConfig {
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+        .exceptionHandling(
+            ex ->
+                ex.authenticationEntryPoint(
+                    (request, response, e) ->
+                        response.sendError(
+                            jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED)));
 
     return http.build();
   }

@@ -29,8 +29,8 @@ anthropic:
 app:
 
   jwt:
-    # Use a deterministic test secret — never share or use in production
-    secret: test-secret-key-that-is-at-least-64-characters-long-for-hs256-algorithm
+    # Valid Base64, decodes to 32 bytes (256 bits) — never use in production
+    secret: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     expiration-ms: 3600000             # 1 hour — short for tests
 
   storage:

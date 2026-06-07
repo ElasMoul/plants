@@ -13,5 +13,7 @@ public interface PlantRepository extends JpaRepository<Plant, Long> {
 
   Page<Plant> findAllByUserIdAndStatus(Long userId, PlantStatus status, Pageable pageable);
 
+  Optional<Plant> findByIdAndUserIdAndStatus(Long id, Long userId, PlantStatus status);
+
   boolean existsByIdAndUserId(Long id, Long userId);
 }

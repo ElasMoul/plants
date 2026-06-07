@@ -93,7 +93,7 @@ public class PlantServiceImpl implements PlantService {
 
   private Plant findOwnedPlant(Long id, Long userId) {
     return plantRepository
-        .findByIdAndUserId(id, userId)
+        .findByIdAndUserIdAndStatus(id, userId, PlantStatus.ACTIVE)
         .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MSG));
   }
 

@@ -11,8 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CreatePlantRequest {
 
-  @NotBlank
-  private String nickname;
+  @NotBlank private String nickname;
 
   private String location;
 
