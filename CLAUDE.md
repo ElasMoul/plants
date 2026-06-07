@@ -13,7 +13,7 @@ Core loop: take a photo → AI identifies the plant and detects health issues
 → personalised care schedule with reminders → AI assistant for ongoing questions.
 
 **Team:** 2 developers | **Architecture:** Modular monolith (Spring Boot + Angular)
-**AI:** Anthropic Claude API (Vision + Chat) | **Target:** Enterprise-grade, horizontally scalable
+**AI:** Ollama (local) — model: phi3 | **Target:** Enterprise-grade, horizontally scalable
 
 ---
 
@@ -421,12 +421,8 @@ liquibase-core
 <!-- Auth -->
 jjwt-api + jjwt-impl + jjwt-jackson  (0.12.x)
 
-<!-- AI -->
-<dependency>
-    <groupId>com.anthropic</groupId>
-    <artifactId>anthropic-java</artifactId>
-    <version>0.8.0</version>
-</dependency>
+<!-- AI — Ollama via Spring RestClient (no extra dependency needed) -->
+<!-- base-url and model configured in application-*.yml via ollama.* properties -->
 
 <!-- Rate Limiting -->
 <dependency>
@@ -467,37 +463,40 @@ jacoco-plugin  <!-- Code coverage — fail build if < 80% -->
 
 ---
 
-## Claude API Integration
+## AI Integration — Ollama (local, phi3)
 
-### ClaudeApiClient pattern
+> **Why Ollama for dev:** No API key, no cost, runs on-device.
+> The `OllamaClient` wraps the local REST API at `http://localhost:11434`.
+> In production you can swap the base-url to any OpenAI-compatible endpoint
+> (hosted Ollama, vLLM, etc.) without changing business logic.
+
+### OllamaClient pattern
 
 ```java
 @Component
-@Slf4j
-public class ClaudeApiClient {
+public class OllamaClient {
 
-    private static final String MODEL = "claude-sonnet-4-20250514";
-    private static final int MAX_TOKENS_IDENTIFICATION = 1024;
-    private static final int MAX_TOKENS_CHAT = 2048;
+    private static final String DEFAULT_MODEL = "phi3";
 
-    private final AnthropicClient client;
+    private final RestClient restClient;
+    private final String model;
 
-    public ClaudeApiClient(@Value("${anthropic.api.key}") String apiKey) {
-        this.client = AnthropicClient.builder().apiKey(apiKey).build();
+    public OllamaClient(
+            @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
+            @Value("${ollama.model:phi3}") String model) {
+        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        this.model = model;
     }
 
-    // Returns raw JSON string — parsing is the caller's responsibility
-    public String analyzePhoto(byte[] imageBytes, String mediaType) { ... }
-
-    public String askQuestion(String question, String gardenContext,
-                              List<ChatMessageDto> history) { ... }
+    // Returns raw response string — parsing is the caller's responsibility
+    public String chat(String systemPrompt, String userMessage) { ... }
 }
 ```
 
 ### Plant identification system prompt
 ```
 You are an expert botanist and plant pathologist.
-Analyze the provided plant image and return ONLY a valid JSON object
+Analyze the described plant and return ONLY a valid JSON object
 (no markdown, no preamble, no trailing text):
 {
   "species": "scientific name or null",
@@ -549,8 +548,9 @@ spring:
   liquibase:
     contexts: dev
 
-anthropic:
-  api.key: ${ANTHROPIC_API_KEY}
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:phi3}
 
 app:
   jwt:
@@ -702,7 +702,8 @@ open backend/target/site/jacoco/index.html
 | Phase | Status | Notes |
 |---|---|---|
 | 0 — Project Setup | ✅ Complete | pom.xml, shared infra, all 5 module skeletons, YAML configs |
-| 1 — Auth + Plant CRUD | 🔲 Not started | |
+| 1 — DB Migrations | ✅ Complete | 5 Liquibase SQL files, master changelog wired, Ollama phi3 replacing Anthropic |
+| 2 — Auth + Plant CRUD | 🔲 Not started | |
 | 2 — AI Identification | 🔲 Not started | |
 | 3 — Reminders + Push | 🔲 Not started | |
 | 4 — AI Chat | 🔲 Not started | |
@@ -716,7 +717,7 @@ open backend/target/site/jacoco/index.html
 - **No `null` returns** from services — throw `ResourceNotFoundException` or return `Optional`
 - **No unbounded list queries** — always use `Pageable`
 - **No direct DB writes from controllers** — always through the service layer
-- **No Claude API calls from controllers** — always through service → client
+- **No Ollama/AI calls from controllers** — always through service → client
 - **No hard deletes** — set `status = ARCHIVED`
 - **No `ddl-auto: create-drop` or `update`** outside test profile — Liquibase owns the schema
 - **No secrets in code or YAML** — always `${ENV_VAR}` references

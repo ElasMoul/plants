@@ -7,14 +7,23 @@
 
     <!--
         PlantPal – Liquibase Master Changelog
-        Migration files are included here in strict order.
-        Each migration lives in db/changelog/migrations/ and is numbered sequentially.
-
-        Example (uncomment when migrations are added in Phase 1):
-        <include file="db/changelog/migrations/001_users.sql"
-                 relativeToChangelogFile="false"/>
-        <include file="db/changelog/migrations/002_plants.sql"
-                 relativeToChangelogFile="false"/>
+        Files are applied in strict order. Never reorder or delete an entry.
+        To undo a migration, add a new changeset — never edit an existing one.
     -->
+
+    <include file="db/changelog/migrations/001_create_users.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/002_create_plants.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/003_create_identifications.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/004_create_reminders_and_care_logs.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/005_create_push_subscriptions.sql"
+             relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
