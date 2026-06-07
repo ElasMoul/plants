@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS identifications
     health_notes  TEXT,
     care_tips     JSONB,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by    BIGINT
+    created_by    VARCHAR(255)
 );
 
 CREATE INDEX IF NOT EXISTS idx_identifications_plant_id ON identifications (plant_id);

@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS plants
     acquired_at DATE,
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_by  BIGINT,
-    updated_by  BIGINT
+    created_by  VARCHAR(255),
+    updated_by  VARCHAR(255)
 );
 
 CREATE INDEX IF NOT EXISTS idx_plants_user_id     ON plants (user_id);

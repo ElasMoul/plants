@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS users
     status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_by    BIGINT,
-    updated_by    BIGINT,
+    created_by    VARCHAR(255),
+    updated_by    VARCHAR(255),
     CONSTRAINT uq_users_email UNIQUE (email)
 );
 -- rollback DROP TABLE IF EXISTS users;
