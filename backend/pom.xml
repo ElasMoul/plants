@@ -181,6 +181,12 @@
             <artifactId>httpclient5</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- OkHttp MockWebServer — for unit-testing Spring RestClient HTTP interactions -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 

@@ -20,6 +20,7 @@ import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.impl.UserServiceImpl;
 import java.util.Optional;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -157,6 +158,37 @@ class UserServiceTest {
       assertThatThrownBy(() -> userService.login(request))
           .isInstanceOf(UnauthorizedException.class)
           .hasMessageContaining("Account is not active");
+    }
+  }
+
+  @Nested
+  @DisplayName("loadUserByUsername()")
+  class LoadUserByUsername {
+
+    @Test
+    @DisplayName("should return UserDetails when the email exists")
+    void shouldReturnUserDetailsWhenFound() {
+      // Given
+      var user = aUser().withId(1L).build();
+      when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+      // When
+      var result = userService.loadUserByUsername(user.getEmail());
+
+      // Then
+      assertThat(result.getUsername()).isEqualTo(user.getEmail());
+    }
+
+    @Test
+    @DisplayName("should throw UsernameNotFoundException when email does not exist")
+    void shouldThrowWhenEmailNotFound() {
+      // Given
+      String email = "ghost@example.com";
+      when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+      // When / Then
+      assertThatThrownBy(() -> userService.loadUserByUsername(email))
+          .isInstanceOf(UsernameNotFoundException.class);
     }
   }
 }
