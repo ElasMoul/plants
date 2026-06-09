@@ -99,12 +99,12 @@ public class PlantServiceImpl implements PlantService {
   }
 
   private void applyUpdates(Plant plant, UpdatePlantRequest request) {
-    if (request.getNickname() != null) plant.setNickname(request.getNickname());
-    if (request.getSpecies() != null) plant.setSpecies(request.getSpecies());
-    if (request.getCommonName() != null) plant.setCommonName(request.getCommonName());
-    if (request.getPhotoUrl() != null) plant.setPhotoUrl(request.getPhotoUrl());
-    if (request.getLocation() != null) plant.setLocation(request.getLocation());
-    if (request.getNotes() != null) plant.setNotes(request.getNotes());
-    if (request.getAcquiredAt() != null) plant.setAcquiredAt(request.getAcquiredAt());
+    if (request.getNickname() != null) { plant.setNickname(request.getNickname()); }
+    if (request.getSpecies() != null) { plant.setSpecies(request.getSpecies()); }
+    if (request.getCommonName() != null) { plant.setCommonName(request.getCommonName()); }
+    if (request.getPhotoUrl() != null) { plant.setPhotoUrl(request.getPhotoUrl()); }
+    if (request.getLocation() != null) { plant.setLocation(request.getLocation()); }
+    if (request.getNotes() != null) { plant.setNotes(request.getNotes()); }
+    if (request.getAcquiredAt() != null) { plant.setAcquiredAt(request.getAcquiredAt()); }
   }
 }
