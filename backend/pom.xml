@@ -269,7 +269,7 @@
                         </goals>
                         <configuration>
                             <!-- Skip coverage gate when tests are skipped (-DskipTests=true) -->
-                            <skip>${DskipTests}</skip>
+                            <skip>${skipTests}</skip>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
