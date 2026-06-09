@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.plantpal.plant.dto.PlantResponse;
+import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.mapper.PlantMapper;
@@ -178,6 +179,49 @@ class PlantServiceTest {
       // Then
       assertThat(result.getTotalElements()).isZero();
       assertThat(result.getContent()).isEmpty();
+    }
+  }
+
+  @Nested
+  @DisplayName("updatePlant()")
+  class UpdatePlant {
+
+    @Test
+    @DisplayName("should apply non-null fields and return updated response")
+    void shouldUpdateSuccessfully() {
+      // Given
+      var request = new UpdatePlantRequest();
+      request.setNickname("Renamed Monstera");
+      request.setLocation("Bedroom");
+
+      var existing = aPlant().withId(1L).withUserId(1L).withStatus(PlantStatus.ACTIVE).build();
+      var response = PlantResponse.builder().id(1L).nickname("Renamed Monstera").build();
+
+      when(plantRepository.findByIdAndUserIdAndStatus(1L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.of(existing));
+      when(plantRepository.save(existing)).thenReturn(existing);
+      when(plantMapper.toResponse(existing)).thenReturn(response);
+
+      // When
+      PlantResponse result = plantService.updatePlant(1L, request, 1L);
+
+      // Then
+      assertThat(result.getNickname()).isEqualTo("Renamed Monstera");
+      verify(plantRepository).save(existing);
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException and never save when plant is not found")
+    void shouldThrowAndNeverSaveWhenNotFound() {
+      // Given
+      when(plantRepository.findByIdAndUserIdAndStatus(99L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.empty());
+
+      // When / Then
+      assertThatThrownBy(() -> plantService.updatePlant(99L, new UpdatePlantRequest(), 1L))
+          .isInstanceOf(ResourceNotFoundException.class);
+
+      verify(plantRepository, never()).save(any());
     }
   }
 }

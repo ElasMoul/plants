@@ -181,6 +181,12 @@
             <artifactId>httpclient5</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- OkHttp MockWebServer — for unit-testing Spring RestClient HTTP interactions -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
@@ -263,7 +269,8 @@
                         </goals>
                         <configuration>
                             <!-- Skip coverage gate when tests are skipped (-DskipTests=true) -->
-                            <skip>${DskipTests}</skip>
+                            <!--suppress UnresolvedMavenProperty -->
+                            <skip>${skipTests}</skip>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
@@ -314,6 +321,7 @@
                 <version>3.3.1</version>
                 <configuration>
                     <configLocation>google_checks.xml</configLocation>
+                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
                     <failsOnError>true</failsOnError>
                     <consoleOutput>true</consoleOutput>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>

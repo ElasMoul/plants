@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Suppressions for PlantPal application code.
+
+  MissingJavadocType / MissingJavadocMethod / MissingJavadocVariable:
+    Google style enforces Javadoc on every public type and method.
+    That convention is correct for published libraries but adds noise
+    in application code where well-named identifiers are self-documenting.
+    Javadoc is still encouraged on non-obvious public APIs; it is just
+    not enforced by the build gate.
+-->
+<suppressions>
+
+  <!-- Suppress all Javadoc-presence rules across the whole source tree -->
+  <suppress checks="MissingJavadocType"     files=".*\.java"/>
+  <suppress checks="MissingJavadocMethod"   files=".*\.java"/>
+  <suppress checks="MissingJavadocVariable" files=".*\.java"/>
+
+</suppressions>

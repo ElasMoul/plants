@@ -28,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -157,6 +158,37 @@ class UserServiceTest {
       assertThatThrownBy(() -> userService.login(request))
           .isInstanceOf(UnauthorizedException.class)
           .hasMessageContaining("Account is not active");
+    }
+  }
+
+  @Nested
+  @DisplayName("loadUserByUsername()")
+  class LoadUserByUsername {
+
+    @Test
+    @DisplayName("should return UserDetails when the email exists")
+    void shouldReturnUserDetailsWhenFound() {
+      // Given
+      var user = aUser().withId(1L).build();
+      when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+      // When
+      var result = userService.loadUserByUsername(user.getEmail());
+
+      // Then
+      assertThat(result.getUsername()).isEqualTo(user.getEmail());
+    }
+
+    @Test
+    @DisplayName("should throw UsernameNotFoundException when email does not exist")
+    void shouldThrowWhenEmailNotFound() {
+      // Given
+      String email = "ghost@example.com";
+      when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+      // When / Then
+      assertThatThrownBy(() -> userService.loadUserByUsername(email))
+          .isInstanceOf(UsernameNotFoundException.class);
     }
   }
 }

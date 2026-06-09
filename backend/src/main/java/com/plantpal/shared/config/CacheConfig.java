@@ -27,14 +27,15 @@ public class CacheConfig {
     // WRITE_DATES_AS_TIMESTAMPS=false: ISO-8601 strings in Redis (readable + portable).
     // Default typing: embeds @class in JSON so Spring can deserialize Page<T> and other
     // generic types back to the correct concrete type on cache read.
-    ObjectMapper redisMapper = new ObjectMapper()
-        .registerModule(new JavaTimeModule())
-        .registerModule(new ParameterNamesModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-        .activateDefaultTyping(
-            LaissezFaireSubTypeValidator.instance,
-            ObjectMapper.DefaultTyping.NON_FINAL,
-            JsonTypeInfo.As.PROPERTY);
+    ObjectMapper redisMapper =
+        new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .registerModule(new ParameterNamesModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .activateDefaultTyping(
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
 
     RedisCacheConfiguration config =
         RedisCacheConfiguration.defaultCacheConfig()
