@@ -269,6 +269,7 @@
                         </goals>
                         <configuration>
                             <!-- Skip coverage gate when tests are skipped (-DskipTests=true) -->
+                            <!--suppress UnresolvedMavenProperty -->
                             <skip>${skipTests}</skip>
                             <rules>
                                 <rule>

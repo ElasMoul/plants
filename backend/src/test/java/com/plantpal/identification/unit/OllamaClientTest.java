@@ -99,7 +99,8 @@ class OllamaClientTest {
   class ChatErrors {
 
     @Test
-    @DisplayName("should throw PlantPalException(502) when Ollama returns a body with no message field")
+    @DisplayName(
+        "should throw PlantPalException(502) when Ollama returns a body with no message field")
     void shouldThrow502WhenMessageFieldMissing() {
       // Given — valid HTTP 200 but Ollama omits the message object
       server.enqueue(
@@ -169,9 +170,7 @@ class OllamaClientTest {
 
   private MockResponse ollamaResponse(String content) {
     String json =
-        "{\"message\":{\"role\":\"assistant\",\"content\":\""
-            + content
-            + "\"},\"done\":true}";
+        "{\"message\":{\"role\":\"assistant\",\"content\":\"" + content + "\"},\"done\":true}";
     return new MockResponse()
         .setResponseCode(200)
         .addHeader("Content-Type", "application/json")

@@ -20,7 +20,6 @@ import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.impl.UserServiceImpl;
 import java.util.Optional;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
