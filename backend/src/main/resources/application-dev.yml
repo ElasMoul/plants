@@ -48,6 +48,9 @@ ollama:
 # ──── Application-specific settings ──────────────────────────────────────────
 app:
 
+  cors:
+    allowed-origins: "*"               # Dev only — open for phone testing via PC IP
+
   jwt:
     # Minimum 64 characters for HS256. Generate: openssl rand -base64 64
     secret: ${JWT_SECRET}

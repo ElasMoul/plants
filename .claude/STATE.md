@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: [date]
+> Last updated: 2026-06-12
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -34,6 +34,11 @@ Phase 2 — AI Plant Identification (in progress)
 - JaCoCo gate needs to be restored to 80% with proper exclusions
 - Branch protection configured on main + dev
 - Integration tests not running in CI (Testcontainers phase isolation issue)
+
+## Infra Fixes Applied
+- 2026-06-12: Nginx `client_max_body_size 15m` + proxy timeouts 120s (frontend/nginx.conf)
+- 2026-06-12: Spring Boot multipart limit raised to 15MB (application.yml) — phone photos ~3-10MB were hitting 1MB default
+- 2026-06-12: PlantNetClient forced to HTTP/1.1 (JdkClientHttpRequestFactory) — Java 21 HttpClient was negotiating HTTP/2 via ALPN; PlantNet drops HTTP/2 connections on large multipart bodies (EOFException from Http2TubeSubscriber)
 
 ## Repo Structure
 plants/

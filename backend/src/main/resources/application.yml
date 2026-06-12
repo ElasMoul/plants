@@ -16,6 +16,12 @@ spring:
   jpa:
     open-in-view: false
 
+  # Photo uploads — phone cameras produce 3-10MB images
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+
   # Jackson: ISO-8601 dates, omit null fields globally
   jackson:
     serialization:

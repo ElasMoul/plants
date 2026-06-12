@@ -108,6 +108,19 @@ testdata/UserTestDataBuilder.java
 MISSING: IdentificationControllerIT.java
 
 
+## Bug Fixes Applied
+- IdentificationController.analyze(): organs changed @RequestPart → @RequestParam.
+  @RequestPart requires application/json or text/plain; multipart string fields arrive as
+  application/octet-stream which has no converter. @RequestParam handles them correctly.
+
+- RestPage Redis 500: @JsonIgnoreProperties(ignoreUnknown=true) only ignores UNKNOWN fields.
+  "pageable"/"sort" are KNOWN (inherited from PageImpl), so Jackson tried to reconstruct
+  Sort with empty orders → IllegalArgumentException. Fixed by explicitly listing
+  {"pageable","sort","last","first","empty","numberOfElements"} in @JsonIgnoreProperties.
+  CacheConfig now implements CachingConfigurer + overrides errorHandler() with a logging
+  handler so future Redis failures degrade to WARN + cache miss instead of 500.
+  ACTION REQUIRED after deploying: docker exec -it plantpal-redis redis-cli FLUSHDB
+
 ## Known Issues / Open Items
 - JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI
 - AiTestController is not @Profile("dev") guarded — will deploy to prod
