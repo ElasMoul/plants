@@ -1,10 +1,29 @@
 import { NgModule } from '@angular/core';
+import { MatSelectModule } from '@angular/material/select';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { SharedModule } from '../../shared/shared.module';
 import { IdentificationRoutingModule } from './identification-routing.module';
-import { IdentificationHomeComponent } from './identification-home/identification-home.component';
+import { PhotoUploadComponent } from './components/photo-upload/photo-upload.component';
+import { IdentificationResultComponent } from './components/identification-result/identification-result.component';
+import { IdentificationPageComponent } from './pages/identification-page/identification-page.component';
+import { IdentificationService } from './services/identification.service';
+import { PlantService } from '../plant/services/plant.service';
 
 @NgModule({
-  declarations: [IdentificationHomeComponent],
-  imports: [SharedModule, IdentificationRoutingModule],
+  declarations: [
+    PhotoUploadComponent,
+    IdentificationResultComponent,
+    IdentificationPageComponent,
+  ],
+  imports: [
+    SharedModule,
+    IdentificationRoutingModule,
+    MatSelectModule,
+    MatProgressBarModule,
+  ],
+  providers: [
+    IdentificationService,
+    PlantService,
+  ],
 })
 export class IdentificationModule {}

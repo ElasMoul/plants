@@ -1,0 +1,57 @@
+<div class="page-container">
+
+  <h1 class="page-title">Identify Your Plant</h1>
+  <p class="page-subtitle">Upload up to 5 photos and let AI identify your plant species</p>
+
+  <!-- idle: upload form -->
+  <ng-container *ngIf="state === 'idle'">
+    <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
+  </ng-container>
+
+  <!-- uploading / analyzing: spinner -->
+  <ng-container *ngIf="state === 'uploading' || state === 'analyzing'">
+    <div class="loading-state">
+      <mat-spinner diameter="64"></mat-spinner>
+      <p *ngIf="state === 'uploading'" class="loading-msg">Uploading your photos...</p>
+      <p *ngIf="state === 'analyzing'" class="loading-msg">
+        Identifying your plant&hellip; this may take a few seconds
+      </p>
+    </div>
+  </ng-container>
+
+  <!-- result -->
+  <ng-container *ngIf="state === 'result'">
+    <ng-container *ngIf="result as r">
+      <app-identification-result
+        [result]="r"
+        (saveAsNew)="onSaveAsNew($event)"
+        (updatePlant)="onUpdatePlant($event)"
+      ></app-identification-result>
+    </ng-container>
+    <div class="start-over-row">
+      <button mat-stroked-button type="button" (click)="reset()">
+        <mat-icon>refresh</mat-icon>
+        Start over
+      </button>
+    </div>
+  </ng-container>
+
+  <!-- error -->
+  <ng-container *ngIf="state === 'error'">
+    <mat-card class="error-card">
+      <mat-card-content>
+        <div class="error-content">
+          <mat-icon color="warn" class="error-icon">error_outline</mat-icon>
+          <p class="error-msg">{{ errorMessage }}</p>
+        </div>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-raised-button color="primary" type="button" (click)="reset()">
+          <mat-icon>refresh</mat-icon>
+          Try again
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </ng-container>
+
+</div>

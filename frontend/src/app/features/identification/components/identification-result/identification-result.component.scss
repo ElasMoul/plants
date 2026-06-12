@@ -1,0 +1,124 @@
+.result-card {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.scientific-name {
+  font-style: italic;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.status-badge,
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge {
+  &.status-completed { background: #e8f5e9; color: #2e7d32; }
+  &.status-pending   { background: #e3f2fd; color: #1565c0; }
+  &.status-failed    { background: #ffebee; color: #c62828; }
+}
+
+.confidence-badge {
+  &.confidence-high   { background: #e8f5e9; color: #2e7d32; }
+  &.confidence-medium { background: #fff8e1; color: #f57f17; }
+  &.confidence-low    { background: #ffebee; color: #c62828; }
+}
+
+.inline-spinner {
+  display: inline-block;
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.low-confidence-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff8e1;
+
+  mat-icon {
+    color: #f57f17;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #5d4037;
+  }
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.54);
+  margin-bottom: 12px;
+}
+
+.top-result {
+  margin-bottom: 16px;
+}
+
+.result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.result-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.38);
+  min-width: 24px;
+}
+
+.result-name {
+  font-style: italic;
+  font-size: 14px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-pct {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.result-common {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.54);
+  margin: 0 0 4px 32px;
+}
+
+.result-bar {
+  margin-left: 32px;
+}

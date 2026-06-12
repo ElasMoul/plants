@@ -1,0 +1,115 @@
+<div class="upload-wrapper">
+
+  <!-- Drop zone / click to browse -->
+  <div
+    class="drop-zone"
+    [class.drag-over]="isDragOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+    (click)="fileInput.click()"
+    (keydown.enter)="fileInput.click()"
+    (keydown.space)="fileInput.click()"
+    role="button"
+    tabindex="0"
+    aria-label="Upload plant photos"
+  >
+    <mat-icon class="upload-icon">cloud_upload</mat-icon>
+    <p class="drop-primary">Drag & drop photos here</p>
+    <p class="drop-secondary">or <strong>click to browse</strong></p>
+    <p class="drop-hint">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
+  </div>
+
+  <!-- Hidden file input — desktop multi-select -->
+  <input
+    #fileInput
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+    hidden
+    (change)="onFileChange($event)"
+  />
+
+  <!-- Hidden camera input — opens device camera on mobile -->
+  <input
+    #cameraInput
+    type="file"
+    accept="image/*"
+    capture="environment"
+    hidden
+    (change)="onFileChange($event)"
+  />
+
+  <!-- Mobile camera shortcut -->
+  <div class="camera-row">
+    <button mat-stroked-button type="button" (click)="cameraInput.click()">
+      <mat-icon>photo_camera</mat-icon>
+      Take a photo
+    </button>
+  </div>
+
+  <!-- Validation errors -->
+  <div class="error-list" *ngIf="validationErrors.length">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <ul>
+      <li *ngFor="let err of validationErrors">{{ err }}</li>
+    </ul>
+  </div>
+
+  <!-- Image previews -->
+  <div class="preview-grid" *ngIf="entries.length">
+    <div class="preview-card" *ngFor="let entry of entries; let i = index">
+      <div class="img-wrapper">
+        <img [src]="entry.preview" [alt]="'Image ' + (i + 1)" class="preview-img" />
+        <button
+          mat-icon-button
+          class="remove-btn"
+          type="button"
+          (click)="removeImage(i)"
+          [attr.aria-label]="'Remove image ' + (i + 1)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <mat-form-field appearance="outline" class="organ-field">
+        <mat-label>Plant part</mat-label>
+        <mat-select [value]="entry.organ" (selectionChange)="onOrganChange(i, $event)">
+          <mat-option value="auto">Auto-detect</mat-option>
+          <mat-option value="flower">Flower</mat-option>
+          <mat-option value="leaf">Leaf</mat-option>
+          <mat-option value="fruit">Fruit</mat-option>
+          <mat-option value="bark">Bark</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Optional plant link -->
+  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length">
+    <mat-label>Link to existing plant (optional)</mat-label>
+    <mat-icon matPrefix>local_florist</mat-icon>
+    <mat-select
+      [value]="selectedPlantId"
+      (selectionChange)="onPlantChange($event)"
+    >
+      <mat-option [value]="undefined">None — identify without linking</mat-option>
+      <mat-option *ngFor="let plant of plants" [value]="plant.id">
+        {{ plant.nickname }}<span *ngIf="plant.species"> ({{ plant.species }})</span>
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Analyze -->
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    class="full-width mt-24"
+    [disabled]="entries.length === 0"
+    (click)="onAnalyze()"
+  >
+    <mat-icon>biotech</mat-icon>
+    Identify Plant
+  </button>
+
+</div>
