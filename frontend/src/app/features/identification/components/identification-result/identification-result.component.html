@@ -1,0 +1,68 @@
+<mat-card class="result-card">
+
+  <mat-card-header>
+    <mat-icon mat-card-avatar color="primary">eco</mat-icon>
+    <mat-card-title class="scientific-name">{{ result.scientificName }}</mat-card-title>
+    <mat-card-subtitle>{{ result.commonName }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+
+    <!-- Status + confidence badges -->
+    <div class="badge-row">
+      <span class="status-badge" [ngClass]="'status-' + result.status.toLowerCase()">
+        <mat-spinner *ngIf="result.status === 'PENDING'" diameter="12" class="inline-spinner"></mat-spinner>
+        <mat-icon *ngIf="result.status === 'COMPLETED'" class="badge-icon">check_circle</mat-icon>
+        <mat-icon *ngIf="result.status === 'FAILED'" class="badge-icon">error</mat-icon>
+        {{ result.status | titlecase }}
+      </span>
+      <span class="confidence-badge" [ngClass]="'confidence-' + confidenceLevel.toLowerCase()">
+        {{ confidencePercent }}% confident
+      </span>
+    </div>
+
+    <!-- Low confidence notice -->
+    <div class="low-confidence-notice" *ngIf="isLowConfidence">
+      <mat-icon>warning_amber</mat-icon>
+      <p>Low confidence — consider retaking in better light or from a different angle</p>
+    </div>
+
+    <mat-divider class="mt-16 mb-16"></mat-divider>
+
+    <!-- Top 3 results -->
+    <p class="section-label">Top matches</p>
+    <div class="top-result" *ngFor="let item of result.topResults; let i = index">
+      <div class="result-row">
+        <span class="result-rank">#{{ i + 1 }}</span>
+        <span class="result-name">{{ item.species.scientificNameWithoutAuthor }}</span>
+        <span class="result-pct">{{ getTopResultPercent(item) }}%</span>
+      </div>
+      <p class="result-common" *ngIf="item.species.commonNames.length">
+        {{ item.species.commonNames[0] }}
+      </p>
+      <mat-progress-bar
+        mode="determinate"
+        [value]="getTopResultPercent(item)"
+        [color]="i === 0 ? 'primary' : 'accent'"
+        class="result-bar"
+      ></mat-progress-bar>
+    </div>
+
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-stroked-button
+      *ngIf="result.plantId !== null"
+      (click)="onUpdatePlant()"
+    >
+      <mat-icon>update</mat-icon>
+      Update existing plant
+    </button>
+    <button mat-raised-button color="primary" (click)="onSaveAsNew()">
+      <mat-icon>add</mat-icon>
+      Save as new plant
+    </button>
+  </mat-card-actions>
+
+</mat-card>

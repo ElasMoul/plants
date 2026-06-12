@@ -1,9 +1,9 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { IdentificationHomeComponent } from './identification-home/identification-home.component';
+import { IdentificationPageComponent } from './pages/identification-page/identification-page.component';
 
 const routes: Routes = [
-  { path: '', component: IdentificationHomeComponent },
+  { path: '', component: IdentificationPageComponent },
 ];
 
 @NgModule({
