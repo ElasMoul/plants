@@ -47,7 +47,7 @@ public class IdentificationController {
   @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<IdentificationResponse>> analyze(
       @RequestPart("images") List<MultipartFile> images,
-      @RequestPart(value = "organs", required = false) List<String> organs,
+      @RequestParam(value = "organs", required = false) List<String> organs,
       @RequestParam(required = false) Long plantId) {
 
     Long userId = getCurrentUserId();
