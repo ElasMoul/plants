@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+        PlantPal – Liquibase Master Changelog
+        Files are applied in strict order. Never reorder or delete an entry.
+        To undo a migration, add a new changeset — never edit an existing one.
+    -->
+
+    <include file="db/changelog/migrations/001_create_users.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/002_create_plants.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/003_create_identifications.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/004_create_reminders_and_care_logs.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/005_create_push_subscriptions.sql"
+             relativeToChangelogFile="false"/>
+
+</databaseChangeLog>

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   # ─────────────────────────────────────────
@@ -11,17 +9,69 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: plantpal_dev
-      POSTGRES_USER: plantpal_user
-      POSTGRES_PASSWORD: plantpal_password
+      POSTGRES_USER: plantpal
+      POSTGRES_PASSWORD: plantpal
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U plantpal_user -d plantpal_dev"]
+      test: ["CMD-SHELL", "pg_isready -U plantpal -d plantpal_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - plantpal-network
+
+  # ─────────────────────────────────────────
+  # Spring Boot Backend
+  # Requires: backend/.env (copy from backend/.env.example and fill in secrets)
+  # ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: plantpal-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # Override DB + Redis hosts to use Docker service names (not localhost)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plantpal_dev
+      SPRING_DATA_REDIS_HOST: redis
+      # Ollama runs on the host machine — host.docker.internal resolves on Docker Desktop
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - plantpal-network
+
+  # ─────────────────────────────────────────
+  # Angular Frontend (Nginx, production build)
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: plantpal-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
       - plantpal-network
 

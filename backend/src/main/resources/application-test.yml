@@ -1,0 +1,56 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PlantPal – Test Profile
+# Used by Testcontainers integration tests (@SpringBootTest).
+# PostgreSQL and Redis containers are started automatically via @ServiceConnection.
+# No real infrastructure needed — Testcontainers spins up Docker containers.
+# ──────────────────────────────────────────────────────────────────────────────
+
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15:///plantpal_test
+  # ── Liquibase ────────────────────────────────────────────────────────────────
+  liquibase:
+    enabled: true
+    contexts: test
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  # ── JPA ──────────────────────────────────────────────────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: validate               # Liquibase always owns the schema
+    show-sql: false
+
+# ──── Anthropic API (placeholder — AI calls are mocked in tests) ──────────────
+anthropic:
+  api:
+    key: test-api-key-placeholder
+
+# ──── Application settings ────────────────────────────────────────────────────
+app:
+
+  jwt:
+    # Valid Base64, decodes to 32 bytes (256 bits) — never use in production
+    secret: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    expiration-ms: 3600000             # 1 hour — short for tests
+
+  storage:
+    type: local
+    local-path: /tmp/plantpal-test/photos
+
+  web-push:
+    public-key: test-vapid-public-key
+    private-key: test-vapid-private-key
+    subject: mailto:test@plantpal.app
+
+  rate-limit:
+    # Effectively unlimited in tests to avoid rate-limiter interference
+    ai-calls-per-hour: 10000
+    auth-attempts-per-minute: 10000
+
+# ──── Logging (test: quieter, highlight app logs) ─────────────────────────────
+logging:
+  level:
+    com.plantpal: DEBUG
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
+    org.springframework.security: WARN

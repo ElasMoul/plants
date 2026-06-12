@@ -1,0 +1,84 @@
+<div class="form-container">
+  <div class="form-header">
+    <button mat-icon-button (click)="onCancel()" aria-label="Go back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="form-title">{{ isEdit ? 'Edit plant' : 'Add a plant' }}</h1>
+  </div>
+
+  <mat-card class="form-card">
+    <div *ngIf="loading" class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <!-- Nickname -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nickname *</mat-label>
+        <input matInput formControlName="nickname" placeholder="e.g. Living room fern" maxlength="255" />
+        <mat-error *ngIf="form.get('nickname')?.hasError('required')">
+          Nickname is required.
+        </mat-error>
+        <mat-error *ngIf="form.get('nickname')?.hasError('maxlength')">
+          Maximum 255 characters.
+        </mat-error>
+      </mat-form-field>
+
+      <div class="two-col">
+        <!-- Common name -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Common name</mat-label>
+          <input matInput formControlName="commonName" placeholder="e.g. Boston Fern" />
+        </mat-form-field>
+
+        <!-- Species -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Species</mat-label>
+          <input matInput formControlName="species" placeholder="e.g. Nephrolepis exaltata" />
+          <mat-hint>Scientific name — leave blank to let AI identify it</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="two-col">
+        <!-- Location -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Location</mat-label>
+          <input matInput formControlName="location" placeholder="e.g. Living room, Balcony" />
+        </mat-form-field>
+
+        <!-- Acquired at -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Date acquired</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="acquiredAt" placeholder="MM/DD/YYYY" />
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <!-- Notes -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Notes</mat-label>
+        <textarea
+          matInput
+          formControlName="notes"
+          rows="4"
+          placeholder="Any notes about this plant…"
+        ></textarea>
+      </mat-form-field>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button mat-button type="button" (click)="onCancel()">Cancel</button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || submitting"
+        >
+          <mat-spinner *ngIf="submitting" diameter="18" class="btn-spinner"></mat-spinner>
+          {{ isEdit ? 'Save changes' : 'Add plant' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

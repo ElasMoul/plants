@@ -1,0 +1,74 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PlantPal – Development Profile
+# Start local infrastructure first: docker-compose up -d
+# Copy backend/.env.example → backend/.env and fill in values.
+# ──────────────────────────────────────────────────────────────────────────────
+
+spring:
+
+  # ── Database ────────────────────────────────────────────────────────────────
+  datasource:
+    url: jdbc:postgresql://localhost:5432/plantpal_dev
+    username: ${DB_USERNAME:plantpal}   # Default 'plantpal' matches docker-compose.yml
+    password: ${DB_PASSWORD:plantpal}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000         # ms — fail fast rather than hang
+      idle-timeout: 600000
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # ── JPA / Hibernate ──────────────────────────────────────────────────────────
+  jpa:
+    hibernate:
+      # Liquibase owns the schema — never let Hibernate touch it
+      ddl-auto: validate
+    show-sql: false                     # Use query logging via p6spy if needed
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: public
+
+  # ── Liquibase ────────────────────────────────────────────────────────────────
+  liquibase:
+    enabled: true
+    contexts: dev
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+# ──── Ollama (local AI) ───────────────────────────────────────────────────────
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:phi3}           # Run: ollama pull phi3
+
+# ──── Application-specific settings ──────────────────────────────────────────
+app:
+
+  jwt:
+    # Minimum 64 characters for HS256. Generate: openssl rand -base64 64
+    secret: ${JWT_SECRET}
+    expiration-ms: 86400000             # 24 hours
+
+  storage:
+    type: local                         # 'local' | 's3' | 'cloudinary'
+    local-path: /tmp/plantpal/photos
+
+  web-push:
+    public-key: ${VAPID_PUBLIC_KEY}     # Generate: npx web-push generate-vapid-keys
+    private-key: ${VAPID_PRIVATE_KEY}
+    subject: mailto:contact@plantpal.app
+
+  rate-limit:
+    ai-calls-per-hour: 20              # Per authenticated user
+    auth-attempts-per-minute: 5        # Brute-force protection on /api/auth/**
+
+# ──── Logging (dev: verbose) ──────────────────────────────────────────────────
+logging:
+  level:
+    com.plantpal: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG

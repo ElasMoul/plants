@@ -1,0 +1,51 @@
+<mat-toolbar color="primary" class="navbar">
+  <a class="brand" routerLink="/">
+    <mat-icon>local_florist</mat-icon>
+    <span>PlantPal</span>
+  </a>
+
+  <nav class="nav-links" *ngIf="authService.isLoggedIn()">
+    <a
+      *ngFor="let link of navLinks"
+      mat-button
+      [routerLink]="link.route"
+      routerLinkActive="active-link"
+    >
+      <mat-icon>{{ link.icon }}</mat-icon>
+      <span class="nav-label">{{ link.label }}</span>
+    </a>
+  </nav>
+
+  <span class="spacer"></span>
+
+  <!-- AI Test always visible — no auth required -->
+  <a mat-button routerLink="/ai-test" routerLinkActive="active-link">
+    <mat-icon>science</mat-icon>
+    <span class="nav-label">AI Test</span>
+  </a>
+
+  <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
+    <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <div mat-menu-item disabled>{{ authService.getCurrentUser()?.email }}</div>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Sign out</span>
+      </button>
+    </mat-menu>
+  </ng-container>
+
+  <ng-template #loginBtn>
+    <a mat-button routerLink="/login">
+      <mat-icon>login</mat-icon>
+      <span class="nav-label">Login</span>
+    </a>
+  </ng-template>
+</mat-toolbar>
+
+<main class="app-content with-toolbar">
+  <router-outlet></router-outlet>
+</main>

@@ -1,0 +1,9 @@
+# Default ignored files
+/.idea/
+/.vscode/
+/node_modules/
+/dist/
+/logs/
+/target/
+/.angular/
+/.cache/

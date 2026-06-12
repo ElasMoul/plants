@@ -1,0 +1,110 @@
+<div class="detail-container">
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-state">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <ng-container *ngIf="!loading && plant">
+    <!-- Header -->
+    <div class="detail-header">
+      <div class="header-left">
+        <button mat-icon-button routerLink="/plants" aria-label="Back to plants">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div>
+          <h1 class="plant-name">{{ plant.nickname }}</h1>
+          <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button mat-stroked-button [routerLink]="['/plants', plant.id, 'edit']">
+          <mat-icon>edit</mat-icon>
+          Edit
+        </button>
+        <button mat-stroked-button color="warn" (click)="onArchive()">
+          <mat-icon>archive</mat-icon>
+          Archive
+        </button>
+      </div>
+    </div>
+
+    <!-- Photo -->
+    <div class="photo-banner" *ngIf="plant.photoUrl">
+      <img [src]="plant.photoUrl" [alt]="plant.nickname" class="banner-img" />
+    </div>
+
+    <!-- Tabs -->
+    <mat-tab-group animationDuration="200ms">
+
+      <!-- Tab 1: Overview -->
+      <mat-tab label="Overview">
+        <div class="tab-content">
+          <div class="info-grid">
+            <div class="info-item" *ngIf="plant.species">
+              <span class="info-label">Species</span>
+              <span class="info-value">{{ plant.species }}</span>
+            </div>
+            <div class="info-item" *ngIf="plant.commonName">
+              <span class="info-label">Common name</span>
+              <span class="info-value">{{ plant.commonName }}</span>
+            </div>
+            <div class="info-item" *ngIf="plant.location">
+              <span class="info-label">Location</span>
+              <span class="info-value">
+                <mat-icon class="inline-icon">place</mat-icon>
+                {{ plant.location }}
+              </span>
+            </div>
+            <div class="info-item" *ngIf="plant.acquiredAt">
+              <span class="info-label">Acquired</span>
+              <span class="info-value">{{ plant.acquiredAt | date:'longDate' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Added</span>
+              <span class="info-value">{{ plant.createdAt | date:'mediumDate' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Status</span>
+              <mat-chip [class]="'status-' + plant.status.toLowerCase()">
+                {{ plant.status }}
+              </mat-chip>
+            </div>
+          </div>
+
+          <mat-divider *ngIf="plant.notes"></mat-divider>
+
+          <div class="notes-section" *ngIf="plant.notes">
+            <h3>Notes</h3>
+            <p>{{ plant.notes }}</p>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Tab 2: Care History -->
+      <mat-tab label="Care History">
+        <div class="tab-content placeholder-tab">
+          <mat-icon class="placeholder-icon">event_available</mat-icon>
+          <h3>Care history coming in Phase 3</h3>
+          <p>Watering, fertilizing, and repotting logs will appear here.</p>
+        </div>
+      </mat-tab>
+
+      <!-- Tab 3: Identifications -->
+      <mat-tab label="Identifications">
+        <div class="tab-content placeholder-tab">
+          <mat-icon class="placeholder-icon">biotech</mat-icon>
+          <h3>AI identifications coming in Phase 2</h3>
+          <p>Upload a photo to identify your plant's species and check its health.</p>
+          <button mat-raised-button color="primary" routerLink="/identify" [disabled]="true">
+            <mat-icon>camera_alt</mat-icon>
+            Identify this plant
+          </button>
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+  </ng-container>
+
+</div>

@@ -1,0 +1,54 @@
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard } from './core/guards/auth.guard';
+
+const routes: Routes = [
+  // Exact empty path redirect
+  {
+    path: '',
+    redirectTo: 'ai-test',
+    pathMatch: 'full',
+  },
+  // Guarded feature routes — declared BEFORE the auth catch-all
+  // so the prefix '' route below never steals them
+  {
+    path: 'plants',
+    loadChildren: () => import('./features/plant/plant.module').then(m => m.PlantModule),
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'identify',
+    loadChildren: () =>
+      import('./features/identification/identification.module').then(m => m.IdentificationModule),
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'reminders',
+    loadChildren: () =>
+      import('./features/reminder/reminder.module').then(m => m.ReminderModule),
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'chat',
+    loadChildren: () => import('./features/chat/chat.module').then(m => m.ChatModule),
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'ai-test',
+    loadChildren: () =>
+      import('./features/ai-test/ai-test.module').then(m => m.AiTestModule),
+  },
+  // Auth catch-all — prefix '' matches /login, /register, and unknown paths.
+  // Auth-routing handles login, register, and ** (fallback to ai-test).
+  // Must be last so specific routes above take priority.
+  {
+    path: '',
+    loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule),
+  },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule {}
