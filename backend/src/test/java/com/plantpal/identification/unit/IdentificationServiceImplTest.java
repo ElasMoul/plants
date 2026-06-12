@@ -3,7 +3,6 @@ package com.plantpal.identification.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -12,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.PlantNetClient;
-import org.mockito.Spy;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
@@ -30,7 +28,6 @@ import com.plantpal.shared.storage.FileStorageService;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -61,7 +59,7 @@ class IdentificationServiceImplTest {
 
   private MockMultipartFile validImage() {
     return new MockMultipartFile(
-        "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3});
+        "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[] {1, 2, 3});
   }
 
   private PlantNetResponse plantNetResponse() {
@@ -111,7 +109,9 @@ class IdentificationServiceImplTest {
       when(plantNetClient.identify(any(), any())).thenReturn(plantNetResp);
       when(plantRepository.existsByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(true);
       when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
-          .thenReturn(Optional.of(Plant.builder().id(PLANT_ID).userId(USER_ID).nickname("My plant").build()));
+          .thenReturn(
+              Optional.of(
+                  Plant.builder().id(PLANT_ID).userId(USER_ID).nickname("My plant").build()));
 
       CompletableFuture<IdentificationResponse> future =
           identificationService.identify(images, List.of("leaf"), PLANT_ID, USER_ID);
@@ -148,8 +148,7 @@ class IdentificationServiceImplTest {
       when(plantNetClient.identify(any(), any()))
           .thenThrow(new PlantPalException("No species match found", 404));
 
-      assertThatThrownBy(
-              () -> identificationService.identify(images, null, null, USER_ID).get())
+      assertThatThrownBy(() -> identificationService.identify(images, null, null, USER_ID).get())
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("No species match found");
 

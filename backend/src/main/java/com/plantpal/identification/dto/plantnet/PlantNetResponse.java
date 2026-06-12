@@ -4,5 +4,4 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record PlantNetResponse(
-    List<PlantNetResult> results, int remainingIdentificationRequests) {}
+public record PlantNetResponse(List<PlantNetResult> results, int remainingIdentificationRequests) {}

@@ -52,7 +52,10 @@ public class IdentificationController {
 
     Long userId = getCurrentUserId();
     log.info(
-        "Identification requested: userId={}, images={}, plantId={}", userId, images.size(), plantId);
+        "Identification requested: userId={}, images={}, plantId={}",
+        userId,
+        images.size(),
+        plantId);
 
     try {
       IdentificationResponse response =

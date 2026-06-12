@@ -11,7 +11,6 @@ import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
-import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -93,7 +92,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       PlantNetResult topResult = plantNetResponse.results().get(0);
       String scientificName = topResult.species().scientificNameWithoutAuthor();
       List<String> commonNames = topResult.species().commonNames();
-      String commonName = (commonNames != null && !commonNames.isEmpty()) ? commonNames.get(0) : null;
+      String commonName =
+          (commonNames != null && !commonNames.isEmpty()) ? commonNames.get(0) : null;
 
       identification.setScientificName(scientificName);
       identification.setCommonName(commonName);
@@ -163,8 +163,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setStatus(IdentificationStatus.FAILED);
       identificationRepository.save(identification);
     } catch (Exception ex) {
-      log.error(
-          "Failed to mark identification as FAILED: id={}", identification.getId(), ex);
+      log.error("Failed to mark identification as FAILED: id={}", identification.getId(), ex);
     }
   }
 

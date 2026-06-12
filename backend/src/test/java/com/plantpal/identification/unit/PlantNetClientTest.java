@@ -2,8 +2,6 @@ package com.plantpal.identification.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.PlantNetClient;
@@ -21,7 +19,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
 @DisplayName("PlantNetClient — Unit Tests")
 class PlantNetClientTest {
@@ -72,7 +69,7 @@ class PlantNetClientTest {
 
   private MockMultipartFile validImage() {
     return new MockMultipartFile(
-        "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[]{1, 2, 3});
+        "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[] {1, 2, 3});
   }
 
   @Nested
@@ -83,9 +80,7 @@ class PlantNetClientTest {
     @DisplayName("should return mapped PlantNetResponse on successful identification")
     void shouldReturnResponseOnSuccess() throws Exception {
       mockWebServer.enqueue(
-          new MockResponse()
-              .setBody(VALID_RESPONSE)
-              .addHeader("Content-Type", "application/json"));
+          new MockResponse().setBody(VALID_RESPONSE).addHeader("Content-Type", "application/json"));
 
       PlantNetResponse response = plantNetClient.identify(List.of(validImage()), List.of("leaf"));
 
@@ -103,9 +98,7 @@ class PlantNetClientTest {
     @DisplayName("should send correct multipart request structure")
     void shouldSendCorrectRequestStructure() throws Exception {
       mockWebServer.enqueue(
-          new MockResponse()
-              .setBody(VALID_RESPONSE)
-              .addHeader("Content-Type", "application/json"));
+          new MockResponse().setBody(VALID_RESPONSE).addHeader("Content-Type", "application/json"));
 
       plantNetClient.identify(List.of(validImage()), List.of("flower"));
 
@@ -122,9 +115,7 @@ class PlantNetClientTest {
     @DisplayName("should default organs to 'auto' when organs list is null")
     void shouldDefaultOrgansToAutoWhenNull() throws Exception {
       mockWebServer.enqueue(
-          new MockResponse()
-              .setBody(VALID_RESPONSE)
-              .addHeader("Content-Type", "application/json"));
+          new MockResponse().setBody(VALID_RESPONSE).addHeader("Content-Type", "application/json"));
 
       plantNetClient.identify(List.of(validImage()), null);
 
