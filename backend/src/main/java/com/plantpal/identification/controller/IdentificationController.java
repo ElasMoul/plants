@@ -1,0 +1,89 @@
+package com.plantpal.identification.controller;
+
+import com.plantpal.identification.dto.IdentificationResponse;
+import com.plantpal.identification.service.IdentificationService;
+import com.plantpal.shared.dto.ApiResponse;
+import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.user.entity.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/api/v1/identifications")
+@Tag(name = "Identification", description = "AI-powered plant species identification via PlantNet")
+@SecurityRequirement(name = "bearerAuth")
+public class IdentificationController {
+
+  private static final Logger log = LoggerFactory.getLogger(IdentificationController.class);
+
+  private final IdentificationService identificationService;
+
+  public IdentificationController(IdentificationService identificationService) {
+    this.identificationService = identificationService;
+  }
+
+  @Operation(summary = "Identify a plant from one or more photos")
+  @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<ApiResponse<IdentificationResponse>> analyze(
+      @RequestPart("images") List<MultipartFile> images,
+      @RequestPart(value = "organs", required = false) List<String> organs,
+      @RequestParam(required = false) Long plantId) {
+
+    Long userId = getCurrentUserId();
+    log.info(
+        "Identification requested: userId={}, images={}, plantId={}", userId, images.size(), plantId);
+
+    try {
+      IdentificationResponse response =
+          identificationService.identify(images, organs, plantId, userId).get();
+      return ResponseEntity.status(HttpStatus.ACCEPTED)
+          .body(ApiResponse.success(response, "Plant identified successfully"));
+
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof PlantPalException ppe) throw ppe;
+      throw new PlantPalException("Identification failed", 500);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new PlantPalException("Identification was interrupted", 500);
+    }
+  }
+
+  @Operation(summary = "Get all identifications for a specific plant")
+  @GetMapping("/plant/{plantId}")
+  public ResponseEntity<ApiResponse<Page<IdentificationResponse>>> getPlantIdentifications(
+      @PathVariable Long plantId,
+      @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    Long userId = getCurrentUserId();
+    Page<IdentificationResponse> page =
+        identificationService.getPlantIdentifications(plantId, userId, pageable);
+    return ResponseEntity.ok(ApiResponse.success(page));
+  }
+
+  private Long getCurrentUserId() {
+    User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    return user.getId();
+  }
+}

@@ -26,4 +26,7 @@
     <include file="db/changelog/migrations/005_create_push_subscriptions.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/006_alter_identifications.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
