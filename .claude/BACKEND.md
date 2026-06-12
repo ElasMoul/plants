@@ -107,6 +107,7 @@ testdata/PlantTestDataBuilder.java
 testdata/UserTestDataBuilder.java
 MISSING: IdentificationControllerIT.java
 
+
 ## Known Issues / Open Items
 - JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI
 - AiTestController is not @Profile("dev") guarded — will deploy to prod
