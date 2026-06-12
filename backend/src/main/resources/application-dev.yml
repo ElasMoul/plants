@@ -66,6 +66,11 @@ app:
     ai-calls-per-hour: 20              # Per authenticated user
     auth-attempts-per-minute: 5        # Brute-force protection on /api/auth/**
 
+  plantnet:
+    api-key: ${PLANTNET_API_KEY}
+    base-url: ${PLANTNET_BASE_URL:https://my-api.plantnet.org}
+    project: ${PLANTNET_PROJECT:all}
+
 # ──── Logging (dev: verbose) ──────────────────────────────────────────────────
 logging:
   level:
