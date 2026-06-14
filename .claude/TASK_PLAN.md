@@ -540,8 +540,15 @@ Checklist:
 ---
 
 ## PHASE 2 — AI Plant Identification
-> Goal: the user photographs a plant and gets an expert AI diagnosis.
-> Estimated time: Weeks 3–4.
+> Goal: the user photographs a plant and gets an expert AI diagnosis + personalised care plan.
+> Estimated time: Weeks 3–5.
+>
+> ⚠️ **Task order note (revised 2026-06-14):**
+> T2.11 (DeepSeek) was moved to the top of the remaining queue.
+> T2.8 was removed — it was Ollama-based care planning. T2.11 replaces it with DeepSeek
+> from the start, so there is no wasted implementation.
+> AI provider stack: PlantNet (identification) · DeepSeek (care plan + chat) · LLaVA (vision)
+> Ollama phi3 has no remaining role and will be removed from the stack.
 
 ---
 
@@ -700,86 +707,161 @@ Real-world tests (use actual plants):
 
 ---
 
-### T2.6 — Visual plant annotation (bounding boxes + disease overlay) 🤖 AI
-**Branch:** `feature/PP-017-visual-annotation`
+> ⚠️ **START HERE for remaining Phase 2 work** — T2.11 + T2.12 build the AI foundation
+> that T2.7 and T2.6 depend on. Do not skip ahead.
 
-> **Goal:** After a photo is processed, overlay named rectangles on identified plants
-> and highlight areas with detected disease or stress (yellowing, spots, wilting).
+---
 
-**Architectural notes:**
-- PlantNet does NOT return bounding boxes — we need a second AI pass.
-- Use Ollama with a multimodal model (`llava` or `bakllava`) for region detection.
-  This is already in our stack (OllamaClient). Just extend it with image input support.
-- Return format: structured JSON with `regions[]` — each region has `label`, `confidence`,
-  `type` (PLANT | DISEASE | HEALTHY_AREA), and `boundingBox` (x, y, width, height as % of image).
-- Frontend draws a Canvas overlay on the photo using the coordinates.
-- Make it optional/progressive: if Ollama times out or is unavailable, show result without overlay.
+### T2.11 — DeepSeek client + dynamic care plan backend 🤖 AI  ← NEXT
+**Branch:** `feature/PP-021-deepseek-care-plan`
+
+> **Goal:** Build the DeepSeek-powered care plan. This is the AI foundation for the whole
+> "care for your plants" experience. Done first so T2.7 (save flow) and T2.12 (UI) can
+> both depend on it being real from day one. No Ollama phi3 involved.
+
+> **Before starting:** Add `DEEPSEEK_API_KEY=<your-key>` to `backend/.env`.
+> Get a key at platform.deepseek.com if needed. Never commit the key.
 
 **Backend Claude Code prompt:**
 ```
-// T2.6 — Add visual annotation support to the identification pipeline
+// T2.11 — DeepSeek client + dynamic care plan
 
-In com.plantpal.identification:
-
-1. Extend OllamaClient with a new method:
-   analyzeRegions(byte[] imageBytes, String mediaType) → String (raw JSON)
-   - POST to Ollama /api/generate with model=llava (or bakllava)
-   - Encode image as base64 and pass in the "images" field
-   - System prompt asks for plant regions + disease areas as structured JSON:
+1. identification/client/DeepSeekClient.java:
+   - Uses Spring RestClient (NOT OllamaClient — different API shape)
+   - Base URL: @Value("${deepseek.base-url:https://api.deepseek.com}")
+   - API key: @Value("${deepseek.api-key}") passed as "Authorization: Bearer {key}" header
+   - Model: @Value("${deepseek.model:deepseek-chat}")
+   - Single method: generateCarePlan(String species, String commonName, String healthNotes) → String
+   - POST /chat/completions with body:
      {
-       "regions": [
-         {
-           "label": "Monstera deliciosa",
-           "type": "PLANT",
-           "confidence": "HIGH",
-           "boundingBox": { "xPct": 10, "yPct": 5, "widthPct": 80, "heightPct": 70 }
-         },
-         {
-           "label": "Yellowing — possible overwatering",
-           "type": "DISEASE",
-           "confidence": "MEDIUM",
-           "boundingBox": { "xPct": 30, "yPct": 60, "widthPct": 20, "heightPct": 15 }
-         }
-       ]
+       "model": model,
+       "messages": [
+         {"role": "system", "content": CARE_PLAN_SYSTEM_PROMPT},
+         {"role": "user", "content": "Plant: {species} ({commonName})\nHealth notes: {healthNotes}"}
+       ],
+       "temperature": 0.3,
+       "response_format": {"type": "json_object"}
      }
-   - If Ollama unavailable or response malformed: return empty regions list, log WARN.
+   - Extract content from choices[0].message.content
+   - On non-2xx or timeout: log ERROR, throw PlantPalException("Care plan service unavailable", 503)
+   - Constructor injection only. Force HTTP/1.1 (same JdkClientHttpRequestFactory pattern as PlantNetClient).
 
-2. Add AnnotationRegion.java DTO:
-   String label, String type (PLANT/DISEASE/HEALTHY_AREA), String confidence,
-   BoundingBoxDto boundingBox (xPct, yPct, widthPct, heightPct)
+2. System prompt for DeepSeek (static final String in DeepSeekClient):
+   """
+   You are an expert botanist and horticulturist helping a beginner gardener.
+   Given a plant species, generate a complete, beginner-friendly care plan.
+   Return ONLY valid JSON (no markdown). Structure:
+   {
+     "wateringFrequencyDays": <int — how often to water in summer>,
+     "fertilizingFrequencyDays": <int — 0 means never>,
+     "repottingFrequencyMonths": <int>,
+     "careCards": [
+       {
+         "type": "WATERING | LIGHT | HUMIDITY | TEMPERATURE | FERTILIZING | REPOTTING | PRUNING | PEST | SEASONAL | BEGINNER_TIP",
+         "title": "<short title>",
+         "icon": "<material icon name, e.g. water_drop, wb_sunny, thermostat>",
+         "summary": "<one sentence, e.g. Water every 7 days>",
+         "detail": "<2-4 sentences, plain English, no jargon>",
+         "urgency": "LOW | MEDIUM | HIGH",
+         "seasonalVariation": "<what changes in winter/summer, or null>"
+       }
+     ],
+     "beginnerWarnings": ["warning1", "warning2"]
+   }
+   Include 4-8 care cards covering the most important aspects for this specific plant.
+   For rare/unusual care requirements, add extra cards. Omit irrelevant types.
+   Write for someone who has never owned a plant before.
+   """
 
-3. Add annotationRegions (List<AnnotationRegion>) field to IdentificationResponse.
+3. New DTOs in identification/dto/:
+   CareCardDto: String type, String title, String icon, String summary,
+                String detail, String urgency, String seasonalVariation
+   CarePlanDto: int wateringFrequencyDays, int fertilizingFrequencyDays,
+                int repottingFrequencyMonths, List<CareCardDto> careCards,
+                List<String> beginnerWarnings
 
-4. In IdentificationServiceImpl.identify():
-   After PlantNet returns → fire analyzeRegions() as a separate @Async call.
-   Both calls run in parallel. Join results before returning.
-   annotationRegions may be empty — caller must handle gracefully.
+4. Add carePlan (CarePlanDto) field to IdentificationResponse.
 
-5. New Liquibase migration 008_add_annotation_regions.sql:
-   ALTER TABLE identifications ADD COLUMN annotation_regions JSONB;
+5. In IdentificationServiceImpl, after PlantNet returns:
+   - Fire DeepSeekClient.generateCarePlan() as a parallel @Async call
+   - Parse response into CarePlanDto (handle malformed JSON with safe default:
+     one WATERING card: "Water when the top 2cm of soil feels dry")
+   - Persist as JSONB in identifications.care_plan column
+   - Join both async results before returning IdentificationResponse
 
-Unit test: mock OllamaClient.analyzeRegions(), verify empty list on malformed JSON.
+6. Auto-create reminders when plant saved (wired in PlantService.saveFromIdentification):
+   - WATERING: every wateringFrequencyDays
+   - FERTILIZING: every fertilizingFrequencyDays (skip if 0)
+   - REPOTTING: every repottingFrequencyMonths * 30 days
+   - nextDueAt = now() + frequencyDays for all
+
+7. Liquibase migration 008_add_care_plan.sql:
+   ALTER TABLE identifications ADD COLUMN IF NOT EXISTS care_plan JSONB;
+
+8. application-dev.yml additions:
+   deepseek:
+     base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+     api-key: ${DEEPSEEK_API_KEY}
+     model: ${DEEPSEEK_MODEL:deepseek-chat}
+
+9. Add DEEPSEEK_API_KEY to backend/.env.example with comment.
+
+10. Add Bucket4j rate limit: 20 DeepSeek calls/hour/user.
+
+Unit tests (mock DeepSeekClient):
+- Valid JSON → CarePlanDto parsed, all fields mapped
+- Malformed JSON → safe default returned, not an exception
+- Service throws → safe default returned, error logged, not propagated
+- careCards never null (always ≥ 1 card in fallback)
+- Verify 3 reminders created (WATERING, FERTILIZING, REPOTTING) when fertilizingFrequencyDays > 0
+- Verify FERTILIZING reminder skipped when fertilizingFrequencyDays = 0
 ```
+
+---
+
+### T2.12 — Dynamic care plan frontend 🤝 Assisted
+**Branch:** `feature/PP-021-deepseek-care-plan` (same branch)
+
+> **Design principle:** The frontend renders care cards generically — it does not know
+> about specific plant types. Adding an orchid or a bonsai requires zero frontend changes.
 
 **Frontend Claude Code prompt:**
 ```
-// T2.6 — Visual annotation overlay on identification result
+// T2.12 — Dynamic care plan UI
 
-In features/identification/components/photo-annotator/:
+In features/identification/:
 
-1. PhotoAnnotatorComponent — takes [imageUrl] and [regions] as @Input
-   - Renders the original photo with a <canvas> overlay sized to match
-   - For each region:
-     * PLANT → draw blue rectangle + label chip at top-left of box
-     * DISEASE → draw red/orange semi-transparent rectangle + label
-     * HEALTHY_AREA → draw green semi-transparent rectangle + label
-   - On mobile: make sure canvas touch events don't interfere with scrolling
-   - If regions is empty or null: render plain <img>, no canvas
+1. Update identification.model.ts:
+   Add CareCardDto and CarePlanDto interfaces matching the backend DTOs.
+   CareCardType = 'WATERING' | 'LIGHT' | 'HUMIDITY' | 'TEMPERATURE' |
+     'FERTILIZING' | 'REPOTTING' | 'PRUNING' | 'PEST' | 'SEASONAL' | 'BEGINNER_TIP'
 
-2. Plug PhotoAnnotatorComponent into identification-result component,
-   replacing the plain <img> currently showing the photo.
+2. components/care-plan/care-card.component.ts + .html + .scss:
+   @Input() card: CareCardDto
+   - Icon from card.icon (Angular Material icon)
+   - Color map (TypeScript Record<CareCardType, string>) — never a switch/case:
+       WATERING → blue, LIGHT → amber, TEMPERATURE → orange,
+       PEST → red, BEGINNER_TIP → green, SEASONAL → purple, default → grey
+   - Urgency border: HIGH → warn accent, MEDIUM → warn-light, LOW → no border
+   - Click to expand card.detail + card.seasonalVariation (if present)
+   - "Seasonal tip" chip inside expanded view when seasonalVariation is set
 
-3. Add a toggle: "Show annotations" / "Hide annotations" above the photo.
+3. components/care-plan/care-plan.component.ts + .html + .scss:
+   @Input() carePlan: CarePlanDto | null
+   - null → show 3 grey skeleton placeholder cards while loading
+   - Summary bar: "Water every X days · Fertilize every Y days · Repot every Z months"
+   - Responsive card grid: 2 cols tablet, 1 col mobile
+   - "Beginner warnings" section below: yellow alert chip per warning
+
+4. Wire into identification-result: show CarePlanComponent below species/health
+   - Skeleton loader while carePlan is null (async from DeepSeek)
+
+5. Wire into plant-detail "Care Plan" tab:
+   - Fetch latest identification → show its carePlan
+   - No identification yet: "Take a photo to get your care plan" CTA
+
+6. Wire into PreviewCardComponent (T2.7):
+   - Show first 3 care cards as quick preview before saving
 ```
 
 ---
@@ -787,13 +869,16 @@ In features/identification/components/photo-annotator/:
 ### T2.7 — One-click validate & save flow 🤝 Assisted
 **Branch:** `feature/PP-018-one-click-save`
 
+> **Depends on T2.11 being merged** — the save flow triggers reminder creation
+> from the care plan that DeepSeek already generated during identification.
+
 > **Goal:** After AI processes a photo, the user sees a fully pre-filled plant profile card.
 > One click on "Save to garden" creates the plant and links the identification.
 > No manual form filling required.
 
 **UX flow:**
 ```
-Take photo → Processing spinner (5-20s) → Preview card auto-filled → [Save to garden] / [Edit] / [Discard]
+Take photo → Processing spinner → Preview card (species + care plan preview) → [Save to garden] / [Edit] / [Discard]
 ```
 
 **Backend Claude Code prompt:**
@@ -815,7 +900,7 @@ Take photo → Processing spinner (5-20s) → Preview card auto-filled → [Save
        photoUrl = identification.photoUrl
        status = ACTIVE
    - Save plant, link identification.plantId = plant.id
-   - Trigger care plan generation (T2.8 service call, async)
+   - Trigger reminder auto-creation from identification.carePlan (async, see T2.11)
    - Return PlantResponse
 
 3. New endpoint in PlantController:
@@ -831,111 +916,87 @@ Take photo → Processing spinner (5-20s) → Preview card auto-filled → [Save
 
 In features/identification/:
 
-1. After identification result arrives, show a PreviewCardComponent:
+1. After identification result arrives, show PreviewCardComponent:
    - Plant photo (full width, with annotation overlay from T2.6 if available)
    - Species name (large), common name (subtitle)
    - Confidence badge (green/amber/red)
    - Health status badge with icon
-   - Care summary chips: "Water every X days", "Partial shade", "Fertilize every Y days"
-   - Optional nickname input (pre-filled with common_name, user can rename)
-   - Optional location input (text field, e.g. "balcony", "living room window")
+   - First 3 care cards from carePlan (via CarePlanComponent @Input with subset)
+   - Optional nickname input (pre-filled with common_name)
+   - Optional location input (e.g. "balcony", "living room window")
 
-2. Three action buttons at the bottom:
+2. Three action buttons:
    [Save to garden] → POST /api/v1/plants/from-identification → navigate to /plants/{id}
    [Edit before saving] → open plant-form pre-filled with identification data
    [Discard] → back to photo upload
 
 3. Loading state on [Save to garden] — disable buttons while saving.
-
-4. On success: show brief toast "Added to your garden!" then navigate to plant detail.
+4. On success: toast "Added to your garden!" then navigate to plant detail.
 ```
 
 ---
 
-### T2.8 — AI care plan for beginners 🤖 AI
-**Branch:** `feature/PP-019-care-plan`
+### T2.6 — Visual plant annotation (bounding boxes + disease overlay) 🤖 AI
+**Branch:** `feature/PP-017-visual-annotation`
 
-> **Goal:** Every plant gets a personalised, beginner-friendly care schedule generated by AI.
-> The user doesn't need gardening knowledge — the AI tells them exactly what to do and when.
-> Care plan auto-creates the reminders (T3 module) with correct frequencies.
+> **Depends on T2.11 being merged** (uses the same parallel async pattern).
+>
+> **AI provider note:** LLaVA (Ollama) is used here for vision/bounding boxes only —
+> this is a different use case from care planning (DeepSeek). LLaVA is free in dev.
+> For prod, swap to DeepSeek VL (`deepseek-vl`) using the same DeepSeekClient
+> by adding an `analyzeRegions(byte[] image)` method with the VL model.
 
-**Why this matters:** An amateur gardener doesn't know that a Monstera needs water every 7-10 days
-in summer but only every 14 days in winter. We ask the AI so the user doesn't have to.
+> **Goal:** After a photo is processed, overlay named rectangles on identified plants
+> and highlight areas with detected disease or stress (yellowing, spots, wilting).
 
 **Backend Claude Code prompt:**
 ```
-// T2.8 — AI-generated care plan for new plants
+// T2.6 — Add visual annotation support to the identification pipeline
 
-In com.plantpal.identification (or a new care/ sub-package within plant/):
+In com.plantpal.identification:
 
-1. New DTO CarePlanDto:
-   - wateringFrequencyDays (int)
-   - fertilizingFrequencyDays (int)
-   - repottingFrequencyMonths (int)
-   - pruningFrequencyDays (int, nullable — not all plants need it)
-   - sunlightRequirement (String: FULL_SUN | PARTIAL_SHADE | SHADE)
-   - beginnerTips (List<String>) — 3-5 plain English tips, no jargon
-     e.g. "Water when the top 2cm of soil feels dry"
-     e.g. "Yellow leaves usually mean too much water, not too little"
-   - seasonalNotes (String) — one paragraph, what changes in winter/summer
+1. Extend OllamaClient with a new method:
+   analyzeRegions(byte[] imageBytes, String mediaType) → String (raw JSON)
+   - POST to Ollama /api/generate with model=llava
+   - Encode image as base64, pass in "images" field
+   - System prompt returns plant regions + disease areas as structured JSON:
+     {
+       "regions": [
+         { "label": "Monstera deliciosa", "type": "PLANT", "confidence": "HIGH",
+           "boundingBox": { "xPct": 10, "yPct": 5, "widthPct": 80, "heightPct": 70 } },
+         { "label": "Yellowing — possible overwatering", "type": "DISEASE", "confidence": "MEDIUM",
+           "boundingBox": { "xPct": 30, "yPct": 60, "widthPct": 20, "heightPct": 15 } }
+       ]
+     }
+   - Ollama unavailable or malformed: return empty regions list, log WARN (never crash).
 
-2. New method in OllamaClient:
-   generateCarePlan(String species, String commonName, String healthNotes) → String (raw JSON)
-   System prompt:
-     "You are a friendly plant care expert helping a complete beginner.
-      Given the plant species below, return ONLY a JSON object (no markdown):
-      {
-        \"wateringFrequencyDays\": <int, summer value>,
-        \"fertilizingFrequencyDays\": <int>,
-        \"repottingFrequencyMonths\": <int>,
-        \"pruningFrequencyDays\": <int or null>,
-        \"sunlightRequirement\": \"FULL_SUN | PARTIAL_SHADE | SHADE\",
-        \"beginnerTips\": [\"tip1\", \"tip2\", \"tip3\"],
-        \"seasonalNotes\": \"one paragraph\"
-      }
-      Plant: {species} ({commonName})
-      Health notes from photo: {healthNotes}"
+2. AnnotationRegionDto: String label, String type (PLANT/DISEASE/HEALTHY_AREA),
+   String confidence, BoundingBoxDto (xPct, yPct, widthPct, heightPct)
 
-3. New service method in IdentificationService:
-   @Async("aiTaskExecutor")
-   CompletableFuture<CarePlanDto> generateCarePlan(Long identificationId, Long userId)
-   - Load identification, call OllamaClient.generateCarePlan()
-   - Parse JSON, return CarePlanDto
-   - On failure (Ollama unavailable): return a safe default CarePlanDto with generic values
+3. Add annotationRegions (List<AnnotationRegionDto>) to IdentificationResponse.
 
-4. Add carePlan (CarePlanDto) field to IdentificationResponse — populated after generation.
+4. In IdentificationServiceImpl: fire analyzeRegions() as parallel @Async call
+   alongside DeepSeekClient.generateCarePlan(). Join all three results together.
 
-5. Auto-create reminders (calls ReminderService):
-   When a plant is saved via T2.7's saveFromIdentification():
-   - Create WATERING reminder with frequency = carePlan.wateringFrequencyDays
-   - Create FERTILIZING reminder with frequency = carePlan.fertilizingFrequencyDays
-   - Create REPOTTING reminder with frequency = carePlan.repottingFrequencyMonths * 30
-   - If pruningFrequencyDays != null: create PRUNING reminder
-   - All nextDueAt = now() + frequencyDays (start counting immediately)
-   Note: ReminderService must be injected into PlantService for this. Wire via constructor.
+5. Liquibase migration 007_add_annotation_regions.sql:
+   ALTER TABLE identifications ADD COLUMN IF NOT EXISTS annotation_regions JSONB;
 
-6. Liquibase migration 009_add_care_plan_to_identifications.sql:
-   ALTER TABLE identifications ADD COLUMN care_plan JSONB;
-
-Unit tests: mock OllamaClient, verify fallback defaults are valid, verify all 4 reminder types created.
+Unit test: mock OllamaClient.analyzeRegions(), verify empty list on malformed JSON.
 ```
 
 **Frontend Claude Code prompt:**
 ```
-// T2.8 — Display care plan in plant detail and identification result
+// T2.6 — Visual annotation overlay
 
-1. In PreviewCardComponent (T2.7): add a "Care plan" section below the identification result:
-   - Icon + "Water every X days"
-   - Icon + "Fertilize every Y days"
-   - Icon + "Repot every Z months"
-   - Sunlight chip
-   - Expandable panel "Beginner tips" showing the tips list
-   - Expandable panel "Seasonal notes"
-
-2. In plant-detail component, add a "Care Plan" tab alongside existing tabs.
-   Fetch from GET /api/v1/identifications/plant/{plantId}?size=1 (latest identification).
-   Show the care plan from the most recent identification.
-   If no identification yet: show "Take a photo to get a personalized care plan" CTA.
+In features/identification/components/photo-annotator/:
+1. PhotoAnnotatorComponent [@Input imageUrl, @Input regions]
+   - <canvas> overlay sized to match the photo
+   - PLANT → blue rectangle + label
+   - DISEASE → red/orange semi-transparent rectangle + label
+   - HEALTHY_AREA → green semi-transparent rectangle + label
+   - regions empty/null → plain <img>, no canvas
+2. "Show/Hide annotations" toggle above photo
+3. Plug into identification-result, replacing the plain <img>
 ```
 
 ---
@@ -969,168 +1030,6 @@ Unit tests: mock OllamaClient, verify fallback defaults are valid, verify all 4 
 
 ---
 
-### T2.11 — DeepSeek client + dynamic care plan backend 🤖 AI
-**Branch:** `feature/PP-021-deepseek-care-plan`
-
-> **Goal:** Replace Ollama phi3 for care planning with DeepSeek (smarter, production-grade).
-> The care plan is **dynamic** — it adapts completely to each plant species.
-> Instead of a fixed DTO with hardcoded fields, the AI returns a list of "care cards"
-> that the frontend renders generically. Adding a new exotic plant species just works,
-> no code changes needed.
-
-**Why dynamic care cards:**
-A monstera care plan has: watering, light, humidity, fertilizing, repotting, common issues.
-A cactus care plan has: watering (very infrequent), light (full sun), drainage warning, winter dormancy.
-A bonsai care plan has: watering, wiring, pruning schedule, seasonal repotting, pest management.
-These are structurally different — hardcoded fields can't capture this. A card array can.
-
-**Backend Claude Code prompt:**
-```
-// T2.11 — DeepSeek client + dynamic care plan
-
-1. identification/client/DeepSeekClient.java:
-   - Uses Spring RestClient (NOT OllamaClient — different API shape)
-   - Base URL: @Value("${deepseek.base-url:https://api.deepseek.com}")
-   - API key: @Value("${deepseek.api-key}") passed as "Authorization: Bearer {key}" header
-   - Model: @Value("${deepseek.model:deepseek-chat}")
-   - Single method: generateCarePlan(String species, String commonName, String healthNotes) → String
-   - POST /chat/completions with body:
-     {
-       "model": model,
-       "messages": [
-         {"role": "system", "content": CARE_PLAN_SYSTEM_PROMPT},
-         {"role": "user", "content": "Plant: {species} ({commonName})\nHealth notes: {healthNotes}"}
-       ],
-       "temperature": 0.3,
-       "response_format": {"type": "json_object"}
-     }
-   - Extract content from choices[0].message.content
-   - On non-2xx or timeout: log ERROR, throw PlantPalException("Care plan service unavailable", 503)
-   - Constructor injection only. Force HTTP/1.1 (same JdkClientHttpRequestFactory pattern as PlantNetClient).
-
-2. System prompt for DeepSeek (store as static final String in DeepSeekClient):
-   ```
-   You are an expert botanist and horticulturist helping a beginner gardener.
-   Given a plant species, generate a complete, beginner-friendly care plan.
-   Return ONLY valid JSON (no markdown). Structure:
-   {
-     "wateringFrequencyDays": <int — how often to water in summer>,
-     "fertilizingFrequencyDays": <int — 0 means never>,
-     "repottingFrequencyMonths": <int>,
-     "careCards": [
-       {
-         "type": "WATERING | LIGHT | HUMIDITY | TEMPERATURE | FERTILIZING | REPOTTING | PRUNING | PEST | SEASONAL | BEGINNER_TIP",
-         "title": "<short title>",
-         "icon": "<material icon name, e.g. water_drop, wb_sunny, thermostat>",
-         "summary": "<one sentence, e.g. 'Water every 7 days'>",
-         "detail": "<2-4 sentences, plain English, no jargon>",
-         "urgency": "LOW | MEDIUM | HIGH",
-         "seasonalVariation": "<optional: what changes in winter/summer, or null>"
-       }
-     ],
-     "beginnerWarnings": ["warning1", "warning2"]
-   }
-   Include 4-8 care cards covering the most important aspects for this specific plant.
-   For rare/unusual requirements, add extra cards. Omit irrelevant ones.
-   Write for someone who has never owned a plant before.
-   ```
-
-3. New DTOs in identification/dto/:
-   CareCardDto: String type, String title, String icon, String summary,
-                String detail, String urgency, String seasonalVariation
-   CarePlanDto: int wateringFrequencyDays, int fertilizingFrequencyDays,
-                int repottingFrequencyMonths, List<CareCardDto> careCards,
-                List<String> beginnerWarnings
-
-4. Add carePlan (CarePlanDto) field to IdentificationResponse.
-
-5. In IdentificationServiceImpl, after PlantNet returns:
-   - Fire DeepSeekClient.generateCarePlan() as @Async call (parallel with annotation if T2.6 is done)
-   - Parse response into CarePlanDto (ObjectMapper — handle malformed JSON with a safe default:
-     one WATERING card saying "General care: water when topsoil is dry")
-   - Persist care plan as JSONB in identifications.care_plan column
-   - Include in IdentificationResponse
-
-6. Liquibase migration 008_add_care_plan.sql:
-   ALTER TABLE identifications ADD COLUMN IF NOT EXISTS care_plan JSONB;
-
-7. In application-dev.yml, add:
-   deepseek:
-     base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-     api-key: ${DEEPSEEK_API_KEY}
-     model: ${DEEPSEEK_MODEL:deepseek-chat}
-
-8. Add DEEPSEEK_API_KEY to backend/.env.example with comment.
-
-9. Add Bucket4j rate limit for DeepSeek calls: 20/hour/user (same as PlantNet).
-
-Unit tests (mock DeepSeekClient):
-- generateCarePlan() returns valid JSON → CarePlanDto parsed correctly
-- generateCarePlan() returns malformed JSON → safe default CarePlanDto returned
-- generateCarePlan() throws exception → safe default returned, not propagated to caller
-- Verify careCards[] is never null (always at least 1 card in fallback)
-```
-
----
-
-### T2.12 — Dynamic care plan frontend 🤝 Assisted
-**Branch:** `feature/PP-021-deepseek-care-plan` (same branch)
-
-> **Design principle:** The frontend renders care cards generically.
-> It does not know about specific plant types. The AI decides what cards to show.
-> Adding an orchid or a bonsai requires ZERO frontend changes.
-
-**Frontend Claude Code prompt:**
-```
-// T2.12 — Dynamic care plan UI
-
-In features/identification/:
-
-1. Update identification.model.ts:
-   Add CareCardDto and CarePlanDto interfaces matching the backend DTOs.
-   CareCardType = 'WATERING' | 'LIGHT' | 'HUMIDITY' | 'TEMPERATURE' |
-     'FERTILIZING' | 'REPOTTING' | 'PRUNING' | 'PEST' | 'SEASONAL' | 'BEGINNER_TIP'
-
-2. components/care-plan/care-card.component.ts + .html + .scss:
-   @Input() card: CareCardDto
-   - Icon from card.icon (Angular Material icon)
-   - Color-coded by type:
-       WATERING → blue, LIGHT → yellow, TEMPERATURE → orange,
-       PEST → red, BEGINNER_TIP → green, SEASONAL → purple, default → grey
-   - Color-coded border by urgency: HIGH → accent color, MEDIUM → warn-light, LOW → none
-   - Expandable: click card to reveal card.detail + card.seasonalVariation
-   - If seasonalVariation exists: show a small "Seasonal tip" chip inside the expanded view
-
-3. components/care-plan/care-plan.component.ts + .html + .scss:
-   @Input() carePlan: CarePlanDto | null
-   - If carePlan is null: show skeleton loader (3 grey placeholder cards)
-   - Render careCards as a responsive CSS grid (2 cols on tablet, 1 col on mobile)
-   - Below the cards: "Beginner warnings" section — each warning as a yellow alert chip
-   - Summary bar at top: "Water every X days · Fertilize every Y days · Repot every Z months"
-     (uses the numeric fields, not the cards — quick reference)
-
-4. Wire into identification-result component:
-   - Show CarePlanComponent below the species/health result
-   - While waiting for carePlan (it's async): show the skeleton loader
-   - The identification result page polls GET /api/v1/identifications/{id} until
-     carePlan is populated (or show it if already present in the initial response)
-
-5. Wire into plant-detail component:
-   - "Care Plan" tab fetches the most recent identification for this plant
-   - Shows CarePlanComponent with that identification's carePlan
-   - If no identification yet: show "Take a photo to get your care plan" with a CTA button
-     that navigates to /identify with the plantId pre-selected
-
-6. Wire into preview card (T2.7 PreviewCardComponent):
-   - Below species/confidence: show the first 3 care cards as a quick preview
-   - "See full plan after saving" link
-
-IMPORTANT: Never hardcode care types in switch/case. The card color mapping uses a
-TypeScript Record<CareCardType, string> — adding a new type only requires updating that map.
-```
-
----
-
 ### T2.10 — Manual testing — Phase 2 complete 👤 Manual
 **Branch:** PR to `dev`
 
@@ -1143,7 +1042,7 @@ All features end-to-end:
 - [ ] Reminders auto-created for new plant (check reminders page)?
 - [ ] Dashboard shows overdue reminders in red?
 - [ ] Low-confidence result: notice "Low confidence" shown, still saveable?
-- [ ] Ollama unavailable: care plan uses sensible defaults, no crash?
+- [ ] DeepSeek unavailable: care plan fallback (generic WATERING card) shown, no crash?
 - [ ] Test on mobile (phone camera → full flow)?
 
 ---

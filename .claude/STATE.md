@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-14 (session 2)
+> Last updated: 2026-06-14 (session 3)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (extending scope — new tasks T2.6–T2.9 added)
@@ -23,14 +23,17 @@ Phase 2 — AI Plant Identification (extending scope — new tasks T2.6–T2.9 a
 ## Active Branches
 - feature/Update-Context-and-plan (this branch — .claude/ file updates only)
 
-## Next Tasks (in order)
-- T2.6 — Visual annotation: bounding boxes + disease overlay (feature/PP-017-visual-annotation)
-- T2.7 — One-click validate & save flow (feature/PP-018-one-click-save)
-- T2.8 — AI care plan for beginners, auto-creates reminders (feature/PP-019-care-plan)
-- T2.9 — Garden health dashboard (feature/PP-020-garden-dashboard) [Architect suggestion]
-- T2.11 — DeepSeek client + dynamic care card backend (feature/PP-021-deepseek-care-plan)
+## Next Tasks (REVISED order — 2026-06-14)
+- T2.11 — DeepSeek client + dynamic care plan backend  ← START HERE (feature/PP-021-deepseek-care-plan)
 - T2.12 — Dynamic care plan frontend (same branch)
+- T2.7  — One-click validate & save flow (feature/PP-018-one-click-save)
+- T2.6  — Visual annotation: bounding boxes + disease overlay (feature/PP-017-visual-annotation)
+- T2.9  — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.10 — Manual testing for all Phase 2 features
+- T2.8 REMOVED — absorbed into T2.11 (was Ollama care plan, now DeepSeek from the start)
+
+## AI Keys Status
+- DEEPSEEK_API_KEY: provided by user 2026-06-14 — add to backend/.env (do NOT commit)
 
 ## Key Decisions Since Project Start
 - Plant identification uses PlantNet API (not Claude Vision)

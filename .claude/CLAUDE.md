@@ -520,7 +520,10 @@ jacoco-plugin  <!-- Code coverage — fail build if < 80% -->
 > DeepSeek endpoint: `https://api.deepseek.com/chat/completions`
 > Model: `deepseek-chat` (V3). API key via `${DEEPSEEK_API_KEY}`.
 
-### Ollama — local dev
+### Ollama — local dev (vision only after T2.11)
+> ⚠️ Ollama phi3 has no remaining role after T2.11 ships. It will be removed from the stack.
+> Ollama LLaVA stays for visual annotation (bounding boxes) — free vision model in dev.
+> For prod, swap LLaVA calls to DeepSeek VL via the same DeepSeekClient.
 
 ### OllamaClient pattern
 
