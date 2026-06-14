@@ -1,7 +1,7 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.shared.exception.PlantPalException;
-import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -89,18 +89,20 @@ public class DeepSeekClient {
   private final String visionModel;
 
   public DeepSeekClient(
-      @Value("${deepseek.base-url:https://api.deepseek.com}") String baseUrl,
+      @Value("${deepseek.base-url:https://models.inference.ai.azure.com}") String baseUrl,
       @Value("${deepseek.api-key}") String apiKey,
-      @Value("${deepseek.model:deepseek-chat}") String model,
-      @Value("${deepseek.vision-model:deepseek-chat}") String visionModel) {
+      @Value("${deepseek.model:DeepSeek-R1}") String model,
+      @Value("${deepseek.vision-model:gpt-4o}") String visionModel) {
     this.model = model;
     this.visionModel = visionModel;
-    // Force HTTP/1.1 — same pattern as PlantNetClient to avoid ALPN negotiation issues.
-    HttpClient http1Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+    // No version constraint — let JDK negotiate HTTP/2 via ALPN (required by Azure/GitHub Models).
+    // PlantNetClient is the one that needs HTTP_1_1; this client must NOT force it.
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+    factory.setReadTimeout(Duration.ofMinutes(5));
     this.restClient =
         RestClient.builder()
             .baseUrl(baseUrl)
-            .requestFactory(new JdkClientHttpRequestFactory(http1Client))
+            .requestFactory(factory)
             .defaultHeader("Authorization", "Bearer " + apiKey)
             .build();
   }
@@ -145,11 +147,13 @@ public class DeepSeekClient {
         throw new PlantPalException("Empty response from care plan service", 503);
       }
 
+      String raw = response.choices().get(0).message().content();
+      log.debug("DeepSeek care plan raw response: {}", raw);
       log.info(
           "DeepSeek care plan generated in {}ms for species={}",
           System.currentTimeMillis() - start,
           species);
-      return response.choices().get(0).message().content();
+      return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
       log.error(
@@ -209,9 +213,12 @@ public class DeepSeekClient {
         throw new PlantPalException("Empty response from identification service", 503);
       }
 
+      String raw = response.choices().get(0).message().content();
+      String content = stripThinkTags(raw);
       log.info(
           "DeepSeek plant identification completed in {}ms", System.currentTimeMillis() - start);
-      return response.choices().get(0).message().content();
+      log.debug("DeepSeek identification raw response: {}", raw);
+      return content;
 
     } catch (RestClientResponseException e) {
       log.error(
@@ -225,6 +232,19 @@ public class DeepSeekClient {
       log.error("Failed to reach DeepSeek identification API", e);
       throw new PlantPalException("Plant identification service unavailable", 503);
     }
+  }
+
+  /**
+   * R1 and other reasoning models wrap output in <think>...</think> before the JSON answer.
+   * Strip that block so downstream JSON parsers receive clean content.
+   */
+  private String stripThinkTags(String raw) {
+    if (raw == null) return null;
+    int endThink = raw.indexOf("</think>");
+    if (endThink != -1) {
+      return raw.substring(endThink + "</think>".length()).strip();
+    }
+    return raw.strip();
   }
 
   private record DeepSeekApiResponse(List<Choice> choices) {}
