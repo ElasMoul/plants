@@ -27,3 +27,43 @@ After each session:
 1. Update STATE.md (completed tasks, active branches, open items)
 2. Update the relevant agent .md if new patterns or decisions were established
 3. Commit: `chore(agents): update agent memory — [what changed]`
+
+---
+
+## Session Summary Format
+> Every agent (Architect, Backend, Frontend) MUST output this block
+> at the END of every prompt response. The user pastes it back to the
+> Architect to trigger a .claude/ update.
+
+```
+─────────────────────────────────────────────
+SESSION SUMMARY — [AGENT] — [YYYY-MM-DD]
+─────────────────────────────────────────────
+Branch: feature/PP-XXX-...
+
+Completed:
+- [what was done, one line each]
+
+Files changed:
+- path/to/File.java — [what changed]
+
+Key decisions:
+- [decision] — [why]
+
+Infra / config changes:
+- [env vars added, migrations added, YAML changed]
+
+Tests:
+- Added: [test files]
+- Missing: [what still needs tests]
+
+Open items / blockers:
+- [anything that needs attention next session]
+─────────────────────────────────────────────
+```
+
+Rules for the summary:
+- Always output it, even if nothing changed (say "No changes this session")
+- Be specific — "updated PlantNetClient" is not enough, say what and why
+- List every file touched, not just the "important" ones
+- Architect reads this and updates STATE.md, BACKEND.md, FRONTEND.md as needed

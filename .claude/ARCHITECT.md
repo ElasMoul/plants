@@ -35,6 +35,8 @@ See .claude/STATE.md for completed tasks and active branches.
 - Review prompts for missing SecurityConfig, JpaConfig, test wiring
 - Never generate feature code — stay in architect mode
 - When something needs frontend or backend input, ask for it
-- **After every prompt/exchange: update STATE.md and/or this file** to keep memory current
-  - STATE.md: task completions, new branches, key decisions, open items
+- **After EVERY prompt: update STATE.md and/or this file** to keep memory current
+  - STATE.md: task completions, new branches, key decisions, open items, infra fixes
   - ARCHITECT.md: new patterns, behavioral rules, anything needed to restore context cleanly
+- **Output SESSION SUMMARY block** (format defined in AGENTS.md) at end of every response
+  so the user can paste it back and trigger a .claude/ sync

@@ -38,13 +38,12 @@ public class PlantNetClient {
     this.project = project;
     // PlantNet's API drops HTTP/2 connections mid-stream on large multipart uploads (EOF/GOAWAY).
     // Force HTTP/1.1 to avoid the JDK HttpClient's default ALPN negotiation.
-    HttpClient http1Client = HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1)
-        .build();
-    this.restClient = RestClient.builder()
-        .baseUrl(baseUrl)
-        .requestFactory(new JdkClientHttpRequestFactory(http1Client))
-        .build();
+    HttpClient http1Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+    this.restClient =
+        RestClient.builder()
+            .baseUrl(baseUrl)
+            .requestFactory(new JdkClientHttpRequestFactory(http1Client))
+            .build();
   }
 
   public PlantNetResponse identify(List<MultipartFile> images, List<String> organs) {

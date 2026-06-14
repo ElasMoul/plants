@@ -74,12 +74,15 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 ### identification/ — fully implemented
 - entity/Identification.java, entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
 - dto/IdentificationResponse.java, IdentifyRequest.java
+- dto/CarePlanDto.java             — [PLANNED T2.11] dynamic care cards
+- dto/CareCardDto.java             — [PLANNED T2.11] one care instruction card
 - dto/plantnet/PlantNetResponse.java, PlantNetResult.java, PlantNetSpecies.java, PlantNetTaxon.java
 - mapper/IdentificationMapper.java
 - repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
 - service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-- client/PlantNetClient.java       — calls PlantNet API, multipart
-- client/OllamaClient.java         — calls local Ollama REST API (phi3)
+- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix applied 2026-06-12)
+- client/OllamaClient.java         — local Ollama phi3 (text) + LLaVA (vision, T2.6)
+- client/DeepSeekClient.java       — [PLANNED T2.11] OpenAI-compatible, deepseek-chat model
 - controller/IdentificationController.java
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
@@ -92,7 +95,9 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 003_create_identifications.sql
 004_create_reminders_and_care_logs.sql
 005_create_push_subscriptions.sql
-006_alter_identifications.sql   ← added post-initial (raw_response stored as TEXT not JSONB)
+006_alter_identifications.sql      ← raw_response TEXT not JSONB
+007_add_annotation_regions.sql     ← [PLANNED T2.6] annotation_regions JSONB
+008_add_care_plan.sql              ← [PLANNED T2.11] care_plan JSONB
 
 ## Test Inventory
 unit/UserServiceTest.java
