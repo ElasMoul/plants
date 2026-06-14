@@ -105,6 +105,21 @@ without creating a lazy-module-imports-lazy-module cycle.
 - `[maxCards]="3"` on <app-care-plan> inside preview-card — reuses existing CarePlanComponent without any changes
 - Backend endpoint POST /api/v1/plants/from-identification not yet merged (T2.8 backend); frontend will 404 until then
 
+### Mobile responsiveness — Completed (2026-06-14)
+**Changes:**
+- `app.component.ts` — removed AI Test from `navLinks` (was a duplicate; AI Test has its own element in the toolbar)
+- `app.component.html` — added `.bottom-nav` bar (4 main links) hidden on desktop, shown on mobile; added `[class.with-bottom-nav]` to `<main>` so content gets `padding-bottom: 60px` on mobile; AI Test link gets `.ai-test-link` class for easy hiding
+- `app.component.scss` — bottom nav styles (fixed, 60px, white bg, border-top); `.nav-links` + `.ai-test-link` hidden at ≤768px; `.with-bottom-nav` adds `padding-bottom: 60px` at ≤768px; `env(safe-area-inset-bottom)` for iOS notch; active state color `#43a047`
+- `styles.scss` — global `.page-container` reduces to `padding: 16px 12px` at ≤600px
+- `identification-page.component.scss` — top padding reduced to `16px` on mobile; subtitle bottom margin reduced
+- `plant-form.component.scss` — `.form-container` padding 16px/12px on mobile; `.form-card` inner padding 16px on mobile
+- `plant-detail.component.scss` — `.photo-banner` height 180px (was 240px) on mobile; `.plant-name` font-size 1.4rem on mobile
+- `preview-card.component.scss` — `.photo-banner` height 200px (was 260px), border-radius 8px on mobile; `.action-row` stacks vertically at ≤400px
+
+**Architecture note:** Bottom nav uses `routerLinkActive="active"` — active styling is automatic. No Angular Material BottomNav needed; simple CSS fixed-position flex bar.
+
+**proxy.conf.json** — `/photos` proxy entry was added in T2.8 session (fixes photo 404 in dev). Requires `ng serve` restart to take effect.
+
 ### Next task
 T2.9 — Visual annotation (bounding boxes + disease overlay via Ollama LLaVA)
 Branch: feature/PP-017-visual-annotation

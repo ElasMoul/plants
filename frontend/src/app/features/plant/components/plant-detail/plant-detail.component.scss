@@ -31,6 +31,10 @@
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.2;
+
+  @media (max-width: 600px) {
+    font-size: 1.4rem;
+  }
 }
 
 .plant-species {
@@ -52,6 +56,10 @@
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
+
+  @media (max-width: 600px) {
+    height: 180px;
+  }
 }
 
 .banner-img {

@@ -40,6 +40,12 @@
   &.with-toolbar {
     margin-top: 64px;
   }
+
+  &.with-bottom-nav {
+    @media (max-width: 768px) {
+      padding-bottom: 60px;
+    }
+  }
 }
 
 .user-email {
@@ -52,8 +58,58 @@
   flex: 1 1 auto;
 }
 
+// ── Mobile: hide desktop nav items ─────────────────────────────
 @media (max-width: 768px) {
   .nav-label {
     display: none;
+  }
+
+  .nav-links,
+  .ai-test-link {
+    display: none;
+  }
+}
+
+// ── Bottom navigation bar ──────────────────────────────────────
+.bottom-nav {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #fff;
+    border-top: 1px solid #e0e0e0;
+    height: 60px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #757575;
+  text-decoration: none;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  padding: 8px 0;
+  transition: color 0.15s ease;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+  }
+
+  &.active {
+    color: #43a047;
   }
 }

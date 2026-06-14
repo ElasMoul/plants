@@ -4,14 +4,14 @@ import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ValidationException;
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.util.List;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -36,13 +36,14 @@ public class PlantNetClient {
       @Value("${app.plantnet.project:all}") String project) {
     this.apiKey = apiKey;
     this.project = project;
-    // PlantNet's API drops HTTP/2 connections mid-stream on large multipart uploads (EOF/GOAWAY).
-    // Force HTTP/1.1 to avoid the JDK HttpClient's default ALPN negotiation.
-    HttpClient http1Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+    // Apache HttpClient 5 handles SSL connection teardown correctly where Java 21's built-in
+    // JDK HttpClient fails against PlantNet's HTTPS endpoint (EOF / connection reset).
+    HttpComponentsClientHttpRequestFactory factory =
+        new HttpComponentsClientHttpRequestFactory(HttpClients.createDefault());
     this.restClient =
         RestClient.builder()
+            .requestFactory(factory)
             .baseUrl(baseUrl)
-            .requestFactory(new JdkClientHttpRequestFactory(http1Client))
             .build();
   }
 
