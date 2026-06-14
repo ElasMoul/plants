@@ -707,24 +707,19 @@ Real-world tests (use actual plants):
 
 ---
 
-> ⚠️ **START HERE for remaining Phase 2 work** — T2.11 + T2.12 build the AI foundation
-> that T2.7 and T2.6 depend on. Do not skip ahead.
-
----
-
-### T2.11 — DeepSeek client + dynamic care plan backend 🤖 AI  ← NEXT
+### T2.6 — DeepSeek client + dynamic care plan backend 🤖 AI  ← NEXT
 **Branch:** `feature/PP-021-deepseek-care-plan`
 
 > **Goal:** Build the DeepSeek-powered care plan. This is the AI foundation for the whole
-> "care for your plants" experience. Done first so T2.7 (save flow) and T2.12 (UI) can
-> both depend on it being real from day one. No Ollama phi3 involved.
+> "care for your plants" experience. 
+> both depend on it being real from day one. 
 
 > **Before starting:** Add `DEEPSEEK_API_KEY=<your-key>` to `backend/.env`.
 > Get a key at platform.deepseek.com if needed. Never commit the key.
 
 **Backend Claude Code prompt:**
 ```
-// T2.11 — DeepSeek client + dynamic care plan
+// T2.6 — DeepSeek client + dynamic care plan
 
 1. identification/client/DeepSeekClient.java:
    - Uses Spring RestClient (NOT OllamaClient — different API shape)
@@ -788,6 +783,7 @@ Real-world tests (use actual plants):
      one WATERING card: "Water when the top 2cm of soil feels dry")
    - Persist as JSONB in identifications.care_plan column
    - Join both async results before returning IdentificationResponse
+     (if T2.9 annotation is also running, join all three in parallel)
 
 6. Auto-create reminders when plant saved (wired in PlantService.saveFromIdentification):
    - WATERING: every wateringFrequencyDays
@@ -819,7 +815,7 @@ Unit tests (mock DeepSeekClient):
 
 ---
 
-### T2.12 — Dynamic care plan frontend 🤝 Assisted
+### T2.7 — Dynamic care plan frontend 🤝 Assisted
 **Branch:** `feature/PP-021-deepseek-care-plan` (same branch)
 
 > **Design principle:** The frontend renders care cards generically — it does not know
@@ -827,7 +823,7 @@ Unit tests (mock DeepSeekClient):
 
 **Frontend Claude Code prompt:**
 ```
-// T2.12 — Dynamic care plan UI
+// T2.7 — Dynamic care plan UI
 
 In features/identification/:
 
@@ -860,16 +856,16 @@ In features/identification/:
    - Fetch latest identification → show its carePlan
    - No identification yet: "Take a photo to get your care plan" CTA
 
-6. Wire into PreviewCardComponent (T2.7):
+6. Wire into PreviewCardComponent (T2.8):
    - Show first 3 care cards as quick preview before saving
 ```
 
 ---
 
-### T2.7 — One-click validate & save flow 🤝 Assisted
+### T2.8 — One-click validate & save flow 🤝 Assisted
 **Branch:** `feature/PP-018-one-click-save`
 
-> **Depends on T2.11 being merged** — the save flow triggers reminder creation
+> **Depends on T2.6 being merged** — the save flow triggers reminder creation
 > from the care plan that DeepSeek already generated during identification.
 
 > **Goal:** After AI processes a photo, the user sees a fully pre-filled plant profile card.
@@ -883,7 +879,7 @@ Take photo → Processing spinner → Preview card (species + care plan preview)
 
 **Backend Claude Code prompt:**
 ```
-// T2.7 — Add one-click save endpoint
+// T2.8 — Add one-click save endpoint
 
 1. New DTO: SaveIdentificationAsPlantRequest:
    - identificationId (Long, required)
@@ -912,7 +908,7 @@ Take photo → Processing spinner → Preview card (species + care plan preview)
 
 **Frontend Claude Code prompt:**
 ```
-// T2.7 — One-click validate & save UI
+// T2.8 — One-click validate & save UI
 
 In features/identification/:
 
@@ -936,14 +932,14 @@ In features/identification/:
 
 ---
 
-### T2.6 — Visual plant annotation (bounding boxes + disease overlay) 🤖 AI
+### T2.9 — Visual plant annotation (bounding boxes + disease overlay) 🤖 AI
 **Branch:** `feature/PP-017-visual-annotation`
 
-> **Depends on T2.11 being merged** (uses the same parallel async pattern).
+> **Depends on T2.6 being merged** (uses the same parallel async pattern in IdentificationServiceImpl).
 >
 > **AI provider note:** LLaVA (Ollama) is used here for vision/bounding boxes only —
-> this is a different use case from care planning (DeepSeek). LLaVA is free in dev.
-> For prod, swap to DeepSeek VL (`deepseek-vl`) using the same DeepSeekClient
+> different use case from care planning (DeepSeek). LLaVA is free in dev with no API key.
+> For prod, swap to DeepSeek VL (`deepseek-vl`) via the same DeepSeekClient
 > by adding an `analyzeRegions(byte[] image)` method with the VL model.
 
 > **Goal:** After a photo is processed, overlay named rectangles on identified plants
@@ -951,7 +947,7 @@ In features/identification/:
 
 **Backend Claude Code prompt:**
 ```
-// T2.6 — Add visual annotation support to the identification pipeline
+// T2.9 — Add visual annotation support to the identification pipeline
 
 In com.plantpal.identification:
 
@@ -986,7 +982,7 @@ Unit test: mock OllamaClient.analyzeRegions(), verify empty list on malformed JS
 
 **Frontend Claude Code prompt:**
 ```
-// T2.6 — Visual annotation overlay
+// T2.9 — Visual annotation overlay
 
 In features/identification/components/photo-annotator/:
 1. PhotoAnnotatorComponent [@Input imageUrl, @Input regions]
@@ -1001,7 +997,7 @@ In features/identification/components/photo-annotator/:
 
 ---
 
-### T2.9 — Garden health dashboard 💡 Architect Suggestion
+### T2.10 — Garden health dashboard 💡 Architect Suggestion
 **Branch:** `feature/PP-020-garden-dashboard`
 
 > **Why:** Once you have multiple plants with care plans, the user needs a single view
@@ -1030,7 +1026,7 @@ In features/identification/components/photo-annotator/:
 
 ---
 
-### T2.10 — Manual testing — Phase 2 complete 👤 Manual
+### T2.11 — Manual testing — Phase 2 complete 👤 Manual
 **Branch:** PR to `dev`
 
 All features end-to-end:

@@ -56,13 +56,13 @@ plantpal/
 │   │   │   ├── service/impl/IdentificationServiceImpl.java
 │   │   │   ├── client/PlantNetClient.java            # HTTP/1.1 forced (ALPN fix)
 │   │   │   ├── client/OllamaClient.java              # phi3, local Ollama
-│   │   │   ├── client/DeepSeekClient.java            # [PLANNED — T2.11]
+│   │   │   ├── client/DeepSeekClient.java            # [PLANNED — T2.6]
 │   │   │   ├── repository/IdentificationRepository.java
 │   │   │   ├── entity/Identification.java
 │   │   │   ├── entity/IdentificationStatus.java
 │   │   │   ├── dto/IdentificationResponse.java
 │   │   │   ├── dto/IdentifyRequest.java
-│   │   │   ├── dto/CarePlanDto.java                  # [PLANNED — T2.8/T2.11]
+│   │   │   ├── dto/CarePlanDto.java                  # [PLANNED — T2.6]
 │   │   │   ├── dto/plantnet/PlantNetResponse.java
 │   │   │   ├── dto/plantnet/PlantNetResult.java
 │   │   │   ├── dto/plantnet/PlantNetSpecies.java
@@ -122,8 +122,8 @@ plantpal/
 │   │           ├── 004_create_reminders_and_care_logs.sql
 │   │           ├── 005_create_push_subscriptions.sql
 │   │           ├── 006_alter_identifications.sql     # raw_response TEXT not JSONB
-│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.6]
-│   │           ├── 008_add_care_plan.sql             # [PLANNED — T2.8/T2.11]
+│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.9]
+│   │           ├── 008_add_care_plan.sql             # [PLANNED — T2.6]
 │   │           └── 009_add_performance_indexes.sql   # [PLANNED — T5.2]
 │   │
 │   └── src/test/java/com/plantpal/
@@ -174,9 +174,9 @@ plantpal/
 │       ├── identification/                           # ✅ Implemented (PR #5 merged)
 │       │   ├── components/identification-result/
 │       │   ├── components/photo-upload/
-│       │   ├── components/photo-annotator/           # [PLANNED — T2.6]
-│       │   ├── components/preview-card/              # [PLANNED — T2.7]
-│       │   ├── components/care-plan/                 # [PLANNED — T2.11/T2.12]
+│       │   ├── components/photo-annotator/           # [PLANNED — T2.9]
+│       │   ├── components/preview-card/              # [PLANNED — T2.8]
+│       │   ├── components/care-plan/                 # [PLANNED — T2.6/T2.7]
 │       │   ├── identification-home/
 │       │   ├── pages/identification-page/
 │       │   ├── models/identification.model.ts
