@@ -45,7 +45,7 @@ See .claude/STATE.md for completed tasks and active branches.
 
 ---
 
-## Session Notes (updated 2026-06-12)
+## Session Notes (updated 2026-06-14)
 
 ### Files read and confirmed
 - angular.json — strict mode on, budgets 500kb warn / 1mb error, proxy wired in serve options
@@ -67,17 +67,31 @@ See .claude/STATE.md for completed tasks and active branches.
 |---|---|---|
 | auth/ | login, register components + routing + module | ✅ Full |
 | plant/ | list, form, detail, card + service + model + routing + module | ✅ Full |
-| identification/ | identification-home (stub) + routing + module | ❌ Placeholder only |
+| identification/ | photo-upload, identification-result, identification-page + service + model | ✅ Full (PR #5 merged) |
+| identification/care-plan/ | care-card, care-plan components + CarePlanModule | ✅ T2.7 complete |
 | reminder/ | reminder-list (stub) + routing + module | ❌ Skeleton only |
 | chat/ | chat-home (stub) + routing + module | ❌ Skeleton only |
 | ai-test/ | ai-test component + module | Dev tool |
 
+### Module sharing pattern — CarePlanModule
+Care plan components live at `features/identification/components/care-plan/` but are declared
+in a standalone `CarePlanModule` (not IdentificationModule) so they can be imported by PlantModule
+without creating a lazy-module-imports-lazy-module cycle.
+- `IdentificationModule` imports `CarePlanModule` → gets `app-care-plan` in identification-result ✅
+- `PlantModule` imports `CarePlanModule` + provides `IdentificationService` → gets `app-care-plan` in plant-detail ✅
+- `CarePlanModule` depends only on CommonModule + MatIconModule + MatDividerModule (no circular deps) ✅
+
+### Care plan component API
+`<app-care-plan [carePlan]="carePlan" [maxCards]="3">` — maxCards optional; null = show all
+`<app-care-card [card]="card">` — internal, always rendered by CarePlanComponent
+
 ### Known convention violations in existing code
 - plant-list.component.ts: .subscribe() calls without takeUntil/ngOnDestroy. HTTP observables self-complete so no real leak, but violates the stated convention. Flag if touching that file.
 
+### T2.8 PreviewCard hook (next session)
+CarePlanComponent already accepts `[maxCards]` input. Wire it with `[maxCards]="3"` in the preview card to show first 3 cards without any component changes.
+
 ### Next task
-T2.4 — Build out identification feature module:
-- Photo upload UI
-- Call PlantNet-backed backend POST /api/v1/identifications
-- Display result: species, common_name, confidence, health_status, health_notes, care_tips
-- Active branch: feature/PP-010-identification-frontend
+T2.8 — One-click validate & save flow (backend: POST /api/v1/plants/from-identification; frontend: PreviewCardComponent)
+Branch: feature/PP-018-one-click-save
+Depends on T2.6 (DeepSeek backend) merged first — current branch: feature/PP-021-deepseek-care-plan

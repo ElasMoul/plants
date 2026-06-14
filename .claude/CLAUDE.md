@@ -56,21 +56,25 @@ plantpal/
 │   │   │   ├── service/impl/IdentificationServiceImpl.java
 │   │   │   ├── client/PlantNetClient.java            # HTTP/1.1 forced (ALPN fix)
 │   │   │   ├── client/OllamaClient.java              # phi3, local Ollama
-│   │   │   ├── client/DeepSeekClient.java            # [PLANNED — T2.6]
+│   │   │   ├── client/DeepSeekClient.java            # ✅ T2.6
 │   │   │   ├── repository/IdentificationRepository.java
 │   │   │   ├── entity/Identification.java
 │   │   │   ├── entity/IdentificationStatus.java
 │   │   │   ├── dto/IdentificationResponse.java
 │   │   │   ├── dto/IdentifyRequest.java
-│   │   │   ├── dto/CarePlanDto.java                  # [PLANNED — T2.6]
+│   │   │   ├── dto/CareCardDto.java                  # ✅ T2.6
+│   │   ├── dto/CarePlanDto.java                  # ✅ T2.6
 │   │   │   ├── dto/plantnet/PlantNetResponse.java
 │   │   │   ├── dto/plantnet/PlantNetResult.java
 │   │   │   ├── dto/plantnet/PlantNetSpecies.java
 │   │   │   ├── dto/plantnet/PlantNetTaxon.java
 │   │   │   └── mapper/IdentificationMapper.java
 │   │   │
-│   │   ├── reminder/                                 # ❌ NOT STARTED (DB migrations exist)
-│   │   │   └── [all files planned in T3.1]
+│   │   ├── reminder/                                 # ⚠️ Partial (T2.6 bootstrap only)
+│   │   │   ├── entity/CareType.java                  # ✅ T2.6 — enum: WATERING/FERTILIZING/REPOTTING/PRUNING
+│   │   │   ├── entity/Reminder.java                  # ✅ T2.6 — no AuditableEntity (table has no audit cols)
+│   │   │   ├── repository/ReminderRepository.java    # ✅ T2.6 — minimal JpaRepository
+│   │   │   └── [service, controller, scheduler planned in T3.1]
 │   │   │
 │   │   ├── chat/                                     # ❌ NOT STARTED
 │   │   │   └── [all files planned in T4.1]
@@ -122,8 +126,8 @@ plantpal/
 │   │           ├── 004_create_reminders_and_care_logs.sql
 │   │           ├── 005_create_push_subscriptions.sql
 │   │           ├── 006_alter_identifications.sql     # raw_response TEXT not JSONB
-│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.9]
-│   │           ├── 008_add_care_plan.sql             # [PLANNED — T2.6]
+│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.9] ← NOT CREATED YET
+│   │           ├── 008_add_care_plan.sql             # ✅ T2.6 — care_plan JSONB on identifications
 │   │           └── 009_add_performance_indexes.sql   # [PLANNED — T5.2]
 │   │
 │   └── src/test/java/com/plantpal/
@@ -176,7 +180,7 @@ plantpal/
 │       │   ├── components/photo-upload/
 │       │   ├── components/photo-annotator/           # [PLANNED — T2.9]
 │       │   ├── components/preview-card/              # [PLANNED — T2.8]
-│       │   ├── components/care-plan/                 # [PLANNED — T2.6/T2.7]
+│       │   ├── components/care-plan/                 # ✅ T2.7 — care-card + care-plan components + CarePlanModule
 │       │   ├── identification-home/
 │       │   ├── pages/identification-page/
 │       │   ├── models/identification.model.ts
@@ -763,10 +767,11 @@ open backend/target/site/jacoco/index.html
 | 1 — Unit + Integration Tests | ✅ Complete | UserService & PlantService unit tests; Auth & Plant controller ITs |
 | 2 — PlantNet identification backend | ✅ Complete | PlantNetClient, OllamaClient, IdentificationService, controller |
 | 2 — Identification Angular frontend | ✅ Complete | Photo upload, result display (PR #5 merged) |
-| 2 — Visual annotation (T2.6) | 🔲 Not started | Bounding boxes + disease overlay via LLaVA |
-| 2 — One-click save flow (T2.7) | 🔲 Not started | Auto-fill preview → validate → create plant |
-| 2 — AI care plan (T2.8) | 🔲 Not started | Beginner care schedule, auto-creates reminders |
-| 2 — Garden dashboard (T2.9) | 🔲 Not started | Architect suggestion — overview of all plants + health |
+| 2 — DeepSeek care plan backend (T2.6) | ✅ Complete | DeepSeekClient, CareCardDto/CarePlanDto, parallel async, reminder bootstrap, migration 008 |
+| 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
+| 2 — One-click save flow (T2.8) | 🔲 Not started | Auto-fill preview → validate → create plant + reminders |
+| 2 — Visual annotation (T2.9) | 🔲 Not started | Bounding boxes + disease overlay via LLaVA; migration 007 needed first |
+| 2 — Garden dashboard (T2.10) | 🔲 Not started | Overview of all plants + health + overdue reminders |
 | 3 — Reminders + Push | 🔲 Not started | |
 | 4 — AI Chat | 🔲 Not started | |
 | 5 — Launch | 🔲 Not started | |
