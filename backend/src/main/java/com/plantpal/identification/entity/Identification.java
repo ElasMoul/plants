@@ -55,6 +55,12 @@ public class Identification extends AuditableEntity {
   @Column(name = "status", nullable = false, length = 20)
   private IdentificationStatus status;
 
+  @Column(name = "health_status", length = 30)
+  private String healthStatus;
+
+  @Column(name = "health_notes", columnDefinition = "TEXT")
+  private String healthNotes;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "care_plan", columnDefinition = "jsonb")
   private String carePlan;
