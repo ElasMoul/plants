@@ -258,7 +258,6 @@ class IdentificationServiceImplTest {
               .build();
       when(identificationRepository.save(any())).thenReturn(entity);
       when(plantNetClient.identify(any(), any())).thenReturn(plantNetResponse());
-      when(plantRepository.existsByIdAndUserId(any(), any())).thenReturn(false);
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
@@ -288,7 +287,6 @@ class IdentificationServiceImplTest {
               .build();
       when(identificationRepository.save(any())).thenReturn(entity);
       when(plantNetClient.identify(any(), any())).thenReturn(plantNetResponse());
-      when(plantRepository.existsByIdAndUserId(any(), any())).thenReturn(false);
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
@@ -314,7 +312,6 @@ class IdentificationServiceImplTest {
               .build();
       when(identificationRepository.save(any())).thenReturn(entity);
       when(plantNetClient.identify(any(), any())).thenReturn(plantNetResponse());
-      when(plantRepository.existsByIdAndUserId(any(), any())).thenReturn(false);
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
@@ -338,7 +335,6 @@ class IdentificationServiceImplTest {
               .build();
       when(identificationRepository.save(any())).thenReturn(entity);
       when(plantNetClient.identify(any(), any())).thenReturn(plantNetResponse());
-      when(plantRepository.existsByIdAndUserId(any(), any())).thenReturn(false);
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
