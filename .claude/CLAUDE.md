@@ -49,21 +49,26 @@ plantpal/
 │   │   │   ├── dto/PlantResponse.java
 │   │   │   └── mapper/PlantMapper.java
 │   │   │
-│   │   ├── identification/                           # ✅ Backend fully implemented
+│   │   ├── identification/                           # ✅ T2.9 complete
 │   │   │   ├── controller/IdentificationController.java
 │   │   │   ├── controller/AiTestController.java      # ⚠️ Not @Profile("dev") guarded
 │   │   │   ├── service/IdentificationService.java
 │   │   │   ├── service/impl/IdentificationServiceImpl.java
+│   │   │   ├── client/VisionAnnotationClient.java    # ✅ T2.9 — interface
+│   │   │   ├── client/DeepSeekAnnotationClient.java  # ✅ T2.9 — @Primary implementation
+│   │   │   ├── client/PlantNetAnnotationClient.java  # ✅ T2.9 — non-primary implementation
 │   │   │   ├── client/PlantNetClient.java            # HTTP/1.1 forced (ALPN fix)
 │   │   │   ├── client/OllamaClient.java              # phi3, local Ollama
-│   │   │   ├── client/DeepSeekClient.java            # ✅ T2.6
+│   │   │   ├── client/DeepSeekClient.java            # ✅ T2.6 + T2.9 (analyzeRegions added)
 │   │   │   ├── repository/IdentificationRepository.java
 │   │   │   ├── entity/Identification.java
 │   │   │   ├── entity/IdentificationStatus.java
 │   │   │   ├── dto/IdentificationResponse.java
 │   │   │   ├── dto/IdentifyRequest.java
 │   │   │   ├── dto/CareCardDto.java                  # ✅ T2.6
-│   │   ├── dto/CarePlanDto.java                  # ✅ T2.6
+│   │   │   ├── dto/CarePlanDto.java                  # ✅ T2.6
+│   │   │   ├── dto/AnnotationRegionDto.java           # ✅ T2.9
+│   │   │   ├── dto/BoundingBoxDto.java               # ✅ T2.9
 │   │   │   ├── dto/plantnet/PlantNetResponse.java
 │   │   │   ├── dto/plantnet/PlantNetResult.java
 │   │   │   ├── dto/plantnet/PlantNetSpecies.java
@@ -126,7 +131,7 @@ plantpal/
 │   │           ├── 004_create_reminders_and_care_logs.sql
 │   │           ├── 005_create_push_subscriptions.sql
 │   │           ├── 006_alter_identifications.sql     # raw_response TEXT not JSONB
-│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.9] ← NOT CREATED YET
+│   │           ├── 007_add_annotation_regions.sql    # ✅ T2.9 — annotation_regions JSONB (inserted BEFORE 008)
 │   │           ├── 008_add_care_plan.sql             # ✅ T2.6 — care_plan JSONB on identifications
 │   │           └── 009_add_performance_indexes.sql   # [PLANNED — T5.2]
 │   │
@@ -178,7 +183,7 @@ plantpal/
 │       ├── identification/                           # ✅ Implemented (PR #5 merged)
 │       │   ├── components/identification-result/
 │       │   ├── components/photo-upload/
-│       │   ├── components/photo-annotator/           # [PLANNED — T2.9]
+│       │   ├── components/photo-annotator/           # [PLANNED — T2.9 frontend; backend ready]
 │       │   ├── components/preview-card/              # [PLANNED — T2.8]
 │       │   ├── components/care-plan/                 # ✅ T2.7 — care-card + care-plan components + CarePlanModule
 │       │   ├── identification-home/
@@ -776,7 +781,7 @@ open backend/target/site/jacoco/index.html
 | 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
 | 2 — One-click save flow (T2.8) | ✅ Complete (backend) | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders, 7 unit tests; frontend pending |
 | 2 — DeepSeek vision identification | ✅ Complete | PlantNet replaced by gpt-4o (GitHub Models); single vision call returns species+health+carePlan; DeepSeekPlantResult DTO; migration 009 adds health_status/health_notes; 10 unit tests passing; branch: feature/PP-deepseek-identification |
-| 2 — Visual annotation (T2.9) | 🔲 Not started | Bounding boxes + disease overlay; migration 007 must be inserted BEFORE 008 in master XML |
+| 2 — Visual annotation (T2.9) | ✅ Complete (backend) | VisionAnnotationClient interface; DeepSeekAnnotationClient (@Primary) + PlantNetAnnotationClient; parallel async in identify(); migration 007 (inserted before 008); AnnotationRegionDto + BoundingBoxDto; 12 unit tests passing; frontend overlay pending |
 | 2 — Garden dashboard (T2.10) | 🔲 Not started | Overview of all plants + health + overdue reminders |
 | 3 — Reminders + Push | 🔲 Not started | |
 | 4 — AI Chat | 🔲 Not started | |
