@@ -20,7 +20,9 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { PlantRoutingModule } from './plant-routing.module';
+import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
 import { PlantService } from './services/plant.service';
+import { IdentificationService } from '../identification/services/identification.service';
 import { PlantListComponent } from './components/plant-list/plant-list.component';
 import { PlantCardComponent } from './components/plant-card/plant-card.component';
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
@@ -38,6 +40,7 @@ import { PlantDetailComponent } from './components/plant-detail/plant-detail.com
     ReactiveFormsModule,
     RouterModule,
     PlantRoutingModule,
+    CarePlanModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -55,6 +58,6 @@ import { PlantDetailComponent } from './components/plant-detail/plant-detail.com
     MatDividerModule,
     MatTooltipModule,
   ],
-  providers: [PlantService],
+  providers: [PlantService, IdentificationService],
 })
 export class PlantModule {}
