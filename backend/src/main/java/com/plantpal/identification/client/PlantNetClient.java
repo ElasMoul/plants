@@ -5,7 +5,14 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ValidationException;
 import java.io.IOException;
 import java.util.List;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.core5.util.TimeValue;
+import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,8 +45,30 @@ public class PlantNetClient {
     this.project = project;
     // Apache HttpClient 5 handles SSL connection teardown correctly where Java 21's built-in
     // JDK HttpClient fails against PlantNet's HTTPS endpoint (EOF / connection reset).
+    ConnectionConfig connectionConfig =
+        ConnectionConfig.custom().setValidateAfterInactivity(TimeValue.ofSeconds(100)).build();
+
+    PoolingHttpClientConnectionManager connectionManager =
+        PoolingHttpClientConnectionManagerBuilder.create()
+            .setDefaultConnectionConfig(connectionConfig)
+            .build();
+
+    RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setConnectionRequestTimeout(Timeout.ofSeconds(300))
+            .setResponseTimeout(Timeout.ofSeconds(300))
+            .build();
+
+    CloseableHttpClient httpClient =
+        HttpClients.custom()
+            .setConnectionManager(connectionManager)
+            .setDefaultRequestConfig(requestConfig)
+            .evictExpiredConnections()
+            .evictIdleConnections(TimeValue.ofSeconds(300))
+            .build();
+
     HttpComponentsClientHttpRequestFactory factory =
-        new HttpComponentsClientHttpRequestFactory(HttpClients.createDefault());
+        new HttpComponentsClientHttpRequestFactory(httpClient);
     this.restClient = RestClient.builder().requestFactory(factory).baseUrl(baseUrl).build();
   }
 

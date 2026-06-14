@@ -58,14 +58,16 @@
   flex: 1 1 auto;
 }
 
-// ── Mobile: hide desktop nav items ─────────────────────────────
+// ── Mobile: top bar shows brand only ───────────────────────────
 @media (max-width: 768px) {
   .nav-label {
     display: none;
   }
 
   .nav-links,
-  .ai-test-link {
+  .ai-test-link,
+  .nav-links,
+  .user-menu-btn {
     display: none;
   }
 }
