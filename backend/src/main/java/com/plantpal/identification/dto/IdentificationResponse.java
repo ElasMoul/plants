@@ -29,4 +29,5 @@ public class IdentificationResponse {
   private String photoUrl;
   private Instant createdAt;
   private CarePlanDto carePlan;
+  private List<AnnotationRegionDto> annotationRegions;
 }

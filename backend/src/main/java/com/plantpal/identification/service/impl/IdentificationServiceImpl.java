@@ -3,6 +3,8 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.VisionAnnotationClient;
+import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.DeepSeekPlantResult;
@@ -50,6 +52,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       List.of("image/jpeg", "image/png", "image/webp");
 
   private final DeepSeekClient deepSeekClient;
+  private final VisionAnnotationClient visionAnnotationClient;
   private final IdentificationRepository identificationRepository;
   private final IdentificationMapper identificationMapper;
   private final PlantRepository plantRepository;
@@ -61,6 +64,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   public IdentificationServiceImpl(
       DeepSeekClient deepSeekClient,
+      VisionAnnotationClient visionAnnotationClient,
       IdentificationRepository identificationRepository,
       IdentificationMapper identificationMapper,
       PlantRepository plantRepository,
@@ -68,6 +72,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       FileStorageService fileStorageService,
       ObjectMapper objectMapper) {
     this.deepSeekClient = deepSeekClient;
+    this.visionAnnotationClient = visionAnnotationClient;
     this.identificationRepository = identificationRepository;
     this.identificationMapper = identificationMapper;
     this.plantRepository = plantRepository;
@@ -107,10 +112,27 @@ public class IdentificationServiceImpl implements IdentificationService {
         throw new PlantPalException("AI identification rate limit reached — try again later", 429);
       }
 
-      // Step 4: Single DeepSeek vision call — identifies species + health + care plan together
+      // Step 4: Fire identification + annotation in parallel
       MultipartFile primaryImage = images.get(0);
-      String rawResult =
-          deepSeekClient.identifyPlant(primaryImage.getBytes(), primaryImage.getContentType());
+      byte[] imageBytes = primaryImage.getBytes();
+      String mediaType = primaryImage.getContentType();
+
+      CompletableFuture<String> identificationFuture =
+          CompletableFuture.supplyAsync(() -> deepSeekClient.identifyPlant(imageBytes, mediaType));
+      CompletableFuture<String> annotationFuture =
+          CompletableFuture.supplyAsync(
+              () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
+
+      String rawResult;
+      try {
+        rawResult = identificationFuture.join();
+      } catch (java.util.concurrent.CompletionException ce) {
+        Throwable cause = ce.getCause();
+        throw (cause instanceof PlantPalException pex)
+            ? pex
+            : new PlantPalException("Identification failed: " + cause.getMessage(), 500);
+      }
+      String annotationJson = annotationFuture.join();
 
       // Step 5: Parse combined result; fall back gracefully if DeepSeek JSON is malformed
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
@@ -125,6 +147,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setHealthNotes(result.getHealthNotes());
       identification.setRawResponse(rawResult);
       identification.setCarePlan(serializeToJson(carePlan));
+      identification.setAnnotationRegions(annotationJson);
       identification.setStatus(IdentificationStatus.COMPLETED);
       identification = identificationRepository.save(identification);
 
@@ -135,7 +158,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       }
 
       // Step 8: Build response
-      IdentificationResponse response = buildResponse(identification, carePlan);
+      IdentificationResponse response =
+          buildResponse(identification, carePlan, parseAnnotationRegions(annotationJson));
       return CompletableFuture.completedFuture(response);
 
     } catch (PlantPalException e) {
@@ -160,6 +184,7 @@ public class IdentificationServiceImpl implements IdentificationService {
             entity -> {
               IdentificationResponse resp = identificationMapper.toResponse(entity);
               resp.setCarePlan(parseCarePlan(entity.getCarePlan()));
+              resp.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
               return resp;
             });
   }
@@ -324,7 +349,25 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private IdentificationResponse buildResponse(Identification entity, CarePlanDto carePlan) {
+  private List<AnnotationRegionDto> parseAnnotationRegions(String json) {
+    if (json == null || json.isBlank()) return List.of();
+    try {
+      var root = objectMapper.readTree(json);
+      var regions = root.get("regions");
+      if (regions == null || !regions.isArray()) return List.of();
+      return objectMapper.convertValue(
+          regions,
+          objectMapper
+              .getTypeFactory()
+              .constructCollectionType(List.class, AnnotationRegionDto.class));
+    } catch (Exception e) {
+      log.warn("Malformed annotation regions JSON: {}", e.getMessage());
+      return List.of();
+    }
+  }
+
+  private IdentificationResponse buildResponse(
+      Identification entity, CarePlanDto carePlan, List<AnnotationRegionDto> annotationRegions) {
     return IdentificationResponse.builder()
         .id(entity.getId())
         .plantId(entity.getPlantId())
@@ -338,6 +381,7 @@ public class IdentificationServiceImpl implements IdentificationService {
         .createdAt(entity.getCreatedAt())
         .topResults(List.of())
         .carePlan(carePlan)
+        .annotationRegions(annotationRegions)
         .build();
   }
 }

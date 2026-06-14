@@ -64,4 +64,8 @@ public class Identification extends AuditableEntity {
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "care_plan", columnDefinition = "jsonb")
   private String carePlan;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "annotation_regions", columnDefinition = "jsonb")
+  private String annotationRegions;
 }
