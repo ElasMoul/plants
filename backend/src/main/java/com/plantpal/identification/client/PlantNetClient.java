@@ -4,21 +4,15 @@ import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ValidationException;
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
-import org.apache.hc.client5.http.config.ConnectionConfig;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.core5.util.TimeValue;
-import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -43,32 +37,16 @@ public class PlantNetClient {
       @Value("${app.plantnet.project:all}") String project) {
     this.apiKey = apiKey;
     this.project = project;
-    // Apache HttpClient 5 handles SSL connection teardown correctly where Java 21's built-in
-    // JDK HttpClient fails against PlantNet's HTTPS endpoint (EOF / connection reset).
-    ConnectionConfig connectionConfig =
-        ConnectionConfig.custom().setValidateAfterInactivity(TimeValue.ofSeconds(10)).build();
-
-    PoolingHttpClientConnectionManager connectionManager =
-        PoolingHttpClientConnectionManagerBuilder.create()
-            .setDefaultConnectionConfig(connectionConfig)
+    // Force HTTP/1.1: PlantNet drops HTTP/2 connections on large multipart bodies (ALPN EOF).
+    // JDK HTTP/1.1 also sends with Content-Length (no chunked encoding), avoiding Broken pipe
+    // that Apache HC5 triggers when PlantNet rejects Transfer-Encoding: chunked multipart.
+    HttpClient http1Client =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(30))
             .build();
-
-    RequestConfig requestConfig =
-        RequestConfig.custom()
-            .setConnectionRequestTimeout(Timeout.ofSeconds(120))
-            .setResponseTimeout(Timeout.ofSeconds(120))
-            .build();
-
-    CloseableHttpClient httpClient =
-        HttpClients.custom()
-            .setConnectionManager(connectionManager)
-            .setDefaultRequestConfig(requestConfig)
-            .evictExpiredConnections()
-            .evictIdleConnections(TimeValue.ofSeconds(30))
-            .build();
-
-    HttpComponentsClientHttpRequestFactory factory =
-        new HttpComponentsClientHttpRequestFactory(httpClient);
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http1Client);
+    factory.setReadTimeout(Duration.ofSeconds(120));
     this.restClient = RestClient.builder().requestFactory(factory).baseUrl(baseUrl).build();
   }
 
@@ -101,7 +79,8 @@ public class PlantNetClient {
               .onStatus(
                   status -> status.value() == 404,
                   (req, res) -> {
-                    throw new PlantPalException("No species match found for the provided image", 404);
+                    throw new PlantPalException(
+                        "No species match found for the provided image", 404);
                   })
               .onStatus(
                   status -> status.value() == 413,
@@ -116,8 +95,7 @@ public class PlantNetClient {
               .onStatus(
                   status -> status.value() == 415,
                   (req, res) -> {
-                    throw new PlantPalException(
-                        "Unsupported image format — use JPEG or PNG", 415);
+                    throw new PlantPalException("Unsupported image format — use JPEG or PNG", 415);
                   })
               .onStatus(
                   status -> status.value() == 429,
@@ -128,7 +106,8 @@ public class PlantNetClient {
               .onStatus(
                   status -> status.value() == 500,
                   (req, res) -> {
-                    throw new PlantPalException("PlantNet service encountered an internal error", 502);
+                    throw new PlantPalException(
+                        "PlantNet service encountered an internal error", 502);
                   })
               .body(PlantNetResponse.class);
 
