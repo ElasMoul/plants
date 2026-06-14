@@ -148,14 +148,14 @@ class PlantNetClientTest {
     }
 
     @Test
-    @DisplayName("should throw PlantPalException with code 503 on 5xx server error")
+    @DisplayName("should throw PlantPalException with code 502 when PlantNet returns 500")
     void shouldThrow503OnServerError() {
       mockWebServer.enqueue(new MockResponse().setResponseCode(500));
 
       assertThatThrownBy(() -> plantNetClient.identify(List.of(validImage()), List.of("leaf")))
           .isInstanceOf(PlantPalException.class)
           .extracting(e -> ((PlantPalException) e).getErrorCode())
-          .isEqualTo(503);
+          .isEqualTo(502);
     }
   }
 }
