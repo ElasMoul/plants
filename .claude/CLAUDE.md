@@ -28,134 +28,175 @@ Core loop: take a photo → AI identifies the plant and detects health issues
 ---
 
 ## Project Structure
+> ⚠️ This section reflects ACTUAL files on disk (verified 2026-06-14).
+> Files listed here exist. Files marked [PLANNED] do not exist yet.
 
 ```
 plantpal/
-├── backend/                                          # Spring Boot 3.2 — Modular Monolith
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/plantpal/
-│   │   │   │   ├── PlantPalApplication.java
-│   │   │   │   ├── plant/                            # Plant Module
-│   │   │   │   │   ├── controller/PlantController.java
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── PlantService.java         # Interface always
-│   │   │   │   │   │   └── impl/PlantServiceImpl.java
-│   │   │   │   │   ├── repository/PlantRepository.java
-│   │   │   │   │   ├── entity/Plant.java
-│   │   │   │   │   ├── dto/
-│   │   │   │   │   │   ├── CreatePlantRequest.java
-│   │   │   │   │   │   ├── UpdatePlantRequest.java
-│   │   │   │   │   │   └── PlantResponse.java
-│   │   │   │   │   └── mapper/PlantMapper.java       # MapStruct
-│   │   │   │   ├── identification/                   # AI Identification Module
-│   │   │   │   │   ├── controller/IdentificationController.java
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── IdentificationService.java
-│   │   │   │   │   │   └── impl/IdentificationServiceImpl.java
-│   │   │   │   │   ├── client/OllamaClient.java      # Spring RestClient → Ollama (phi3)
-│   │   │   │   │   ├── repository/IdentificationRepository.java
-│   │   │   │   │   ├── entity/Identification.java
-│   │   │   │   │   ├── dto/
-│   │   │   │   │   └── mapper/IdentificationMapper.java
-│   │   │   │   ├── reminder/                         # Reminders + Care Log Module
-│   │   │   │   │   ├── controller/
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── ReminderService.java
-│   │   │   │   │   │   ├── CareLogService.java
-│   │   │   │   │   │   └── impl/
-│   │   │   │   │   ├── scheduler/ReminderScheduler.java  # @Scheduled cron jobs
-│   │   │   │   │   ├── push/WebPushService.java
-│   │   │   │   │   ├── repository/
-│   │   │   │   │   ├── entity/
-│   │   │   │   │   ├── dto/
-│   │   │   │   │   └── mapper/
-│   │   │   │   ├── chat/                             # AI Chat Assistant Module
-│   │   │   │   │   ├── controller/ChatController.java
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── ChatService.java
-│   │   │   │   │   │   └── impl/ChatServiceImpl.java
-│   │   │   │   │   └── dto/
-│   │   │   │   ├── user/                             # User + Auth Module
-│   │   │   │   │   ├── controller/AuthController.java
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── UserService.java
-│   │   │   │   │   │   └── impl/UserServiceImpl.java
-│   │   │   │   │   ├── repository/UserRepository.java
-│   │   │   │   │   ├── entity/User.java
-│   │   │   │   │   ├── dto/
-│   │   │   │   │   └── mapper/UserMapper.java
-│   │   │   │   └── shared/                           # Shared kernel — no module imports this twice
-│   │   │   │       ├── config/
-│   │   │   │       │   ├── SecurityConfig.java
-│   │   │   │       │   ├── CacheConfig.java          # Redis config
-│   │   │   │       │   ├── AsyncConfig.java          # @Async thread pool
-│   │   │   │       │   └── OpenApiConfig.java        # Swagger
-│   │   │   │       ├── exception/
-│   │   │   │       │   ├── GlobalExceptionHandler.java
-│   │   │   │       │   ├── PlantPalException.java    # Base business exception
-│   │   │   │       │   ├── ResourceNotFoundException.java
-│   │   │   │       │   └── UnauthorizedException.java
-│   │   │   │       ├── dto/
-│   │   │   │       │   └── ApiResponse.java          # Uniform response wrapper
-│   │   │   │       ├── filter/
-│   │   │   │       │   ├── CorrelationIdFilter.java
-│   │   │   │       │   └── JwtAuthFilter.java
-│   │   │   │       ├── audit/
-│   │   │   │       │   └── AuditableEntity.java      # Base entity with audit fields
-│   │   │   │       ├── util/
-│   │   │   │       │   └── JwtUtil.java
-│   │   │   │       └── storage/
-│   │   │   │           └── FileStorageService.java
-│   │   │   └── resources/
-│   │   │       ├── application.yml
-│   │   │       ├── application-dev.yml
-│   │   │       ├── application-test.yml
-│   │   │       ├── application-staging.yml
-│   │   │       ├── application-prod.yml
-│   │   │       └── db/changelog/
-│   │   │           ├── db.changelog-master.xml
-│   │   │           └── migrations/                   # Numbered SQL scripts
-│   │   └── test/
-│   │       └── java/com/plantpal/
-│   │           ├── plant/
-│   │           │   ├── unit/PlantServiceTest.java
-│   │           │   └── integration/PlantControllerIT.java
-│   │           ├── identification/
-│   │           │   ├── unit/IdentificationServiceTest.java
-│   │           │   └── integration/IdentificationControllerIT.java
-│   │           ├── reminder/unit/ReminderServiceTest.java
-│   │           ├── chat/unit/ChatServiceTest.java
-│   │           └── testdata/                         # Test data builders
-│   │               ├── PlantTestDataBuilder.java
-│   │               └── UserTestDataBuilder.java
-│   ├── Dockerfile
-│   └── pom.xml
-├── frontend/                                         # Angular 16+
-│   ├── src/app/
-│   │   ├── core/                                     # Singleton services, guards, interceptors
-│   │   │   ├── services/
-│   │   │   ├── guards/
-│   │   │   ├── interceptors/
-│   │   │   └── models/
-│   │   ├── shared/                                   # Reusable components, pipes, directives
-│   │   └── features/
-│   │       ├── plant/
-│   │       ├── identification/
-│   │       ├── reminder/
-│   │       └── chat/
-│   ├── Dockerfile                                    # Nginx-based production image
-│   └── package.json
-├── docker-compose.yml                                # Local dev stack (DB + Redis)
-├── docker-compose.test.yml                           # Integration test stack
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml
-│   │   └── deploy.yml
-│   └── pull_request_template.md
-├── CLAUDE.md
-├── PROJECT_CONTEXT.md
-└── TASK_PLAN.md
+├── backend/
+│   ├── src/main/java/com/plantpal/
+│   │   ├── PlantPalApplication.java
+│   │   │
+│   │   ├── plant/                                    # ✅ Fully implemented
+│   │   │   ├── controller/PlantController.java
+│   │   │   ├── service/PlantService.java
+│   │   │   ├── service/impl/PlantServiceImpl.java
+│   │   │   ├── repository/PlantRepository.java
+│   │   │   ├── entity/Plant.java
+│   │   │   ├── entity/PlantStatus.java
+│   │   │   ├── dto/CreatePlantRequest.java
+│   │   │   ├── dto/UpdatePlantRequest.java
+│   │   │   ├── dto/PlantResponse.java
+│   │   │   └── mapper/PlantMapper.java
+│   │   │
+│   │   ├── identification/                           # ✅ Backend fully implemented
+│   │   │   ├── controller/IdentificationController.java
+│   │   │   ├── controller/AiTestController.java      # ⚠️ Not @Profile("dev") guarded
+│   │   │   ├── service/IdentificationService.java
+│   │   │   ├── service/impl/IdentificationServiceImpl.java
+│   │   │   ├── client/PlantNetClient.java            # HTTP/1.1 forced (ALPN fix)
+│   │   │   ├── client/OllamaClient.java              # phi3, local Ollama
+│   │   │   ├── client/DeepSeekClient.java            # [PLANNED — T2.11]
+│   │   │   ├── repository/IdentificationRepository.java
+│   │   │   ├── entity/Identification.java
+│   │   │   ├── entity/IdentificationStatus.java
+│   │   │   ├── dto/IdentificationResponse.java
+│   │   │   ├── dto/IdentifyRequest.java
+│   │   │   ├── dto/CarePlanDto.java                  # [PLANNED — T2.8/T2.11]
+│   │   │   ├── dto/plantnet/PlantNetResponse.java
+│   │   │   ├── dto/plantnet/PlantNetResult.java
+│   │   │   ├── dto/plantnet/PlantNetSpecies.java
+│   │   │   ├── dto/plantnet/PlantNetTaxon.java
+│   │   │   └── mapper/IdentificationMapper.java
+│   │   │
+│   │   ├── reminder/                                 # ❌ NOT STARTED (DB migrations exist)
+│   │   │   └── [all files planned in T3.1]
+│   │   │
+│   │   ├── chat/                                     # ❌ NOT STARTED
+│   │   │   └── [all files planned in T4.1]
+│   │   │
+│   │   ├── user/                                     # ✅ Fully implemented
+│   │   │   ├── controller/AuthController.java
+│   │   │   ├── service/UserService.java
+│   │   │   ├── service/impl/UserServiceImpl.java
+│   │   │   ├── repository/UserRepository.java
+│   │   │   ├── entity/User.java
+│   │   │   ├── entity/UserStatus.java
+│   │   │   ├── dto/RegisterRequest.java
+│   │   │   ├── dto/LoginRequest.java
+│   │   │   ├── dto/AuthResponse.java
+│   │   │   ├── dto/UserResponse.java
+│   │   │   └── mapper/UserMapper.java
+│   │   │
+│   │   └── shared/                                   # ✅ Fully implemented
+│   │       ├── audit/AuditableEntity.java
+│   │       ├── config/SecurityConfig.java
+│   │       ├── config/AsyncConfig.java               # aiTaskExecutor (core=2, max=5)
+│   │       ├── config/CacheConfig.java               # Redis, implements CachingConfigurer
+│   │       ├── config/JpaConfig.java
+│   │       ├── config/OpenApiConfig.java
+│   │       ├── config/StorageConfig.java             # Serves /photos/** (dev)
+│   │       ├── dto/ApiResponse.java
+│   │       ├── dto/RestPage.java                     # Jackson-serialisable Page wrapper
+│   │       ├── exception/PlantPalException.java
+│   │       ├── exception/ResourceNotFoundException.java
+│   │       ├── exception/UnauthorizedException.java
+│   │       ├── exception/ValidationException.java
+│   │       ├── exception/GlobalExceptionHandler.java
+│   │       ├── filter/CorrelationIdFilter.java
+│   │       ├── filter/JwtAuthFilter.java
+│   │       ├── storage/FileStorageService.java       # Interface
+│   │       ├── storage/LocalFileStorageService.java  # @Profile("!prod")
+│   │       └── util/JwtUtil.java
+│   │
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   ├── application-dev.yml
+│   │   ├── application-test.yml
+│   │   └── db/changelog/
+│   │       ├── db.changelog-master.xml
+│   │       └── migrations/
+│   │           ├── 001_create_users.sql
+│   │           ├── 002_create_plants.sql
+│   │           ├── 003_create_identifications.sql
+│   │           ├── 004_create_reminders_and_care_logs.sql
+│   │           ├── 005_create_push_subscriptions.sql
+│   │           ├── 006_alter_identifications.sql     # raw_response TEXT not JSONB
+│   │           ├── 007_add_annotation_regions.sql    # [PLANNED — T2.6]
+│   │           ├── 008_add_care_plan.sql             # [PLANNED — T2.8/T2.11]
+│   │           └── 009_add_performance_indexes.sql   # [PLANNED — T5.2]
+│   │
+│   └── src/test/java/com/plantpal/
+│       ├── AbstractIntegrationTest.java              # Testcontainers base (PG + Redis)
+│       ├── testdata/PlantTestDataBuilder.java
+│       ├── testdata/UserTestDataBuilder.java
+│       ├── plant/unit/PlantServiceTest.java
+│       ├── plant/integration/PlantControllerIT.java
+│       ├── identification/unit/IdentificationServiceImplTest.java
+│       ├── identification/unit/OllamaClientTest.java
+│       ├── identification/unit/PlantNetClientTest.java
+│       ├── identification/integration/IdentificationControllerIT.java  # [MISSING]
+│       ├── user/unit/UserServiceTest.java
+│       └── user/integration/AuthControllerIT.java
+│
+├── frontend/src/app/
+│   ├── app.module.ts
+│   ├── app-routing.module.ts
+│   ├── app.component.{ts,html,scss}
+│   │
+│   ├── core/                                         # ✅ Fully implemented
+│   │   ├── core.module.ts
+│   │   ├── guards/auth.guard.ts
+│   │   ├── interceptors/jwt.interceptor.ts
+│   │   ├── models/api-response.model.ts
+│   │   ├── models/user.model.ts
+│   │   └── services/auth.service.ts
+│   │
+│   ├── shared/shared.module.ts
+│   │
+│   └── features/
+│       ├── auth/                                     # ✅ login + register
+│       │   ├── login/login.component.{ts,html,scss}
+│       │   ├── register/register.component.{ts,html,scss}
+│       │   ├── auth-routing.module.ts
+│       │   └── auth.module.ts
+│       │
+│       ├── plant/                                    # ✅ Full CRUD
+│       │   ├── components/plant-card/
+│       │   ├── components/plant-detail/
+│       │   ├── components/plant-form/
+│       │   ├── components/plant-list/
+│       │   ├── models/plant.model.ts
+│       │   ├── services/plant.service.ts
+│       │   ├── plant-routing.module.ts
+│       │   └── plant.module.ts
+│       │
+│       ├── identification/                           # ✅ Implemented (PR #5 merged)
+│       │   ├── components/identification-result/
+│       │   ├── components/photo-upload/
+│       │   ├── components/photo-annotator/           # [PLANNED — T2.6]
+│       │   ├── components/preview-card/              # [PLANNED — T2.7]
+│       │   ├── components/care-plan/                 # [PLANNED — T2.11/T2.12]
+│       │   ├── identification-home/
+│       │   ├── pages/identification-page/
+│       │   ├── models/identification.model.ts
+│       │   ├── services/identification.service.ts
+│       │   ├── identification-routing.module.ts
+│       │   └── identification.module.ts
+│       │
+│       ├── reminder/                                 # ❌ Stub only
+│       │   └── reminder-list/ (stub)
+│       │
+│       ├── chat/                                     # ❌ Stub only
+│       │   └── chat-home/ (stub)
+│       │
+│       └── ai-test/                                  # Dev tool — should be removed before prod
+│
+├── docker-compose.yml
+├── .github/workflows/{ci.yml,deploy.yml}
+└── .claude/                                          # Agent memory
+    ├── AGENTS.md, ARCHITECT.md, BACKEND.md
+    ├── FRONTEND.md, STATE.md, TASK_PLAN.md, CLAUDE.md
 ```
 
 ---
@@ -463,12 +504,23 @@ jacoco-plugin  <!-- Code coverage — fail build if < 80% -->
 
 ---
 
-## AI Integration — Ollama (local, phi3)
+## AI Integration
 
-> **Why Ollama for dev:** No API key, no cost, runs on-device.
-> The `OllamaClient` wraps the local REST API at `http://localhost:11434`.
-> In production you can swap the base-url to any OpenAI-compatible endpoint
-> (hosted Ollama, vLLM, etc.) without changing business logic.
+### Provider Map
+| Provider | Purpose | When |
+|---|---|---|
+| PlantNet API | Species identification from photo | Always (production API) |
+| Ollama phi3 (local) | Basic text generation, dev testing | Dev only |
+| Ollama LLaVA (local) | Visual annotation — bounding boxes, disease detection | Dev only (T2.6) |
+| DeepSeek API | Care plan generation — species-specific, dynamic | Dev + Prod (T2.11) |
+
+> **Why DeepSeek for care plans:** Plant care is deeply species-specific. A cactus needs
+> water once a month; a fern needs daily misting. DeepSeek-chat (V3) generates richer,
+> more reasoned care advice than phi3. It's OpenAI-compatible, cheap, and fast.
+> DeepSeek endpoint: `https://api.deepseek.com/chat/completions`
+> Model: `deepseek-chat` (V3). API key via `${DEEPSEEK_API_KEY}`.
+
+### Ollama — local dev
 
 ### OllamaClient pattern
 

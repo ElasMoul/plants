@@ -969,6 +969,168 @@ Unit tests: mock OllamaClient, verify fallback defaults are valid, verify all 4 
 
 ---
 
+### T2.11 — DeepSeek client + dynamic care plan backend 🤖 AI
+**Branch:** `feature/PP-021-deepseek-care-plan`
+
+> **Goal:** Replace Ollama phi3 for care planning with DeepSeek (smarter, production-grade).
+> The care plan is **dynamic** — it adapts completely to each plant species.
+> Instead of a fixed DTO with hardcoded fields, the AI returns a list of "care cards"
+> that the frontend renders generically. Adding a new exotic plant species just works,
+> no code changes needed.
+
+**Why dynamic care cards:**
+A monstera care plan has: watering, light, humidity, fertilizing, repotting, common issues.
+A cactus care plan has: watering (very infrequent), light (full sun), drainage warning, winter dormancy.
+A bonsai care plan has: watering, wiring, pruning schedule, seasonal repotting, pest management.
+These are structurally different — hardcoded fields can't capture this. A card array can.
+
+**Backend Claude Code prompt:**
+```
+// T2.11 — DeepSeek client + dynamic care plan
+
+1. identification/client/DeepSeekClient.java:
+   - Uses Spring RestClient (NOT OllamaClient — different API shape)
+   - Base URL: @Value("${deepseek.base-url:https://api.deepseek.com}")
+   - API key: @Value("${deepseek.api-key}") passed as "Authorization: Bearer {key}" header
+   - Model: @Value("${deepseek.model:deepseek-chat}")
+   - Single method: generateCarePlan(String species, String commonName, String healthNotes) → String
+   - POST /chat/completions with body:
+     {
+       "model": model,
+       "messages": [
+         {"role": "system", "content": CARE_PLAN_SYSTEM_PROMPT},
+         {"role": "user", "content": "Plant: {species} ({commonName})\nHealth notes: {healthNotes}"}
+       ],
+       "temperature": 0.3,
+       "response_format": {"type": "json_object"}
+     }
+   - Extract content from choices[0].message.content
+   - On non-2xx or timeout: log ERROR, throw PlantPalException("Care plan service unavailable", 503)
+   - Constructor injection only. Force HTTP/1.1 (same JdkClientHttpRequestFactory pattern as PlantNetClient).
+
+2. System prompt for DeepSeek (store as static final String in DeepSeekClient):
+   ```
+   You are an expert botanist and horticulturist helping a beginner gardener.
+   Given a plant species, generate a complete, beginner-friendly care plan.
+   Return ONLY valid JSON (no markdown). Structure:
+   {
+     "wateringFrequencyDays": <int — how often to water in summer>,
+     "fertilizingFrequencyDays": <int — 0 means never>,
+     "repottingFrequencyMonths": <int>,
+     "careCards": [
+       {
+         "type": "WATERING | LIGHT | HUMIDITY | TEMPERATURE | FERTILIZING | REPOTTING | PRUNING | PEST | SEASONAL | BEGINNER_TIP",
+         "title": "<short title>",
+         "icon": "<material icon name, e.g. water_drop, wb_sunny, thermostat>",
+         "summary": "<one sentence, e.g. 'Water every 7 days'>",
+         "detail": "<2-4 sentences, plain English, no jargon>",
+         "urgency": "LOW | MEDIUM | HIGH",
+         "seasonalVariation": "<optional: what changes in winter/summer, or null>"
+       }
+     ],
+     "beginnerWarnings": ["warning1", "warning2"]
+   }
+   Include 4-8 care cards covering the most important aspects for this specific plant.
+   For rare/unusual requirements, add extra cards. Omit irrelevant ones.
+   Write for someone who has never owned a plant before.
+   ```
+
+3. New DTOs in identification/dto/:
+   CareCardDto: String type, String title, String icon, String summary,
+                String detail, String urgency, String seasonalVariation
+   CarePlanDto: int wateringFrequencyDays, int fertilizingFrequencyDays,
+                int repottingFrequencyMonths, List<CareCardDto> careCards,
+                List<String> beginnerWarnings
+
+4. Add carePlan (CarePlanDto) field to IdentificationResponse.
+
+5. In IdentificationServiceImpl, after PlantNet returns:
+   - Fire DeepSeekClient.generateCarePlan() as @Async call (parallel with annotation if T2.6 is done)
+   - Parse response into CarePlanDto (ObjectMapper — handle malformed JSON with a safe default:
+     one WATERING card saying "General care: water when topsoil is dry")
+   - Persist care plan as JSONB in identifications.care_plan column
+   - Include in IdentificationResponse
+
+6. Liquibase migration 008_add_care_plan.sql:
+   ALTER TABLE identifications ADD COLUMN IF NOT EXISTS care_plan JSONB;
+
+7. In application-dev.yml, add:
+   deepseek:
+     base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+     api-key: ${DEEPSEEK_API_KEY}
+     model: ${DEEPSEEK_MODEL:deepseek-chat}
+
+8. Add DEEPSEEK_API_KEY to backend/.env.example with comment.
+
+9. Add Bucket4j rate limit for DeepSeek calls: 20/hour/user (same as PlantNet).
+
+Unit tests (mock DeepSeekClient):
+- generateCarePlan() returns valid JSON → CarePlanDto parsed correctly
+- generateCarePlan() returns malformed JSON → safe default CarePlanDto returned
+- generateCarePlan() throws exception → safe default returned, not propagated to caller
+- Verify careCards[] is never null (always at least 1 card in fallback)
+```
+
+---
+
+### T2.12 — Dynamic care plan frontend 🤝 Assisted
+**Branch:** `feature/PP-021-deepseek-care-plan` (same branch)
+
+> **Design principle:** The frontend renders care cards generically.
+> It does not know about specific plant types. The AI decides what cards to show.
+> Adding an orchid or a bonsai requires ZERO frontend changes.
+
+**Frontend Claude Code prompt:**
+```
+// T2.12 — Dynamic care plan UI
+
+In features/identification/:
+
+1. Update identification.model.ts:
+   Add CareCardDto and CarePlanDto interfaces matching the backend DTOs.
+   CareCardType = 'WATERING' | 'LIGHT' | 'HUMIDITY' | 'TEMPERATURE' |
+     'FERTILIZING' | 'REPOTTING' | 'PRUNING' | 'PEST' | 'SEASONAL' | 'BEGINNER_TIP'
+
+2. components/care-plan/care-card.component.ts + .html + .scss:
+   @Input() card: CareCardDto
+   - Icon from card.icon (Angular Material icon)
+   - Color-coded by type:
+       WATERING → blue, LIGHT → yellow, TEMPERATURE → orange,
+       PEST → red, BEGINNER_TIP → green, SEASONAL → purple, default → grey
+   - Color-coded border by urgency: HIGH → accent color, MEDIUM → warn-light, LOW → none
+   - Expandable: click card to reveal card.detail + card.seasonalVariation
+   - If seasonalVariation exists: show a small "Seasonal tip" chip inside the expanded view
+
+3. components/care-plan/care-plan.component.ts + .html + .scss:
+   @Input() carePlan: CarePlanDto | null
+   - If carePlan is null: show skeleton loader (3 grey placeholder cards)
+   - Render careCards as a responsive CSS grid (2 cols on tablet, 1 col on mobile)
+   - Below the cards: "Beginner warnings" section — each warning as a yellow alert chip
+   - Summary bar at top: "Water every X days · Fertilize every Y days · Repot every Z months"
+     (uses the numeric fields, not the cards — quick reference)
+
+4. Wire into identification-result component:
+   - Show CarePlanComponent below the species/health result
+   - While waiting for carePlan (it's async): show the skeleton loader
+   - The identification result page polls GET /api/v1/identifications/{id} until
+     carePlan is populated (or show it if already present in the initial response)
+
+5. Wire into plant-detail component:
+   - "Care Plan" tab fetches the most recent identification for this plant
+   - Shows CarePlanComponent with that identification's carePlan
+   - If no identification yet: show "Take a photo to get your care plan" with a CTA button
+     that navigates to /identify with the plantId pre-selected
+
+6. Wire into preview card (T2.7 PreviewCardComponent):
+   - Below species/confidence: show the first 3 care cards as a quick preview
+   - "See full plan after saving" link
+
+IMPORTANT: Never hardcode care types in switch/case. The card color mapping uses a
+TypeScript Record<CareCardType, string> — adding a new type only requires updating that map.
+```
+
+---
+
 ### T2.10 — Manual testing — Phase 2 complete 👤 Manual
 **Branch:** PR to `dev`
 
