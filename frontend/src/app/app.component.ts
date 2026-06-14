@@ -13,7 +13,6 @@ export class AppComponent {
     { label: 'Identify', route: '/identify', icon: 'search' },
     { label: 'Reminders', route: '/reminders', icon: 'notifications' },
     { label: 'Chat', route: '/chat', icon: 'chat' },
-    { label: 'AI Test', route: '/ai-test', icon: 'science' },
   ];
 
   constructor(

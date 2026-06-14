@@ -67,14 +67,20 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 - service/UserService.java (interface) + service/impl/UserServiceImpl.java
 - controller/AuthController.java
 
-### plant/ — fully implemented
+### plant/ — fully implemented (T2.8 complete)
 - entity/Plant.java, entity/PlantStatus.java
 - dto/CreatePlantRequest.java, UpdatePlantRequest.java, PlantResponse.java
+- dto/SaveIdentificationAsPlantRequest.java  — ✅ T2.8; identificationId (required), nickname, location
 - mapper/PlantMapper.java
 - repository/PlantRepository.java  — has existsByIdAndUserId, findByIdAndUserId,
                                       findByIdAndUserIdAndStatus
 - service/PlantService.java (interface) + service/impl/PlantServiceImpl.java
-- controller/PlantController.java
+  - PlantServiceImpl now takes 5 constructor params: PlantRepository, PlantMapper,
+    IdentificationRepository, ReminderRepository, ObjectMapper
+  - saveFromIdentification(): loads identification (verifies ownership), creates Plant with
+    nickname fallback chain (request → commonName → scientificName → "My Plant"),
+    links identification.plantId, creates reminders from carePlan JSON
+- controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
 ### identification/ — fully implemented (T2.6 complete)
 - entity/Identification.java       — has care_plan JSONB column (String in Java)
@@ -118,8 +124,11 @@ Current master XML order: 001→006, then 008.
 
 ## Test Inventory
 unit/UserServiceTest.java
-unit/PlantServiceTest.java
-unit/IdentificationServiceImplTest.java  ← updated T2.6: new DeepSeek + reminder tests
+unit/PlantServiceTest.java                ← updated T2.8: +7 SaveFromIdentification tests
+                                             (nickname fallbacks, ownership check, reminder creation)
+                                             Now has @Mock IdentificationRepository, ReminderRepository,
+                                             @Spy ObjectMapper = new ObjectMapper()
+unit/IdentificationServiceImplTest.java   ← updated T2.6: new DeepSeek + reminder tests
 unit/PlantNetClientTest.java
 unit/OllamaClientTest.java
 integration/AuthControllerIT.java

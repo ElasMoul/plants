@@ -5,6 +5,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ValidationException;
 import java.io.IOException;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +37,17 @@ public class PlantNetClient {
       @Value("${app.plantnet.project:all}") String project) {
     this.apiKey = apiKey;
     this.project = project;
-    // PlantNet's API drops HTTP/2 connections mid-stream on large multipart uploads (EOF/GOAWAY).
-    // Force HTTP/1.1 to avoid the JDK HttpClient's default ALPN negotiation.
-    HttpClient http1Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
-    this.restClient =
-        RestClient.builder()
-            .baseUrl(baseUrl)
-            .requestFactory(new JdkClientHttpRequestFactory(http1Client))
+    // Force HTTP/1.1: PlantNet drops HTTP/2 connections on large multipart bodies (ALPN EOF).
+    // JDK HTTP/1.1 also sends with Content-Length (no chunked encoding), avoiding Broken pipe
+    // that Apache HC5 triggers when PlantNet rejects Transfer-Encoding: chunked multipart.
+    HttpClient http1Client =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(30))
             .build();
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http1Client);
+    factory.setReadTimeout(Duration.ofSeconds(120));
+    this.restClient = RestClient.builder().requestFactory(factory).baseUrl(baseUrl).build();
   }
 
   public PlantNetResponse identify(List<MultipartFile> images, List<String> organs) {
@@ -63,9 +67,47 @@ public class PlantNetClient {
               .body(body)
               .retrieve()
               .onStatus(
+                  status -> status.value() == 400,
+                  (req, res) -> {
+                    throw new PlantPalException("Invalid request sent to PlantNet", 400);
+                  })
+              .onStatus(
+                  status -> status.value() == 401,
+                  (req, res) -> {
+                    throw new PlantPalException("PlantNet API key is invalid or missing", 401);
+                  })
+              .onStatus(
                   status -> status.value() == 404,
                   (req, res) -> {
-                    throw new PlantPalException("No species match found", 404);
+                    throw new PlantPalException(
+                        "No species match found for the provided image", 404);
+                  })
+              .onStatus(
+                  status -> status.value() == 413,
+                  (req, res) -> {
+                    throw new PlantPalException("Image file is too large for PlantNet", 413);
+                  })
+              .onStatus(
+                  status -> status.value() == 414,
+                  (req, res) -> {
+                    throw new PlantPalException("PlantNet request URI is too long", 400);
+                  })
+              .onStatus(
+                  status -> status.value() == 415,
+                  (req, res) -> {
+                    throw new PlantPalException("Unsupported image format — use JPEG or PNG", 415);
+                  })
+              .onStatus(
+                  status -> status.value() == 429,
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "PlantNet rate limit reached — please try again later", 429);
+                  })
+              .onStatus(
+                  status -> status.value() == 500,
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "PlantNet service encountered an internal error", 502);
                   })
               .body(PlantNetResponse.class);
 

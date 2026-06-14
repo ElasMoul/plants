@@ -8,10 +8,11 @@ import { IdentificationService } from '../../services/identification.service';
 import {
   AnalyzeEmitPayload,
   IdentificationResponse,
-  SaveAsNewEvent,
+  SavePreviewEditEvent,
 } from '../../models/identification.model';
+import { PlantResponse } from '../../../plant/models/plant.model';
 
-type PageState = 'idle' | 'uploading' | 'analyzing' | 'result' | 'error';
+type PageState = 'idle' | 'analyzing' | 'preview' | 'error';
 
 @Component({
   selector: 'app-identification-page',
@@ -37,12 +38,9 @@ export class IdentificationPageComponent implements OnDestroy {
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
-    this.state = 'uploading';
+    this.state = 'analyzing';
     this.result = null;
     this.errorMessage = '';
-
-    // FormData build is synchronous — move immediately to analyzing state
-    this.state = 'analyzing';
 
     this.identificationService
       .analyze(payload.images, payload.organs, payload.plantId)
@@ -50,7 +48,7 @@ export class IdentificationPageComponent implements OnDestroy {
       .subscribe({
         next: res => {
           this.result = res.data;
-          this.state = 'result';
+          this.state = 'preview';
         },
         error: (err: HttpErrorResponse) => {
           this.errorMessage = this.mapError(err);
@@ -59,15 +57,25 @@ export class IdentificationPageComponent implements OnDestroy {
       });
   }
 
-  onSaveAsNew(event: SaveAsNewEvent): void {
+  onSaved(plant: PlantResponse): void {
+    this.snackBar.open('Added to your garden!', undefined, { duration: 3000 });
+    this.router.navigate(['/plants', plant.id]);
+  }
+
+  onEditBeforeSave(event: SavePreviewEditEvent): void {
+    if (!this.result) return;
     this.router.navigate(['/plants/new'], {
-      queryParams: { species: event.scientificName, commonName: event.commonName },
+      queryParams: {
+        species:    this.result.scientificName,
+        commonName: this.result.commonName,
+        nickname:   event.nickname,
+        location:   event.location || undefined,
+      },
     });
   }
 
-  onUpdatePlant(plantId: number): void {
-    this.snackBar.open('Plant updated successfully', 'Close', { duration: 3000 });
-    this.router.navigate(['/plants', plantId]);
+  onDiscard(): void {
+    this.reset();
   }
 
   reset(): void {

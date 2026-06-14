@@ -35,6 +35,8 @@ export class PlantFormComponent implements OnInit {
     if (id) {
       this.editId = Number(id);
       this.loadForEdit(this.editId);
+    } else {
+      this.prefillFromQueryParams();
     }
   }
 
@@ -47,6 +49,18 @@ export class PlantFormComponent implements OnInit {
       notes: [''],
       acquiredAt: [null],
     });
+  }
+
+  private prefillFromQueryParams(): void {
+    const p = this.route.snapshot.queryParams;
+    if (p['nickname'] || p['species'] || p['commonName']) {
+      this.form.patchValue({
+        nickname:   p['nickname']   || p['commonName'] || '',
+        species:    p['species']    || '',
+        commonName: p['commonName'] || '',
+        location:   p['location']   || '',
+      });
+    }
   }
 
   private loadForEdit(id: number): void {

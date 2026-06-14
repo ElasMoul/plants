@@ -4,6 +4,7 @@
     <span>PlantPal</span>
   </a>
 
+  <!-- Desktop navigation — hidden on mobile (bottom nav takes over) -->
   <nav class="nav-links" *ngIf="authService.isLoggedIn()">
     <a
       *ngFor="let link of navLinks"
@@ -18,14 +19,14 @@
 
   <span class="spacer"></span>
 
-  <!-- AI Test always visible — no auth required -->
-  <a mat-button routerLink="/ai-test" routerLinkActive="active-link">
+  <!-- AI Test — desktop only dev tool -->
+  <a mat-button routerLink="/ai-test" routerLinkActive="active-link" class="ai-test-link">
     <mat-icon>science</mat-icon>
     <span class="nav-label">AI Test</span>
   </a>
 
   <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
-    <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
+    <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-menu-btn" aria-label="User menu">
       <mat-icon>account_circle</mat-icon>
     </button>
     <mat-menu #userMenu="matMenu">
@@ -46,6 +47,19 @@
   </ng-template>
 </mat-toolbar>
 
-<main class="app-content with-toolbar">
+<main class="app-content with-toolbar" [class.with-bottom-nav]="authService.isLoggedIn()">
   <router-outlet></router-outlet>
 </main>
+
+<!-- Bottom navigation — mobile only, shown when logged in -->
+<nav class="bottom-nav" *ngIf="authService.isLoggedIn()">
+  <a
+    *ngFor="let link of navLinks"
+    class="bottom-nav-item"
+    [routerLink]="link.route"
+    routerLinkActive="active"
+  >
+    <mat-icon>{{ link.icon }}</mat-icon>
+    <span>{{ link.label }}</span>
+  </a>
+</nav>

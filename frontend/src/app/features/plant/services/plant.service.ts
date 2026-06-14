@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
-import { CreatePlantRequest, PlantResponse, UpdatePlantRequest } from '../models/plant.model';
+import { CreatePlantRequest, PlantResponse, SaveIdentificationAsPlantRequest, UpdatePlantRequest } from '../models/plant.model';
 
 @Injectable()
 export class PlantService {
@@ -33,5 +33,9 @@ export class PlantService {
 
   archivePlant(id: number): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`);
+  }
+
+  saveFromIdentification(request: SaveIdentificationAsPlantRequest): Observable<ApiResponse<PlantResponse>> {
+    return this.http.post<ApiResponse<PlantResponse>>(`${this.baseUrl}/from-identification`, request);
   }
 }

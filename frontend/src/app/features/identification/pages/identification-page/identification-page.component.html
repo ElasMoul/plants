@@ -8,32 +8,22 @@
     <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
   </ng-container>
 
-  <!-- uploading / analyzing: spinner -->
-  <ng-container *ngIf="state === 'uploading' || state === 'analyzing'">
+  <!-- analyzing: spinner -->
+  <ng-container *ngIf="state === 'analyzing'">
     <div class="loading-state">
       <mat-spinner diameter="64"></mat-spinner>
-      <p *ngIf="state === 'uploading'" class="loading-msg">Uploading your photos...</p>
-      <p *ngIf="state === 'analyzing'" class="loading-msg">
-        Identifying your plant&hellip; this may take a few seconds
-      </p>
+      <p class="loading-msg">Identifying your plant&hellip; this may take a few seconds</p>
     </div>
   </ng-container>
 
-  <!-- result -->
-  <ng-container *ngIf="state === 'result'">
-    <ng-container *ngIf="result as r">
-      <app-identification-result
-        [result]="r"
-        (saveAsNew)="onSaveAsNew($event)"
-        (updatePlant)="onUpdatePlant($event)"
-      ></app-identification-result>
-    </ng-container>
-    <div class="start-over-row">
-      <button mat-stroked-button type="button" (click)="reset()">
-        <mat-icon>refresh</mat-icon>
-        Start over
-      </button>
-    </div>
+  <!-- preview: one-click save card -->
+  <ng-container *ngIf="state === 'preview' && result">
+    <app-preview-card
+      [result]="result"
+      (saved)="onSaved($event)"
+      (edit)="onEditBeforeSave($event)"
+      (discard)="onDiscard()"
+    ></app-preview-card>
   </ng-container>
 
   <!-- error -->

@@ -2,6 +2,7 @@ package com.plantpal.plant.controller;
 
 import com.plantpal.plant.dto.CreatePlantRequest;
 import com.plantpal.plant.dto.PlantResponse;
+import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.service.PlantService;
 import com.plantpal.shared.dto.ApiResponse;
@@ -136,6 +137,31 @@ public class PlantController {
   public ResponseEntity<Void> archivePlant(@PathVariable Long id) {
     plantService.archivePlant(id, getCurrentUserId());
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(summary = "Save an identification result as a new plant in the garden")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "201",
+        description = "Plant saved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
+  @PostMapping("/from-identification")
+  public ResponseEntity<ApiResponse<PlantResponse>> saveFromIdentification(
+      @Valid @RequestBody SaveIdentificationAsPlantRequest request) {
+    Long userId = getCurrentUserId();
+    PlantResponse response = plantService.saveFromIdentification(request, userId);
+    log.info(
+        "Plant saved from identification: identificationId={}, userId={}",
+        request.getIdentificationId(),
+        userId);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.success(response, "Plant saved to garden"));
   }
 
   private Long getCurrentUserId() {

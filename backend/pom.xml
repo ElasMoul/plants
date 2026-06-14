@@ -174,12 +174,11 @@
             <version>2.2.2</version>
             <scope>test</scope>
         </dependency>
-        <!-- Apache HttpClient 5 — makes TestRestTemplate handle 4xx/5xx on POST correctly.
-             Without this, HttpURLConnection throws "cannot retry in streaming mode" on 401. -->
+        <!-- Apache HttpClient 5 — used by PlantNetClient (SSL teardown fix for Java 21)
+             and by TestRestTemplate in integration tests (handles 4xx/5xx on POST). -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
-            <scope>test</scope>
         </dependency>
         <!-- OkHttp MockWebServer — for unit-testing Spring RestClient HTTP interactions -->
         <dependency>
