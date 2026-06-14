@@ -40,11 +40,7 @@ public class PlantNetClient {
     // JDK HttpClient fails against PlantNet's HTTPS endpoint (EOF / connection reset).
     HttpComponentsClientHttpRequestFactory factory =
         new HttpComponentsClientHttpRequestFactory(HttpClients.createDefault());
-    this.restClient =
-        RestClient.builder()
-            .requestFactory(factory)
-            .baseUrl(baseUrl)
-            .build();
+    this.restClient = RestClient.builder().requestFactory(factory).baseUrl(baseUrl).build();
   }
 
   public PlantNetResponse identify(List<MultipartFile> images, List<String> organs) {
