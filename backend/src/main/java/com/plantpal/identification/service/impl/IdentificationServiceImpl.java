@@ -3,12 +3,10 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
-import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
+import com.plantpal.identification.dto.DeepSeekPlantResult;
 import com.plantpal.identification.dto.IdentificationResponse;
-import com.plantpal.identification.dto.plantnet.PlantNetResponse;
-import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.mapper.IdentificationMapper;
@@ -51,7 +49,6 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
 
-  private final PlantNetClient plantNetClient;
   private final DeepSeekClient deepSeekClient;
   private final IdentificationRepository identificationRepository;
   private final IdentificationMapper identificationMapper;
@@ -63,7 +60,6 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
 
   public IdentificationServiceImpl(
-      PlantNetClient plantNetClient,
       DeepSeekClient deepSeekClient,
       IdentificationRepository identificationRepository,
       IdentificationMapper identificationMapper,
@@ -71,7 +67,6 @@ public class IdentificationServiceImpl implements IdentificationService {
       ReminderRepository reminderRepository,
       FileStorageService fileStorageService,
       ObjectMapper objectMapper) {
-    this.plantNetClient = plantNetClient;
     this.deepSeekClient = deepSeekClient;
     this.identificationRepository = identificationRepository;
     this.identificationMapper = identificationMapper;
@@ -107,40 +102,40 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification = identificationRepository.save(identification);
       log.info("Identification created: id={}, userId={}", identification.getId(), userId);
 
-      // Step 3: Call PlantNet (sequential — species needed for DeepSeek)
-      PlantNetResponse plantNetResponse = plantNetClient.identify(images, organs);
-      PlantNetResult topResult = plantNetResponse.results().get(0);
-      String scientificName = topResult.species().scientificNameWithoutAuthor();
-      List<String> commonNames = topResult.species().commonNames();
-      String commonName =
-          (commonNames != null && !commonNames.isEmpty()) ? commonNames.get(0) : null;
+      // Step 3: Rate-limit check before hitting DeepSeek
+      if (!consumeRateLimit(userId)) {
+        throw new PlantPalException("AI identification rate limit reached — try again later", 429);
+      }
 
-      // Step 4: Fire DeepSeek in parallel (ready for T2.9 to add a third parallel future)
-      CompletableFuture<CarePlanDto> carePlanFuture =
-          CompletableFuture.supplyAsync(
-              () -> generateCarePlanSafely(scientificName, commonName, userId));
+      // Step 4: Single DeepSeek vision call — identifies species + health + care plan together
+      MultipartFile primaryImage = images.get(0);
+      String rawResult =
+          deepSeekClient.identifyPlant(primaryImage.getBytes(), primaryImage.getContentType());
 
-      // Step 5: Await care plan
-      CarePlanDto carePlan = carePlanFuture.join();
+      // Step 5: Parse combined result; fall back gracefully if DeepSeek JSON is malformed
+      DeepSeekPlantResult result = parseIdentificationResult(rawResult);
+      CarePlanDto carePlan =
+          result.getCarePlan() != null ? result.getCarePlan() : fallbackCarePlan();
 
-      // Step 6: Persist completed identification with care plan
-      identification.setScientificName(scientificName);
-      identification.setCommonName(commonName);
-      identification.setConfidence(topResult.score());
-      identification.setRawResponse(serializeToJson(plantNetResponse));
+      // Step 6: Persist completed identification
+      identification.setScientificName(result.getSpecies());
+      identification.setCommonName(result.getCommonName());
+      identification.setConfidence(confidenceToScore(result.getConfidence()));
+      identification.setHealthStatus(result.getHealthStatus());
+      identification.setHealthNotes(result.getHealthNotes());
+      identification.setRawResponse(rawResult);
       identification.setCarePlan(serializeToJson(carePlan));
       identification.setStatus(IdentificationStatus.COMPLETED);
       identification = identificationRepository.save(identification);
 
       // Step 7: Update linked plant and auto-create reminders
       if (plantId != null && plantRepository.existsByIdAndUserId(plantId, userId)) {
-        updatePlantSpecies(plantId, userId, scientificName, commonName);
+        updatePlantSpecies(plantId, userId, result.getSpecies(), result.getCommonName());
         createRemindersFromCarePlan(carePlan, plantId, userId);
       }
 
       // Step 8: Build response
-      List<PlantNetResult> topResults = plantNetResponse.results().stream().limit(3).toList();
-      IdentificationResponse response = buildResponse(identification, topResults, carePlan);
+      IdentificationResponse response = buildResponse(identification, carePlan);
       return CompletableFuture.completedFuture(response);
 
     } catch (PlantPalException e) {
@@ -169,18 +164,24 @@ public class IdentificationServiceImpl implements IdentificationService {
             });
   }
 
-  private CarePlanDto generateCarePlanSafely(String species, String commonName, Long userId) {
-    if (!consumeRateLimit(userId)) {
-      log.warn("DeepSeek rate limit exceeded for userId={}", userId);
-      return fallbackCarePlan();
-    }
+  private DeepSeekPlantResult parseIdentificationResult(String raw) {
     try {
-      String raw = deepSeekClient.generateCarePlan(species, commonName, null);
-      return parseCarePlan(raw);
-    } catch (Exception e) {
-      log.warn("DeepSeek care plan failed for species={}: {}", species, e.getMessage());
-      return fallbackCarePlan();
+      DeepSeekPlantResult result = objectMapper.readValue(raw, DeepSeekPlantResult.class);
+      if (result.getCommonName() == null) result.setCommonName("Unknown Plant");
+      return result;
+    } catch (JsonProcessingException e) {
+      log.warn("Malformed identification JSON from DeepSeek, using fallback: {}", e.getMessage());
+      return new DeepSeekPlantResult(null, "Unknown Plant", "LOW", "UNKNOWN", null, null);
     }
+  }
+
+  private double confidenceToScore(String confidence) {
+    if (confidence == null) return 0.3;
+    return switch (confidence.toUpperCase()) {
+      case "HIGH" -> 0.9;
+      case "MEDIUM" -> 0.6;
+      default -> 0.3;
+    };
   }
 
   private CarePlanDto parseCarePlan(String raw) {
@@ -323,18 +324,19 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private IdentificationResponse buildResponse(
-      Identification entity, List<PlantNetResult> topResults, CarePlanDto carePlan) {
+  private IdentificationResponse buildResponse(Identification entity, CarePlanDto carePlan) {
     return IdentificationResponse.builder()
         .id(entity.getId())
         .plantId(entity.getPlantId())
         .scientificName(entity.getScientificName())
         .commonName(entity.getCommonName())
         .confidence(entity.getConfidence())
+        .healthStatus(entity.getHealthStatus())
+        .healthNotes(entity.getHealthNotes())
         .status(entity.getStatus())
         .photoUrl(entity.getPhotoUrl())
         .createdAt(entity.getCreatedAt())
-        .topResults(topResults)
+        .topResults(List.of())
         .carePlan(carePlan)
         .build();
   }

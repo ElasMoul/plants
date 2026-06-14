@@ -22,6 +22,8 @@ public class IdentificationResponse {
   private String scientificName;
   private String commonName;
   private Double confidence;
+  private String healthStatus;
+  private String healthNotes;
   private IdentificationStatus status;
   private List<PlantNetResult> topResults;
   private String photoUrl;

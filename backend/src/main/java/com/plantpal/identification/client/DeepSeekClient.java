@@ -2,6 +2,7 @@ package com.plantpal.identification.client;
 
 import com.plantpal.shared.exception.PlantPalException;
 import java.net.http.HttpClient;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -18,6 +19,43 @@ import org.springframework.web.client.RestClientResponseException;
 public class DeepSeekClient {
 
   private static final Logger log = LoggerFactory.getLogger(DeepSeekClient.class);
+
+  static final String PLANT_IDENTIFICATION_SYSTEM_PROMPT =
+      """
+      You are an expert botanist and plant pathologist helping a beginner gardener.
+      Analyse the plant in the photo and return ONLY valid JSON (no markdown, no preamble).
+
+      {
+        "species": "<scientific name, or null if truly unidentifiable>",
+        "commonName": "<common English name>",
+        "confidence": "HIGH | MEDIUM | LOW",
+        "healthStatus": "HEALTHY | ISSUES_DETECTED | UNKNOWN",
+        "healthNotes": "<brief description of visible issues, or null if healthy>",
+        "carePlan": {
+          "wateringFrequencyDays": <int>,
+          "fertilizingFrequencyDays": <int — 0 means never>,
+          "repottingFrequencyMonths": <int>,
+          "careCards": [
+            {
+              "type": "WATERING | LIGHT | HUMIDITY | TEMPERATURE | FERTILIZING | REPOTTING | PRUNING | PEST | SEASONAL | BEGINNER_TIP",
+              "title": "<short title>",
+              "icon": "<material icon name e.g. water_drop, wb_sunny, thermostat>",
+              "summary": "<one sentence>",
+              "detail": "<2-4 sentences, plain English, no jargon>",
+              "urgency": "LOW | MEDIUM | HIGH",
+              "seasonalVariation": "<what changes in winter/summer, or null>"
+            }
+          ],
+          "beginnerWarnings": ["warning1", "warning2"]
+        }
+      }
+
+      Rules:
+      - Identify only the PLANT, ignoring background objects.
+      - Include 4-8 care cards covering the most important aspects for this specific species.
+      - If you cannot identify the plant, still provide general care advice and set confidence to LOW.
+      - Write for someone who has never owned a plant before.
+      """;
 
   static final String CARE_PLAN_SYSTEM_PROMPT =
       """
@@ -48,12 +86,15 @@ public class DeepSeekClient {
 
   private final RestClient restClient;
   private final String model;
+  private final String visionModel;
 
   public DeepSeekClient(
       @Value("${deepseek.base-url:https://api.deepseek.com}") String baseUrl,
       @Value("${deepseek.api-key}") String apiKey,
-      @Value("${deepseek.model:deepseek-chat}") String model) {
+      @Value("${deepseek.model:deepseek-chat}") String model,
+      @Value("${deepseek.vision-model:deepseek-chat}") String visionModel) {
     this.model = model;
+    this.visionModel = visionModel;
     // Force HTTP/1.1 — same pattern as PlantNetClient to avoid ALPN negotiation issues.
     HttpClient http1Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
     this.restClient =
@@ -121,6 +162,68 @@ public class DeepSeekClient {
     } catch (RestClientException e) {
       log.error("Failed to reach DeepSeek API", e);
       throw new PlantPalException("Care plan service unavailable", 503);
+    }
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType) {
+    String dataUrl =
+        "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
+
+    List<Map<String, Object>> userContent =
+        List.of(
+            Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "high")),
+            Map.of(
+                "type",
+                "text",
+                "text",
+                "Identify this plant and generate a complete beginner care plan."));
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            visionModel,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", PLANT_IDENTIFICATION_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userContent)),
+            "temperature",
+            0.3,
+            "response_format",
+            Map.of("type", "json_object"));
+
+    long start = System.currentTimeMillis();
+    try {
+      DeepSeekApiResponse response =
+          restClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(DeepSeekApiResponse.class);
+
+      if (response == null
+          || response.choices() == null
+          || response.choices().isEmpty()
+          || response.choices().get(0).message() == null) {
+        throw new PlantPalException("Empty response from identification service", 503);
+      }
+
+      log.info(
+          "DeepSeek plant identification completed in {}ms", System.currentTimeMillis() - start);
+      return response.choices().get(0).message().content();
+
+    } catch (RestClientResponseException e) {
+      log.error(
+          "DeepSeek identification error status={}, body={}",
+          e.getStatusCode().value(),
+          e.getResponseBodyAsString());
+      throw new PlantPalException("Plant identification service unavailable", 503);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach DeepSeek identification API", e);
+      throw new PlantPalException("Plant identification service unavailable", 503);
     }
   }
 

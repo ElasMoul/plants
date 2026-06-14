@@ -40,11 +40,14 @@ spring:
     contexts: dev
     change-log: classpath:db/changelog/db.changelog-master.xml
 
-# ──── DeepSeek (care plan AI) ────────────────────────────────────────────────
+# ──── DeepSeek (plant identification + care plan AI) ─────────────────────────
 deepseek:
   base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
   api-key: ${DEEPSEEK_API_KEY}
   model: ${DEEPSEEK_MODEL:deepseek-chat}
+  # Vision model used for photo-based plant identification.
+  # If deepseek-chat doesn't support vision on your plan, set DEEPSEEK_VISION_MODEL=deepseek-vl2
+  vision-model: ${DEEPSEEK_VISION_MODEL:deepseek-chat}
 
 # ──── Ollama (local AI) ───────────────────────────────────────────────────────
 ollama:
