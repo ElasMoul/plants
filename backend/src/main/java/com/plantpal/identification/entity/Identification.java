@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "identifications")
@@ -52,4 +54,8 @@ public class Identification extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
   private IdentificationStatus status;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "care_plan", columnDefinition = "jsonb")
+  private String carePlan;
 }

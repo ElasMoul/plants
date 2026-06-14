@@ -14,5 +14,6 @@ import org.mapstruct.ReportingPolicy;
 public interface IdentificationMapper {
 
   @Mapping(target = "topResults", ignore = true)
+  @Mapping(target = "carePlan", ignore = true)
   IdentificationResponse toResponse(Identification identification);
 }

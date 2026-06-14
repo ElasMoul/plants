@@ -1,0 +1,26 @@
+<div
+  class="care-card"
+  [class]="'urgency-' + card.urgency.toLowerCase()"
+  (click)="toggle()"
+  [attr.aria-expanded]="expanded"
+>
+  <div class="card-header">
+    <div class="card-icon-wrap" [style.background]="accentBg" [style.color]="accentColor">
+      <mat-icon>{{ card.icon }}</mat-icon>
+    </div>
+    <div class="card-body">
+      <p class="card-title">{{ card.title }}</p>
+      <p class="card-summary">{{ card.summary }}</p>
+    </div>
+    <mat-icon class="expand-icon" [class.rotated]="expanded">expand_more</mat-icon>
+  </div>
+
+  <div class="card-detail" *ngIf="expanded">
+    <mat-divider></mat-divider>
+    <p class="detail-text">{{ card.detail }}</p>
+    <div class="seasonal-tip" *ngIf="card.seasonalVariation">
+      <mat-icon>calendar_month</mat-icon>
+      <span>{{ card.seasonalVariation }}</span>
+    </div>
+  </div>
+</div>

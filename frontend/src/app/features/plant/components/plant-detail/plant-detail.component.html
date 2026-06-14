@@ -91,16 +91,31 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 3: Identifications -->
-      <mat-tab label="Identifications">
-        <div class="tab-content placeholder-tab">
-          <mat-icon class="placeholder-icon">biotech</mat-icon>
-          <h3>AI identifications coming in Phase 2</h3>
-          <p>Upload a photo to identify your plant's species and check its health.</p>
-          <button mat-raised-button color="primary" routerLink="/identify" [disabled]="true">
-            <mat-icon>camera_alt</mat-icon>
-            Identify this plant
-          </button>
+      <!-- Tab 3: Care Plan -->
+      <mat-tab label="Care Plan">
+        <div class="tab-content">
+
+          <!-- Loading identifications -->
+          <div *ngIf="!carePlanLoaded" class="care-plan-loading">
+            <mat-spinner diameter="32"></mat-spinner>
+          </div>
+
+          <!-- No identification yet — CTA -->
+          <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
+            <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
+            <h3>No care plan yet</h3>
+            <p>Take a photo to get a personalised care plan for this plant.</p>
+            <button mat-raised-button color="primary" routerLink="/identify">
+              <mat-icon>camera_alt</mat-icon>
+              Identify this plant
+            </button>
+          </div>
+
+          <!-- Care plan from latest identification -->
+          <ng-container *ngIf="carePlanLoaded && hasIdentification">
+            <app-care-plan [carePlan]="latestCarePlan"></app-care-plan>
+          </ng-container>
+
         </div>
       </mat-tab>
 

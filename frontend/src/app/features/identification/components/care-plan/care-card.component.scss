@@ -1,0 +1,114 @@
+.care-card {
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+
+  &.urgency-high {
+    border-left: 4px solid #f44336;
+  }
+
+  &.urgency-medium {
+    border-left: 4px solid #ff9800;
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.card-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #212121;
+}
+
+.card-summary {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: #757575;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expand-icon {
+  color: #9e9e9e;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+.card-detail {
+  padding: 0 16px 16px;
+
+  mat-divider {
+    margin-bottom: 12px;
+  }
+}
+
+.detail-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #424242;
+  line-height: 1.65;
+}
+
+.seasonal-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f3e5f5;
+  font-size: 0.8rem;
+  color: #6a1b9a;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  span {
+    line-height: 1.4;
+  }
+}

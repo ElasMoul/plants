@@ -26,4 +26,5 @@ public class IdentificationResponse {
   private List<PlantNetResult> topResults;
   private String photoUrl;
   private Instant createdAt;
+  private CarePlanDto carePlan;
 }

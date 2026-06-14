@@ -29,4 +29,7 @@
     <include file="db/changelog/migrations/006_alter_identifications.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/008_add_care_plan.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
