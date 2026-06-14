@@ -88,10 +88,24 @@ without creating a lazy-module-imports-lazy-module cycle.
 ### Known convention violations in existing code
 - plant-list.component.ts: .subscribe() calls without takeUntil/ngOnDestroy. HTTP observables self-complete so no real leak, but violates the stated convention. Flag if touching that file.
 
-### T2.8 PreviewCard hook (next session)
-CarePlanComponent already accepts `[maxCards]` input. Wire it with `[maxCards]="3"` in the preview card to show first 3 cards without any component changes.
+### T2.8 — Completed (2026-06-14)
+**Files changed:**
+- `identification/models/identification.model.ts` — added HealthStatus, SavePreviewEditEvent, healthStatus/healthNotes on IdentificationResponse
+- `plant/models/plant.model.ts` — added SaveIdentificationAsPlantRequest
+- `plant/services/plant.service.ts` — added saveFromIdentification() → POST /api/v1/plants/from-identification
+- `identification/components/preview-card/` — new PreviewCardComponent (photo + badges + 3-card care preview + nickname/location form + 3 action buttons)
+- `identification/identification.module.ts` — declared PreviewCardComponent
+- `identification/pages/identification-page/` — state machine simplified to idle | analyzing | preview | error; removed uploading/result states; old SaveAsNewEvent removed
+- `plant/components/plant-form/plant-form.component.ts` — added prefillFromQueryParams() for Edit-before-saving flow
+- `proxy.conf.json` — added /photos proxy to localhost:8080 (dev photo display was broken)
+
+**Architecture notes:**
+- PreviewCardComponent injects PlantService (provided by IdentificationModule.providers — no new module needed)
+- "Edit before saving" emits {nickname, location} up to the page, which navigates to /plants/new with query params; plant-form.prefillFromQueryParams() picks them up
+- `[maxCards]="3"` on <app-care-plan> inside preview-card — reuses existing CarePlanComponent without any changes
+- Backend endpoint POST /api/v1/plants/from-identification not yet merged (T2.8 backend); frontend will 404 until then
 
 ### Next task
-T2.8 — One-click validate & save flow (backend: POST /api/v1/plants/from-identification; frontend: PreviewCardComponent)
-Branch: feature/PP-018-one-click-save
-Depends on T2.6 (DeepSeek backend) merged first — current branch: feature/PP-021-deepseek-care-plan
+T2.9 — Visual annotation (bounding boxes + disease overlay via Ollama LLaVA)
+Branch: feature/PP-017-visual-annotation
+Requires migration 007_add_annotation_regions.sql on backend first

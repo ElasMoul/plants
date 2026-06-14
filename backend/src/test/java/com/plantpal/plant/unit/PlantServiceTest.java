@@ -6,16 +6,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.dto.PlantResponse;
+import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.mapper.PlantMapper;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.plant.service.impl.PlantServiceImpl;
+import com.plantpal.reminder.entity.Reminder;
+import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -37,6 +46,9 @@ class PlantServiceTest {
 
   @Mock private PlantRepository plantRepository;
   @Mock private PlantMapper plantMapper;
+  @Mock private IdentificationRepository identificationRepository;
+  @Mock private ReminderRepository reminderRepository;
+  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PlantServiceImpl plantService;
 
@@ -222,6 +234,142 @@ class PlantServiceTest {
           .isInstanceOf(ResourceNotFoundException.class);
 
       verify(plantRepository, never()).save(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("saveFromIdentification()")
+  class SaveFromIdentification {
+
+    private static final Long USER_ID = 1L;
+    private static final Long IDENTIFICATION_ID = 42L;
+
+    private Identification identificationWith(
+        String commonName, String scientificName, String carePlanJson) {
+      return Identification.builder()
+          .id(IDENTIFICATION_ID)
+          .userId(USER_ID)
+          .status(IdentificationStatus.COMPLETED)
+          .commonName(commonName)
+          .scientificName(scientificName)
+          .photoUrl("/photos/plant.jpg")
+          .carePlan(carePlanJson)
+          .build();
+    }
+
+    private void stubSave(Identification identification) {
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      Plant saved = aPlant().withId(99L).withUserId(USER_ID).build();
+      when(plantRepository.save(any(Plant.class))).thenReturn(saved);
+      when(identificationRepository.save(any(Identification.class))).thenReturn(identification);
+      when(plantMapper.toResponse(saved)).thenReturn(PlantResponse.builder().id(99L).build());
+    }
+
+    @Test
+    @DisplayName("should use request nickname when provided")
+    void shouldUseRequestNickname() {
+      Identification identification =
+          identificationWith("Swiss cheese plant", "Monstera deliciosa", null);
+      stubSave(identification);
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, "My Monstera", null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getNickname()).isEqualTo("My Monstera");
+    }
+
+    @Test
+    @DisplayName("should fall back to commonName when nickname not provided")
+    void shouldFallBackToCommonName() {
+      Identification identification =
+          identificationWith("Swiss cheese plant", "Monstera deliciosa", null);
+      stubSave(identification);
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, null, null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getNickname()).isEqualTo("Swiss cheese plant");
+    }
+
+    @Test
+    @DisplayName("should fall back to scientificName when commonName is null")
+    void shouldFallBackToScientificName() {
+      Identification identification = identificationWith(null, "Monstera deliciosa", null);
+      stubSave(identification);
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, null, null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getNickname()).isEqualTo("Monstera deliciosa");
+    }
+
+    @Test
+    @DisplayName("should fall back to 'My Plant' when both names are null")
+    void shouldFallBackToMyPlant() {
+      Identification identification = identificationWith(null, null, null);
+      stubSave(identification);
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, null, null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getNickname()).isEqualTo("My Plant");
+    }
+
+    @Test
+    @DisplayName("should link identification.plantId to the new plant")
+    void shouldUpdateIdentificationPlantId() {
+      Identification identification = identificationWith("Monstera", "Monstera deliciosa", null);
+      stubSave(identification);
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, "Test", null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      assertThat(captor.getValue().getPlantId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("should create reminders when care plan JSON is present")
+    void shouldCreateRemindersWhenCarePlanPresent() {
+      String carePlanJson =
+          """
+          {"wateringFrequencyDays":7,"fertilizingFrequencyDays":30,
+           "repottingFrequencyMonths":12,"careCards":[],"beginnerWarnings":[]}
+          """;
+      Identification identification =
+          identificationWith("Monstera", "Monstera deliciosa", carePlanJson);
+      stubSave(identification);
+      when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, "Test", null);
+
+      plantService.saveFromIdentification(request, USER_ID);
+
+      verify(reminderRepository, times(3)).save(any(Reminder.class));
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when identification not owned by user")
+    void shouldThrowWhenIdentificationNotOwned() {
+      Identification identification = identificationWith("Monstera", "Monstera deliciosa", null);
+      identification.setUserId(999L);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      var request = new SaveIdentificationAsPlantRequest(IDENTIFICATION_ID, null, null);
+
+      assertThatThrownBy(() -> plantService.saveFromIdentification(request, USER_ID))
+          .isInstanceOf(ResourceNotFoundException.class);
+
+      verify(plantRepository, never()).save(any(Plant.class));
     }
   }
 }

@@ -1,15 +1,26 @@
 package com.plantpal.plant.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.dto.CarePlanDto;
+import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.dto.CreatePlantRequest;
 import com.plantpal.plant.dto.PlantResponse;
+import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.mapper.PlantMapper;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.plant.service.PlantService;
+import com.plantpal.reminder.entity.CareType;
+import com.plantpal.reminder.entity.Reminder;
+import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
@@ -29,10 +40,21 @@ public class PlantServiceImpl implements PlantService {
 
   private final PlantRepository plantRepository;
   private final PlantMapper plantMapper;
+  private final IdentificationRepository identificationRepository;
+  private final ReminderRepository reminderRepository;
+  private final ObjectMapper objectMapper;
 
-  public PlantServiceImpl(PlantRepository plantRepository, PlantMapper plantMapper) {
+  public PlantServiceImpl(
+      PlantRepository plantRepository,
+      PlantMapper plantMapper,
+      IdentificationRepository identificationRepository,
+      ReminderRepository reminderRepository,
+      ObjectMapper objectMapper) {
     this.plantRepository = plantRepository;
     this.plantMapper = plantMapper;
+    this.identificationRepository = identificationRepository;
+    this.reminderRepository = reminderRepository;
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -91,6 +113,94 @@ public class PlantServiceImpl implements PlantService {
     Plant plant = findOwnedPlant(id, userId);
     log.info("Fetched plant: id={}, userId={}", id, userId);
     return plantMapper.toResponse(plant);
+  }
+
+  @Override
+  @Transactional
+  @CacheEvict(value = PLANTS_CACHE, allEntries = true)
+  public PlantResponse saveFromIdentification(
+      SaveIdentificationAsPlantRequest request, Long userId) {
+    Identification identification =
+        identificationRepository
+            .findById(request.getIdentificationId())
+            .filter(i -> userId.equals(i.getUserId()))
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+
+    String nickname = resolveNickname(request.getNickname(), identification);
+
+    Plant plant =
+        Plant.builder()
+            .userId(userId)
+            .nickname(nickname)
+            .species(identification.getScientificName())
+            .commonName(identification.getCommonName())
+            .photoUrl(identification.getPhotoUrl())
+            .location(request.getLocation())
+            .status(PlantStatus.ACTIVE)
+            .build();
+    plant = plantRepository.save(plant);
+    log.info(
+        "Plant saved from identification: plantId={}, identificationId={}, userId={}",
+        plant.getId(),
+        request.getIdentificationId(),
+        userId);
+
+    identification.setPlantId(plant.getId());
+    identificationRepository.save(identification);
+
+    createRemindersIfPossible(identification.getCarePlan(), plant.getId(), userId);
+
+    return plantMapper.toResponse(plant);
+  }
+
+  private String resolveNickname(String requested, Identification identification) {
+    if (requested != null && !requested.isBlank()) return requested;
+    if (identification.getCommonName() != null) return identification.getCommonName();
+    if (identification.getScientificName() != null) return identification.getScientificName();
+    return "My Plant";
+  }
+
+  private void createRemindersIfPossible(String carePlanJson, Long plantId, Long userId) {
+    if (carePlanJson == null || carePlanJson.isBlank()) return;
+    CarePlanDto plan;
+    try {
+      plan = objectMapper.readValue(carePlanJson, CarePlanDto.class);
+    } catch (JsonProcessingException e) {
+      log.warn("Could not parse care plan for reminders: plantId={}", plantId);
+      return;
+    }
+    Instant now = Instant.now();
+    reminderRepository.save(
+        Reminder.builder()
+            .plantId(plantId)
+            .userId(userId)
+            .careType(CareType.WATERING)
+            .frequencyDays(plan.getWateringFrequencyDays())
+            .nextDueAt(now.plus(plan.getWateringFrequencyDays(), ChronoUnit.DAYS))
+            .enabled(true)
+            .build());
+    if (plan.getFertilizingFrequencyDays() > 0) {
+      reminderRepository.save(
+          Reminder.builder()
+              .plantId(plantId)
+              .userId(userId)
+              .careType(CareType.FERTILIZING)
+              .frequencyDays(plan.getFertilizingFrequencyDays())
+              .nextDueAt(now.plus(plan.getFertilizingFrequencyDays(), ChronoUnit.DAYS))
+              .enabled(true)
+              .build());
+    }
+    int repottingDays = plan.getRepottingFrequencyMonths() * 30;
+    reminderRepository.save(
+        Reminder.builder()
+            .plantId(plantId)
+            .userId(userId)
+            .careType(CareType.REPOTTING)
+            .frequencyDays(repottingDays)
+            .nextDueAt(now.plus(repottingDays, ChronoUnit.DAYS))
+            .enabled(true)
+            .build());
+    log.info("Auto-created reminders from care plan: plantId={}, userId={}", plantId, userId);
   }
 
   private Plant findOwnedPlant(Long id, Long userId) {

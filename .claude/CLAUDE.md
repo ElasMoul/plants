@@ -769,7 +769,7 @@ open backend/target/site/jacoco/index.html
 | 2 — Identification Angular frontend | ✅ Complete | Photo upload, result display (PR #5 merged) |
 | 2 — DeepSeek care plan backend (T2.6) | ✅ Complete | DeepSeekClient, CareCardDto/CarePlanDto, parallel async, reminder bootstrap, migration 008 |
 | 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
-| 2 — One-click save flow (T2.8) | 🔲 Not started | Auto-fill preview → validate → create plant + reminders |
+| 2 — One-click save flow (T2.8) | ✅ Complete (backend) | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders, 7 unit tests; frontend pending |
 | 2 — Visual annotation (T2.9) | 🔲 Not started | Bounding boxes + disease overlay via LLaVA; migration 007 needed first |
 | 2 — Garden dashboard (T2.10) | 🔲 Not started | Overview of all plants + health + overdue reminders |
 | 3 — Reminders + Push | 🔲 Not started | |

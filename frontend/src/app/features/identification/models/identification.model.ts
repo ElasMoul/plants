@@ -1,5 +1,11 @@
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 export type IdentificationStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
+export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
+
+export interface SavePreviewEditEvent {
+  nickname: string;
+  location: string;
+}
 
 export type CareCardType =
   | 'WATERING'
@@ -55,6 +61,8 @@ export interface IdentificationResponse {
   scientificName: string;
   commonName: string;
   confidence: number;
+  healthStatus: HealthStatus | null;
+  healthNotes: string | null;
   status: IdentificationStatus;
   topResults: PlantNetResult[];
   photoUrl: string;

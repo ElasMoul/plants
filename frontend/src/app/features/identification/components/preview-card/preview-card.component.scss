@@ -1,0 +1,144 @@
+.preview-container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+// ── Photo ──────────────────────────────────────────────────────
+.photo-banner {
+  width: 100%;
+  height: 260px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+// ── Species header ─────────────────────────────────────────────
+.species-header {
+  margin-bottom: 4px;
+}
+
+.scientific-name {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-style: italic;
+  color: #212121;
+}
+
+.common-name {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #616161;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.confidence-badge,
+.health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.confidence-badge {
+  &.confidence-high   { background: #e8f5e9; color: #2e7d32; }
+  &.confidence-medium { background: #fff8e1; color: #f57f17; }
+  &.confidence-low    { background: #ffebee; color: #c62828; }
+}
+
+.health-badge {
+  &.health-healthy          { background: #e8f5e9; color: #2e7d32; }
+  &.health-issues_detected  { background: #fff3e0; color: #e65100; }
+  &.health-unknown          { background: #f5f5f5; color: #616161; }
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.health-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff3e0;
+  margin-bottom: 4px;
+
+  mat-icon {
+    color: #e65100;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #5d4037;
+    line-height: 1.5;
+  }
+}
+
+// ── Dividers ───────────────────────────────────────────────────
+.section-divider {
+  margin: 20px 0;
+}
+
+// ── Care plan preview ──────────────────────────────────────────
+.care-preview {
+  margin-bottom: 4px;
+}
+
+// ── Section label ──────────────────────────────────────────────
+.section-label {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+// ── Save form ──────────────────────────────────────────────────
+.save-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// ── Actions ────────────────────────────────────────────────────
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+
+  .btn-save {
+    flex: 1;
+    min-width: 160px;
+  }
+}

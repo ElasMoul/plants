@@ -1,5 +1,11 @@
 export type PlantStatus = 'ACTIVE' | 'ARCHIVED';
 
+export interface SaveIdentificationAsPlantRequest {
+  identificationId: number;
+  nickname: string;
+  location?: string;
+}
+
 export interface CreatePlantRequest {
   nickname: string;
   species?: string;

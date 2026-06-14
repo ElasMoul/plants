@@ -6,6 +6,7 @@ import { IdentificationRoutingModule } from './identification-routing.module';
 import { CarePlanModule } from './components/care-plan/care-plan.module';
 import { PhotoUploadComponent } from './components/photo-upload/photo-upload.component';
 import { IdentificationResultComponent } from './components/identification-result/identification-result.component';
+import { PreviewCardComponent } from './components/preview-card/preview-card.component';
 import { IdentificationPageComponent } from './pages/identification-page/identification-page.component';
 import { IdentificationService } from './services/identification.service';
 import { PlantService } from '../plant/services/plant.service';
@@ -14,6 +15,7 @@ import { PlantService } from '../plant/services/plant.service';
   declarations: [
     PhotoUploadComponent,
     IdentificationResultComponent,
+    PreviewCardComponent,
     IdentificationPageComponent,
   ],
   imports: [
