@@ -235,8 +235,8 @@ public class DeepSeekClient {
   }
 
   /**
-   * R1 and other reasoning models wrap output in <think>...</think> before the JSON answer.
-   * Strip that block so downstream JSON parsers receive clean content.
+   * R1 and other reasoning models wrap output in <think>...</think> before the JSON answer. Strip
+   * that block so downstream JSON parsers receive clean content.
    */
   private String stripThinkTags(String raw) {
     if (raw == null) return null;
