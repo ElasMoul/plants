@@ -511,23 +511,22 @@ jacoco-plugin  <!-- Code coverage — fail build if < 80% -->
 ## AI Integration
 
 ### Provider Map
-| Provider | Purpose | When |
-|---|---|---|
-| PlantNet API | Species identification from photo | Always (production API) |
-| Ollama phi3 (local) | Basic text generation, dev testing | Dev only |
-| Ollama LLaVA (local) | Visual annotation — bounding boxes, disease detection | Dev only (T2.6) |
-| DeepSeek API | Care plan generation — species-specific, dynamic | Dev + Prod (T2.11) |
+| Provider | Model | Purpose | When |
+|---|---|---|---|
+| GitHub Models (Azure) | gpt-4o | Photo identification + health + care plan (single vision call) | Dev + Prod |
+| GitHub Models (Azure) | DeepSeek-R1 | Care plan text regeneration (standalone) | Dev + Prod |
+| PlantNetClient | — | Dead code — no longer called in main flow | Deprecated |
+| OllamaClient | phi3 | Dev testing only | Dev only |
 
-> **Why DeepSeek for care plans:** Plant care is deeply species-specific. A cactus needs
-> water once a month; a fern needs daily misting. DeepSeek-chat (V3) generates richer,
-> more reasoned care advice than phi3. It's OpenAI-compatible, cheap, and fast.
-> DeepSeek endpoint: `https://api.deepseek.com/chat/completions`
-> Model: `deepseek-chat` (V3). API key via `${DEEPSEEK_API_KEY}`.
+> **Endpoint:** `https://models.inference.ai.azure.com/chat/completions`
+> **Auth:** GitHub PAT via `${DEEPSEEK_API_KEY}` (Bearer token)
+> **Config:** `deepseek.vision-model=gpt-4o` (identification), `deepseek.model=DeepSeek-R1` (care plans)
+> **HTTP/2 required** — Azure endpoint; 5-minute read timeout set on JdkClientHttpRequestFactory.
+> **DeepSeek-R1 quirk:** wraps output in `<think>...</think>` before JSON — `stripThinkTags()` in DeepSeekClient handles this.
 
-### Ollama — local dev (vision only after T2.11)
-> ⚠️ Ollama phi3 has no remaining role after T2.11 ships. It will be removed from the stack.
-> Ollama LLaVA stays for visual annotation (bounding boxes) — free vision model in dev.
-> For prod, swap LLaVA calls to DeepSeek VL via the same DeepSeekClient.
+### Ollama — dev testing only
+> ⚠️ OllamaClient (phi3) has no role in the current identification flow.
+> Kept for ad-hoc dev testing via AiTestController (which needs a @Profile("dev") guard).
 
 ### OllamaClient pattern
 
@@ -606,6 +605,12 @@ spring:
     show-sql: false                    # Use query logging instead
   liquibase:
     contexts: dev
+
+deepseek:
+  base-url: ${DEEPSEEK_BASE_URL:https://models.inference.ai.azure.com}
+  api-key: ${DEEPSEEK_API_KEY}            # GitHub PAT with models:read scope
+  model: ${DEEPSEEK_MODEL:DeepSeek-R1}   # text model for care plan generation
+  vision-model: ${DEEPSEEK_VISION_MODEL:gpt-4o}  # vision model for identification
 
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
@@ -765,12 +770,13 @@ open backend/target/site/jacoco/index.html
 | 1 — Auth + User module | ✅ Complete | JWT, Spring Security 6, UserService, AuthController |
 | 1 — Plant CRUD | ✅ Complete | Entity, DTOs, MapStruct mapper, service, controller, Redis cache |
 | 1 — Unit + Integration Tests | ✅ Complete | UserService & PlantService unit tests; Auth & Plant controller ITs |
-| 2 — PlantNet identification backend | ✅ Complete | PlantNetClient, OllamaClient, IdentificationService, controller |
+| 2 — PlantNet identification backend | ✅ Complete (superseded) | PlantNetClient exists but no longer called; replaced by DeepSeek vision |
 | 2 — Identification Angular frontend | ✅ Complete | Photo upload, result display (PR #5 merged) |
 | 2 — DeepSeek care plan backend (T2.6) | ✅ Complete | DeepSeekClient, CareCardDto/CarePlanDto, parallel async, reminder bootstrap, migration 008 |
 | 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
 | 2 — One-click save flow (T2.8) | ✅ Complete (backend) | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders, 7 unit tests; frontend pending |
-| 2 — Visual annotation (T2.9) | 🔲 Not started | Bounding boxes + disease overlay via LLaVA; migration 007 needed first |
+| 2 — DeepSeek vision identification | ✅ Complete | PlantNet replaced by gpt-4o (GitHub Models); single vision call returns species+health+carePlan; DeepSeekPlantResult DTO; migration 009 adds health_status/health_notes; 10 unit tests passing; branch: feature/PP-deepseek-identification |
+| 2 — Visual annotation (T2.9) | 🔲 Not started | Bounding boxes + disease overlay; migration 007 must be inserted BEFORE 008 in master XML |
 | 2 — Garden dashboard (T2.10) | 🔲 Not started | Overview of all plants + health + overdue reminders |
 | 3 — Reminders + Push | 🔲 Not started | |
 | 4 — AI Chat | 🔲 Not started | |

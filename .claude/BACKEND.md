@@ -13,11 +13,30 @@ You are the backend developer on PlantPal.
 ## Stack
 Java 21, Spring Boot 3.2, Spring Security 6, Spring Data JPA,
 PostgreSQL 15, Redis 7, Liquibase, JJWT 0.12.5, MapStruct 1.5.5,
-Lombok, Bucket4j 8.7.0, PlantNet API client, OllamaClient (RestClient),
-DeepSeekClient (RestClient, HTTP/1.1, OpenAI-compatible),
+Lombok, Bucket4j 8.7.0, OllamaClient (RestClient),
+DeepSeekClient (RestClient, HTTP/2, OpenAI-compatible, GitHub Models endpoint),
 Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
+
+## AI Provider Map (current — feature/PP-deepseek-identification)
+| Client | Model | Purpose | Endpoint |
+|---|---|---|---|
+| DeepSeekClient (visionModel) | gpt-4o | Plant photo identification + health + care plan (single call) | GitHub Models (models.inference.ai.azure.com) |
+| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration (standalone) | GitHub Models (models.inference.ai.azure.com) |
+| PlantNetClient | — | No longer called in main flow; class still exists | plantnet.org |
+| OllamaClient | phi3 | Dev testing only | localhost:11434 |
+
+### DeepSeekClient — key facts
+- Single client handles both vision (gpt-4o) and text (DeepSeek-R1) via two config properties:
+  - `${deepseek.model}` → text model for generateCarePlan()
+  - `${deepseek.vision-model}` → vision model for identifyPlant()
+- Auth: `Authorization: Bearer <DEEPSEEK_API_KEY>` (GitHub PAT)
+- HTTP/2 via JDK HttpClient (NO forced HTTP_1_1 — Azure endpoint requires HTTP/2)
+- Read timeout: 5 minutes (gpt-4o vision can be slow)
+- `stripThinkTags(String)`: strips `<think>...</think>` blocks emitted by DeepSeek-R1 before JSON parsing
+- Debug log of full raw response before parsing (log level DEBUG)
+- response_format: json_object on both calls
 
 ## Non-Negotiable Conventions
 - Constructor injection only. Never @Autowired on fields.
@@ -82,20 +101,29 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     links identification.plantId, creates reminders from carePlan JSON
 - controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
-### identification/ — fully implemented (T2.6 complete)
-- entity/Identification.java       — has care_plan JSONB column (String in Java)
+### identification/ — fully implemented (feature/PP-deepseek-identification)
+- entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
-- dto/IdentificationResponse.java  — has CarePlanDto carePlan field
-- dto/CareCardDto.java             — ✅ implemented T2.6
-- dto/CarePlanDto.java             — ✅ implemented T2.6
+- dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes fields
+- dto/CareCardDto.java             — ✅ T2.6
+- dto/CarePlanDto.java             — ✅ T2.6
+- dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
+                                     species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
-- dto/plantnet/PlantNetResponse.java, PlantNetResult.java, PlantNetSpecies.java, PlantNetTaxon.java
+- dto/plantnet/ (PlantNetResponse, PlantNetResult, PlantNetSpecies, PlantNetTaxon) — kept but unused
 - mapper/IdentificationMapper.java — ignores topResults AND carePlan (set manually in service)
 - repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
 - service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix)
-- client/OllamaClient.java         — local Ollama phi3 (text)
-- client/DeepSeekClient.java       — ✅ implemented T2.6; HTTP/1.1 forced; OpenAI-compatible
+  - PlantNetClient NO LONGER injected — identification is now fully DeepSeek-vision-based
+  - 8-step identify() flow: validate → savePhoto → persist PENDING → rateLimit →
+    deepSeekClient.identifyPlant(bytes, mediaType) → parseIdentificationResult() →
+    persist COMPLETED (species/commonName/confidence/health/carePlan) → reminders
+  - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
+  - parseIdentificationResult(): Jackson parse with fallback on malformed JSON
+  - fallbackCarePlan(): single WATERING card, 7-day frequency
+- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NO LONGER CALLED in main flow.
+- client/OllamaClient.java         — local Ollama phi3 (text). dev testing only.
+- client/DeepSeekClient.java       — ✅ GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision) + DeepSeek-R1 (text)
 - controller/IdentificationController.java
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
@@ -115,12 +143,11 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 005_create_push_subscriptions.sql
 006_alter_identifications.sql      ← raw_response TEXT not JSONB
 008_add_care_plan.sql              ← ✅ T2.6 — adds care_plan JSONB to identifications
-007_add_annotation_regions.sql     ← [PLANNED T2.9] annotation_regions JSONB
+009_add_health_to_identifications.sql ← ✅ feature/PP-deepseek-identification — adds health_status VARCHAR(30), health_notes TEXT
 
-NOTE: Migration 007 does NOT exist yet (T2.9 not started). The numbering skips intentionally
-because the task plan lists 007 for T2.9 — when T2.9 is implemented, add 007 BEFORE 008 in
-db.changelog-master.xml (or renumber; Liquibase uses the file list order, not the filename).
-Current master XML order: 001→006, then 008.
+NOTE: Migration 007 does NOT exist yet (T2.9 not started). The numbering skips intentionally.
+Current master XML order: 001→006, then 008, then 009.
+When T2.9 is implemented: create 007_add_annotation_regions.sql and insert it BEFORE 008 in db.changelog-master.xml.
 
 ## Test Inventory
 unit/UserServiceTest.java
@@ -128,7 +155,12 @@ unit/PlantServiceTest.java                ← updated T2.8: +7 SaveFromIdentific
                                              (nickname fallbacks, ownership check, reminder creation)
                                              Now has @Mock IdentificationRepository, ReminderRepository,
                                              @Spy ObjectMapper = new ObjectMapper()
-unit/IdentificationServiceImplTest.java   ← updated T2.6: new DeepSeek + reminder tests
+unit/IdentificationServiceImplTest.java   ← FULLY REWRITTEN (feature/PP-deepseek-identification): 10 tests for DeepSeek vision flow
+                                            No PlantNetClient mock. Mocks deepSeekClient.identifyPlant(any(), any()).
+                                            Tests: happy path (confidence=0.9, healthStatus, topResults empty),
+                                            FAILED status when DeepSeek throws, not-owned plant skip,
+                                            valid/malformed/null/empty carePlan parsing,
+                                            reminder creation (with/without fertilizing, correct frequencyDays).
 unit/PlantNetClientTest.java
 unit/OllamaClientTest.java
 integration/AuthControllerIT.java
@@ -164,8 +196,11 @@ MISSING: IdentificationControllerIT.java
 - Branch protection on main + dev configured but integration tests not running in CI
 - Spotless (Google Java Format) flags CRLF line endings on new files written by Claude Code
   on Windows. Fix with: cd backend && mvn spotless:apply
-- Migration 007_add_annotation_regions.sql is PLANNED (T2.9) but the master XML currently
-  includes 008 after 006. When T2.9 is implemented, insert 007 before 008 in the XML.
+- Migration 007_add_annotation_regions.sql is PLANNED (T2.9); insert BEFORE 008 in master XML when created.
+- PlantNetClient and plantnet/ DTOs are dead code — no longer called. Remove at next cleanup.
+- OllamaClient (phi3) is dev-only and has no role in the current identification flow.
+- DEEPSEEK_API_KEY in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
+  GitHub Models rate limits apply (free tier); gpt-4o vision calls are quota-heavy.
 
 ## Key Files
 backend/src/main/java/com/plantpal/shared/dto/ApiResponse.java
