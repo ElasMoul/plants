@@ -46,7 +46,7 @@ public class PlantNetClient {
     // Apache HttpClient 5 handles SSL connection teardown correctly where Java 21's built-in
     // JDK HttpClient fails against PlantNet's HTTPS endpoint (EOF / connection reset).
     ConnectionConfig connectionConfig =
-        ConnectionConfig.custom().setValidateAfterInactivity(TimeValue.ofSeconds(100)).build();
+        ConnectionConfig.custom().setValidateAfterInactivity(TimeValue.ofSeconds(10)).build();
 
     PoolingHttpClientConnectionManager connectionManager =
         PoolingHttpClientConnectionManagerBuilder.create()
@@ -55,8 +55,8 @@ public class PlantNetClient {
 
     RequestConfig requestConfig =
         RequestConfig.custom()
-            .setConnectionRequestTimeout(Timeout.ofSeconds(300))
-            .setResponseTimeout(Timeout.ofSeconds(300))
+            .setConnectionRequestTimeout(Timeout.ofSeconds(120))
+            .setResponseTimeout(Timeout.ofSeconds(120))
             .build();
 
     CloseableHttpClient httpClient =
@@ -64,7 +64,7 @@ public class PlantNetClient {
             .setConnectionManager(connectionManager)
             .setDefaultRequestConfig(requestConfig)
             .evictExpiredConnections()
-            .evictIdleConnections(TimeValue.ofSeconds(300))
+            .evictIdleConnections(TimeValue.ofSeconds(30))
             .build();
 
     HttpComponentsClientHttpRequestFactory factory =
@@ -89,9 +89,46 @@ public class PlantNetClient {
               .body(body)
               .retrieve()
               .onStatus(
+                  status -> status.value() == 400,
+                  (req, res) -> {
+                    throw new PlantPalException("Invalid request sent to PlantNet", 400);
+                  })
+              .onStatus(
+                  status -> status.value() == 401,
+                  (req, res) -> {
+                    throw new PlantPalException("PlantNet API key is invalid or missing", 401);
+                  })
+              .onStatus(
                   status -> status.value() == 404,
                   (req, res) -> {
-                    throw new PlantPalException("No species match found", 404);
+                    throw new PlantPalException("No species match found for the provided image", 404);
+                  })
+              .onStatus(
+                  status -> status.value() == 413,
+                  (req, res) -> {
+                    throw new PlantPalException("Image file is too large for PlantNet", 413);
+                  })
+              .onStatus(
+                  status -> status.value() == 414,
+                  (req, res) -> {
+                    throw new PlantPalException("PlantNet request URI is too long", 400);
+                  })
+              .onStatus(
+                  status -> status.value() == 415,
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "Unsupported image format — use JPEG or PNG", 415);
+                  })
+              .onStatus(
+                  status -> status.value() == 429,
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "PlantNet rate limit reached — please try again later", 429);
+                  })
+              .onStatus(
+                  status -> status.value() == 500,
+                  (req, res) -> {
+                    throw new PlantPalException("PlantNet service encountered an internal error", 502);
                   })
               .body(PlantNetResponse.class);
 
