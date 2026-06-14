@@ -1,0 +1,28 @@
+<div class="annotator-wrapper">
+
+  <!-- Toggle — only shown when annotation regions exist -->
+  <div class="annotator-controls" *ngIf="hasRegions">
+    <button mat-stroked-button type="button" (click)="toggleAnnotations()" class="toggle-btn">
+      <mat-icon>{{ showAnnotations ? 'visibility_off' : 'visibility' }}</mat-icon>
+      {{ showAnnotations ? 'Hide annotations' : 'Show annotations' }}
+    </button>
+  </div>
+
+  <!-- Photo frame with optional canvas overlay -->
+  <div class="photo-frame">
+    <img
+      #photoImg
+      [src]="imageUrl"
+      alt="Plant photo"
+      class="plant-photo"
+      (load)="onImageLoad()"
+    />
+    <canvas
+      #annotationCanvas
+      class="annotation-canvas"
+      *ngIf="hasRegions"
+      [style.display]="showAnnotations ? 'block' : 'none'"
+    ></canvas>
+  </div>
+
+</div>
