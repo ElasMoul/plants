@@ -103,24 +103,22 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     links identification.plantId, creates reminders from carePlan JSON
 - controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
-### identification/ — fully implemented (T2.9 + T2.9a complete)
+### identification/ — fully implemented (T2.9 + T2.9d complete; T2.9a pending)
 - entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT,
                                      annotation_regions JSONB (String, @JdbcTypeCode(SqlTypes.JSON))
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
 - dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes,
                                      List<AnnotationRegionDto> annotationRegions fields
+- dto/CureAdviceRequest.java       — ✅ T2.9d: @NotBlank regionLabel, nullable species
+- dto/CureAdviceResponse.java      — ✅ T2.9d: String advice
 - dto/CareCardDto.java             — ✅ T2.6
 - dto/CarePlanDto.java             — ✅ T2.6
-- dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
-                                     confidence (HIGH/MEDIUM/LOW),
-                                     List<PolygonPointDto> polygon (nullable — primary shape from T2.9a),
-                                     BoundingBoxDto boundingBox (nullable — legacy fallback for old DB records)
-- dto/PolygonPointDto.java         — ✅ T2.9a: xPct, yPct (int, 0-100)
-                                     NOTE: @JsonProperty("xPct")/@JsonProperty("yPct") required —
-                                     same Lombok/Jackson decapitalize bug as BoundingBoxDto.
+- dto/AnnotationRegionDto.java     — ✅ T2.9: label, type (PLANT/DISEASE/HEALTHY_AREA),
+                                     confidence (HIGH/MEDIUM/LOW), BoundingBoxDto boundingBox
+                                     ⚠️ T2.9a pending: add List<PolygonPointDto> polygon (nullable)
 - dto/BoundingBoxDto.java          — ✅ T2.9: xPct, yPct, widthPct, heightPct (all int, 0-100%)
-                                     NOTE: @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct()
-                                     → Introspector.decapitalize("XPct") = "XPct" (two consecutive uppercase).
+                                     ⚠️ PRODUCTION BUG: @JsonProperty("xPct")/@JsonProperty("yPct") MISSING
+                                     Lombok getXPct() → Jackson serializes as "XPct" not "xPct"; fix in T2.9a
 - dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
                                      species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
@@ -139,6 +137,10 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     constructCollectionType) — NOT a private record (Jackson cannot access private nested records).
   - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
   - fallbackCarePlan(): single WATERING card, 7-day frequency
+  - getCureAdvice(id, request, userId): @Async, ownership check, cureAdviceBuckets (10/hour),
+    calls deepSeekClient.generateCureAdvice(); throws ResourceNotFoundException if not owned,
+    PlantPalException(429) if rate-limited, PlantPalException(503) if DeepSeek fails
+  - CURE_ADVICE_RATE_LIMIT = 10; cureAdviceBuckets ConcurrentHashMap<Long, Bucket>
 - client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
 - client/DeepSeekAnnotationClient.java— ✅ T2.9a: @Primary implementation; delegates to DeepSeekClient.analyzeRegions()
                                          2-attempt retry on EOF (Azure HTTP/2 GOAWAY when parallel identify+annotate
@@ -150,10 +152,14 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 - client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NOT called in main flow; used by PlantNetAnnotationClient.
 - client/OllamaClient.java         — local Ollama phi3 (text). dev testing only.
 - client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
-                                     Three methods: generateCarePlan(), identifyPlant(), analyzeRegions()
-                                     ANNOTATION_SYSTEM_PROMPT: polygon schema (8–16 clockwise points,
-                                     min 4, integers 0-100, first/last point need not be identical)
-- controller/IdentificationController.java
+                                     Four methods: generateCarePlan(), identifyPlant(), analyzeRegions(),
+                                     generateCureAdvice(species, regionLabel)
+                                     ANNOTATION_SYSTEM_PROMPT: bounding box schema (T2.9a will update to polygon)
+                                     CURE_ADVICE_SYSTEM_PROMPT: plain text response (no json_object format);
+                                     uses text model (DeepSeek-R1); stripThinkTags() applied
+- controller/IdentificationController.java — POST /{id}/cure-advice → 202 Accepted (T2.9d)
+                                             Unwraps ExecutionException for PlantPalException +
+                                             ResourceNotFoundException from async getCureAdvice()
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
 ### reminder/ — MINIMAL (T2.6 bootstrap; full implementation T3.1)

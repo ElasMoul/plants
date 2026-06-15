@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 6)
+> Last updated: 2026-06-15 (session 7)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -28,20 +28,20 @@ Phase 2 — AI Plant Identification (in progress)
     migration 007, parallel async in IdentificationServiceImpl, 49 unit tests
   - Frontend: PhotoAnnotatorComponent (canvas, show/hide toggle), declared in CarePlanModule,
     wired into preview-card + "Last Scan" tab in plant-detail
-- T2.9a Polygon annotation — backend (feature/PP-023-enhanced-annotation-backend) ✅
-  - PolygonPointDto (xPct/yPct with @JsonProperty fix)
-  - AnnotationRegionDto: added List<PolygonPointDto> polygon (nullable); boundingBox kept nullable for legacy records
-  - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") added (was missing)
-  - DeepSeekClient.ANNOTATION_SYSTEM_PROMPT updated to polygon schema (8–16 clockwise points, min 4)
-  - DeepSeekAnnotationClient: 2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections)
-  - parseAnnotationRegions(): clears polygon to null if < 3 points (degenerate)
-  - 14 unit tests passing (4 AnnotationRegions tests — malformed JSON, polygon, legacy bbox, degenerate)
+- T2.9d Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend) ✅
+  - POST /api/v1/identifications/{id}/cure-advice → 202 Accepted, { advice: string }
+  - CureAdviceRequest (@NotBlank regionLabel, nullable species), CureAdviceResponse (String advice)
+  - DeepSeekClient.generateCureAdvice(): text model (DeepSeek-R1), plain text (no json_object), stripThinkTags()
+  - Separate cureAdviceBuckets (10/hour) — independent from deepSeekBuckets (20/hour)
+  - Ownership check before AI call; ResourceNotFoundException if not owned
+  - 18 unit tests passing (4 new CureAdvice tests: happy path, rate-limited, not-owned, DeepSeek error)
 
 ## Active Branches
-- feature/PP-023-enhanced-annotation-backend — T2.9a complete; T2.9d (cure-advice) next on same branch
+- feature/PP-023-enhanced-annotation-backend — T2.9d complete; T2.9a still pending on same branch
 
 ## Next Tasks (in order)
-- T2.9d — Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend) ← NEXT BACKEND
+- T2.9a — Polygon annotation backend (feature/PP-023-enhanced-annotation-backend) ← NEXT BACKEND
+  ⚠️ Also fix BoundingBoxDto @JsonProperty bug in same session (production bug — xPct/yPct always 0)
 - T2.9b — Polygon canvas frontend (new branch, depends on T2.9a merged)
 - T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← needs T2.9b + T2.9d
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
@@ -70,7 +70,7 @@ Phase 2 — AI Plant Identification (in progress)
 - Canvas uses [hidden] not *ngIf — *ngIf removes element, breaking @ViewChild resolution
 - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct() causes
   Jackson to produce key "XPct" (two consecutive uppercase chars); @JsonProperty fixes it
-- PolygonPointDto (T2.9a ✅): same @JsonProperty("xPct")/@JsonProperty("yPct") fix applied
+- PolygonPointDto (T2.9a, pending): same @JsonProperty("xPct")/@JsonProperty("yPct") fix needed on xPct/yPct
 - Cure-advice rate limit (T2.9d): separate Bucket — 10 calls/hour (not shared with the
   20/hour identification bucket)
 - Reminder entity does NOT extend AuditableEntity — reminders table has no audit columns
@@ -98,6 +98,8 @@ which stores any JSON shape. Switching from boundingBox to polygon is a pure cod
 - AiTestController not @Profile("dev") guarded — will deploy to prod as-is
 - IdentificationController uses .get() on CompletableFuture — blocks HTTP thread (known, deferred)
 - IdentificationControllerIT.java missing
+- ⚠️ BoundingBoxDto @JsonProperty("xPct")/@JsonProperty("yPct") MISSING — production bug; Lombok
+  getXPct() → Jackson serializes as "XPct" not "xPct"; fix in T2.9a session
 - PlantNetClient + plantnet/ DTOs are dead code — remove at next cleanup sprint
 - OllamaClient (phi3) is dead code in main flow — dev-only, remove before prod
 - T2.8 frontend (one-click save UI) still pending

@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.CarePlanDto;
+import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
@@ -25,6 +26,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
 import java.util.List;
 import java.util.Optional;
@@ -564,6 +566,78 @@ class IdentificationServiceImplTest {
           .filter(r -> r.getCareType() == CareType.REPOTTING)
           .findFirst()
           .ifPresent(r -> assertThat(r.getFrequencyDays()).isEqualTo(6 * 30));
+    }
+  }
+
+  @Nested
+  @DisplayName("getCureAdvice()")
+  class CureAdvice {
+
+    private Identification ownedIdentification() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .scientificName("Monstera deliciosa")
+          .build();
+    }
+
+    private CureAdviceRequest req() {
+      return new CureAdviceRequest("Yellowing leaf — possible overwatering", "Monstera deliciosa");
+    }
+
+    @Test
+    @DisplayName("should return advice text from DeepSeek on happy path")
+    void shouldReturnAdviceOnHappyPath() throws Exception {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any()))
+          .thenReturn("1. Remove affected leaves. 2. Reduce watering.");
+
+      var response = identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      assertThat(response.getAdvice()).isEqualTo("1. Remove affected leaves. 2. Reduce watering.");
+      verify(deepSeekClient)
+          .generateCureAdvice("Monstera deliciosa", "Yellowing leaf — possible overwatering");
+    }
+
+    @Test
+    @DisplayName("should throw 429 when cure advice rate limit is exceeded")
+    void shouldThrowWhenRateLimited() throws Exception {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any())).thenReturn("1. Step one.");
+
+      for (int i = 0; i < 10; i++) {
+        identificationService.getCureAdvice(1L, req(), USER_ID).get();
+      }
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when identification is not owned by user")
+    void shouldThrowWhenNotOwned() {
+      Identification foreignIdentification = Identification.builder().id(1L).userId(99L).build();
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(foreignIdentification));
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("should propagate PlantPalException 503 when DeepSeek fails")
+    void shouldPropagate503WhenDeepSeekFails() {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any()))
+          .thenThrow(new PlantPalException("Cure advice unavailable", 503));
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("Cure advice unavailable");
     }
   }
 }

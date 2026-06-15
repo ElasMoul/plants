@@ -7,6 +7,8 @@ import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
+import com.plantpal.identification.dto.CureAdviceRequest;
+import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.DeepSeekPlantResult;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
@@ -48,6 +50,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final int MAX_IMAGES = 5;
   private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
   private static final int DEEPSEEK_RATE_LIMIT = 20;
+  private static final int CURE_ADVICE_RATE_LIMIT = 10;
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
 
@@ -61,6 +64,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final ObjectMapper objectMapper;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
+  private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
 
   public IdentificationServiceImpl(
       DeepSeekClient deepSeekClient,
@@ -189,6 +193,24 @@ public class IdentificationServiceImpl implements IdentificationService {
             });
   }
 
+  @Override
+  @Async("aiTaskExecutor")
+  public CompletableFuture<CureAdviceResponse> getCureAdvice(
+      Long id, CureAdviceRequest req, Long userId) {
+    Identification identification =
+        identificationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+    if (!identification.getUserId().equals(userId)) {
+      throw new ResourceNotFoundException("Identification not found");
+    }
+    if (!consumeCureRateLimit(userId)) {
+      throw new PlantPalException("Cure advice rate limit reached — try again later", 429);
+    }
+    String advice = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
+    return CompletableFuture.completedFuture(new CureAdviceResponse(advice));
+  }
+
   private DeepSeekPlantResult parseIdentificationResult(String raw) {
     try {
       DeepSeekPlantResult result = objectMapper.readValue(raw, DeepSeekPlantResult.class);
@@ -297,6 +319,21 @@ public class IdentificationServiceImpl implements IdentificationService {
                         Bandwidth.builder()
                             .capacity(DEEPSEEK_RATE_LIMIT)
                             .refillIntervally(DEEPSEEK_RATE_LIMIT, Duration.ofHours(1))
+                            .build())
+                    .build());
+    return bucket.tryConsume(1);
+  }
+
+  private boolean consumeCureRateLimit(Long userId) {
+    Bucket bucket =
+        cureAdviceBuckets.computeIfAbsent(
+            userId,
+            id ->
+                Bucket.builder()
+                    .addLimit(
+                        Bandwidth.builder()
+                            .capacity(CURE_ADVICE_RATE_LIMIT)
+                            .refillIntervally(CURE_ADVICE_RATE_LIMIT, Duration.ofHours(1))
                             .build())
                     .build());
     return bucket.tryConsume(1);
