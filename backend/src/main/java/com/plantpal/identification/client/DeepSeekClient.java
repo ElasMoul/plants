@@ -390,11 +390,11 @@ public class DeepSeekClient {
   }
 
   /**
-   * Strips model-specific wrappers so downstream JSON parsers receive clean content:
-   * - R1/reasoning models prefix output with {@code <think>...</think>}
-   * - Vision models sometimes ignore {@code response_format} and wrap JSON in {@code ```json...```}
+   * Strips model-specific wrappers so downstream JSON parsers receive clean content: - R1/reasoning
+   * models prefix output with {@code <think>...</think>} - Vision models sometimes ignore {@code
+   * response_format} and wrap JSON in {@code ```json...```}
    */
-  private String stripThinkTags(String raw) {
+  static String stripThinkTags(String raw) {
     if (raw == null) return null;
     int endThink = raw.indexOf("</think>");
     String stripped =

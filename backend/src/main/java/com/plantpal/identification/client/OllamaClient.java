@@ -64,6 +64,7 @@ public class OllamaClient {
       }
 
       log.debug("Ollama responded [model={}]", model);
+      log.debug("Ollama responded [response={}]", response.message().content());
       return response.message().content();
 
     } catch (RestClientException ex) {
@@ -96,8 +97,9 @@ public class OllamaClient {
       if (response == null || response.response() == null || response.response().isBlank()) {
         throw new PlantPalException("Empty vision response from Ollama", 502);
       }
-      log.debug("Ollama vision responded [model={}]", model);
-      return response.response();
+      String result = DeepSeekClient.stripThinkTags(response.response());
+      log.debug("Ollama vision responded [model={}, response={}]", model, result);
+      return result;
 
     } catch (RestClientException ex) {
       log.error("Ollama vision identification failed [model={}]", model, ex);
@@ -110,12 +112,15 @@ public class OllamaClient {
     String base64 = Base64.getEncoder().encodeToString(resizeAndConvertToJpeg(imageBytes));
     Map<String, Object> requestBody =
         Map.of(
-            "model", model,
+            "model",
+            model,
             "prompt",
-                DeepSeekClient.ANNOTATION_SYSTEM_PROMPT
-                    + "\n\nAnalyze this image and identify all plant and disease regions.",
-            "images", List.of(base64),
-            "stream", false);
+            DeepSeekClient.ANNOTATION_SYSTEM_PROMPT
+                + "\n\nAnalyze this image and identify all plant and disease regions.",
+            "images",
+            List.of(base64),
+            "stream",
+            false);
 
     log.debug("Sending annotation prompt to Ollama [model={}] via /api/generate", model);
     try {
@@ -131,8 +136,9 @@ public class OllamaClient {
       if (response == null || response.response() == null || response.response().isBlank()) {
         throw new PlantPalException("Empty annotation response from Ollama", 502);
       }
-      log.debug("Ollama annotation responded [model={}]", model);
-      return response.response();
+      String result = DeepSeekClient.stripThinkTags(response.response());
+      log.debug("Ollama annotation responded [model={}, response={}]", model, result);
+      return result;
 
     } catch (RestClientException ex) {
       log.error("Ollama annotation failed [model={}]", model, ex);
@@ -155,7 +161,8 @@ public class OllamaClient {
       int newW = (int) (w * scale), newH = (int) (h * scale);
       BufferedImage output = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
       Graphics2D g = output.createGraphics();
-      g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+      g.setRenderingHint(
+          RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
       g.drawImage(img, 0, 0, newW, newH, null);
       g.dispose();
       ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -163,7 +170,12 @@ public class OllamaClient {
       byte[] result = out.toByteArray();
       log.debug(
           "Resized image for Ollama: {}x{} → {}x{} ({} KB → {} KB)",
-          w, h, newW, newH, original.length / 1024, result.length / 1024);
+          w,
+          h,
+          newW,
+          newH,
+          original.length / 1024,
+          result.length / 1024);
       return result;
     } catch (Exception e) {
       log.debug("Image resize for Ollama failed ({}), using original bytes", e.getMessage());
