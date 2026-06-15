@@ -103,7 +103,7 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     links identification.plantId, creates reminders from carePlan JSON
 - controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
-### identification/ — fully implemented (T2.9 + T2.9d complete; T2.9a pending)
+### identification/ — fully implemented (T2.9 + T2.9a + T2.9d complete)
 - entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT,
                                      annotation_regions JSONB (String, @JdbcTypeCode(SqlTypes.JSON))
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
@@ -113,12 +113,15 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 - dto/CureAdviceResponse.java      — ✅ T2.9d: String advice
 - dto/CareCardDto.java             — ✅ T2.6
 - dto/CarePlanDto.java             — ✅ T2.6
-- dto/AnnotationRegionDto.java     — ✅ T2.9: label, type (PLANT/DISEASE/HEALTHY_AREA),
-                                     confidence (HIGH/MEDIUM/LOW), BoundingBoxDto boundingBox
-                                     ⚠️ T2.9a pending: add List<PolygonPointDto> polygon (nullable)
-- dto/BoundingBoxDto.java          — ✅ T2.9: xPct, yPct, widthPct, heightPct (all int, 0-100%)
-                                     ⚠️ PRODUCTION BUG: @JsonProperty("xPct")/@JsonProperty("yPct") MISSING
-                                     Lombok getXPct() → Jackson serializes as "XPct" not "xPct"; fix in T2.9a
+- dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
+                                     confidence (HIGH/MEDIUM/LOW),
+                                     List<PolygonPointDto> polygon (nullable — primary shape),
+                                     BoundingBoxDto boundingBox (nullable — legacy fallback for old DB records)
+- dto/PolygonPointDto.java         — ✅ T2.9a: xPct, yPct (int, 0-100)
+                                     @JsonProperty("xPct")/@JsonProperty("yPct") — same Lombok decapitalize fix
+- dto/BoundingBoxDto.java          — ✅ T2.9a fix: xPct, yPct, widthPct, heightPct (all int, 0-100%)
+                                     @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct()
+                                     → Introspector.decapitalize("XPct") = "XPct"; annotation fixes key to "xPct"
 - dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
                                      species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
@@ -154,7 +157,8 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 - client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
                                      Four methods: generateCarePlan(), identifyPlant(), analyzeRegions(),
                                      generateCureAdvice(species, regionLabel)
-                                     ANNOTATION_SYSTEM_PROMPT: bounding box schema (T2.9a will update to polygon)
+                                     ANNOTATION_SYSTEM_PROMPT: ✅ T2.9a updated to polygon schema
+                                     (8–16 clockwise points, min 4, integers 0-100)
                                      CURE_ADVICE_SYSTEM_PROMPT: plain text response (no json_object format);
                                      uses text model (DeepSeek-R1); stripThinkTags() applied
 - controller/IdentificationController.java — POST /{id}/cure-advice → 202 Accepted (T2.9d)

@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 7)
+> Last updated: 2026-06-15 (session 9)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -28,7 +28,20 @@ Phase 2 — AI Plant Identification (in progress)
     migration 007, parallel async in IdentificationServiceImpl, 49 unit tests
   - Frontend: PhotoAnnotatorComponent (canvas, show/hide toggle), declared in CarePlanModule,
     wired into preview-card + "Last Scan" tab in plant-detail
-- T2.9d Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend) ✅
+- T2.9b Polygon canvas — frontend (feature/PP-017-visual-annotation) ✅
+  - PolygonPoint interface added to identification.model.ts; AnnotationRegion.polygon?: PolygonPoint[]; boundingBox optional
+  - PhotoAnnotatorComponent rewritten: drawPolygon() method, shared drawLabel(), polygon-first with bbox fallback, skip if neither
+  - plant-form.component.ts: editId! → editId ?? 0 (lint fix, no-non-null-assertion)
+  - app.component.html: user-menu button hidden on mobile (class="user-menu-btn" + display:none ≤768px)
+  - nginx.conf: /photos/ → http://backend:8080/photos/ proxy block (requires docker-compose up --build frontend)
+- T2.9a Polygon annotation — backend (feature/PP-023-enhanced-annotation-backend, merged PR #15) ✅
+  - PolygonPointDto (xPct/yPct with @JsonProperty fix)
+  - AnnotationRegionDto: added List<PolygonPointDto> polygon (nullable); boundingBox kept nullable for legacy records
+  - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") production bug fixed
+  - DeepSeekClient.ANNOTATION_SYSTEM_PROMPT updated to polygon schema (8–16 clockwise points, min 4)
+  - DeepSeekAnnotationClient: 2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections)
+  - parseAnnotationRegions(): clears polygon to null if < 3 points (degenerate)
+- T2.9d Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend, merged PR #15) ✅
   - POST /api/v1/identifications/{id}/cure-advice → 202 Accepted, { advice: string }
   - CureAdviceRequest (@NotBlank regionLabel, nullable species), CureAdviceResponse (String advice)
   - DeepSeekClient.generateCureAdvice(): text model (DeepSeek-R1), plain text (no json_object), stripThinkTags()
@@ -37,13 +50,12 @@ Phase 2 — AI Plant Identification (in progress)
   - 18 unit tests passing (4 new CureAdvice tests: happy path, rate-limited, not-owned, DeepSeek error)
 
 ## Active Branches
-- feature/PP-023-enhanced-annotation-backend — T2.9d complete; T2.9a still pending on same branch
+- feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
+- feature/PP-017-visual-annotation — T2.9b complete, ready to push + PR
 
 ## Next Tasks (in order)
-- T2.9a — Polygon annotation backend (feature/PP-023-enhanced-annotation-backend) ← NEXT BACKEND
-  ⚠️ Also fix BoundingBoxDto @JsonProperty bug in same session (production bug — xPct/yPct always 0)
-- T2.9b — Polygon canvas frontend (new branch, depends on T2.9a merged)
-- T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← needs T2.9b + T2.9d
+- T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← NEXT (needs T2.9b + T2.9d merged)
+- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
 
@@ -70,7 +82,7 @@ Phase 2 — AI Plant Identification (in progress)
 - Canvas uses [hidden] not *ngIf — *ngIf removes element, breaking @ViewChild resolution
 - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct() causes
   Jackson to produce key "XPct" (two consecutive uppercase chars); @JsonProperty fixes it
-- PolygonPointDto (T2.9a, pending): same @JsonProperty("xPct")/@JsonProperty("yPct") fix needed on xPct/yPct
+- PolygonPointDto (T2.9a ✅): @JsonProperty("xPct")/@JsonProperty("yPct") applied
 - Cure-advice rate limit (T2.9d): separate Bucket — 10 calls/hour (not shared with the
   20/hour identification bucket)
 - Reminder entity does NOT extend AuditableEntity — reminders table has no audit columns
@@ -98,8 +110,6 @@ which stores any JSON shape. Switching from boundingBox to polygon is a pure cod
 - AiTestController not @Profile("dev") guarded — will deploy to prod as-is
 - IdentificationController uses .get() on CompletableFuture — blocks HTTP thread (known, deferred)
 - IdentificationControllerIT.java missing
-- ⚠️ BoundingBoxDto @JsonProperty("xPct")/@JsonProperty("yPct") MISSING — production bug; Lombok
-  getXPct() → Jackson serializes as "XPct" not "xPct"; fix in T2.9a session
 - PlantNetClient + plantnet/ DTOs are dead code — remove at next cleanup sprint
 - OllamaClient (phi3) is dead code in main flow — dev-only, remove before prod
 - T2.8 frontend (one-click save UI) still pending

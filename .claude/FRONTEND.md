@@ -140,5 +140,20 @@ without creating a lazy-module-imports-lazy-module cycle.
 - `canvas.width/height` set to `img.clientWidth/Height` on each draw so pixel coords match rendered size
 - `annotationRegions` will be null until backend migration 007 ships — component degrades gracefully to plain img
 
-### Next task
-T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)
+### T2.9b — Polygon rendering + plant-detail Last Scan tab (Complete 2026-06-15)
+**Files changed:**
+- `identification/models/identification.model.ts` — added `PolygonPoint { xPct, yPct }`; `boundingBox` made optional (fallback); `polygon?: PolygonPoint[]` added to `AnnotationRegion`
+- `identification/components/photo-annotator/photo-annotator.component.ts` — replaced `*ngIf` with `[hidden]` on canvas (ViewChild timing fix); `@ViewChild static:false`; polygon rendering via `drawPolygon()` private method; `drawLabel()` extracted as shared private method; label at centroid for polygon, above top-left for bounding-box; lint error fixed (`imageUrl = ''` no explicit type annotation); `ngOnChanges` handles late-arriving regions with `setTimeout`
+- `plant/components/plant-detail/plant-detail.component.ts` — fetches `latestPhotoUrl` + `latestAnnotationRegions` from latest identification
+- `plant/components/plant-detail/plant-detail.component.html` — "Last Scan" tab added with `<app-photo-annotator [imageUrl] [regions]>`
+- `plant/components/plant-form/plant-form.component.ts` — replaced `this.editId!` with `this.editId ?? 0` (no-non-null-assertion lint fix)
+
+**Architecture notes:**
+- Priority: polygon → bounding-box → skip (graceful degradation per region)
+- `PhotoAnnotatorComponent` in `CarePlanModule` → exported to both `IdentificationModule` and `PlantModule`
+- `drawPolygon` maps `polygon[].{xPct,yPct}` to canvas pixels; closes path; fill + stroke
+- `drawLabel` shared between polygon centroid labels and bounding-box pill labels
+
+### Next tasks (in order)
+- T2.9c — Annotation list panel + disease detail + "Ask for cure" button (needs T2.9b + T2.9d merged)
+- T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)

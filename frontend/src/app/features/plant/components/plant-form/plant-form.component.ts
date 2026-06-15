@@ -101,7 +101,7 @@ export class PlantFormComponent implements OnInit {
         notes: raw.notes || undefined,
         acquiredAt,
       };
-      this.plantService.updatePlant(this.editId!, request).subscribe({
+      this.plantService.updatePlant(this.editId ?? 0, request).subscribe({
         next: () => {
           this.snackBar.open('Plant updated.', undefined, { duration: 3000 });
           this.router.navigate(['/plants', this.editId]);
