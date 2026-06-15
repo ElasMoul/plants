@@ -185,6 +185,7 @@ public class DeepSeekClient {
       }
 
       String raw = response.choices().get(0).message().content();
+      log.debug("DeepSeek cure advice raw response: {}", raw);
       log.info("DeepSeek cure advice generated in {}ms", System.currentTimeMillis() - start);
       return stripThinkTags(raw);
 
@@ -370,6 +371,7 @@ public class DeepSeekClient {
       }
 
       String raw = response.choices().get(0).message().content();
+      log.debug("DeepSeek annotation raw response: {}", raw);
       log.info("DeepSeek annotation completed in {}ms", System.currentTimeMillis() - start);
       return stripThinkTags(raw);
 
@@ -388,16 +390,25 @@ public class DeepSeekClient {
   }
 
   /**
-   * R1 and other reasoning models wrap output in <think>...</think> before the JSON answer. Strip
-   * that block so downstream JSON parsers receive clean content.
+   * Strips model-specific wrappers so downstream JSON parsers receive clean content:
+   * - R1/reasoning models prefix output with {@code <think>...</think>}
+   * - Vision models sometimes ignore {@code response_format} and wrap JSON in {@code ```json...```}
    */
   private String stripThinkTags(String raw) {
     if (raw == null) return null;
     int endThink = raw.indexOf("</think>");
-    if (endThink != -1) {
-      return raw.substring(endThink + "</think>".length()).strip();
+    String stripped =
+        endThink != -1 ? raw.substring(endThink + "</think>".length()).strip() : raw.strip();
+    if (stripped.startsWith("```")) {
+      int firstNewline = stripped.indexOf('\n');
+      if (firstNewline != -1) {
+        stripped = stripped.substring(firstNewline + 1);
+      }
+      if (stripped.endsWith("```")) {
+        stripped = stripped.substring(0, stripped.lastIndexOf("```")).strip();
+      }
     }
-    return raw.strip();
+    return stripped;
   }
 
   private record DeepSeekApiResponse(List<Choice> choices) {}

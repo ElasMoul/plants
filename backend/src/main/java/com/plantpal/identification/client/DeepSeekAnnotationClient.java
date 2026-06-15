@@ -57,7 +57,9 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
 
   private String tryOllamaFallback(byte[] imageBytes, String mediaType) {
     try {
-      return ollamaClient.analyzeRegions(imageBytes, mediaType);
+      String result = ollamaClient.analyzeRegions(imageBytes, mediaType);
+      log.info("Ollama annotation fallback succeeded");
+      return result;
     } catch (Exception e) {
       log.warn(
           "Ollama annotation fallback also failed ({}), returning empty regions", e.getMessage());
