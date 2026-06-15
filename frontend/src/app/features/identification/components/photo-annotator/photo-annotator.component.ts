@@ -22,7 +22,7 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
   styleUrls: ['./photo-annotator.component.scss'],
 })
 export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDestroy {
-  @Input() imageUrl: string = '';
+  @Input() imageUrl = '';
   @Input() regions: AnnotationRegion[] | null = null;
 
   @ViewChild('photoImg', { static: false })
