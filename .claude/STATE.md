@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 5)
+> Last updated: 2026-06-15 (session 6)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -28,14 +28,21 @@ Phase 2 — AI Plant Identification (in progress)
     migration 007, parallel async in IdentificationServiceImpl, 49 unit tests
   - Frontend: PhotoAnnotatorComponent (canvas, show/hide toggle), declared in CarePlanModule,
     wired into preview-card + "Last Scan" tab in plant-detail
+- T2.9a Polygon annotation — backend (feature/PP-023-enhanced-annotation-backend) ✅
+  - PolygonPointDto (xPct/yPct with @JsonProperty fix)
+  - AnnotationRegionDto: added List<PolygonPointDto> polygon (nullable); boundingBox kept nullable for legacy records
+  - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") added (was missing)
+  - DeepSeekClient.ANNOTATION_SYSTEM_PROMPT updated to polygon schema (8–16 clockwise points, min 4)
+  - DeepSeekAnnotationClient: 2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections)
+  - parseAnnotationRegions(): clears polygon to null if < 3 points (degenerate)
+  - 14 unit tests passing (4 AnnotationRegions tests — malformed JSON, polygon, legacy bbox, degenerate)
 
 ## Active Branches
-- feature/PP-017-visual-annotation — T2.9 complete, 2 commits ahead of origin, ready to push + PR
+- feature/PP-023-enhanced-annotation-backend — T2.9a complete; T2.9d (cure-advice) next on same branch
 
 ## Next Tasks (in order)
-- T2.9a — Polygon annotation backend (feature/PP-023-enhanced-annotation-backend) ← NEXT BACKEND
-- T2.9d — Cure-advice endpoint (same branch as T2.9a — same backend session)
-- T2.9b — Polygon canvas frontend (feature/PP-023-enhanced-annotation-backend, frontend half)
+- T2.9d — Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend) ← NEXT BACKEND
+- T2.9b — Polygon canvas frontend (new branch, depends on T2.9a merged)
 - T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← needs T2.9b + T2.9d
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
@@ -63,7 +70,7 @@ Phase 2 — AI Plant Identification (in progress)
 - Canvas uses [hidden] not *ngIf — *ngIf removes element, breaking @ViewChild resolution
 - BoundingBoxDto: @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct() causes
   Jackson to produce key "XPct" (two consecutive uppercase chars); @JsonProperty fixes it
-- PolygonPointDto (T2.9a, planned): same @JsonProperty fix needed on xPct/yPct
+- PolygonPointDto (T2.9a ✅): same @JsonProperty("xPct")/@JsonProperty("yPct") fix applied
 - Cure-advice rate limit (T2.9d): separate Bucket — 10 calls/hour (not shared with the
   20/hour identification bucket)
 - Reminder entity does NOT extend AuditableEntity — reminders table has no audit columns

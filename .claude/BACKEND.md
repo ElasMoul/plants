@@ -19,12 +19,14 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## AI Provider Map (current — feature/PP-deepseek-identification)
+## AI Provider Map (current — feature/PP-023-enhanced-annotation-backend)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|
 | DeepSeekClient (visionModel) | gpt-4o | Plant photo identification + health + care plan (single call) | GitHub Models (models.inference.ai.azure.com) |
-| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration (standalone) | GitHub Models (models.inference.ai.azure.com) |
-| PlantNetClient | — | No longer called in main flow; class still exists | plantnet.org |
+| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + annotation (standalone) | GitHub Models (models.inference.ai.azure.com) |
+| DeepSeekAnnotationClient | gpt-4o via DeepSeekClient.analyzeRegions() | Polygon annotation regions (@Primary) | GitHub Models |
+| PlantNetAnnotationClient | — | Non-primary fallback; maps species results to full-image PLANT regions | plantnet.org |
+| PlantNetClient | — | Dead code in main flow; used only by PlantNetAnnotationClient | plantnet.org |
 | OllamaClient | phi3 | Dev testing only | localhost:11434 |
 
 ### DeepSeekClient — key facts
@@ -101,7 +103,7 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     links identification.plantId, creates reminders from carePlan JSON
 - controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
-### identification/ — fully implemented (T2.9 complete)
+### identification/ — fully implemented (T2.9 + T2.9a complete)
 - entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT,
                                      annotation_regions JSONB (String, @JdbcTypeCode(SqlTypes.JSON))
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
@@ -109,12 +111,16 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
                                      List<AnnotationRegionDto> annotationRegions fields
 - dto/CareCardDto.java             — ✅ T2.6
 - dto/CarePlanDto.java             — ✅ T2.6
-- dto/AnnotationRegionDto.java     — ✅ T2.9: label, type (PLANT/DISEASE/HEALTHY_AREA),
-                                     confidence (HIGH/MEDIUM/LOW), BoundingBoxDto boundingBox
+- dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
+                                     confidence (HIGH/MEDIUM/LOW),
+                                     List<PolygonPointDto> polygon (nullable — primary shape from T2.9a),
+                                     BoundingBoxDto boundingBox (nullable — legacy fallback for old DB records)
+- dto/PolygonPointDto.java         — ✅ T2.9a: xPct, yPct (int, 0-100)
+                                     NOTE: @JsonProperty("xPct")/@JsonProperty("yPct") required —
+                                     same Lombok/Jackson decapitalize bug as BoundingBoxDto.
 - dto/BoundingBoxDto.java          — ✅ T2.9: xPct, yPct, widthPct, heightPct (all int, 0-100%)
-                                     NOTE: xPct and yPct have @JsonProperty("xPct")/@JsonProperty("yPct")
-                                     to override Lombok's getXPct()/getYPct() which Jackson decapitalizes
-                                     to XPct/YPct (Introspector.decapitalize rule: 2 consecutive uppercase).
+                                     NOTE: @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct()
+                                     → Introspector.decapitalize("XPct") = "XPct" (two consecutive uppercase).
 - dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
                                      species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
@@ -134,8 +140,10 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
   - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
   - fallbackCarePlan(): single WATERING card, 7-day frequency
 - client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
-- client/DeepSeekAnnotationClient.java— ✅ T2.9: @Primary implementation; delegates to DeepSeekClient.analyzeRegions()
-                                         silently returns {"regions":[]} on error (annotation is non-critical)
+- client/DeepSeekAnnotationClient.java— ✅ T2.9a: @Primary implementation; delegates to DeepSeekClient.analyzeRegions()
+                                         2-attempt retry on EOF (Azure HTTP/2 GOAWAY when parallel identify+annotate
+                                         race on same connection; retry gets a fresh connection).
+                                         Silently returns {"regions":[]} on error (annotation is non-critical).
 - client/PlantNetAnnotationClient.java— ✅ T2.9: non-primary implementation; calls PlantNetClient.identify(),
                                          maps top results to full-image PLANT regions (no real bounding boxes);
                                          inner ByteArrayMultipartFile adapts byte[] for PlantNetClient
@@ -143,7 +151,8 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 - client/OllamaClient.java         — local Ollama phi3 (text). dev testing only.
 - client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
                                      Three methods: generateCarePlan(), identifyPlant(), analyzeRegions()
-                                     ANNOTATION_SYSTEM_PROMPT added for T2.9 (bounding box JSON schema)
+                                     ANNOTATION_SYSTEM_PROMPT: polygon schema (8–16 clockwise points,
+                                     min 4, integers 0-100, first/last point need not be identical)
 - controller/IdentificationController.java
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
