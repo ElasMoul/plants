@@ -1,0 +1,34 @@
+<div class="annotation-list">
+
+  <ng-container *ngIf="regions && regions.length; else noRegions">
+    <button
+      *ngFor="let region of regions; let i = index"
+      class="region-item"
+      [class.region-item--active]="selectedIndex === i"
+      type="button"
+      (click)="selectRegion(i)"
+    >
+      <span class="dot" [style.background]="regionColor(region.type)"></span>
+
+      <span class="item-label">{{ region.label }}</span>
+
+      <span class="badges">
+        <span class="badge confidence-{{ region.confidence.toLowerCase() }}">
+          {{ region.confidence }}
+        </span>
+        <span class="badge type-{{ region.type.toLowerCase() }}">
+          {{ regionTypeLabel(region.type) }}
+        </span>
+      </span>
+
+      <mat-icon class="chevron">
+        {{ selectedIndex === i ? 'expand_less' : 'chevron_right' }}
+      </mat-icon>
+    </button>
+  </ng-container>
+
+  <ng-template #noRegions>
+    <p class="no-regions">No regions detected</p>
+  </ng-template>
+
+</div>

@@ -8,6 +8,7 @@ import { IdentificationService } from '../../../identification/services/identifi
 import { PlantResponse } from '../../models/plant.model';
 import { AnnotationRegion, CarePlanDto } from '../../../identification/models/identification.model';
 
+
 @Component({
   selector: 'app-plant-detail',
   templateUrl: './plant-detail.component.html',
@@ -19,8 +20,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   latestCarePlan: CarePlanDto | null = null;
   latestPhotoUrl: string | null = null;
   latestAnnotationRegions: AnnotationRegion[] | null = null;
+  latestIdentificationId: number | null = null;
   hasIdentification = false;
   carePlanLoaded = false;
+  selectedRegionIndex: number | null = null;
+  selectedRegion: AnnotationRegion | null = null;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -56,6 +60,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
             this.latestCarePlan = items[0].carePlan;
             this.latestPhotoUrl = items[0].photoUrl;
             this.latestAnnotationRegions = items[0].annotationRegions;
+            this.latestIdentificationId = items[0].id;
           }
           this.carePlanLoaded = true;
         },
@@ -68,6 +73,13 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  onRegionSelected(index: number | null): void {
+    this.selectedRegionIndex = index;
+    this.selectedRegion = index !== null && this.latestAnnotationRegions
+      ? (this.latestAnnotationRegions[index] ?? null)
+      : null;
   }
 
   onArchive(): void {

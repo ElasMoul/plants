@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
 import { IdentificationResponse } from '../models/identification.model';
@@ -27,6 +28,13 @@ export class IdentificationService {
       `${this.baseUrl}/analyze`,
       form,
     );
+  }
+
+  getCureAdvice(identificationId: number, regionLabel: string, species: string): Observable<string> {
+    return this.http.post<ApiResponse<{ advice: string }>>(
+      `${this.baseUrl}/${identificationId}/cure-advice`,
+      { regionLabel, species },
+    ).pipe(map(res => res.data.advice));
   }
 
   getPlantIdentifications(

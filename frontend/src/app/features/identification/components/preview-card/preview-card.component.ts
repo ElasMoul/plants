@@ -18,6 +18,7 @@ import {
 })
 export class PreviewCardComponent implements OnInit {
   @Input() result!: IdentificationResponse;
+  @Input() selectedRegionIndex: number | null = null;
   @Output() readonly saved = new EventEmitter<PlantResponse>();
   @Output() readonly edit = new EventEmitter<SavePreviewEditEvent>();
   @Output() readonly discard = new EventEmitter<void>();

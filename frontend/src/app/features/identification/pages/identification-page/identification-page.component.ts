@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { IdentificationService } from '../../services/identification.service';
 import {
   AnalyzeEmitPayload,
+  AnnotationRegion,
   IdentificationResponse,
   SavePreviewEditEvent,
 } from '../../models/identification.model';
@@ -23,6 +24,8 @@ export class IdentificationPageComponent implements OnDestroy {
   state: PageState = 'idle';
   result: IdentificationResponse | null = null;
   errorMessage = '';
+  selectedRegionIndex: number | null = null;
+  selectedRegion: AnnotationRegion | null = null;
 
   private lastPayload: AnalyzeEmitPayload | null = null;
 
@@ -39,11 +42,20 @@ export class IdentificationPageComponent implements OnDestroy {
     this.destroy$.complete();
   }
 
+  onRegionSelected(index: number | null): void {
+    this.selectedRegionIndex = index;
+    this.selectedRegion = index !== null && this.result?.annotationRegions
+      ? (this.result.annotationRegions[index] ?? null)
+      : null;
+  }
+
   onAnalyze(payload: AnalyzeEmitPayload): void {
     this.lastPayload = payload;
     this.state = 'analyzing';
     this.result = null;
     this.errorMessage = '';
+    this.selectedRegionIndex = null;
+    this.selectedRegion = null;
 
     this.identificationService
       .analyze(payload.images, payload.organs, payload.plantId)
@@ -91,6 +103,8 @@ export class IdentificationPageComponent implements OnDestroy {
     this.state = 'idle';
     this.result = null;
     this.errorMessage = '';
+    this.selectedRegionIndex = null;
+    this.selectedRegion = null;
   }
 
   private mapError(err: HttpErrorResponse): string {

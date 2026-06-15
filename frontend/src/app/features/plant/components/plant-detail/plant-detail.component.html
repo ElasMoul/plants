@@ -141,7 +141,23 @@
             <app-photo-annotator
               [imageUrl]="latestPhotoUrl"
               [regions]="latestAnnotationRegions"
+              [selectedRegionIndex]="selectedRegionIndex"
             ></app-photo-annotator>
+
+            <app-annotation-list
+              *ngIf="latestAnnotationRegions && latestAnnotationRegions.length && latestIdentificationId"
+              [regions]="latestAnnotationRegions"
+              [species]="plant.species ?? null"
+              [identificationId]="latestIdentificationId!"
+              (regionSelected)="onRegionSelected($event)"
+            ></app-annotation-list>
+
+            <app-disease-detail-panel
+              *ngIf="latestIdentificationId"
+              [region]="selectedRegion"
+              [species]="plant.species ?? null"
+              [identificationId]="latestIdentificationId!"
+            ></app-disease-detail-panel>
           </ng-container>
 
         </div>
