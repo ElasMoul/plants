@@ -154,6 +154,23 @@ without creating a lazy-module-imports-lazy-module cycle.
 - `drawPolygon` maps `polygon[].{xPct,yPct}` to canvas pixels; closes path; fill + stroke
 - `drawLabel` shared between polygon centroid labels and bounding-box pill labels
 
+### T2.9c — Annotation list + disease detail panel (Complete 2026-06-15)
+**Files changed:**
+- `identification/services/identification.service.ts` — added `getCureAdvice(id, regionLabel, species)` → POST `/{id}/cure-advice`, returns `Observable<string>`
+- `identification/components/annotation-list/annotation-list.component.{ts,html,scss}` — NEW: clickable region list, color dot + label + confidence/type badges, toggle-deselect emits `regionSelected(index|null)`
+- `identification/components/disease-detail-panel/disease-detail-panel.component.{ts,html,scss}` — NEW: visible only when `region.type === 'DISEASE'`; "Ask for cure" with loading/error/advice states; "Add to care plan" disabled + tooltip
+- `identification/components/care-plan/care-plan.module.ts` — declared/exported both new components; added MatCardModule, MatProgressSpinnerModule, MatTooltipModule
+- `identification/components/photo-annotator/photo-annotator.component.ts` — `selectedRegionIndex: number|null` @Input; non-selected regions dimmed (low-opacity grey fill + #ccc stroke); selected region 3px stroke + full opacity; ngOnChanges redraws on input change
+- `identification/components/preview-card/preview-card.component.{ts,html}` — `selectedRegionIndex` @Input pass-through to inner photo-annotator
+- `identification/pages/identification-page/identification-page.component.{ts,html}` — selection state + `onRegionSelected()`; annotation-list + disease-detail-panel wired in preview state; reset clears selection
+- `plant/components/plant-detail/plant-detail.component.{ts,html}` — `latestIdentificationId`, selection state, `onRegionSelected()`; annotation-list + disease-detail-panel in Last Scan tab; fixed NG8107 (`plant?.species` → `plant.species`)
+
+**Architecture notes:**
+- `AnnotationListComponent` owns internal visual selected state; parent owns `selectedRegionIndex`/`selectedRegion` as business state — avoids circular binding
+- `DiseaseDetailPanelComponent` injects `IdentificationService` directly — DI resolves from parent module (IdentificationModule or PlantModule), no CarePlanModule provider needed
+- Backend `POST /api/v1/identifications/{id}/cure-advice` is LIVE (T2.9d merged PR #15) — disease panel will work after docker rebuild
+- "Add to care plan" is permanently disabled — needs care-plan mutation endpoint (Phase 3)
+
 ### Next tasks (in order)
-- T2.9c — Annotation list panel + disease detail + "Ask for cure" button (needs T2.9b + T2.9d merged)
 - T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)
+- T2.11 — Manual testing for all Phase 2 features

@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 9)
+> Last updated: 2026-06-15 (session 10)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -28,6 +28,13 @@ Phase 2 — AI Plant Identification (in progress)
     migration 007, parallel async in IdentificationServiceImpl, 49 unit tests
   - Frontend: PhotoAnnotatorComponent (canvas, show/hide toggle), declared in CarePlanModule,
     wired into preview-card + "Last Scan" tab in plant-detail
+- T2.9c Annotation list + disease detail — frontend (feature/PP-017-visual-annotation) ✅
+  - AnnotationListComponent: region list with color dot/label/confidence/type badges, toggle-deselect, emits regionSelected(index|null)
+  - DiseaseDetailPanelComponent: DISEASE-only panel, "Ask for cure" → getCureAdvice() (loading/success/error), "Add to care plan" disabled
+  - IdentificationService.getCureAdvice(): POST /api/v1/identifications/{id}/cure-advice → Observable<string>
+  - PhotoAnnotatorComponent: selectedRegionIndex @Input, non-selected dimmed rgba(200,200,200,0.04)+#ccc, selected 3px stroke
+  - Wired in identification-page (preview state) and plant-detail (Last Scan tab)
+  - CarePlanModule: +AnnotationListComponent, +DiseaseDetailPanelComponent, +MatCard/Spinner/Tooltip modules
 - T2.9b Polygon canvas — frontend (feature/PP-017-visual-annotation) ✅
   - PolygonPoint interface added to identification.model.ts; AnnotationRegion.polygon?: PolygonPoint[]; boundingBox optional
   - PhotoAnnotatorComponent rewritten: drawPolygon() method, shared drawLabel(), polygon-first with bbox fallback, skip if neither
@@ -51,11 +58,11 @@ Phase 2 — AI Plant Identification (in progress)
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
-- feature/PP-017-visual-annotation — T2.9b complete, ready to push + PR
+- feature/PP-017-visual-annotation — T2.9b + T2.9c complete, ready to push + PR
 
 ## Next Tasks (in order)
-- T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← NEXT (needs T2.9b + T2.9d merged)
-- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
+- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard) ← NEXT
+- T2.11 — Manual testing for all Phase 2 features
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
 

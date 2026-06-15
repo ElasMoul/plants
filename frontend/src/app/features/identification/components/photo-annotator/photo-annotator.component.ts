@@ -20,6 +20,8 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
   HEALTHY_AREA: { fill: 'rgba(76, 175, 80, 0.2)',   stroke: '#2e7d32' },
 };
 
+const DIMMED_COLORS = { fill: 'rgba(200, 200, 200, 0.04)', stroke: '#ccc' };
+
 @Component({
   selector: 'app-photo-annotator',
   templateUrl: './photo-annotator.component.html',
@@ -28,6 +30,7 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
 export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() imageUrl = '';
   @Input() regions: AnnotationRegion[] | null = null;
+  @Input() selectedRegionIndex: number | null = null;
 
   @ViewChild('photoImg', { static: false })
   private readonly imgRef!: ElementRef<HTMLImageElement>;
@@ -54,7 +57,9 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['regions'] && this.imgRef?.nativeElement?.complete) {
+    const img = this.imgRef?.nativeElement;
+    if (!img?.complete) return;
+    if (changes['regions'] || changes['selectedRegionIndex']) {
       setTimeout(() => this.drawAnnotations(), 0);
     }
   }
@@ -93,8 +98,11 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
 
     ctx.clearRect(0, 0, w, h);
 
-    for (const region of this.regions) {
-      const colors = REGION_COLORS[region.type];
+    for (let idx = 0; idx < this.regions.length; idx++) {
+      const region = this.regions[idx];
+      const dimmed = this.selectedRegionIndex !== null && this.selectedRegionIndex !== idx;
+      const colors = dimmed ? DIMMED_COLORS : REGION_COLORS[region.type];
+      const lineWidth = !dimmed && this.selectedRegionIndex !== null ? 3 : 2;
       const label = region.label || region.type.replace(/_/g, ' ');
 
       if (region.polygon && region.polygon.length >= 3) {
@@ -102,7 +110,7 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
           x: (p.xPct / 100) * w,
           y: (p.yPct / 100) * h,
         }));
-        this.drawPolygon(ctx, region.polygon, w, h, colors);
+        this.drawPolygon(ctx, region.polygon, w, h, colors, lineWidth);
         const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
         const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
         this.drawLabel(ctx, label, cx, cy - 10, colors.stroke);
@@ -117,7 +125,7 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
         ctx.fillStyle = colors.fill;
         ctx.fillRect(rx, ry, rw, rh);
         ctx.strokeStyle = colors.stroke;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = lineWidth;
         ctx.strokeRect(rx, ry, rw, rh);
 
         this.drawLabel(ctx, label, rx, Math.max(ry - 20, 0), colors.stroke);
@@ -131,6 +139,7 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
     w: number,
     h: number,
     colors: { fill: string; stroke: string },
+    lineWidth: number,
   ): void {
     const points = polygon.map(p => ({ x: (p.xPct / 100) * w, y: (p.yPct / 100) * h }));
     ctx.beginPath();
@@ -142,7 +151,7 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
     ctx.fillStyle = colors.fill;
     ctx.fill();
     ctx.strokeStyle = colors.stroke;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = lineWidth;
     ctx.stroke();
   }
 
