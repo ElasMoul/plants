@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 8)
+> Last updated: 2026-06-15 (session 9)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -28,6 +28,12 @@ Phase 2 — AI Plant Identification (in progress)
     migration 007, parallel async in IdentificationServiceImpl, 49 unit tests
   - Frontend: PhotoAnnotatorComponent (canvas, show/hide toggle), declared in CarePlanModule,
     wired into preview-card + "Last Scan" tab in plant-detail
+- T2.9b Polygon canvas — frontend (feature/PP-017-visual-annotation) ✅
+  - PolygonPoint interface added to identification.model.ts; AnnotationRegion.polygon?: PolygonPoint[]; boundingBox optional
+  - PhotoAnnotatorComponent rewritten: drawPolygon() method, shared drawLabel(), polygon-first with bbox fallback, skip if neither
+  - plant-form.component.ts: editId! → editId ?? 0 (lint fix, no-non-null-assertion)
+  - app.component.html: user-menu button hidden on mobile (class="user-menu-btn" + display:none ≤768px)
+  - nginx.conf: /photos/ → http://backend:8080/photos/ proxy block (requires docker-compose up --build frontend)
 - T2.9a Polygon annotation — backend (feature/PP-023-enhanced-annotation-backend, merged PR #15) ✅
   - PolygonPointDto (xPct/yPct with @JsonProperty fix)
   - AnnotationRegionDto: added List<PolygonPointDto> polygon (nullable); boundingBox kept nullable for legacy records
@@ -45,11 +51,11 @@ Phase 2 — AI Plant Identification (in progress)
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
-- T2.9b frontend branch — just started (frontend agent active)
+- feature/PP-017-visual-annotation — T2.9b complete, ready to push + PR
 
 ## Next Tasks (in order)
-- T2.9b — Polygon canvas frontend ← FRONTEND ACTIVE NOW
-- T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← needs T2.9b + T2.9d
+- T2.9c — Annotation list panel + disease detail (feature/PP-024-disease-panel) ← NEXT (needs T2.9b + T2.9d merged)
+- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
 

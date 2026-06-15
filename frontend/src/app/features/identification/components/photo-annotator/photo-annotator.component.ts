@@ -8,7 +8,11 @@ import {
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
-import { AnnotationRegion, AnnotationRegionType } from '../../models/identification.model';
+import {
+  AnnotationRegion,
+  AnnotationRegionType,
+  PolygonPoint,
+} from '../../models/identification.model';
 
 const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string }> = {
   PLANT:        { fill: 'rgba(33, 150, 243, 0.2)',  stroke: '#1565C0' },
@@ -90,35 +94,72 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
     ctx.clearRect(0, 0, w, h);
 
     for (const region of this.regions) {
-      const bb = region.boundingBox;
-      const rx = (bb.xPct / 100) * w;
-      const ry = (bb.yPct / 100) * h;
-      const rw = (bb.widthPct / 100) * w;
-      const rh = (bb.heightPct / 100) * h;
       const colors = REGION_COLORS[region.type];
-
-      // Semi-transparent fill
-      ctx.fillStyle = colors.fill;
-      ctx.fillRect(rx, ry, rw, rh);
-
-      // Solid stroke
-      ctx.strokeStyle = colors.stroke;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(rx, ry, rw, rh);
-
-      // Label pill above the box
       const label = region.label || region.type.replace(/_/g, ' ');
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      const textW = ctx.measureText(label).width;
-      const pillH = 20;
-      const pad = 6;
-      const pillY = Math.max(ry - pillH, 0);
 
-      ctx.fillStyle = colors.stroke;
-      ctx.fillRect(rx, pillY, textW + pad * 2, pillH);
+      if (region.polygon && region.polygon.length >= 3) {
+        const pts = region.polygon.map(p => ({
+          x: (p.xPct / 100) * w,
+          y: (p.yPct / 100) * h,
+        }));
+        this.drawPolygon(ctx, region.polygon, w, h, colors);
+        const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+        const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+        this.drawLabel(ctx, label, cx, cy - 10, colors.stroke);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(label, rx + pad, pillY + pillH - 5);
+      } else if (region.boundingBox) {
+        const bb = region.boundingBox;
+        const rx = (bb.xPct / 100) * w;
+        const ry = (bb.yPct / 100) * h;
+        const rw = (bb.widthPct / 100) * w;
+        const rh = (bb.heightPct / 100) * h;
+
+        ctx.fillStyle = colors.fill;
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = colors.stroke;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
+
+        this.drawLabel(ctx, label, rx, Math.max(ry - 20, 0), colors.stroke);
+      }
     }
+  }
+
+  private drawPolygon(
+    ctx: CanvasRenderingContext2D,
+    polygon: PolygonPoint[],
+    w: number,
+    h: number,
+    colors: { fill: string; stroke: string },
+  ): void {
+    const points = polygon.map(p => ({ x: (p.xPct / 100) * w, y: (p.yPct / 100) * h }));
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = colors.fill;
+    ctx.fill();
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  private drawLabel(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    color: string,
+  ): void {
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    const textW = ctx.measureText(text).width;
+    const pad = 6;
+    const pillH = 20;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, textW + pad * 2, pillH);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, x + pad, y + pillH - 5);
   }
 }

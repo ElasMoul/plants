@@ -10,11 +10,17 @@ export interface AnnotationBoundingBox {
   heightPct: number;
 }
 
+export interface PolygonPoint {
+  xPct: number;
+  yPct: number;
+}
+
 export interface AnnotationRegion {
   type: AnnotationRegionType;
   label: string;
   confidence: string;
-  boundingBox: AnnotationBoundingBox;
+  boundingBox?: AnnotationBoundingBox;
+  polygon?: PolygonPoint[];
 }
 
 export interface SavePreviewEditEvent {
