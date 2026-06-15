@@ -97,6 +97,41 @@ public class OllamaClient {
     }
   }
 
+  public String analyzeRegions(byte[] imageBytes, String mediaType) {
+    String base64 = Base64.getEncoder().encodeToString(imageBytes);
+    Map<String, Object> requestBody =
+        Map.of(
+            "model", model,
+            "prompt",
+                DeepSeekClient.ANNOTATION_SYSTEM_PROMPT
+                    + "\n\nAnalyze this image and identify all plant and disease regions.",
+            "images", List.of(base64),
+            "stream", false);
+
+    log.debug("Sending annotation prompt to Ollama [model={}] via /api/generate", model);
+    try {
+      OllamaGenerateResponse response =
+          restClient
+              .post()
+              .uri("/api/generate")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(OllamaGenerateResponse.class);
+
+      if (response == null || response.response() == null || response.response().isBlank()) {
+        throw new PlantPalException("Empty annotation response from Ollama", 502);
+      }
+      log.debug("Ollama annotation responded [model={}]", model);
+      return response.response();
+
+    } catch (RestClientException ex) {
+      log.error("Ollama annotation failed [model={}]", model, ex);
+      throw new PlantPalException(
+          "Ollama annotation service unavailable — ensure Ollama is running locally", 503);
+    }
+  }
+
   // ── Private DTOs (Ollama wire format) ────────────────────────────────────
 
   private record OllamaChatRequest(String model, List<OllamaMessage> messages, boolean stream) {}
