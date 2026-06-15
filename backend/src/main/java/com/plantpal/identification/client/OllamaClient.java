@@ -66,40 +66,29 @@ public class OllamaClient {
   public String identifyPlant(byte[] imageBytes, String mediaType) {
     String base64 = Base64.getEncoder().encodeToString(imageBytes);
 
+    // llava-phi3 requires images at the TOP LEVEL of /api/generate — not nested in a chat message.
+    String prompt =
+        DeepSeekClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
+            + "\n\nIdentify this plant and generate a complete beginner care plan.";
     Map<String, Object> requestBody =
-        Map.of(
-            "model",
-            model,
-            "messages",
-            List.of(
-                Map.of(
-                    "role", "system", "content", DeepSeekClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT),
-                Map.of(
-                    "role",
-                    "user",
-                    "content",
-                    "Identify this plant and generate a complete beginner care plan.",
-                    "images",
-                    List.of(base64))),
-            "stream",
-            false);
+        Map.of("model", model, "prompt", prompt, "images", List.of(base64), "stream", false);
 
-    log.debug("Sending vision prompt to Ollama [model={}]", model);
+    log.debug("Sending vision prompt to Ollama [model={}] via /api/generate", model);
     try {
-      OllamaChatResponse response =
+      OllamaGenerateResponse response =
           restClient
               .post()
-              .uri("/api/chat")
+              .uri("/api/generate")
               .contentType(MediaType.APPLICATION_JSON)
               .body(requestBody)
               .retrieve()
-              .body(OllamaChatResponse.class);
+              .body(OllamaGenerateResponse.class);
 
-      if (response == null || response.message() == null) {
+      if (response == null || response.response() == null || response.response().isBlank()) {
         throw new PlantPalException("Empty vision response from Ollama", 502);
       }
       log.debug("Ollama vision responded [model={}]", model);
-      return response.message().content();
+      return response.response();
 
     } catch (RestClientException ex) {
       log.error("Ollama vision identification failed [model={}]", model, ex);
@@ -115,4 +104,6 @@ public class OllamaClient {
   private record OllamaMessage(String role, String content) {}
 
   private record OllamaChatResponse(OllamaMessage message, boolean done) {}
+
+  private record OllamaGenerateResponse(String response, boolean done) {}
 }
