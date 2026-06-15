@@ -1,5 +1,6 @@
 package com.plantpal.identification.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,5 +16,6 @@ public class AnnotationRegionDto {
   private String label;
   private String type;
   private String confidence;
+  private List<PolygonPointDto> polygon;
   private BoundingBoxDto boundingBox;
 }

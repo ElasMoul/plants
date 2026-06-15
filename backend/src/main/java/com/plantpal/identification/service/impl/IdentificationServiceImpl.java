@@ -355,11 +355,19 @@ public class IdentificationServiceImpl implements IdentificationService {
       var root = objectMapper.readTree(json);
       var regions = root.get("regions");
       if (regions == null || !regions.isArray()) return List.of();
-      return objectMapper.convertValue(
-          regions,
-          objectMapper
-              .getTypeFactory()
-              .constructCollectionType(List.class, AnnotationRegionDto.class));
+      List<AnnotationRegionDto> parsed =
+          objectMapper.convertValue(
+              regions,
+              objectMapper
+                  .getTypeFactory()
+                  .constructCollectionType(List.class, AnnotationRegionDto.class));
+      parsed.forEach(
+          r -> {
+            if (r.getPolygon() != null && r.getPolygon().size() < 3) {
+              r.setPolygon(null);
+            }
+          });
+      return parsed;
     } catch (Exception e) {
       log.warn("Malformed annotation regions JSON: {}", e.getMessage());
       return List.of();

@@ -66,15 +66,13 @@ public class DeepSeekClient {
       {
         "regions": [
           {
-            "label": "<specific description: species name or condition>",
+            "label": "<specific description>",
             "type": "PLANT | DISEASE | HEALTHY_AREA",
             "confidence": "HIGH | MEDIUM | LOW",
-            "boundingBox": {
-              "xPct": <0-100, left edge as % of image width>,
-              "yPct": <0-100, top edge as % of image height>,
-              "widthPct": <1-100, region width as % of image width>,
-              "heightPct": <1-100, region height as % of image height>
-            }
+            "polygon": [
+              { "xPct": <0-100>, "yPct": <0-100> },
+              { "xPct": <0-100>, "yPct": <0-100> }
+            ]
           }
         ]
       }
@@ -83,7 +81,11 @@ public class DeepSeekClient {
       - Always include at least one PLANT region for the main plant body.
       - Add DISEASE regions for yellowing, spots, wilting, pests, rot, or visible damage.
       - Add HEALTHY_AREA only for notably healthy growth worth highlighting.
-      - Bounding boxes must stay in bounds: xPct + widthPct <= 100, yPct + heightPct <= 100.
+      - Polygon points must trace the boundary clockwise.
+      - First and last point need NOT be identical (canvas will close the path).
+      - All xPct/yPct must be integers 0-100 inclusive.
+      - If the region shape is simple (whole plant body), 4 corner points are enough.
+      - For complex disease areas (irregular spots), use 8-16 points.
       - Use specific labels (e.g. "Monstera deliciosa", "Yellowing — possible overwatering").
       """;
 
