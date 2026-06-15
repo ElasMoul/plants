@@ -171,6 +171,30 @@ without creating a lazy-module-imports-lazy-module cycle.
 - Backend `POST /api/v1/identifications/{id}/cure-advice` is LIVE (T2.9d merged PR #15) — disease panel will work after docker rebuild
 - "Add to care plan" is permanently disabled — needs care-plan mutation endpoint (Phase 3)
 
+### AddChooseAi — AI model selector UI (branch: AddChooseAi — assigned)
+**Files to create/modify:**
+- `core/models/user.model.ts` — add `export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA'` and `export interface UserPreferences { aiModelPreference: AiModelPreference }`
+- `core/services/user.service.ts` — NEW service (constructor-injected HttpClient):
+  - `getPreferences()`: cache-first via `sessionStorage` key `'ai_model_preference'`; if cached return `of(cached)`, else GET `/api/v1/users/me/preferences` and store in sessionStorage
+  - `updatePreferences(pref)`: PUT `/api/v1/users/me/preferences`, on success update sessionStorage
+- `shared/components/model-selector/model-selector.component.{ts,html,scss}` — NEW:
+  - `mat-button-toggle-group` with three options: PLANTNET (eco icon), DEEPSEEK (psychology icon), OLLAMA_LLAVA (computer icon)
+  - On init: `getPreferences()`, set selected toggle
+  - On change: disable group, show spinner (diameter 20), call `updatePreferences()`, snack-bar on success, revert + error snack-bar on failure, re-enable group
+  - Constructor injection: UserService, MatSnackBar (no inject())
+  - takeUntil + ngOnDestroy
+- `shared/shared.module.ts` — declare + export `ModelSelectorComponent`; import `MatButtonToggleModule, MatIconModule, MatSnackBarModule, MatProgressSpinnerModule, CommonModule`
+- `app.component.html` — add `<app-model-selector class="model-selector-toolbar">` in mat-toolbar after nav links, before user menu button
+- `app.component.scss` — `.model-selector-toolbar { display: none; }` at `@media (max-width: 768px)`
+- `app.module.ts` — import `SharedModule` if not already imported
+
+**Architecture notes:**
+- `UserService` goes in `core/services/` (not `features/`) — it's a global concern used across the shell
+- `ModelSelectorComponent` goes in `shared/` — it's app-shell level, not feature-level
+- SessionStorage cache: survives navigation, cleared on browser close; correct for a "session preference"
+- Backend API contract: `GET/PUT /api/v1/users/me/preferences` → `ApiResponse<{ aiModelPreference: string }>`
+
 ### Next tasks (in order)
+- AddChooseAi — AI model selector (IN PROGRESS)
 - T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)
 - T2.11 — Manual testing for all Phase 2 features

@@ -3,6 +3,8 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
+import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
@@ -11,6 +13,8 @@ import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.DeepSeekPlantResult;
 import com.plantpal.identification.dto.IdentificationResponse;
+import com.plantpal.identification.dto.plantnet.PlantNetResponse;
+import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.mapper.IdentificationMapper;
@@ -24,6 +28,8 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.user.entity.AiModelPreference;
+import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import java.time.Duration;
@@ -62,6 +68,9 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final ReminderRepository reminderRepository;
   private final FileStorageService fileStorageService;
   private final ObjectMapper objectMapper;
+  private final UserRepository userRepository;
+  private final PlantNetClient plantNetClient;
+  private final OllamaClient ollamaClient;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -74,7 +83,10 @@ public class IdentificationServiceImpl implements IdentificationService {
       PlantRepository plantRepository,
       ReminderRepository reminderRepository,
       FileStorageService fileStorageService,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      UserRepository userRepository,
+      PlantNetClient plantNetClient,
+      OllamaClient ollamaClient) {
     this.deepSeekClient = deepSeekClient;
     this.visionAnnotationClient = visionAnnotationClient;
     this.identificationRepository = identificationRepository;
@@ -83,6 +95,9 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.reminderRepository = reminderRepository;
     this.fileStorageService = fileStorageService;
     this.objectMapper = objectMapper;
+    this.userRepository = userRepository;
+    this.plantNetClient = plantNetClient;
+    this.ollamaClient = ollamaClient;
   }
 
   @Override
@@ -120,9 +135,11 @@ public class IdentificationServiceImpl implements IdentificationService {
       MultipartFile primaryImage = images.get(0);
       byte[] imageBytes = primaryImage.getBytes();
       String mediaType = primaryImage.getContentType();
+      AiModelPreference preference = loadUserPreference(userId);
 
       CompletableFuture<String> identificationFuture =
-          CompletableFuture.supplyAsync(() -> deepSeekClient.identifyPlant(imageBytes, mediaType));
+          CompletableFuture.supplyAsync(
+              () -> runIdentification(preference, images, imageBytes, mediaType, organs));
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
@@ -337,6 +354,59 @@ public class IdentificationServiceImpl implements IdentificationService {
                             .build())
                     .build());
     return bucket.tryConsume(1);
+  }
+
+  private AiModelPreference loadUserPreference(Long userId) {
+    return userRepository
+        .findById(userId)
+        .map(user -> user.getAiModelPreference())
+        .orElse(AiModelPreference.DEEPSEEK);
+  }
+
+  private String runIdentification(
+      AiModelPreference preference,
+      List<MultipartFile> images,
+      byte[] imageBytes,
+      String mediaType,
+      List<String> organs) {
+    return switch (preference) {
+      case PLANTNET ->
+          plantNetToRawResult(
+              plantNetClient.identify(images, organs != null ? organs : List.of("auto")));
+      case OLLAMA_LLAVA -> {
+        try {
+          yield ollamaClient.identifyPlant(imageBytes, mediaType);
+        } catch (PlantPalException e) {
+          log.warn("Ollama identification failed ({}), falling back to DeepSeek", e.getMessage());
+          yield deepSeekClient.identifyPlant(imageBytes, mediaType);
+        }
+      }
+      default -> deepSeekClient.identifyPlant(imageBytes, mediaType);
+    };
+  }
+
+  private String plantNetToRawResult(PlantNetResponse response) {
+    if (response == null || response.results() == null || response.results().isEmpty()) {
+      return "{\"species\":null,\"commonName\":\"Unknown Plant\",\"confidence\":\"LOW\","
+          + "\"healthStatus\":\"UNKNOWN\",\"healthNotes\":null}";
+    }
+    PlantNetResult top = response.results().get(0);
+    String species =
+        top.species() != null ? top.species().scientificNameWithoutAuthor() : "Unknown";
+    String commonName = "Unknown Plant";
+    if (top.species() != null
+        && top.species().commonNames() != null
+        && !top.species().commonNames().isEmpty()) {
+      commonName = top.species().commonNames().get(0);
+    }
+    String confidence = top.score() >= 0.7 ? "HIGH" : top.score() >= 0.4 ? "MEDIUM" : "LOW";
+    java.util.LinkedHashMap<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("species", species);
+    map.put("commonName", commonName);
+    map.put("confidence", confidence);
+    map.put("healthStatus", "UNKNOWN");
+    map.put("healthNotes", "PlantNet identifies species only — health analysis not available.");
+    return serializeToJson(map);
   }
 
   private void updatePlantSpecies(

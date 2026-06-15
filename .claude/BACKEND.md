@@ -19,26 +19,55 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## AI Provider Map (current — feature/PP-023-enhanced-annotation-backend)
+## Current Task — AddChooseAi (branch: AddChooseAi)
+Add user-level AI model preference stored in DB, exposed via REST, wired into identification pipeline.
+
+### ⚠️ Migration number is 010, NOT 009
+The feature spec says `009_add_user_preferences.sql` — **that number is taken** (`009_add_health_to_identifications.sql` already exists and is applied). Use **`010_add_user_preferences.sql`** and register it after 009 in `db.changelog-master.xml`.
+
+### What to build
+1. `user/entity/AiModelPreference.java` — enum: DEEPSEEK | PLANTNET | OLLAMA_LLAVA
+2. `User` entity — add field: `@Enumerated(EnumType.STRING) @Column(name = "ai_model_preference", nullable = false) AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK`
+3. Migration `010_add_user_preferences.sql`: `ALTER TABLE users ADD COLUMN ai_model_preference VARCHAR(50) DEFAULT 'DEEPSEEK' NOT NULL`
+4. `user/dto/UserPreferencesRequest.java` — `@NotNull AiModelPreference aiModelPreference`
+5. `user/dto/UserPreferencesResponse.java` — `AiModelPreference aiModelPreference`
+6. `UserService` interface — add `getPreferences(Long userId)` and `updatePreferences(Long userId, UserPreferencesRequest)`
+7. `UserServiceImpl` — implement both; `updatePreferences` loads user, sets field, saves, returns response DTO
+8. `UserController` (existing) — add two endpoints using userId from SecurityContext:
+   - `GET  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>`
+   - `PUT  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>` (`@Valid` body)
+9. `IdentificationServiceImpl.identify()` — Step 0: load `userRepository.findById(userId)`, switch on `aiModelPreference`:
+   - `DEEPSEEK` → `deepSeekClient.identifyPlant(...)` (existing path)
+   - `PLANTNET` → `plantNetClient.identify(...)` (PlantNetClient is still wired; was just unused)
+   - `OLLAMA_LLAVA` → `ollamaClient.chat(PLANT_IDENTIFICATION_SYSTEM_PROMPT, "Identify this plant.")` ← text only; no image sent to Ollama
+
+No rate limiting on preferences endpoints (plain DB operations, no AI spend).
+
+---
+
+## AI Provider Map (current — branch: AddChooseAi)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|
 | DeepSeekClient (visionModel) | gpt-4o | Plant photo identification + health + care plan (single call) | GitHub Models (models.inference.ai.azure.com) |
-| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + annotation (standalone) | GitHub Models (models.inference.ai.azure.com) |
-| DeepSeekAnnotationClient | gpt-4o via DeepSeekClient.analyzeRegions() | Polygon annotation regions (@Primary) | GitHub Models |
+| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + cure advice | GitHub Models (models.inference.ai.azure.com) |
+| DeepSeekAnnotationClient (@Primary) | gpt-4o via DeepSeekClient.analyzeRegions() | Polygon annotation regions; falls back to OllamaClient on 429 | GitHub Models |
+| OllamaClient | llava-phi3 | (1) OLLAMA_LLAVA preference for identification (2) Annotation fallback on 429 | localhost:11434 |
 | PlantNetAnnotationClient | — | Non-primary fallback; maps species results to full-image PLANT regions | plantnet.org |
 | PlantNetClient | — | Dead code in main flow; used only by PlantNetAnnotationClient | plantnet.org |
-| OllamaClient | phi3 | Dev testing only | localhost:11434 |
 
 ### DeepSeekClient — key facts
 - Single client handles both vision (gpt-4o) and text (DeepSeek-R1) via two config properties:
-  - `${deepseek.model}` → text model for generateCarePlan()
-  - `${deepseek.vision-model}` → vision model for identifyPlant()
+  - `${deepseek.model}` → text model for generateCarePlan(), generateCureAdvice()
+  - `${deepseek.vision-model}` → vision model for identifyPlant(), analyzeRegions()
 - Auth: `Authorization: Bearer <DEEPSEEK_API_KEY>` (GitHub PAT)
 - HTTP/2 via JDK HttpClient (NO forced HTTP_1_1 — Azure endpoint requires HTTP/2)
 - Read timeout: 5 minutes (gpt-4o vision can be slow)
-- `stripThinkTags(String)`: strips `<think>...</think>` blocks emitted by DeepSeek-R1 before JSON parsing
-- Debug log of full raw response before parsing (log level DEBUG)
-- response_format: json_object on both calls
+- `stripThinkTags(String raw)`: **package-private static** — strips `<think>...</think>` (R1) AND
+  markdown ` ```json...``` ` fences (gpt-4o sometimes ignores response_format). Used by both
+  DeepSeekClient methods AND OllamaClient (which also wraps JSON in fences).
+- Debug log of full raw response before stripping in ALL four methods (identifyPlant, analyzeRegions,
+  generateCarePlan, generateCureAdvice) — log level DEBUG
+- response_format: json_object on JSON-returning calls; generateCureAdvice() uses plain text (no format)
 
 ## Non-Negotiable Conventions
 - Constructor injection only. Never @Autowired on fields.
@@ -132,8 +161,11 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
   - Constructor: 8 params — deepSeekClient, visionAnnotationClient, identificationRepository,
     identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper
   - 8-step identify() flow: validate → savePhoto → persist PENDING → rateLimit →
-    PARALLEL(deepSeekClient.identifyPlant, visionAnnotationClient.analyzeRegions) →
+    loadUserPreference → PARALLEL(runIdentification(preference,...), visionAnnotationClient.analyzeRegions) →
     parseIdentificationResult() → persist COMPLETED + annotationRegions → reminders
+  - runIdentification(preference, ...): switch on AiModelPreference:
+    PLANTNET → plantNetClient.identify(); OLLAMA_LLAVA → ollamaClient.identifyPlant() with
+    DeepSeek fallback on PlantPalException; default (DEEPSEEK) → deepSeekClient.identifyPlant()
   - Parallel vision: CompletableFuture.supplyAsync() for both futures; identificationFuture.join()
     unwraps CompletionException; annotationFuture silently degrades to empty regions on failure
   - parseAnnotationRegions(String json): JsonNode API (objectMapper.readTree + convertValue with
@@ -145,15 +177,31 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     PlantPalException(429) if rate-limited, PlantPalException(503) if DeepSeek fails
   - CURE_ADVICE_RATE_LIMIT = 10; cureAdviceBuckets ConcurrentHashMap<Long, Bucket>
 - client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
-- client/DeepSeekAnnotationClient.java— ✅ T2.9a: @Primary implementation; delegates to DeepSeekClient.analyzeRegions()
-                                         2-attempt retry on EOF (Azure HTTP/2 GOAWAY when parallel identify+annotate
-                                         race on same connection; retry gets a fresh connection).
-                                         Silently returns {"regions":[]} on error (annotation is non-critical).
+- client/DeepSeekAnnotationClient.java— ✅ T2.9a + updated (AddChooseAi session):
+                                         @Primary implementation; injects BOTH DeepSeekClient and OllamaClient.
+                                         2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections).
+                                         429 detection: catches RestClientResponseException with status 429 → calls
+                                         tryOllamaFallback() immediately (no retry). Ollama success logged at INFO.
+                                         Returns {"regions":[]} only if BOTH DeepSeek (non-429 after retries)
+                                         and Ollama both fail.
 - client/PlantNetAnnotationClient.java— ✅ T2.9: non-primary implementation; calls PlantNetClient.identify(),
                                          maps top results to full-image PLANT regions (no real bounding boxes);
                                          inner ByteArrayMultipartFile adapts byte[] for PlantNetClient
 - client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NOT called in main flow; used by PlantNetAnnotationClient.
-- client/OllamaClient.java         — local Ollama phi3 (text). dev testing only.
+- client/OllamaClient.java         — local Ollama llava-phi3 (vision). Active in two paths:
+                                     (1) OLLAMA_LLAVA preference → identifyPlant() as primary identification
+                                     (2) DeepSeekAnnotationClient 429 fallback → analyzeRegions()
+                                     Key implementation details:
+                                     • identifyPlant() + analyzeRegions(): use /api/generate with images[] at
+                                       TOP LEVEL (not nested in /api/chat messages — llava-phi3 requires this)
+                                     • resizeAndConvertToJpeg(byte[]): private method, caps at 1024px, converts
+                                       to JPEG via BufferedImage+Graphics2D. Applied before base64 encoding in BOTH
+                                       vision methods. llava-phi3 returns 400 on high-res photos without this.
+                                       Gracefully returns original bytes if ImageIO cannot decode the image.
+                                     • DeepSeekClient.stripThinkTags() called on all responses — Ollama also wraps
+                                       JSON in ```json...``` fences even when not asked to.
+                                     • IdentificationServiceImpl: if ollamaClient.identifyPlant() throws
+                                       PlantPalException, falls back to deepSeekClient.identifyPlant() with WARN log.
 - client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
                                      Four methods: generateCarePlan(), identifyPlant(), analyzeRegions(),
                                      generateCureAdvice(species, regionLabel)
@@ -239,9 +287,11 @@ MISSING: IdentificationControllerIT.java
   However, PlantNetAnnotationClient is NOT @Primary, so DeepSeekAnnotationClient is used by default.
   PlantNet annotation path is a non-primary fallback; clean up only if vision annotation is fully removed.
 - plantnet/ DTOs (PlantNetResponse, PlantNetResult, etc.) still in use by PlantNetAnnotationClient.
-- OllamaClient (phi3) is dev-only and has no role in the current identification flow.
+- OllamaClient (llava-phi3) is now active — annotation fallback on 429 AND OLLAMA_LLAVA preference path.
+  AiTestController still references it and is not @Profile("dev") guarded (known issue).
 - DEEPSEEK_API_KEY in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
-  GitHub Models rate limits apply (free tier); gpt-4o vision calls are quota-heavy.
+  GitHub Models rate limits: 50 requests/day for gpt-4o (vision). 429 on annotation → Ollama fallback.
+  429 on identification → PlantPalException 429 bubbles to user (no automatic fallback at that layer).
 
 ## Key Files
 backend/src/main/java/com/plantpal/shared/dto/ApiResponse.java

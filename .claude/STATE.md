@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 10)
+> Last updated: 2026-06-15 (session 11)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -58,23 +58,48 @@ Phase 2 — AI Plant Identification (in progress)
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
-- feature/PP-017-visual-annotation — T2.9b + T2.9c complete, ready to push + PR
+- feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
+- AddChooseAi — AI model preference feature (in progress, assigned to backend + frontend agents)
 
 ## Next Tasks (in order)
-- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard) ← NEXT
-- T2.11 — Manual testing for all Phase 2 features
+- AddChooseAi — AI model preference (backend + frontend) ← IN PROGRESS
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
 
-## AI Stack (current — as of 2026-06-15)
-- Identification (photo → species + health + care plan): gpt-4o via GitHub Models
+## AddChooseAi Feature (branch: AddChooseAi — in progress)
+### Backend
+- `AiModelPreference` enum in `user/`: DEEPSEEK | PLANTNET | OLLAMA_LLAVA
+- `User` entity: `ai_model_preference VARCHAR(50) DEFAULT 'DEEPSEEK' NOT NULL`
+- Migration: **`010_add_user_preferences.sql`** ← ⚠️ MUST be 010, not 009 (009 already exists)
+- DTOs: `UserPreferencesRequest` (@NotNull preference), `UserPreferencesResponse`
+- `UserService`: `getPreferences(userId)`, `updatePreferences(userId, request)`
+- `UserController`: GET/PUT `/api/v1/users/me/preferences` (userId from SecurityContext)
+- `IdentificationServiceImpl.identify()`: Step 0 loads user preference, switches AI client accordingly
+  - DEEPSEEK → deepSeekClient.identifyPlant()
+  - PLANTNET → plantNetClient.identify()
+  - OLLAMA_LLAVA → ollamaClient.identifyPlant() (resizes image first); falls back to deepSeekClient on error
+
+### Frontend
+- `AiModelPreference` type + `UserPreferences` interface added to `core/models/user.model.ts`
+- `UserService` in `core/services/user.service.ts`: `getPreferences()` (cache-first via sessionStorage), `updatePreferences(pref)`
+- `ModelSelectorComponent` in `shared/components/model-selector/`: mat-button-toggle-group (PlantNet/DeepSeek/Ollama), loading spinner, revert-on-error, snack-bar feedback
+- Declared + exported from `SharedModule`
+- Placed in `app.component.html` toolbar, hidden ≤768px
+
+## AI Stack (current — as of 2026-06-15, session 12)
+- Identification (photo → species + health + care plan): gpt-4o via GitHub Models (default)
+  → OLLAMA_LLAVA preference: llava-phi3 via Ollama (local), falls back to gpt-4o on error
 - Care plan text regeneration: DeepSeek-R1 via GitHub Models
-- Visual annotation (photo → regions): gpt-4o via GitHub Models (DeepSeekAnnotationClient)
-- Cure advice (T2.9d, planned): DeepSeek-R1 via GitHub Models (plain text, no json_object format)
+- Visual annotation (photo → regions): gpt-4o via GitHub Models (DeepSeekAnnotationClient @Primary)
+  → 429 rate limit: falls back to llava-phi3 via Ollama (OllamaClient.analyzeRegions())
+  → Both fail: empty regions {} (annotation is non-critical, identification still completes)
+- Cure advice: DeepSeek-R1 via GitHub Models (plain text, no json_object format)
 - Endpoint: https://models.inference.ai.azure.com
 - Auth: GitHub PAT in DEEPSEEK_API_KEY (backend/.env) — rotate if shared in chat
 - HTTP/2 required for Azure endpoint; 5-minute read timeout on DeepSeekClient
-- R1 wraps output in <think>...</think> — DeepSeekClient.stripThinkTags() handles this
+- R1 wraps output in <think>...</think>; gpt-4o and llava-phi3 wrap JSON in ```json...```
+  → DeepSeekClient.stripThinkTags() (now package-private static) strips both; called by OllamaClient too
+- GitHub Models daily cap: ~50 gpt-4o vision calls/day; 429 on annotation → Ollama fallback
 
 ## Key Decisions Since Project Start
 - Plant identification: gpt-4o (GitHub Models, vision) — replaced PlantNet (unreliable)
@@ -106,6 +131,7 @@ Phase 2 — AI Plant Identification (in progress)
 007_add_annotation_regions.sql    ✅ T2.9 — annotation_regions JSONB (inserted BEFORE 008 in master XML)
 008_add_care_plan.sql             ✅ T2.6 — care_plan JSONB
 009_add_health_to_identifications.sql ✅ — health_status VARCHAR(30), health_notes TEXT
+010_add_user_preferences.sql          🔲 AddChooseAi — ai_model_preference VARCHAR(50) on users
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.
@@ -140,6 +166,14 @@ which stores any JSON shape. Switching from boundingBox to polygon is a pure cod
 - 2026-06-14: DeepSeekClient switched to HTTP/2 (Azure requires it); 5-min read timeout added
 - 2026-06-14: stripThinkTags() added to DeepSeekClient for DeepSeek-R1 reasoning output
 - 2026-06-14: DeepSeekAnnotationClient: retry once on HTTP/2 GOAWAY from Azure
+- 2026-06-15: DeepSeekAnnotationClient: 429 → OllamaClient.analyzeRegions() fallback
+- 2026-06-15: OllamaClient.analyzeRegions() added (uses /api/generate + images top-level)
+- 2026-06-15: stripThinkTags() extended to strip ```json...``` markdown fences (gpt-4o + llava-phi3)
+              Made package-private static so OllamaClient can call it without duplication
+- 2026-06-15: OllamaClient: resizeAndConvertToJpeg() added — caps at 1024px, converts to JPEG
+              before base64 encoding; fixes llava-phi3 400 "Failed to load image or audio file"
+- 2026-06-15: IdentificationServiceImpl: OLLAMA_LLAVA path falls back to DeepSeek on PlantPalException
+- 2026-06-15: Raw response debug logs added to analyzeRegions() and generateCureAdvice() in DeepSeekClient
 
 ## Repo Structure
 plants/
