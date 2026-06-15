@@ -5,22 +5,7 @@
 
 // ── Photo ──────────────────────────────────────────────────────
 .photo-banner {
-  width: 100%;
-  height: 260px;
-  border-radius: 12px;
-  overflow: hidden;
   margin-bottom: 20px;
-
-  @media (max-width: 600px) {
-    height: 200px;
-    border-radius: 8px;
-  }
-}
-
-.banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 // ── Species header ─────────────────────────────────────────────

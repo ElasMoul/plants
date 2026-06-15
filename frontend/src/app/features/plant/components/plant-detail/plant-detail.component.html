@@ -119,6 +119,34 @@
         </div>
       </mat-tab>
 
+      <!-- Tab 4: Last Scan -->
+      <mat-tab label="Last Scan">
+        <div class="tab-content">
+
+          <div *ngIf="!carePlanLoaded" class="care-plan-loading">
+            <mat-spinner diameter="32"></mat-spinner>
+          </div>
+
+          <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
+            <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
+            <h3>No scan yet</h3>
+            <p>Identify this plant to see the annotated scan here.</p>
+            <button mat-raised-button color="primary" routerLink="/identify">
+              <mat-icon>camera_alt</mat-icon>
+              Identify this plant
+            </button>
+          </div>
+
+          <ng-container *ngIf="carePlanLoaded && hasIdentification && latestPhotoUrl">
+            <app-photo-annotator
+              [imageUrl]="latestPhotoUrl"
+              [regions]="latestAnnotationRegions"
+            ></app-photo-annotator>
+          </ng-container>
+
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </ng-container>
 

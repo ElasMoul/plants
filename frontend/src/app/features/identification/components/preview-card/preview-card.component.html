@@ -1,8 +1,11 @@
 <div class="preview-container">
 
-  <!-- Photo banner -->
+  <!-- Photo with annotation overlay -->
   <div class="photo-banner" *ngIf="result.photoUrl">
-    <img [src]="result.photoUrl" [alt]="result.scientificName" class="banner-img" />
+    <app-photo-annotator
+      [imageUrl]="result.photoUrl"
+      [regions]="result.annotationRegions"
+    ></app-photo-annotator>
   </div>
 
   <!-- Species header -->

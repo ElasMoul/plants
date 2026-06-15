@@ -3,7 +3,9 @@ import {
   Component,
   ElementRef,
   Input,
+  OnChanges,
   OnDestroy,
+  SimpleChanges,
   ViewChild,
 } from '@angular/core';
 import { AnnotationRegion, AnnotationRegionType } from '../../models/identification.model';
@@ -19,11 +21,11 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
   templateUrl: './photo-annotator.component.html',
   styleUrls: ['./photo-annotator.component.scss'],
 })
-export class PhotoAnnotatorComponent implements AfterViewInit, OnDestroy {
+export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() imageUrl: string = '';
   @Input() regions: AnnotationRegion[] | null = null;
 
-  @ViewChild('photoImg', { static: true })
+  @ViewChild('photoImg', { static: false })
   private readonly imgRef!: ElementRef<HTMLImageElement>;
 
   @ViewChild('annotationCanvas', { static: false })
@@ -47,6 +49,12 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['regions'] && this.imgRef?.nativeElement?.complete) {
+      setTimeout(() => this.drawAnnotations(), 0);
+    }
+  }
+
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
   }
@@ -59,6 +67,9 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnDestroy {
 
   toggleAnnotations(): void {
     this.showAnnotations = !this.showAnnotations;
+    if (this.showAnnotations) {
+      setTimeout(() => this.drawAnnotations(), 0);
+    }
   }
 
   private drawAnnotations(): void {
@@ -79,10 +90,11 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnDestroy {
     ctx.clearRect(0, 0, w, h);
 
     for (const region of this.regions) {
-      const rx = region.x * w;
-      const ry = region.y * h;
-      const rw = region.width * w;
-      const rh = region.height * h;
+      const bb = region.boundingBox;
+      const rx = (bb.xPct / 100) * w;
+      const ry = (bb.yPct / 100) * h;
+      const rw = (bb.widthPct / 100) * w;
+      const rh = (bb.heightPct / 100) * h;
       const colors = REGION_COLORS[region.type];
 
       // Semi-transparent fill

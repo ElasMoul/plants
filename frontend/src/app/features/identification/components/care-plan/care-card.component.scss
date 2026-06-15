@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  min-width: 0; // grid item must opt-in to shrink below content width
+}
+
 .care-card {
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.08);

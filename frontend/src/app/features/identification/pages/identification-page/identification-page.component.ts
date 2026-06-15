@@ -24,6 +24,8 @@ export class IdentificationPageComponent implements OnDestroy {
   result: IdentificationResponse | null = null;
   errorMessage = '';
 
+  private lastPayload: AnalyzeEmitPayload | null = null;
+
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -38,6 +40,7 @@ export class IdentificationPageComponent implements OnDestroy {
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
+    this.lastPayload = payload;
     this.state = 'analyzing';
     this.result = null;
     this.errorMessage = '';
@@ -72,6 +75,12 @@ export class IdentificationPageComponent implements OnDestroy {
         location:   event.location || undefined,
       },
     });
+  }
+
+  retry(): void {
+    if (this.lastPayload) {
+      this.onAnalyze(this.lastPayload);
+    }
   }
 
   onDiscard(): void {

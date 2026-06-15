@@ -3,13 +3,18 @@ export type IdentificationStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
 export type AnnotationRegionType = 'PLANT' | 'DISEASE' | 'HEALTHY_AREA';
 
+export interface AnnotationBoundingBox {
+  xPct: number;      // percentage 0–100
+  yPct: number;
+  widthPct: number;
+  heightPct: number;
+}
+
 export interface AnnotationRegion {
   type: AnnotationRegionType;
   label: string;
-  x: number;      // normalized 0–1 (left edge)
-  y: number;      // normalized 0–1 (top edge)
-  width: number;  // normalized 0–1
-  height: number; // normalized 0–1
+  confidence: string;
+  boundingBox: AnnotationBoundingBox;
 }
 
 export interface SavePreviewEditEvent {
