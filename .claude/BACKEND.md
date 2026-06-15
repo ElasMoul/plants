@@ -19,6 +19,32 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
+## Current Task — AddChooseAi (branch: AddChooseAi)
+Add user-level AI model preference stored in DB, exposed via REST, wired into identification pipeline.
+
+### ⚠️ Migration number is 010, NOT 009
+The feature spec says `009_add_user_preferences.sql` — **that number is taken** (`009_add_health_to_identifications.sql` already exists and is applied). Use **`010_add_user_preferences.sql`** and register it after 009 in `db.changelog-master.xml`.
+
+### What to build
+1. `user/entity/AiModelPreference.java` — enum: DEEPSEEK | PLANTNET | OLLAMA_LLAVA
+2. `User` entity — add field: `@Enumerated(EnumType.STRING) @Column(name = "ai_model_preference", nullable = false) AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK`
+3. Migration `010_add_user_preferences.sql`: `ALTER TABLE users ADD COLUMN ai_model_preference VARCHAR(50) DEFAULT 'DEEPSEEK' NOT NULL`
+4. `user/dto/UserPreferencesRequest.java` — `@NotNull AiModelPreference aiModelPreference`
+5. `user/dto/UserPreferencesResponse.java` — `AiModelPreference aiModelPreference`
+6. `UserService` interface — add `getPreferences(Long userId)` and `updatePreferences(Long userId, UserPreferencesRequest)`
+7. `UserServiceImpl` — implement both; `updatePreferences` loads user, sets field, saves, returns response DTO
+8. `UserController` (existing) — add two endpoints using userId from SecurityContext:
+   - `GET  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>`
+   - `PUT  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>` (`@Valid` body)
+9. `IdentificationServiceImpl.identify()` — Step 0: load `userRepository.findById(userId)`, switch on `aiModelPreference`:
+   - `DEEPSEEK` → `deepSeekClient.identifyPlant(...)` (existing path)
+   - `PLANTNET` → `plantNetClient.identify(...)` (PlantNetClient is still wired; was just unused)
+   - `OLLAMA_LLAVA` → `ollamaClient.chat(PLANT_IDENTIFICATION_SYSTEM_PROMPT, "Identify this plant.")` ← text only; no image sent to Ollama
+
+No rate limiting on preferences endpoints (plain DB operations, no AI spend).
+
+---
+
 ## AI Provider Map (current — feature/PP-023-enhanced-annotation-backend)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|

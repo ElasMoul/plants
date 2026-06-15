@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 10)
+> Last updated: 2026-06-15 (session 11)
 
 ## Current Phase
 Phase 2 — AI Plant Identification (in progress)
@@ -58,13 +58,33 @@ Phase 2 — AI Plant Identification (in progress)
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
-- feature/PP-017-visual-annotation — T2.9b + T2.9c complete, ready to push + PR
+- feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
+- AddChooseAi — AI model preference feature (in progress, assigned to backend + frontend agents)
 
 ## Next Tasks (in order)
-- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard) ← NEXT
-- T2.11 — Manual testing for all Phase 2 features
+- AddChooseAi — AI model preference (backend + frontend) ← IN PROGRESS
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
+
+## AddChooseAi Feature (branch: AddChooseAi — in progress)
+### Backend
+- `AiModelPreference` enum in `user/`: DEEPSEEK | PLANTNET | OLLAMA_LLAVA
+- `User` entity: `ai_model_preference VARCHAR(50) DEFAULT 'DEEPSEEK' NOT NULL`
+- Migration: **`010_add_user_preferences.sql`** ← ⚠️ MUST be 010, not 009 (009 already exists)
+- DTOs: `UserPreferencesRequest` (@NotNull preference), `UserPreferencesResponse`
+- `UserService`: `getPreferences(userId)`, `updatePreferences(userId, request)`
+- `UserController`: GET/PUT `/api/v1/users/me/preferences` (userId from SecurityContext)
+- `IdentificationServiceImpl.identify()`: Step 0 loads user preference, switches AI client accordingly
+  - DEEPSEEK → deepSeekClient.identifyPlant()
+  - PLANTNET → plantNetClient.identify()
+  - OLLAMA_LLAVA → ollamaClient.chat() with vision prompt
+
+### Frontend
+- `AiModelPreference` type + `UserPreferences` interface added to `core/models/user.model.ts`
+- `UserService` in `core/services/user.service.ts`: `getPreferences()` (cache-first via sessionStorage), `updatePreferences(pref)`
+- `ModelSelectorComponent` in `shared/components/model-selector/`: mat-button-toggle-group (PlantNet/DeepSeek/Ollama), loading spinner, revert-on-error, snack-bar feedback
+- Declared + exported from `SharedModule`
+- Placed in `app.component.html` toolbar, hidden ≤768px
 
 ## AI Stack (current — as of 2026-06-15)
 - Identification (photo → species + health + care plan): gpt-4o via GitHub Models
@@ -106,6 +126,7 @@ Phase 2 — AI Plant Identification (in progress)
 007_add_annotation_regions.sql    ✅ T2.9 — annotation_regions JSONB (inserted BEFORE 008 in master XML)
 008_add_care_plan.sql             ✅ T2.6 — care_plan JSONB
 009_add_health_to_identifications.sql ✅ — health_status VARCHAR(30), health_notes TEXT
+010_add_user_preferences.sql          🔲 AddChooseAi — ai_model_preference VARCHAR(50) on users
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.
