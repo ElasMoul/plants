@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
+import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
@@ -28,6 +30,7 @@ import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.user.repository.UserRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,9 @@ class IdentificationServiceImplTest {
   @Mock private ReminderRepository reminderRepository;
   @Mock private FileStorageService fileStorageService;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
+  @Mock private UserRepository userRepository;
+  @Mock private PlantNetClient plantNetClient;
+  @Mock private OllamaClient ollamaClient;
 
   private IdentificationServiceImpl identificationService;
 
@@ -72,7 +78,10 @@ class IdentificationServiceImplTest {
             plantRepository,
             reminderRepository,
             fileStorageService,
-            objectMapper);
+            objectMapper,
+            userRepository,
+            plantNetClient,
+            ollamaClient);
   }
 
   private MockMultipartFile validImage() {

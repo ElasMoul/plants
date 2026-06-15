@@ -13,6 +13,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { CoreModule } from './core/core.module';
+import { SharedModule } from './shared/shared.module';
 import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
 
 @NgModule({
@@ -23,6 +24,7 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
     HttpClientModule,
     AppRoutingModule,
     CoreModule,
+    SharedModule,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,

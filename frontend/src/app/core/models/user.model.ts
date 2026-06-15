@@ -1,3 +1,9 @@
+export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA';
+
+export interface UserPreferences {
+  aiModelPreference: AiModelPreference;
+}
+
 export interface User {
   id: number;
   email: string;

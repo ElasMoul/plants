@@ -38,4 +38,7 @@
     <include file="db/changelog/migrations/009_add_health_to_identifications.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/010_add_user_preferences.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

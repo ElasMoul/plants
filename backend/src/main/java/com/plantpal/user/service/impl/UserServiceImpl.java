@@ -1,11 +1,14 @@
 package com.plantpal.user.service.impl;
 
+import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
 import com.plantpal.user.dto.AuthResponse;
 import com.plantpal.user.dto.LoginRequest;
 import com.plantpal.user.dto.RegisterRequest;
+import com.plantpal.user.dto.UserPreferencesRequest;
+import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
@@ -83,6 +86,32 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     String token = jwtUtil.generateToken(user, user.getId());
     return buildAuthResponse(user, token);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserPreferencesResponse getPreferences(Long userId) {
+    User user =
+        userRepository
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    return UserPreferencesResponse.builder().aiModelPreference(user.getAiModelPreference()).build();
+  }
+
+  @Override
+  @Transactional
+  public UserPreferencesResponse updatePreferences(Long userId, UserPreferencesRequest request) {
+    User user =
+        userRepository
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    user.setAiModelPreference(request.getAiModelPreference());
+    userRepository.save(user);
+    log.info(
+        "User preference updated: userId={}, preference={}",
+        userId,
+        request.getAiModelPreference());
+    return UserPreferencesResponse.builder().aiModelPreference(user.getAiModelPreference()).build();
   }
 
   @Override

@@ -1,0 +1,46 @@
+.model-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+mat-button-toggle-group {
+  border-color: rgba(255, 255, 255, 0.4);
+  height: 36px;
+}
+
+mat-button-toggle {
+  color: rgba(255, 255, 255, 0.8);
+
+  &.mat-button-toggle-checked {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  ::ng-deep .mat-button-toggle-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+    height: 36px;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  .toggle-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+}
+
+.save-spinner {
+  ::ng-deep circle {
+    stroke: rgba(255, 255, 255, 0.8);
+  }
+}

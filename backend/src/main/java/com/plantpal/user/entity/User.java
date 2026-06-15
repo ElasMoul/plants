@@ -49,6 +49,11 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "status", nullable = false, length = 20)
   private UserStatus status;
 
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "ai_model_preference", nullable = false, length = 50)
+  private AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK;
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_USER"));
