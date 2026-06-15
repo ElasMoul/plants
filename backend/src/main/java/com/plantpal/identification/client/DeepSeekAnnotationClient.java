@@ -20,11 +20,24 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
 
   @Override
   public String analyzeRegions(byte[] imageBytes, String mediaType) {
-    try {
-      return deepSeekClient.analyzeRegions(imageBytes, mediaType);
-    } catch (Exception e) {
-      log.warn("DeepSeek annotation unavailable, returning empty regions: {}", e.getMessage());
-      return EMPTY_REGIONS;
+    // Two attempts: the first may fail with EOF if the Azure HTTP/2 connection
+    // is closed by a GOAWAY after the parallel identifyPlant() call completes.
+    // A retry establishes a fresh connection and succeeds.
+    Exception lastException = null;
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return deepSeekClient.analyzeRegions(imageBytes, mediaType);
+      } catch (Exception e) {
+        lastException = e;
+        if (attempt < 2) {
+          log.debug(
+              "DeepSeek annotation attempt {} failed ({}), retrying", attempt, e.getMessage());
+        }
+      }
     }
+    log.warn(
+        "DeepSeek annotation unavailable, returning empty regions: {}",
+        lastException != null ? lastException.getMessage() : "unknown");
+    return EMPTY_REGIONS;
   }
 }
