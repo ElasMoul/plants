@@ -1,5 +1,7 @@
 package com.plantpal.identification.service;
 
+import com.plantpal.identification.dto.CureAdviceRequest;
+import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -14,4 +16,6 @@ public interface IdentificationService {
 
   Page<IdentificationResponse> getPlantIdentifications(
       Long plantId, Long userId, Pageable pageable);
+
+  CompletableFuture<CureAdviceResponse> getCureAdvice(Long id, CureAdviceRequest req, Long userId);
 }

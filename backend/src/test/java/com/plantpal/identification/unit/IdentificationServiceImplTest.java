@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.CarePlanDto;
+import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
@@ -25,6 +26,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
 import java.util.List;
 import java.util.Optional;
@@ -337,23 +339,24 @@ class IdentificationServiceImplTest {
   @DisplayName("annotation regions")
   class AnnotationRegions {
 
+    private Identification completedEntity() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .status(IdentificationStatus.COMPLETED)
+          .scientificName("Monstera deliciosa")
+          .commonName("Swiss cheese plant")
+          .confidence(0.9)
+          .build();
+    }
+
     @Test
     @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
-
-      Identification entity =
-          Identification.builder()
-              .id(1L)
-              .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
-              .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(completedEntity());
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
@@ -362,31 +365,27 @@ class IdentificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("should populate annotationRegions when annotation JSON is valid")
-    void shouldPopulateRegionsOnValidJson() throws Exception {
+    @DisplayName("should populate annotationRegions with polygon points from valid JSON")
+    void shouldPopulateRegionsOnValidPolygonJson() throws Exception {
       String annotationJson =
           """
           {"regions":[
             {"label":"Monstera deliciosa","type":"PLANT","confidence":"HIGH",
-             "boundingBox":{"xPct":5,"yPct":5,"widthPct":90,"heightPct":85}},
+             "polygon":[
+               {"xPct":5,"yPct":5},{"xPct":60,"yPct":3},{"xPct":95,"yPct":10},{"xPct":92,"yPct":50},
+               {"xPct":95,"yPct":90},{"xPct":50,"yPct":95},{"xPct":5,"yPct":88},{"xPct":3,"yPct":45}
+             ]},
             {"label":"Yellowing leaf","type":"DISEASE","confidence":"MEDIUM",
-             "boundingBox":{"xPct":20,"yPct":60,"widthPct":30,"heightPct":20}}
+             "polygon":[
+               {"xPct":20,"yPct":60},{"xPct":35,"yPct":58},{"xPct":50,"yPct":65},{"xPct":48,"yPct":78},
+               {"xPct":30,"yPct":82},{"xPct":18,"yPct":75},{"xPct":15,"yPct":67},{"xPct":18,"yPct":62}
+             ]}
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
-
-      Identification entity =
-          Identification.builder()
-              .id(1L)
-              .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
-              .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(completedEntity());
 
       IdentificationResponse response =
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
@@ -394,10 +393,57 @@ class IdentificationServiceImplTest {
       assertThat(response.getAnnotationRegions()).hasSize(2);
       assertThat(response.getAnnotationRegions().get(0).getType()).isEqualTo("PLANT");
       assertThat(response.getAnnotationRegions().get(0).getConfidence()).isEqualTo("HIGH");
+      assertThat(response.getAnnotationRegions().get(0).getPolygon()).hasSize(8);
+      assertThat(response.getAnnotationRegions().get(0).getPolygon().get(0).getXPct()).isEqualTo(5);
       assertThat(response.getAnnotationRegions().get(1).getType()).isEqualTo("DISEASE");
+      assertThat(response.getAnnotationRegions().get(1).getPolygon()).hasSize(8);
+    }
+
+    @Test
+    @DisplayName("should accept legacy bounding-box regions (PlantNet fallback path)")
+    void shouldAcceptLegacyBoundingBoxRegions() throws Exception {
+      String annotationJson =
+          """
+          {"regions":[
+            {"label":"Ficus lyrata","type":"PLANT","confidence":"LOW",
+             "boundingBox":{"xPct":0,"yPct":0,"widthPct":100,"heightPct":100}}
+          ]}
+          """;
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
+      when(identificationRepository.save(any())).thenReturn(completedEntity());
+
+      IdentificationResponse response =
+          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+
+      assertThat(response.getAnnotationRegions()).hasSize(1);
+      assertThat(response.getAnnotationRegions().get(0).getPolygon()).isNull();
       assertThat(response.getAnnotationRegions().get(0).getBoundingBox()).isNotNull();
       assertThat(response.getAnnotationRegions().get(0).getBoundingBox().getWidthPct())
-          .isEqualTo(90);
+          .isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("should clear polygon to null when it has fewer than 3 points")
+    void shouldClearDegeneratePolygon() throws Exception {
+      String annotationJson =
+          """
+          {"regions":[
+            {"label":"Bad region","type":"DISEASE","confidence":"LOW",
+             "polygon":[{"xPct":10,"yPct":10},{"xPct":20,"yPct":20}]}
+          ]}
+          """;
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
+      when(identificationRepository.save(any())).thenReturn(completedEntity());
+
+      IdentificationResponse response =
+          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+
+      assertThat(response.getAnnotationRegions()).hasSize(1);
+      assertThat(response.getAnnotationRegions().get(0).getPolygon()).isNull();
     }
   }
 
@@ -520,6 +566,78 @@ class IdentificationServiceImplTest {
           .filter(r -> r.getCareType() == CareType.REPOTTING)
           .findFirst()
           .ifPresent(r -> assertThat(r.getFrequencyDays()).isEqualTo(6 * 30));
+    }
+  }
+
+  @Nested
+  @DisplayName("getCureAdvice()")
+  class CureAdvice {
+
+    private Identification ownedIdentification() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .scientificName("Monstera deliciosa")
+          .build();
+    }
+
+    private CureAdviceRequest req() {
+      return new CureAdviceRequest("Yellowing leaf — possible overwatering", "Monstera deliciosa");
+    }
+
+    @Test
+    @DisplayName("should return advice text from DeepSeek on happy path")
+    void shouldReturnAdviceOnHappyPath() throws Exception {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any()))
+          .thenReturn("1. Remove affected leaves. 2. Reduce watering.");
+
+      var response = identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      assertThat(response.getAdvice()).isEqualTo("1. Remove affected leaves. 2. Reduce watering.");
+      verify(deepSeekClient)
+          .generateCureAdvice("Monstera deliciosa", "Yellowing leaf — possible overwatering");
+    }
+
+    @Test
+    @DisplayName("should throw 429 when cure advice rate limit is exceeded")
+    void shouldThrowWhenRateLimited() throws Exception {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any())).thenReturn("1. Step one.");
+
+      for (int i = 0; i < 10; i++) {
+        identificationService.getCureAdvice(1L, req(), USER_ID).get();
+      }
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when identification is not owned by user")
+    void shouldThrowWhenNotOwned() {
+      Identification foreignIdentification = Identification.builder().id(1L).userId(99L).build();
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(foreignIdentification));
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("should propagate PlantPalException 503 when DeepSeek fails")
+    void shouldPropagate503WhenDeepSeekFails() {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentification()));
+      when(deepSeekClient.generateCureAdvice(any(), any()))
+          .thenThrow(new PlantPalException("Cure advice unavailable", 503));
+
+      assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("Cure advice unavailable");
     }
   }
 }

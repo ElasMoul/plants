@@ -1,13 +1,17 @@
 package com.plantpal.identification.controller;
 
+import com.plantpal.identification.dto.CureAdviceRequest;
+import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
@@ -23,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -83,6 +88,27 @@ public class IdentificationController {
     Page<IdentificationResponse> page =
         identificationService.getPlantIdentifications(plantId, userId, pageable);
     return ResponseEntity.ok(ApiResponse.success(page));
+  }
+
+  @Operation(summary = "Get cure advice for an identified disease region")
+  @PostMapping("/{id}/cure-advice")
+  public ResponseEntity<ApiResponse<CureAdviceResponse>> getCureAdvice(
+      @PathVariable Long id, @RequestBody @Valid CureAdviceRequest req) {
+    Long userId = getCurrentUserId();
+    log.info("Cure advice requested: userId={}, identificationId={}", userId, id);
+    try {
+      CureAdviceResponse response = identificationService.getCureAdvice(id, req, userId).get();
+      return ResponseEntity.status(HttpStatus.ACCEPTED)
+          .body(ApiResponse.success(response, "Cure advice generated successfully"));
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof PlantPalException ppe) throw ppe;
+      if (cause instanceof ResourceNotFoundException rne) throw rne;
+      throw new PlantPalException("Cure advice generation failed", 500);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new PlantPalException("Cure advice request was interrupted", 500);
+    }
   }
 
   private Long getCurrentUserId() {

@@ -1,6 +1,6 @@
 package com.plantpal.identification.dto;
 
-import java.util.List;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,10 +12,9 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnnotationRegionDto {
-  private String label;
-  private String type;
-  private String confidence;
-  private List<PolygonPointDto> polygon;
-  private BoundingBoxDto boundingBox;
+public class CureAdviceRequest {
+
+  @NotBlank private String regionLabel;
+
+  private String species;
 }
