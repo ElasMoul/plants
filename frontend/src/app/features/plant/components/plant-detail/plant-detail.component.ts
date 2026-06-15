@@ -6,7 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { PlantService } from '../../services/plant.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { PlantResponse } from '../../models/plant.model';
-import { CarePlanDto } from '../../../identification/models/identification.model';
+import { AnnotationRegion, CarePlanDto } from '../../../identification/models/identification.model';
 
 @Component({
   selector: 'app-plant-detail',
@@ -17,6 +17,8 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   plant: PlantResponse | null = null;
   loading = true;
   latestCarePlan: CarePlanDto | null = null;
+  latestPhotoUrl: string | null = null;
+  latestAnnotationRegions: AnnotationRegion[] | null = null;
   hasIdentification = false;
   carePlanLoaded = false;
 
@@ -50,7 +52,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         next: res => {
           const items = res.data.content;
           this.hasIdentification = items.length > 0;
-          this.latestCarePlan = items.length > 0 ? items[0].carePlan : null;
+          if (items.length > 0) {
+            this.latestCarePlan = items[0].carePlan;
+            this.latestPhotoUrl = items[0].photoUrl;
+            this.latestAnnotationRegions = items[0].annotationRegions;
+          }
           this.carePlanLoaded = true;
         },
         error: () => {

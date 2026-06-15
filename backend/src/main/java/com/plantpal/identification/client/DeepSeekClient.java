@@ -57,6 +57,36 @@ public class DeepSeekClient {
       - Write for someone who has never owned a plant before.
       """;
 
+  static final String ANNOTATION_SYSTEM_PROMPT =
+      """
+      You are a computer vision system specialised in plant analysis.
+      Examine the image and identify all notable regions.
+      Return ONLY valid JSON (no markdown, no preamble):
+
+      {
+        "regions": [
+          {
+            "label": "<specific description: species name or condition>",
+            "type": "PLANT | DISEASE | HEALTHY_AREA",
+            "confidence": "HIGH | MEDIUM | LOW",
+            "boundingBox": {
+              "xPct": <0-100, left edge as % of image width>,
+              "yPct": <0-100, top edge as % of image height>,
+              "widthPct": <1-100, region width as % of image width>,
+              "heightPct": <1-100, region height as % of image height>
+            }
+          }
+        ]
+      }
+
+      Rules:
+      - Always include at least one PLANT region for the main plant body.
+      - Add DISEASE regions for yellowing, spots, wilting, pests, rot, or visible damage.
+      - Add HEALTHY_AREA only for notably healthy growth worth highlighting.
+      - Bounding boxes must stay in bounds: xPct + widthPct <= 100, yPct + heightPct <= 100.
+      - Use specific labels (e.g. "Monstera deliciosa", "Yellowing — possible overwatering").
+      """;
+
   static final String CARE_PLAN_SYSTEM_PROMPT =
       """
       You are an expert botanist and horticulturist helping a beginner gardener.
@@ -231,6 +261,64 @@ public class DeepSeekClient {
     } catch (RestClientException e) {
       log.error("Failed to reach DeepSeek identification API", e);
       throw new PlantPalException("Plant identification service unavailable", 503);
+    }
+  }
+
+  public String analyzeRegions(byte[] imageBytes, String mediaType) {
+    String dataUrl =
+        "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
+
+    List<Map<String, Object>> userContent =
+        List.of(
+            Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "high")),
+            Map.of("type", "text", "text", "Identify and locate all plant regions in this image."));
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            visionModel,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", ANNOTATION_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userContent)),
+            "temperature",
+            0.2,
+            "response_format",
+            Map.of("type", "json_object"));
+
+    long start = System.currentTimeMillis();
+    try {
+      DeepSeekApiResponse response =
+          restClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(DeepSeekApiResponse.class);
+
+      if (response == null
+          || response.choices() == null
+          || response.choices().isEmpty()
+          || response.choices().get(0).message() == null) {
+        throw new PlantPalException("Empty response from annotation service", 503);
+      }
+
+      String raw = response.choices().get(0).message().content();
+      log.info("DeepSeek annotation completed in {}ms", System.currentTimeMillis() - start);
+      return stripThinkTags(raw);
+
+    } catch (RestClientResponseException e) {
+      log.error(
+          "DeepSeek annotation error status={}, body={}",
+          e.getStatusCode().value(),
+          e.getResponseBodyAsString());
+      throw new PlantPalException("Annotation service unavailable", 503);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach DeepSeek annotation API", e);
+      throw new PlantPalException("Annotation service unavailable", 503);
     }
   }
 

@@ -1,3 +1,7 @@
+:host {
+  display: block; // ensure the component stretches to its container width
+}
+
 // ── Skeleton ──────────────────────────────────────────────────
 .skeleton-grid {
   display: grid;

@@ -997,6 +997,251 @@ In features/identification/components/photo-annotator/:
 
 ---
 
+### T2.9a — Polygon annotation — backend 🤖 AI
+**Branch:** `feature/PP-023-enhanced-annotation-backend`
+
+> **Depends on T2.9 merged.**
+> Migration 007 already exists as JSONB — no structural migration change needed.
+> JSONB accepts any JSON shape, so switching to polygons is a pure code change.
+
+**Goal:** Replace per-region bounding boxes with polygon point arrays so the canvas
+can trace the actual leaf/area shape instead of a rectangle.
+
+**Backend Claude Code prompt:**
+```
+// T2.9a — Switch annotation regions from bounding boxes to polygon points
+
+In com.plantpal.identification:
+
+1. New PolygonPointDto: int xPct, int yPct (both 0-100)
+   @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+   No @JsonProperty needed — xPct/yPct are lowercase so Lombok generates getXPct()/getYPct()
+   → Jackson decapitalize("XPct") = "XPct" (two consecutive uppercase). Add @JsonProperty("xPct")
+   and @JsonProperty("yPct") same as BoundingBoxDto.
+
+2. Update AnnotationRegionDto:
+   - Add field: List<PolygonPointDto> polygon  (nullable — AI may not always return it)
+   - Keep BoundingBoxDto boundingBox as nullable fallback for old DB records
+   - Remove the @NonNull / required constraint from boundingBox if present
+
+3. Update DeepSeekClient.ANNOTATION_SYSTEM_PROMPT:
+   Replace the boundingBox block with:
+   {
+     "regions": [
+       {
+         "label": "<specific description>",
+         "type": "PLANT | DISEASE | HEALTHY_AREA",
+         "confidence": "HIGH | MEDIUM | LOW",
+         "polygon": [
+           { "xPct": <0-100>, "yPct": <0-100> },
+           ... (8-16 points tracing the region boundary, min 4)
+         ]
+       }
+     ]
+   }
+   Rules to add:
+   - Polygon points must trace the boundary clockwise.
+   - First and last point need NOT be identical (canvas will close the path).
+   - All xPct/yPct must be integers 0-100 inclusive.
+   - If the region shape is simple (whole plant body), 4 corner points are enough.
+   - For complex disease areas (irregular spots), use 8-16 points.
+
+4. In parseAnnotationRegions() (IdentificationServiceImpl or wherever it lives):
+   - After parsing, validate each region: if polygon is non-null but has < 3 points,
+     set polygon to null (degenerate polygon, canvas cannot draw it).
+   - If polygon is null AND boundingBox is non-null: leave both as-is (legacy fallback).
+   - If both are null: the region is still valid (no overlay drawn for it).
+
+5. Update unit tests in IdentificationServiceImplTest:
+   - validAnnotationJson() helper: switch to polygon format (8 points per region)
+   - Keep one legacy bounding-box test verifying fallback path still works
+   - Verify degenerate polygon (2 points) is cleared to null after parse
+
+No new migration needed — annotation_regions JSONB column from T2.9 stores any shape.
+```
+
+---
+
+### T2.9b — Polygon annotation — frontend 🤖 AI
+**Branch:** `feature/PP-023-enhanced-annotation-backend` (same branch, frontend half)
+
+> **Depends on T2.9a backend merged and deployed.**
+> Backend now sends `polygon` (list of points) instead of `boundingBox`.
+> Falls back to bounding box rect if `polygon` is null.
+
+**Frontend Claude Code prompt:**
+```
+// T2.9b — Switch PhotoAnnotatorComponent from rect to polygon path rendering
+
+In features/identification/components/photo-annotator/photo-annotator.component.ts:
+
+1. Update AnnotationRegion model (identification.model.ts):
+   - Add interface PolygonPoint { xPct: number; yPct: number; }
+   - Add field polygon?: PolygonPoint[] to AnnotationRegion
+   - Keep boundingBox?: AnnotationBoundingBox (nullable fallback for old records)
+
+2. In PhotoAnnotatorComponent.drawAnnotations(), replace the rect drawing with:
+
+   For each region:
+   a. If region.polygon exists and has >= 3 points:
+      const points = region.polygon.map(p => ({
+        x: (p.xPct / 100) * w,
+        y: (p.yPct / 100) * h,
+      }));
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = colors.fill;
+      ctx.fill();
+      ctx.strokeStyle = colors.stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Label: position at centroid of polygon points
+      const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
+      const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
+      drawLabel(ctx, label, cx, cy - 10, colors.stroke);
+
+   b. Else if region.boundingBox exists (fallback):
+      // old rect logic — unchanged
+
+   c. Else: skip (no overlay for this region)
+
+3. Extract drawLabel(ctx, text, x, y, color) as a private method to avoid duplication
+   between polygon centroid labels and bounding-box pill labels.
+
+4. No module changes — PhotoAnnotatorComponent is already in CarePlanModule.
+   No route changes needed.
+```
+
+---
+
+### T2.9c — Disease detail panel + annotation list 🤖 AI
+**Branch:** `feature/PP-024-disease-panel`
+
+> **Depends on T2.9b (polygon canvas) AND T2.9d (cure-advice endpoint).**
+> Frontend-only task (annotation panel + wiring to cure-advice API call).
+
+**Goal:** Interactive annotation experience — click a region in the list to highlight it
+on the canvas and see a disease detail panel with cure advice.
+
+**Frontend Claude Code prompt:**
+```
+// T2.9c — Annotation list panel + disease detail panel
+
+In features/identification/components/:
+
+1. AnnotationListComponent (new, declared in CarePlanModule)
+   @Input regions: AnnotationRegion[]
+   @Input species: string | null
+   @Input identificationId: number
+   @Output regionSelected = new EventEmitter<number | null>()  // emits region index
+
+   Template:
+   - List of mat-list-item per region:
+     [color dot] [label] [confidence badge] [type badge]
+     Clicking → emits regionSelected with the index
+   - If no regions: show "No regions detected"
+
+2. DiseaseDetailPanelComponent (new, declared in CarePlanModule)
+   @Input region: AnnotationRegion | null
+   @Input species: string | null
+   @Input identificationId: number
+   Outputs: none (calls API internally)
+
+   Shows (only when region?.type === 'DISEASE'):
+   - Region label (h3)
+   - Confidence badge
+   - "Ask for cure" mat-button → calls IdentificationService.getCureAdvice()
+     - Loading: mat-spinner
+     - Success: show advice text in <mat-card>
+     - Error: show "Could not load advice, please try again"
+   - "Add to care plan" mat-button [disabled] matTooltip="Available after saving plant"
+
+   Hides entirely when region is null or type is not DISEASE.
+
+3. Update PhotoAnnotatorComponent:
+   @Input selectedRegionIndex: number | null = null
+   In drawAnnotations(): when selectedRegionIndex is set, draw all OTHER regions at 20%
+   fill opacity (override colors.fill alpha to 0.04) and grey stroke (#ccc),
+   draw the selected region at full opacity + 3px stroke.
+
+4. Wire everything in plant-detail "Last Scan" tab AND identification-page:
+   - Add <app-annotation-list> and <app-disease-detail-panel> below <app-photo-annotator>
+   - On (regionSelected): update selectedRegionIndex on PhotoAnnotatorComponent
+     and pass selected region to DiseaseDetailPanelComponent
+   - Use takeUntil(this.destroy$) for any subscriptions
+
+5. IdentificationService: add method
+   getCureAdvice(identificationId: number, regionLabel: string, species: string): Observable<string>
+   POST /api/v1/identifications/{id}/cure-advice
+   Body: { regionLabel, species }
+   Returns: response.data.advice
+
+No new module/routing changes needed.
+```
+
+---
+
+### T2.9d — Cure-advice endpoint — backend 🤖 AI
+**Branch:** `feature/PP-023-enhanced-annotation-backend` (same as T2.9a — same agent, same session)
+
+> **Depends on T2.9 merged.**
+> Can be implemented in the SAME backend session as T2.9a (different class, no conflicts).
+
+**Goal:** New endpoint that generates a short, step-by-step cure procedure for a detected
+disease region, using DeepSeek-R1 via GitHub Models.
+
+**Backend Claude Code prompt:**
+```
+// T2.9d — POST /api/v1/identifications/{id}/cure-advice
+
+In com.plantpal.identification:
+
+1. New DTOs:
+   CureAdviceRequest: @NotBlank String regionLabel, String species
+   CureAdviceResponse: String advice
+
+2. New method in DeepSeekClient:
+   public String generateCureAdvice(String species, String regionLabel)
+   - Uses model (DeepSeek-R1, text model)
+   - System prompt:
+     "You are a plant pathologist. Answer in plain English for a beginner gardener.
+      Be direct and practical. Do NOT use markdown. No headers, no bullet symbols — write
+      numbered steps as plain text: '1. Remove affected leaves. 2. Apply neem oil...'"
+   - User message: "My {species} has the following issue: {regionLabel}. Provide a
+     concise cure procedure in 3-5 numbered steps."
+   - temperature: 0.3, NO response_format json_object (plain text response)
+   - Apply stripThinkTags() before returning (R1 wraps reasoning in <think> blocks)
+   - Timeout: same 5-minute factory (inherited from constructor)
+   - Error: throw PlantPalException("Cure advice unavailable", 503)
+
+3. New method in IdentificationService interface + IdentificationServiceImpl:
+   @Async("aiTaskExecutor")
+   CompletableFuture<CureAdviceResponse> getCureAdvice(Long id, CureAdviceRequest req, Long userId)
+   - Load identification by id, verify ownership (userId match) — throw ResourceNotFoundException if not found
+   - consumeRateLimit(userId) — use a SEPARATE Bucket (cureAdviceBuckets) with 10 calls/hour
+     (distinct from the 20/hour identification bucket — cure advice is lighter but separate quota)
+   - Call deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel())
+   - Return CompletableFuture.completedFuture(new CureAdviceResponse(advice))
+
+4. New endpoint in IdentificationController:
+   POST /api/v1/identifications/{id}/cure-advice
+   @RequestBody @Valid CureAdviceRequest req
+   → ResponseEntity<ApiResponse<CureAdviceResponse>> (202 Accepted, async)
+   Authentication: same @AuthenticationPrincipal pattern as other endpoints
+
+5. Unit tests (IdentificationServiceImplTest — new nested class CureAdvice):
+   - Happy path: deepSeekClient returns advice text → response contains advice
+   - Rate limited: returns 429 PlantPalException
+   - Identification not owned by user: throws ResourceNotFoundException
+   - DeepSeek throws: PlantPalException 503 propagated
+```
+
+---
+
 ### T2.10 — Garden health dashboard 💡 Architect Suggestion
 **Branch:** `feature/PP-020-garden-dashboard`
 

@@ -29,6 +29,9 @@
     <include file="db/changelog/migrations/006_alter_identifications.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/007_add_annotation_regions.sql"
+             relativeToChangelogFile="false"/>
+
     <include file="db/changelog/migrations/008_add_care_plan.sql"
              relativeToChangelogFile="false"/>
 

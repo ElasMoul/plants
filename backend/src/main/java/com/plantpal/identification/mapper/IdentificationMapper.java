@@ -15,5 +15,6 @@ public interface IdentificationMapper {
 
   @Mapping(target = "topResults", ignore = true)
   @Mapping(target = "carePlan", ignore = true)
+  @Mapping(target = "annotationRegions", ignore = true)
   IdentificationResponse toResponse(Identification identification);
 }

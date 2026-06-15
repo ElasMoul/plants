@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
@@ -45,6 +46,7 @@ import org.springframework.web.multipart.MultipartFile;
 class IdentificationServiceImplTest {
 
   @Mock private DeepSeekClient deepSeekClient;
+  @Mock private VisionAnnotationClient visionAnnotationClient;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private IdentificationMapper identificationMapper;
   @Mock private PlantRepository plantRepository;
@@ -62,6 +64,7 @@ class IdentificationServiceImplTest {
     identificationService =
         new IdentificationServiceImpl(
             deepSeekClient,
+            visionAnnotationClient,
             identificationRepository,
             identificationMapper,
             plantRepository,
@@ -327,6 +330,74 @@ class IdentificationServiceImplTest {
           identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
 
       assertThat(response.getCarePlan().getCareCards()).isNotNull().isNotEmpty();
+    }
+  }
+
+  @Nested
+  @DisplayName("annotation regions")
+  class AnnotationRegions {
+
+    @Test
+    @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
+    void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
+
+      Identification entity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.COMPLETED)
+              .scientificName("Monstera deliciosa")
+              .commonName("Swiss cheese plant")
+              .confidence(0.9)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(entity);
+
+      IdentificationResponse response =
+          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+
+      assertThat(response.getAnnotationRegions()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("should populate annotationRegions when annotation JSON is valid")
+    void shouldPopulateRegionsOnValidJson() throws Exception {
+      String annotationJson =
+          """
+          {"regions":[
+            {"label":"Monstera deliciosa","type":"PLANT","confidence":"HIGH",
+             "boundingBox":{"xPct":5,"yPct":5,"widthPct":90,"heightPct":85}},
+            {"label":"Yellowing leaf","type":"DISEASE","confidence":"MEDIUM",
+             "boundingBox":{"xPct":20,"yPct":60,"widthPct":30,"heightPct":20}}
+          ]}
+          """;
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
+
+      Identification entity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.COMPLETED)
+              .scientificName("Monstera deliciosa")
+              .commonName("Swiss cheese plant")
+              .confidence(0.9)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(entity);
+
+      IdentificationResponse response =
+          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+
+      assertThat(response.getAnnotationRegions()).hasSize(2);
+      assertThat(response.getAnnotationRegions().get(0).getType()).isEqualTo("PLANT");
+      assertThat(response.getAnnotationRegions().get(0).getConfidence()).isEqualTo("HIGH");
+      assertThat(response.getAnnotationRegions().get(1).getType()).isEqualTo("DISEASE");
+      assertThat(response.getAnnotationRegions().get(0).getBoundingBox()).isNotNull();
+      assertThat(response.getAnnotationRegions().get(0).getBoundingBox().getWidthPct())
+          .isEqualTo(90);
     }
   }
 

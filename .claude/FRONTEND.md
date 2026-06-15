@@ -120,7 +120,25 @@ without creating a lazy-module-imports-lazy-module cycle.
 
 **proxy.conf.json** — `/photos` proxy entry was added in T2.8 session (fixes photo 404 in dev). Requires `ng serve` restart to take effect.
 
+### T2.9 — Photo annotator — Completed (2026-06-14)
+**Files changed:**
+- `identification/models/identification.model.ts` — added `AnnotationRegionType`, `AnnotationRegion` interface (normalized 0–1 coords), `annotationRegions: AnnotationRegion[] | null` on `IdentificationResponse`
+- `identification/components/photo-annotator/` — new `PhotoAnnotatorComponent`:
+  - `@Input() imageUrl: string` + `@Input() regions: AnnotationRegion[] | null`
+  - Canvas drawn on `(load)` event + `ResizeObserver` for redraws on viewport change
+  - `PLANT` → blue `#1565C0`, `DISEASE` → red `#c62828`, `HEALTHY_AREA` → green `#2e7d32`
+  - Label pill (colored rect + white text) drawn above each bounding box
+  - "Show/Hide annotations" toggle button only rendered when `hasRegions === true`
+  - No canvas rendered at all when regions are null/empty — just plain `<img>`
+- `identification/identification.module.ts` — declared `PhotoAnnotatorComponent`
+- `identification/components/identification-result/identification-result.component.html` — added `<app-photo-annotator>` at the top of mat-card-content
+- `identification/components/identification-result/identification-result.component.scss` — `.photo-section { margin-bottom: 16px }`
+
+**Architecture notes:**
+- Canvas is `position: absolute` over the `<img>` (both inside `position: relative` `.photo-frame`)
+- `pointer-events: none` on canvas lets users interact with the underlying image
+- `canvas.width/height` set to `img.clientWidth/Height` on each draw so pixel coords match rendered size
+- `annotationRegions` will be null until backend migration 007 ships — component degrades gracefully to plain img
+
 ### Next task
-T2.9 — Visual annotation (bounding boxes + disease overlay via Ollama LLaVA)
-Branch: feature/PP-017-visual-annotation
-Requires migration 007_add_annotation_regions.sql on backend first
+T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)

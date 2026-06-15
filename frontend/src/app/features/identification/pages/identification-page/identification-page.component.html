@@ -36,9 +36,13 @@
         </div>
       </mat-card-content>
       <mat-card-actions>
-        <button mat-raised-button color="primary" type="button" (click)="reset()">
+        <button mat-raised-button color="primary" type="button" (click)="retry()">
           <mat-icon>refresh</mat-icon>
-          Try again
+          Retry
+        </button>
+        <button mat-stroked-button type="button" (click)="reset()">
+          <mat-icon>add_photo_alternate</mat-icon>
+          Change photo
         </button>
       </mat-card-actions>
     </mat-card>

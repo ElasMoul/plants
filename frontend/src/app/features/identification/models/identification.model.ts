@@ -1,6 +1,21 @@
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 export type IdentificationStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
+export type AnnotationRegionType = 'PLANT' | 'DISEASE' | 'HEALTHY_AREA';
+
+export interface AnnotationBoundingBox {
+  xPct: number;      // percentage 0–100
+  yPct: number;
+  widthPct: number;
+  heightPct: number;
+}
+
+export interface AnnotationRegion {
+  type: AnnotationRegionType;
+  label: string;
+  confidence: string;
+  boundingBox: AnnotationBoundingBox;
+}
 
 export interface SavePreviewEditEvent {
   nickname: string;
@@ -67,6 +82,7 @@ export interface IdentificationResponse {
   topResults: PlantNetResult[];
   photoUrl: string;
   carePlan: CarePlanDto | null;
+  annotationRegions: AnnotationRegion[] | null;
   createdAt: string;
 }
 

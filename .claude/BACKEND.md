@@ -101,29 +101,49 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
     links identification.plantId, creates reminders from carePlan JSON
 - controller/PlantController.java — POST /api/v1/plants/from-identification → 201
 
-### identification/ — fully implemented (feature/PP-deepseek-identification)
-- entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT
+### identification/ — fully implemented (T2.9 complete)
+- entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT,
+                                     annotation_regions JSONB (String, @JdbcTypeCode(SqlTypes.JSON))
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
-- dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes fields
+- dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes,
+                                     List<AnnotationRegionDto> annotationRegions fields
 - dto/CareCardDto.java             — ✅ T2.6
 - dto/CarePlanDto.java             — ✅ T2.6
+- dto/AnnotationRegionDto.java     — ✅ T2.9: label, type (PLANT/DISEASE/HEALTHY_AREA),
+                                     confidence (HIGH/MEDIUM/LOW), BoundingBoxDto boundingBox
+- dto/BoundingBoxDto.java          — ✅ T2.9: xPct, yPct, widthPct, heightPct (all int, 0-100%)
+                                     NOTE: xPct and yPct have @JsonProperty("xPct")/@JsonProperty("yPct")
+                                     to override Lombok's getXPct()/getYPct() which Jackson decapitalizes
+                                     to XPct/YPct (Introspector.decapitalize rule: 2 consecutive uppercase).
 - dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
                                      species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
 - dto/plantnet/ (PlantNetResponse, PlantNetResult, PlantNetSpecies, PlantNetTaxon) — kept but unused
-- mapper/IdentificationMapper.java — ignores topResults AND carePlan (set manually in service)
+- mapper/IdentificationMapper.java — ignores topResults, carePlan, AND annotationRegions (all set manually in service)
 - repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
 - service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-  - PlantNetClient NO LONGER injected — identification is now fully DeepSeek-vision-based
+  - Constructor: 8 params — deepSeekClient, visionAnnotationClient, identificationRepository,
+    identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper
   - 8-step identify() flow: validate → savePhoto → persist PENDING → rateLimit →
-    deepSeekClient.identifyPlant(bytes, mediaType) → parseIdentificationResult() →
-    persist COMPLETED (species/commonName/confidence/health/carePlan) → reminders
+    PARALLEL(deepSeekClient.identifyPlant, visionAnnotationClient.analyzeRegions) →
+    parseIdentificationResult() → persist COMPLETED + annotationRegions → reminders
+  - Parallel vision: CompletableFuture.supplyAsync() for both futures; identificationFuture.join()
+    unwraps CompletionException; annotationFuture silently degrades to empty regions on failure
+  - parseAnnotationRegions(String json): JsonNode API (objectMapper.readTree + convertValue with
+    constructCollectionType) — NOT a private record (Jackson cannot access private nested records).
   - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
-  - parseIdentificationResult(): Jackson parse with fallback on malformed JSON
   - fallbackCarePlan(): single WATERING card, 7-day frequency
-- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NO LONGER CALLED in main flow.
+- client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
+- client/DeepSeekAnnotationClient.java— ✅ T2.9: @Primary implementation; delegates to DeepSeekClient.analyzeRegions()
+                                         silently returns {"regions":[]} on error (annotation is non-critical)
+- client/PlantNetAnnotationClient.java— ✅ T2.9: non-primary implementation; calls PlantNetClient.identify(),
+                                         maps top results to full-image PLANT regions (no real bounding boxes);
+                                         inner ByteArrayMultipartFile adapts byte[] for PlantNetClient
+- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NOT called in main flow; used by PlantNetAnnotationClient.
 - client/OllamaClient.java         — local Ollama phi3 (text). dev testing only.
-- client/DeepSeekClient.java       — ✅ GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision) + DeepSeek-R1 (text)
+- client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
+                                     Three methods: generateCarePlan(), identifyPlant(), analyzeRegions()
+                                     ANNOTATION_SYSTEM_PROMPT added for T2.9 (bounding box JSON schema)
 - controller/IdentificationController.java
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
@@ -142,12 +162,11 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 004_create_reminders_and_care_logs.sql
 005_create_push_subscriptions.sql
 006_alter_identifications.sql      ← raw_response TEXT not JSONB
+007_add_annotation_regions.sql     ← ✅ T2.9 — adds annotation_regions JSONB to identifications
 008_add_care_plan.sql              ← ✅ T2.6 — adds care_plan JSONB to identifications
 009_add_health_to_identifications.sql ← ✅ feature/PP-deepseek-identification — adds health_status VARCHAR(30), health_notes TEXT
 
-NOTE: Migration 007 does NOT exist yet (T2.9 not started). The numbering skips intentionally.
-Current master XML order: 001→006, then 008, then 009.
-When T2.9 is implemented: create 007_add_annotation_regions.sql and insert it BEFORE 008 in db.changelog-master.xml.
+Current master XML order: 001→009 inclusive (007 inserted BEFORE 008, correct order).
 
 ## Test Inventory
 unit/UserServiceTest.java
@@ -155,12 +174,13 @@ unit/PlantServiceTest.java                ← updated T2.8: +7 SaveFromIdentific
                                              (nickname fallbacks, ownership check, reminder creation)
                                              Now has @Mock IdentificationRepository, ReminderRepository,
                                              @Spy ObjectMapper = new ObjectMapper()
-unit/IdentificationServiceImplTest.java   ← FULLY REWRITTEN (feature/PP-deepseek-identification): 10 tests for DeepSeek vision flow
-                                            No PlantNetClient mock. Mocks deepSeekClient.identifyPlant(any(), any()).
-                                            Tests: happy path (confidence=0.9, healthStatus, topResults empty),
-                                            FAILED status when DeepSeek throws, not-owned plant skip,
-                                            valid/malformed/null/empty carePlan parsing,
-                                            reminder creation (with/without fertilizing, correct frequencyDays).
+unit/IdentificationServiceImplTest.java   ← 12 tests total; 4 nested classes:
+                                            Identify (3): happy path, DeepSeek throws→FAILED, not-owned plant skip
+                                            CarePlanParsing (4): valid/malformed/null/empty carePlan
+                                            ReminderCreation (3): with fertilizing, without fertilizing, correct frequencyDays
+                                            AnnotationRegions (2): ✅ T2.9 — malformed JSON→empty, valid JSON→2 regions with types/confidence/widthPct
+                                            NOTE: all tests construct IdentificationServiceImpl manually (8-param constructor).
+                                            @Mock VisionAnnotationClient visionAnnotationClient injected as 2nd ctor arg.
 unit/PlantNetClientTest.java
 unit/OllamaClientTest.java
 integration/AuthControllerIT.java
@@ -196,8 +216,10 @@ MISSING: IdentificationControllerIT.java
 - Branch protection on main + dev configured but integration tests not running in CI
 - Spotless (Google Java Format) flags CRLF line endings on new files written by Claude Code
   on Windows. Fix with: cd backend && mvn spotless:apply
-- Migration 007_add_annotation_regions.sql is PLANNED (T2.9); insert BEFORE 008 in master XML when created.
-- PlantNetClient and plantnet/ DTOs are dead code — no longer called. Remove at next cleanup.
+- PlantNetClient is now called by PlantNetAnnotationClient (T2.9) — no longer completely dead code.
+  However, PlantNetAnnotationClient is NOT @Primary, so DeepSeekAnnotationClient is used by default.
+  PlantNet annotation path is a non-primary fallback; clean up only if vision annotation is fully removed.
+- plantnet/ DTOs (PlantNetResponse, PlantNetResult, etc.) still in use by PlantNetAnnotationClient.
 - OllamaClient (phi3) is dev-only and has no role in the current identification flow.
 - DEEPSEEK_API_KEY in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
   GitHub Models rate limits apply (free tier); gpt-4o vision calls are quota-heavy.
