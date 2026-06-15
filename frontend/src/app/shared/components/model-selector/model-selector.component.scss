@@ -17,6 +17,10 @@ mat-button-toggle {
     color: #fff;
   }
 
+  &.mat-button-toggle {
+    color: #444444;
+  }
+
   ::ng-deep .mat-button-toggle-button {
     display: flex;
     align-items: center;

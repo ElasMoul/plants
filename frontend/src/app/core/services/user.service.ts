@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment';
+import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { AiModelPreference, UserPreferences } from '../models/user.model';
 
@@ -20,6 +20,7 @@ export class UserService {
       return of({
         success: true,
         message: 'cached',
+        timestamp: new Date().toISOString(),
         data: { aiModelPreference: cached as AiModelPreference },
       });
     }
