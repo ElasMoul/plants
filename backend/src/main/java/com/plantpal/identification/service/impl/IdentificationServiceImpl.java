@@ -373,7 +373,14 @@ public class IdentificationServiceImpl implements IdentificationService {
       case PLANTNET ->
           plantNetToRawResult(
               plantNetClient.identify(images, organs != null ? organs : List.of("auto")));
-      case OLLAMA_LLAVA -> ollamaClient.identifyPlant(imageBytes, mediaType);
+      case OLLAMA_LLAVA -> {
+        try {
+          yield ollamaClient.identifyPlant(imageBytes, mediaType);
+        } catch (PlantPalException e) {
+          log.warn("Ollama identification failed ({}), falling back to DeepSeek", e.getMessage());
+          yield deepSeekClient.identifyPlant(imageBytes, mediaType);
+        }
+      }
       default -> deepSeekClient.identifyPlant(imageBytes, mediaType);
     };
   }
