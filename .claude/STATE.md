@@ -49,6 +49,18 @@ Phase 2 — AI Plant Identification (in progress)
   - DeepSeekAnnotationClient: 2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections)
   - parseAnnotationRegions(): clears polygon to null if < 3 points (degenerate)
 - T2.9d Cure-advice endpoint (feature/PP-023-enhanced-annotation-backend, merged PR #15) ✅
+- T2.A GitHubModelsClient split — vision (gpt-4o/gpt-4o-mini) vs text (DeepSeek-R1) ✅
+  - GitHubModelsClient.java: identification (gpt-4o) + annotation (gpt-4o-mini); HTTP/2; 5-min timeout
+  - DeepSeekClient: vision methods removed; owns generateCarePlan() + generateCureAdvice() + stripThinkTags() only
+  - DeepSeekAnnotationClient: now injects GitHubModelsClient (not DeepSeekClient) for analyzeRegions()
+  - OllamaClient: references GitHubModelsClient.{PLANT_IDENTIFICATION,ANNOTATION}_SYSTEM_PROMPT
+  - IdentificationServiceImpl: injects GitHubModelsClient; DEEPSEEK + GITHUB_GPT4O both route here
+  - application-dev.yml: github.base-url / github.token / github.models.* properties; deepseek.* cleaned up
+  - .env.example: GITHUB_TOKEN, GITHUB_BASE_URL, GITHUB_IDENTIFICATION_MODEL, GITHUB_ANNOTATION_MODEL
+- T2.B GITHUB_GPT4O model preference ✅
+  - AiModelPreference enum: DEEPSEEK | PLANTNET | OLLAMA_LLAVA | GITHUB_GPT4O
+  - frontend AiModelPreference type updated to include 'GITHUB_GPT4O'
+  - ModelSelectorComponent: 4 toggles; matTooltip rate-limit warnings on all four options
   - POST /api/v1/identifications/{id}/cure-advice → 202 Accepted, { advice: string }
   - CureAdviceRequest (@NotBlank regionLabel, nullable species), CureAdviceResponse (String advice)
   - DeepSeekClient.generateCureAdvice(): text model (DeepSeek-R1), plain text (no json_object), stripThinkTags()
@@ -59,13 +71,11 @@ Phase 2 — AI Plant Identification (in progress)
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
 - feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
-- AddChooseAi — AI model preference feature (in progress, assigned to backend + frontend agents)
+- AddChooseAi — AI model preference feature — merged PR #20 ✅
+- feature/PP-025-github-models-client — T2.A + T2.B complete, commit 086cd07 ✅ (open PR or merge to dev)
 
 ## Next Tasks (in order)
-- AddChooseAi — AI model preference (backend + frontend) ← IN PROGRESS
-- T2.A — GitHubModelsClient split: vision (gpt-4o/gpt-4o-mini) vs text (DeepSeek-R1) (feature/PP-025-github-models-client)
-- T2.B — Add GITHUB_GPT4O to AiModelPreference + model selector 4th toggle (same branch)
-- T2.C — Kafka async identification pipeline — return 202, consumer processes (feature/PP-026-kafka-async)
+- T2.C — Kafka async identification pipeline — return 202, consumer processes (feature/PP-026-kafka-async) ← NEXT
 - T2.D — Frontend polling for pending identification (same branch)
 - T2.E — Redis photo storage + SHA-256 deduplication (feature/PP-027-redis-photo-storage)
 - T2.F — Image dimension locking + aspect-ratio warning in annotator (same branch)

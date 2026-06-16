@@ -13,11 +13,12 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
   private static final Logger log = LoggerFactory.getLogger(DeepSeekAnnotationClient.class);
   private static final String EMPTY_REGIONS = "{\"regions\":[]}";
 
-  private final DeepSeekClient deepSeekClient;
+  private final GitHubModelsClient gitHubModelsClient;
   private final OllamaClient ollamaClient;
 
-  public DeepSeekAnnotationClient(DeepSeekClient deepSeekClient, OllamaClient ollamaClient) {
-    this.deepSeekClient = deepSeekClient;
+  public DeepSeekAnnotationClient(
+      GitHubModelsClient gitHubModelsClient, OllamaClient ollamaClient) {
+    this.gitHubModelsClient = gitHubModelsClient;
     this.ollamaClient = ollamaClient;
   }
 
@@ -30,7 +31,7 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
     Exception lastException = null;
     for (int attempt = 1; attempt <= 2; attempt++) {
       try {
-        return deepSeekClient.analyzeRegions(imageBytes, mediaType);
+        return gitHubModelsClient.analyzeRegions(imageBytes, mediaType);
       } catch (RestClientResponseException e) {
         if (e.getStatusCode().value() == 429) {
           log.warn("DeepSeek annotation rate-limited (429), falling back to Ollama");

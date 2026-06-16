@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
@@ -51,6 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
 class IdentificationServiceImplTest {
 
   @Mock private DeepSeekClient deepSeekClient;
+  @Mock private GitHubModelsClient gitHubModelsClient;
   @Mock private VisionAnnotationClient visionAnnotationClient;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private IdentificationMapper identificationMapper;
@@ -79,6 +81,7 @@ class IdentificationServiceImplTest {
             reminderRepository,
             fileStorageService,
             objectMapper,
+            gitHubModelsClient,
             userRepository,
             plantNetClient,
             ollamaClient);
@@ -128,7 +131,7 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -173,7 +176,7 @@ class IdentificationServiceImplTest {
       assertThat(response.getCarePlan().getWateringFrequencyDays()).isEqualTo(7);
 
       verify(fileStorageService).savePhoto(any());
-      verify(deepSeekClient).identifyPlant(any(), any());
+      verify(gitHubModelsClient).identifyPlant(any(), any());
       verify(identificationRepository, times(2)).save(any(Identification.class));
       verify(plantRepository).save(any(Plant.class));
     }
@@ -193,7 +196,7 @@ class IdentificationServiceImplTest {
       when(identificationRepository.save(any()))
           .thenReturn(pendingEntity)
           .thenReturn(pendingEntity);
-      when(deepSeekClient.identifyPlant(any(), any()))
+      when(gitHubModelsClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
       assertThatThrownBy(() -> identificationService.identify(images, null, null, USER_ID).get())
@@ -212,7 +215,7 @@ class IdentificationServiceImplTest {
       Long foreignPlantId = 99L;
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       Identification entity =
           Identification.builder()
               .id(1L)
@@ -241,7 +244,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should parse all care plan fields from DeepSeek combined response")
     void shouldParseValidCarePlan() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification entity =
           Identification.builder()
@@ -272,7 +275,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return fallback care plan when DeepSeek returns malformed JSON")
     void shouldReturnFallbackOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
 
       Identification entity =
           Identification.builder()
@@ -305,7 +308,7 @@ class IdentificationServiceImplTest {
           }
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
 
       Identification entity =
           Identification.builder()
@@ -327,7 +330,7 @@ class IdentificationServiceImplTest {
     @DisplayName("fallback care plan always has at least one care card")
     void fallbackCareCardNeverNull() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn("{}");
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("{}");
 
       Identification entity =
           Identification.builder()
@@ -363,7 +366,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
       when(identificationRepository.save(any())).thenReturn(completedEntity());
 
@@ -392,7 +395,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(completedEntity());
 
@@ -419,7 +422,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(completedEntity());
 
@@ -444,7 +447,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(completedEntity());
 
@@ -500,7 +503,7 @@ class IdentificationServiceImplTest {
 
     private void stubHappyPath(String identificationJson) {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(deepSeekClient.identifyPlant(any(), any())).thenReturn(identificationJson);
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(identificationJson);
 
       Identification entity =
           Identification.builder()
