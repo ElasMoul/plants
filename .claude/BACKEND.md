@@ -19,7 +19,14 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — AddChooseAi (branch: AddChooseAi)
+## Current Task — T2.C Kafka async identification pipeline ✅ (branch: dev)
+Replaced the blocking `.get()` in IdentificationController.analyze() with a Kafka-backed async
+pipeline: POST /analyze persists PENDING + publishes IdentificationRequestedEvent, returns 202
+immediately; IdentificationConsumer processes it off the HTTP thread; GET /{id} added for polling.
+See STATE.md "T2.C Kafka async identification pipeline" entry for full implementation notes.
+Next: T2.D — frontend polling for the new GET /{id} endpoint.
+
+## Previous Task — AddChooseAi (branch: AddChooseAi, merged)
 Add user-level AI model preference stored in DB, exposed via REST, wired into identification pipeline.
 
 ### ⚠️ Migration number is 010, NOT 009
@@ -103,11 +110,12 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - config/CacheConfig.java       — Redis, implements CachingConfigurer
 - config/OpenApiConfig.java     — Swagger/springdoc
 - config/StorageConfig.java
+- config/KafkaConfig.java       — ✅ T2.C: KafkaTemplate<String,Object> bean (ProducerFactory autoconfigured)
 - filter/CorrelationIdFilter.java — HIGHEST_PRECEDENCE, MDC + response header
 - filter/JwtAuthFilter.java
 - util/JwtUtil.java
-- storage/FileStorageService.java (interface)
-- storage/LocalFileStorageService.java
+- storage/FileStorageService.java (interface) — ✅ T2.C added loadPhoto(String url) → byte[]
+- storage/LocalFileStorageService.java — ✅ T2.C implements loadPhoto() via Files.readAllBytes()
 
 ### user/ — fully implemented
 - entity/User.java, entity/UserStatus.java
@@ -154,18 +162,38 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
                                      species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
 - dto/IdentifyRequest.java
+- dto/IdentificationPendingResponse.java — ✅ T2.C: identificationId, status — returned by POST /analyze (202)
 - dto/plantnet/ (PlantNetResponse, PlantNetResult, PlantNetSpecies, PlantNetTaxon) — kept but unused
+- event/IdentificationRequestedEvent.java — ✅ T2.C: identificationId, userId, photoUrl,
+                                     aiModelPreference (String), organs, requestedAt — published to
+                                     "identification.requested"
+- event/IdentificationCompletedEvent.java — ✅ T2.C: identificationId, status (String), completedAt —
+                                     published to "identification.completed" (COMPLETED or FAILED)
+- config/KafkaTopicConfig.java     — ✅ T2.C: NewTopic beans for both topics (3 partitions/1 replica);
+                                     IDENTIFICATION_REQUESTED_TOPIC / IDENTIFICATION_COMPLETED_TOPIC constants
+- consumer/IdentificationConsumer.java — ✅ T2.C: @KafkaListener(topics="identification.requested",
+                                     groupId="plantpal-identification") → delegates to
+                                     identificationService.processIdentification(event)
 - mapper/IdentificationMapper.java — ignores topResults, carePlan, AND annotationRegions (all set manually in service)
 - repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
 - service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-  - Constructor: 8 params — deepSeekClient, visionAnnotationClient, identificationRepository,
-    identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper
-  - 8-step identify() flow: validate → savePhoto → persist PENDING → rateLimit →
-    loadUserPreference → PARALLEL(runIdentification(preference,...), visionAnnotationClient.analyzeRegions) →
-    parseIdentificationResult() → persist COMPLETED + annotationRegions → reminders
-  - runIdentification(preference, ...): switch on AiModelPreference:
-    PLANTNET → plantNetClient.identify(); OLLAMA_LLAVA → ollamaClient.identifyPlant() with
-    DeepSeek fallback on PlantPalException; default (DEEPSEEK) → deepSeekClient.identifyPlant()
+  - Constructor: 13 params — deepSeekClient, visionAnnotationClient, identificationRepository,
+    identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper,
+    gitHubModelsClient, userRepository, plantNetClient, ollamaClient, kafkaTemplate
+  - submitIdentification() (sync, fast): validate → savePhoto → persist PENDING → rate-limit check →
+    loadUserPreference → publish IdentificationRequestedEvent → return IdentificationPendingResponse
+  - processIdentification(event) (@Async("aiTaskExecutor"), called by IdentificationConsumer):
+    loads entity by id → FileStorageService.loadPhoto() re-reads bytes from disk (event only carries
+    photoUrl, not raw bytes) → PARALLEL(runIdentification(preference,...), visionAnnotationClient.analyzeRegions) →
+    parseIdentificationResult() → persist COMPLETED + annotationRegions → reminders →
+    publishCompletedEvent(COMPLETED). Catches all exceptions → markFailed() + publishCompletedEvent(FAILED);
+    never propagates (it's the @Async Kafka listener's job method, not an HTTP-facing one).
+  - getIdentification(id, userId): ownership-checked single-entity fetch for the GET /{id} poll endpoint
+  - runIdentification(preference, imageBytes, mediaType, organs) — NO LONGER takes List<MultipartFile>;
+    PLANTNET branch wraps imageBytes in a private ByteArrayMultipartFile adapter (same pattern as
+    PlantNetAnnotationClient) since the Kafka consumer only has raw bytes, not the original upload.
+    Switch on AiModelPreference: PLANTNET → plantNetClient.identify(); OLLAMA_LLAVA → ollamaClient.identifyPlant()
+    with GitHubModels fallback on PlantPalException; DEEPSEEK/GITHUB_GPT4O/default → gitHubModelsClient.identifyPlant()
   - Parallel vision: CompletableFuture.supplyAsync() for both futures; identificationFuture.join()
     unwraps CompletionException; annotationFuture silently degrades to empty regions on failure
   - parseAnnotationRegions(String json): JsonNode API (objectMapper.readTree + convertValue with
@@ -212,6 +240,10 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - controller/IdentificationController.java — POST /{id}/cure-advice → 202 Accepted (T2.9d)
                                              Unwraps ExecutionException for PlantPalException +
                                              ResourceNotFoundException from async getCureAdvice()
+                                             ✅ T2.C: POST /analyze now calls submitIdentification(),
+                                             returns 202 + IdentificationPendingResponse immediately
+                                             (no more blocking .get() on the full AI pipeline).
+                                             Added GET /{id} → IdentificationResponse for polling.
 - controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
 ### reminder/ — MINIMAL (T2.6 bootstrap; full implementation T3.1)
@@ -277,8 +309,9 @@ MISSING: IdentificationControllerIT.java
 ## Known Issues / Open Items
 - JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI
 - AiTestController is not @Profile("dev") guarded — will deploy to prod
-- IdentificationController calls .get() on CompletableFuture — blocks HTTP thread,
-  making @Async a no-op. Intended pattern (job-ID + poll) not yet implemented.
+- ✅ RESOLVED (T2.C): IdentificationController no longer blocks the HTTP thread on the full AI
+  pipeline — POST /analyze persists PENDING + publishes to Kafka and returns 202 immediately;
+  GET /{id} polls for the result once IdentificationConsumer finishes processIdentification().
 - IdentificationControllerIT missing
 - Branch protection on main + dev configured but integration tests not running in CI
 - Spotless (Google Java Format) flags CRLF line endings on new files written by Claude Code

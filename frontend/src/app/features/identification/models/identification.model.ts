@@ -28,6 +28,11 @@ export interface SavePreviewEditEvent {
   location: string;
 }
 
+export interface IdentificationPendingResponse {
+  identificationId: number;
+  status: string;
+}
+
 export type CareCardType =
   | 'WATERING'
   | 'LIGHT'

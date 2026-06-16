@@ -1,0 +1,138 @@
+.list-section {
+  margin-top: 32px;
+}
+
+.list-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 16px;
+}
+
+.list-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.list-error,
+.list-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+}
+
+.identification-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.identification-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+
+  &.row-clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+    }
+  }
+}
+
+.row-photo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  mat-icon {
+    color: var(--color-primary-light);
+  }
+}
+
+.row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-name {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-date {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &.status-pending {
+    background: #fff8e1;
+    color: #f57f17;
+  }
+
+  &.status-completed {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.status-failed {
+    background: var(--color-error);
+    color: #fff;
+  }
+}
+
+.spin-icon {
+  animation: spin 1.4s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

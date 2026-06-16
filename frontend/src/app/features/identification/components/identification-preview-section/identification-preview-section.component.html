@@ -1,0 +1,21 @@
+<app-preview-card
+  [result]="result"
+  [selectedRegionIndex]="selectedRegionIndex"
+  (saved)="onSaved($event)"
+  (edit)="onEdit($event)"
+  (discard)="onDiscard()"
+></app-preview-card>
+
+<app-annotation-list
+  *ngIf="result.annotationRegions && result.annotationRegions.length"
+  [regions]="result.annotationRegions"
+  [species]="result.scientificName"
+  [identificationId]="result.id"
+  (regionSelected)="onRegionSelected($event)"
+></app-annotation-list>
+
+<app-disease-detail-panel
+  [region]="selectedRegion"
+  [species]="result.scientificName"
+  [identificationId]="result.id"
+></app-disease-detail-panel>

@@ -163,3 +163,12 @@
   width: 100%;
   font-size: 13px;
 }
+
+.btn-spinner {
+  display: inline-block;
+  margin-right: 8px;
+
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
+}

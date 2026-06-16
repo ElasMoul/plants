@@ -1,4 +1,4 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
@@ -22,6 +22,7 @@ interface ImageEntry {
   styleUrls: ['./photo-upload.component.scss'],
 })
 export class PhotoUploadComponent implements OnInit, OnDestroy {
+  @Input() submitting = false;
   @Output() readonly analyze = new EventEmitter<AnalyzeEmitPayload>();
 
   entries: ImageEntry[] = [];
@@ -89,6 +90,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   }
 
   onAnalyze(): void {
+    if (this.submitting) return;
     this.analyze.emit({
       images: this.entries.map(e => e.file),
       organs: this.entries.map(e => e.organ),

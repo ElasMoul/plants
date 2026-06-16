@@ -1,0 +1,46 @@
+<div class="page-container">
+
+  <!-- loading: initial fetch -->
+  <div class="state-screen" *ngIf="state === 'loading'">
+    <mat-progress-spinner diameter="36" mode="indeterminate"></mat-progress-spinner>
+  </div>
+
+  <!-- pending: still being processed -->
+  <div class="state-screen" *ngIf="state === 'pending'">
+    <mat-icon class="state-icon">local_florist</mat-icon>
+    <h2 class="state-title">Analysing your plant&hellip;</h2>
+    <p class="state-subtitle">Usually takes 10&ndash;20 seconds.</p>
+    <mat-progress-bar mode="indeterminate" color="primary" class="state-progress"></mat-progress-bar>
+  </div>
+
+  <!-- failed -->
+  <div class="state-screen" *ngIf="state === 'failed'">
+    <mat-icon class="state-icon error-icon">hide_image</mat-icon>
+    <h2 class="state-title">We couldn't identify this plant</h2>
+    <p class="state-subtitle">Something went wrong during analysis — please try uploading again.</p>
+    <button mat-stroked-button type="button" class="btn-pill" routerLink="/identify">
+      <mat-icon>add_photo_alternate</mat-icon>
+      Back to upload
+    </button>
+  </div>
+
+  <!-- not found -->
+  <div class="state-screen" *ngIf="state === 'not-found'">
+    <mat-icon class="state-icon error-icon">search_off</mat-icon>
+    <h2 class="state-title">Identification not found</h2>
+    <button mat-stroked-button type="button" class="btn-pill" routerLink="/identify">
+      <mat-icon>arrow_back</mat-icon>
+      Back to list
+    </button>
+  </div>
+
+  <!-- ready -->
+  <app-identification-preview-section
+    *ngIf="state === 'ready' && result"
+    [result]="result"
+    (saved)="onSaved($event)"
+    (editBeforeSave)="onEditBeforeSave($event)"
+    (discard)="onDiscard()"
+  ></app-identification-preview-section>
+
+</div>

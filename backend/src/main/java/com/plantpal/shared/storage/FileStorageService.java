@@ -6,5 +6,7 @@ public interface FileStorageService {
 
   String savePhoto(MultipartFile file);
 
+  byte[] loadPhoto(String url);
+
   void deletePhoto(String url);
 }

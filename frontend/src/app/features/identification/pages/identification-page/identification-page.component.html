@@ -1,99 +1,10 @@
 <div class="page-container">
 
-  <!-- idle: upload form -->
-  <ng-container *ngIf="state === 'idle'">
-    <h1 class="page-title">Identify Your Plant</h1>
-    <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
-    <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
-  </ng-container>
+  <h1 class="page-title">Identify Your Plant</h1>
+  <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
 
-  <!-- analyzing: custom progress screen -->
-  <ng-container *ngIf="state === 'analyzing'">
-    <div class="analyzing-screen">
+  <app-photo-upload [submitting]="submitting" (analyze)="onAnalyze($event)"></app-photo-upload>
 
-      <div class="analyzing-illustration">
-        <div class="illustration-circle">
-          <mat-icon class="illustration-icon">local_florist</mat-icon>
-        </div>
-      </div>
-
-      <h2 class="analyzing-title">Identifying species&hellip;</h2>
-      <p class="analyzing-subtitle">
-        Our AI is examining the unique characteristics of your plant.
-      </p>
-
-      <div class="progress-section">
-        <div class="progress-header">
-          <span class="progress-label">PROGRESS</span>
-          <span class="progress-pct">72%</span>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill"></div>
-        </div>
-      </div>
-
-      <div class="status-chips">
-        <span class="status-chip status-done">
-          <mat-icon>check_circle</mat-icon>
-          Image Quality: Optimal
-        </span>
-        <span class="status-chip status-done">
-          <mat-icon>check_circle</mat-icon>
-          Lighting: Consistent
-        </span>
-        <span class="status-chip status-active">
-          <mat-icon class="spin-icon">sync</mat-icon>
-          Neural Analysis: Active
-        </span>
-      </div>
-
-    </div>
-  </ng-container>
-
-  <!-- preview: one-click save card + annotation panel -->
-  <ng-container *ngIf="state === 'preview' && result">
-    <app-preview-card
-      [result]="result"
-      [selectedRegionIndex]="selectedRegionIndex"
-      (saved)="onSaved($event)"
-      (edit)="onEditBeforeSave($event)"
-      (discard)="onDiscard()"
-    ></app-preview-card>
-
-    <app-annotation-list
-      *ngIf="result.annotationRegions && result.annotationRegions.length"
-      [regions]="result.annotationRegions"
-      [species]="result.scientificName"
-      [identificationId]="result.id"
-      (regionSelected)="onRegionSelected($event)"
-    ></app-annotation-list>
-
-    <app-disease-detail-panel
-      [region]="selectedRegion"
-      [species]="result.scientificName"
-      [identificationId]="result.id"
-    ></app-disease-detail-panel>
-  </ng-container>
-
-  <!-- error -->
-  <ng-container *ngIf="state === 'error'">
-    <div class="error-screen">
-      <div class="error-icon-wrap">
-        <mat-icon class="error-icon">hide_image</mat-icon>
-      </div>
-      <h2 class="error-title">We couldn't identify this plant</h2>
-      <p class="error-sub">{{ errorMessage }}</p>
-      <div class="error-actions">
-        <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="retry()">
-          <mat-icon>refresh</mat-icon>
-          Try again
-        </button>
-        <button mat-stroked-button type="button" class="btn-pill" (click)="reset()">
-          <mat-icon>add_photo_alternate</mat-icon>
-          Change photo
-        </button>
-      </div>
-    </div>
-  </ng-container>
+  <app-identification-list></app-identification-list>
 
 </div>

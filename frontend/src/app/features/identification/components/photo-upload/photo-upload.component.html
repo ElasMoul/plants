@@ -111,11 +111,17 @@
     color="primary"
     type="button"
     class="full-width mt-24 btn-pill"
-    [disabled]="entries.length === 0"
+    [disabled]="entries.length === 0 || submitting"
     (click)="onAnalyze()"
   >
-    <mat-icon>biotech</mat-icon>
-    Identify Plant
+    <mat-progress-spinner
+      *ngIf="submitting"
+      diameter="18"
+      mode="indeterminate"
+      class="btn-spinner"
+    ></mat-progress-spinner>
+    <mat-icon *ngIf="!submitting">biotech</mat-icon>
+    {{ submitting ? 'Submitting…' : 'Identify Plant' }}
   </button>
 
 </div>

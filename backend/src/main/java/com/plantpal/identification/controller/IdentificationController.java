@@ -2,6 +2,7 @@ package com.plantpal.identification.controller;
 
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
+import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.shared.dto.ApiResponse;
@@ -48,9 +49,9 @@ public class IdentificationController {
     this.identificationService = identificationService;
   }
 
-  @Operation(summary = "Identify a plant from one or more photos")
+  @Operation(summary = "Submit one or more photos for async plant identification")
   @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<ApiResponse<IdentificationResponse>> analyze(
+  public ResponseEntity<ApiResponse<IdentificationPendingResponse>> analyze(
       @RequestPart("images") List<MultipartFile> images,
       @RequestParam(value = "organs", required = false) List<String> organs,
       @RequestParam(required = false) Long plantId) {
@@ -63,10 +64,10 @@ public class IdentificationController {
         plantId);
 
     try {
-      IdentificationResponse response =
-          identificationService.identify(images, organs, plantId, userId).get();
+      IdentificationPendingResponse response =
+          identificationService.submitIdentification(images, plantId, userId, organs).get();
       return ResponseEntity.status(HttpStatus.ACCEPTED)
-          .body(ApiResponse.success(response, "Plant identified successfully"));
+          .body(ApiResponse.success(response, "Analysis started — poll for result"));
 
     } catch (ExecutionException e) {
       Throwable cause = e.getCause();
@@ -76,6 +77,15 @@ public class IdentificationController {
       Thread.currentThread().interrupt();
       throw new PlantPalException("Identification was interrupted", 500);
     }
+  }
+
+  @Operation(summary = "Get a single identification by id")
+  @GetMapping("/{id}")
+  public ResponseEntity<ApiResponse<IdentificationResponse>> getIdentification(
+      @PathVariable Long id) {
+    Long userId = getCurrentUserId();
+    IdentificationResponse response = identificationService.getIdentification(id, userId);
+    return ResponseEntity.ok(ApiResponse.success(response));
   }
 
   @Operation(summary = "Get all identifications for a specific plant")
