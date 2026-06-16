@@ -3,6 +3,7 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
@@ -61,6 +62,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       List.of("image/jpeg", "image/png", "image/webp");
 
   private final DeepSeekClient deepSeekClient;
+  private final GitHubModelsClient gitHubModelsClient;
   private final VisionAnnotationClient visionAnnotationClient;
   private final IdentificationRepository identificationRepository;
   private final IdentificationMapper identificationMapper;
@@ -84,10 +86,12 @@ public class IdentificationServiceImpl implements IdentificationService {
       ReminderRepository reminderRepository,
       FileStorageService fileStorageService,
       ObjectMapper objectMapper,
+      GitHubModelsClient gitHubModelsClient,
       UserRepository userRepository,
       PlantNetClient plantNetClient,
       OllamaClient ollamaClient) {
     this.deepSeekClient = deepSeekClient;
+    this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
     this.identificationRepository = identificationRepository;
     this.identificationMapper = identificationMapper;
@@ -377,11 +381,13 @@ public class IdentificationServiceImpl implements IdentificationService {
         try {
           yield ollamaClient.identifyPlant(imageBytes, mediaType);
         } catch (PlantPalException e) {
-          log.warn("Ollama identification failed ({}), falling back to DeepSeek", e.getMessage());
-          yield deepSeekClient.identifyPlant(imageBytes, mediaType);
+          log.warn(
+              "Ollama identification failed ({}), falling back to GitHubModels", e.getMessage());
+          yield gitHubModelsClient.identifyPlant(imageBytes, mediaType);
         }
       }
-      default -> deepSeekClient.identifyPlant(imageBytes, mediaType);
+      case GITHUB_GPT4O -> gitHubModelsClient.identifyPlant(imageBytes, mediaType);
+      default -> gitHubModelsClient.identifyPlant(imageBytes, mediaType);
     };
   }
 

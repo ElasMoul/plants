@@ -40,14 +40,17 @@ spring:
     contexts: dev
     change-log: classpath:db/changelog/db.changelog-master.xml
 
-# ──── DeepSeek (plant identification + care plan AI) ─────────────────────────
+# ──── GitHub Models (gpt-4o vision: identification + annotation) ─────────────
+github:
+  base-url: ${GITHUB_BASE_URL:https://models.inference.ai.azure.com}
+  token: ${GITHUB_TOKEN}
+  models:
+    identification-model: ${GITHUB_IDENTIFICATION_MODEL:gpt-4o}
+    annotation-model: ${GITHUB_ANNOTATION_MODEL:gpt-4o-mini}
+
+# ──── DeepSeek (text-only: care plan + cure advice via GitHub Models endpoint) ─
 deepseek:
-  base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-  api-key: ${DEEPSEEK_API_KEY}
-  model: ${DEEPSEEK_MODEL:deepseek-chat}
-  # Vision model used for photo-based plant identification.
-  # If deepseek-chat doesn't support vision on your plan, set DEEPSEEK_VISION_MODEL=deepseek-vl2
-  vision-model: ${DEEPSEEK_VISION_MODEL:deepseek-chat}
+  model: ${DEEPSEEK_MODEL:DeepSeek-R1}
 
 # ──── Ollama (local AI) ───────────────────────────────────────────────────────
 ollama:

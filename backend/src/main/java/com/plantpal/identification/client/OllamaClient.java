@@ -78,7 +78,7 @@ public class OllamaClient {
 
     // llava-phi3 requires images at the TOP LEVEL of /api/generate — not nested in a chat message.
     String prompt =
-        DeepSeekClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
+        GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
             + "\n\nIdentify this plant and generate a complete beginner care plan.";
     Map<String, Object> requestBody =
         Map.of("model", model, "prompt", prompt, "images", List.of(base64), "stream", false);
@@ -115,7 +115,7 @@ public class OllamaClient {
             "model",
             model,
             "prompt",
-            DeepSeekClient.ANNOTATION_SYSTEM_PROMPT
+            GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT
                 + "\n\nAnalyze this image and identify all plant and disease regions.",
             "images",
             List.of(base64),

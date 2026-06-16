@@ -5,7 +5,13 @@
     aria-label="AI model preference"
     (change)="onChange($event.value)"
   >
-    <mat-button-toggle *ngFor="let opt of options" [value]="opt.value" [attr.aria-label]="opt.label">
+    <mat-button-toggle
+      *ngFor="let opt of options"
+      [value]="opt.value"
+      [attr.aria-label]="opt.label"
+      [matTooltip]="opt.tooltip"
+      [matTooltipShowDelay]="300"
+    >
       <mat-icon>{{ opt.icon }}</mat-icon>
       <span class="toggle-label">{{ opt.label }}</span>
     </mat-button-toggle>

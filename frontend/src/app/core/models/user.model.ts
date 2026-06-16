@@ -1,4 +1,4 @@
-export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA';
+export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITHUB_GPT4O';
 
 export interface UserPreferences {
   aiModelPreference: AiModelPreference;

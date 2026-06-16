@@ -9,12 +9,14 @@ interface ModelOption {
   value: AiModelPreference;
   label: string;
   icon: string;
+  tooltip: string;
 }
 
 const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'PLANTNET',     label: 'PlantNet',  icon: 'eco' },
-  { value: 'DEEPSEEK',     label: 'DeepSeek',  icon: 'psychology' },
-  { value: 'OLLAMA_LLAVA', label: 'Ollama',    icon: 'computer' },
+  { value: 'PLANTNET',     label: 'PlantNet',  icon: 'eco',        tooltip: 'Species only — no health analysis' },
+  { value: 'DEEPSEEK',     label: 'DeepSeek',  icon: 'psychology', tooltip: '~20 identification calls/hour' },
+  { value: 'GITHUB_GPT4O', label: 'GPT-4o',    icon: 'smart_toy',  tooltip: '~50 vision calls/day on free tier' },
+  { value: 'OLLAMA_LLAVA', label: 'Ollama',    icon: 'computer',   tooltip: 'Fully local — no API quota' },
 ];
 
 @Component({
