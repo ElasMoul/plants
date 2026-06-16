@@ -1242,6 +1242,591 @@ In com.plantpal.identification:
 
 ---
 
+---
+
+### T2.A — GitHubModelsClient refactor — split vision from text client (Backend) 🤖 AI
+**Branch:** `feature/PP-025-github-models-client`
+**Depends on:** AddChooseAi merged to dev
+
+> **Why:** DeepSeekClient currently mixes vision tasks (gpt-4o) and text tasks (DeepSeek-R1)
+> in a single Spring bean. This creates rate-limit confusion and prevents optimising each
+> model independently. After this split: GitHubModelsClient owns all image analysis;
+> DeepSeekClient owns text-only tasks (care plan, cure advice).
+
+**Backend Claude Code prompt:**
+```
+// T2.A — Split DeepSeekClient into GitHubModelsClient (vision) + DeepSeekClient (text)
+
+Read BACKEND.md, STATE.md, DeepSeekClient.java, DeepSeekAnnotationClient.java,
+IdentificationServiceImpl.java, and OllamaClient.java before starting.
+
+CONTEXT: DeepSeekClient currently has 4 methods:
+  identifyPlant()     → uses deepseek.vision-model (gpt-4o)
+  analyzeRegions()    → uses deepseek.vision-model (gpt-4o)
+  generateCarePlan()  → uses deepseek.model (DeepSeek-R1)
+  generateCureAdvice()→ uses deepseek.model (DeepSeek-R1)
+
+GOAL: Move vision methods to new GitHubModelsClient; keep text methods in DeepSeekClient.
+
+1. Create identification/client/GitHubModelsClient.java:
+   Constructor @Value params:
+     @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl
+     @Value("${github.token}") String token
+     @Value("${github.models.identification-model:gpt-4o}") String identificationModel
+     @Value("${github.models.annotation-model:gpt-4o-mini}") String annotationModel
+   - Same JdkClientHttpRequestFactory + Duration.ofMinutes(5) read timeout as existing DeepSeekClient
+   - Authorization: "Bearer " + token (same header pattern)
+   - Move PLANT_IDENTIFICATION_SYSTEM_PROMPT (package-private static) from DeepSeekClient here
+   - Move ANNOTATION_SYSTEM_PROMPT (package-private static) from DeepSeekClient here
+   - Move identifyPlant(byte[], String) — unchanged logic, use identificationModel
+   - Move analyzeRegions(byte[], String) — unchanged logic, use annotationModel
+   - Both methods call DeepSeekClient.stripThinkTags() for fence/think stripping
+     (it stays in DeepSeekClient as package-private static — do not move it)
+
+2. Update DeepSeekClient.java:
+   - Remove visionModel field and identifyPlant()/analyzeRegions() methods
+   - Remove PLANT_IDENTIFICATION_SYSTEM_PROMPT and ANNOTATION_SYSTEM_PROMPT constants
+   - Change @Value("${deepseek.api-key}") → @Value("${github.token}")
+   - Change constructor params to:
+     @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl
+     @Value("${github.token}") String token
+     @Value("${deepseek.model:DeepSeek-R1}") String model
+   - Keep: CARE_PLAN_SYSTEM_PROMPT, CURE_ADVICE_SYSTEM_PROMPT
+   - Keep: generateCarePlan(), generateCureAdvice(), stripThinkTags() (static)
+
+3. Update DeepSeekAnnotationClient.java:
+   - Replace DeepSeekClient injection with GitHubModelsClient for analyzeRegions() call
+   - Constructor: GitHubModelsClient gitHubModelsClient, OllamaClient ollamaClient
+   - All retry/fallback logic unchanged; just call gitHubModelsClient.analyzeRegions()
+
+4. Update IdentificationServiceImpl.java:
+   - Add GitHubModelsClient to constructor (9th param)
+   - Replace deepSeekClient.identifyPlant() with gitHubModelsClient.identifyPlant()
+   - In runIdentification() switch:
+     case DEEPSEEK → gitHubModelsClient.identifyPlant(imageBytes, mediaType)
+     case GITHUB_GPT4O → gitHubModelsClient.identifyPlant(imageBytes, mediaType)
+     case OLLAMA_LLAVA → (unchanged, with DeepSeek fallback as before)
+     case PLANTNET → (unchanged)
+   - Keep deepSeekClient for generateCarePlan() parallel call
+
+5. Update OllamaClient.java:
+   - Change DeepSeekClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT →
+     GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
+   - Change DeepSeekClient.ANNOTATION_SYSTEM_PROMPT →
+     GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT
+   - Keep calling DeepSeekClient.stripThinkTags() (it stays there)
+
+6. application-dev.yml — replace deepseek.vision-model and deepseek.api-key with:
+   github:
+     base-url: ${GITHUB_BASE_URL:https://models.inference.ai.azure.com}
+     token: ${GITHUB_TOKEN}
+     models:
+       identification-model: ${GITHUB_IDENTIFICATION_MODEL:gpt-4o}
+       annotation-model: ${GITHUB_ANNOTATION_MODEL:gpt-4o-mini}
+
+7. backend/.env.example:
+   - Remove DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_VISION_MODEL
+   - Add GITHUB_TOKEN=<github-pat-with-models-read-scope>
+   - Add GITHUB_BASE_URL=https://models.inference.ai.azure.com
+   - Add GITHUB_IDENTIFICATION_MODEL=gpt-4o
+   - Add GITHUB_ANNOTATION_MODEL=gpt-4o-mini
+   - Keep DEEPSEEK_MODEL=DeepSeek-R1 (still used for text)
+
+8. Update unit tests:
+   - Any test mocking DeepSeekClient.identifyPlant() → mock GitHubModelsClient.identifyPlant()
+   - IdentificationServiceImplTest constructor call needs GitHubModelsClient @Mock added
+
+Run mvn compile after step 2 and after step 4 to catch injection errors early.
+```
+
+**Verify:** `mvn test` passes. POST /analyze returns species in response. Logs show "GitHubModelsClient" for identification and "gpt-4o-mini" for annotation.
+
+---
+
+### T2.B — Add GITHUB_GPT4O to AI model preferences (Both) 🤖 AI
+**Branch:** `feature/PP-025-github-models-client` (same branch)
+**Depends on:** T2.A (GitHubModelsClient must exist)
+
+**Backend Claude Code prompt:**
+```
+// T2.B (backend) — Add GITHUB_GPT4O to AiModelPreference enum
+
+Read user/entity/AiModelPreference.java and IdentificationServiceImpl.java.
+
+1. Add GITHUB_GPT4O to AiModelPreference enum:
+   public enum AiModelPreference { DEEPSEEK, PLANTNET, OLLAMA_LLAVA, GITHUB_GPT4O }
+
+2. In IdentificationServiceImpl.runIdentification(), ensure GITHUB_GPT4O is an
+   explicit case (not just falling through to default):
+   case GITHUB_GPT4O -> gitHubModelsClient.identifyPlant(imageBytes, mediaType);
+
+No DB migration needed — users.ai_model_preference is VARCHAR(50), 'GITHUB_GPT4O' fits.
+No DTO change needed — UserPreferencesResponse already serialises enum as String.
+```
+
+**Frontend Claude Code prompt:**
+```
+// T2.B (frontend) — GITHUB_GPT4O toggle + rate-limit tooltips in ModelSelectorComponent
+
+Read FRONTEND.md, shared/components/model-selector/model-selector.component.ts.
+
+1. core/models/user.model.ts — add 'GITHUB_GPT4O' to AiModelPreference type:
+   export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITHUB_GPT4O';
+
+2. model-selector.component.html — add fourth mat-button-toggle:
+   value="GITHUB_GPT4O", icon: smart_toy, label: "GPT-4o"
+   Position: between DEEPSEEK and OLLAMA_LLAVA (most capable to most local left→right)
+
+3. Add matTooltip warnings on rate-limited options (import MatTooltipModule into SharedModule):
+   GITHUB_GPT4O: matTooltip="~50 vision calls/day on free tier" [matTooltipShowDelay]="300"
+   DEEPSEEK:     matTooltip="~20 identification calls/hour"     [matTooltipShowDelay]="300"
+   OLLAMA_LLAVA: matTooltip="Fully local — no API quota"        [matTooltipShowDelay]="300"
+   PLANTNET:     matTooltip="Species only — no health analysis" [matTooltipShowDelay]="300"
+
+No service changes — UserService.updatePreferences() already accepts any string value.
+Use takeUntil(this.destroy$) on any new subscriptions.
+```
+
+**Verify:** Model selector shows 4 toggles. Selecting GITHUB_GPT4O persists to DB. Tooltips appear on hover.
+
+---
+
+### T2.C — Kafka async identification pipeline (Backend) 🤖 AI
+**Branch:** `feature/PP-026-kafka-async`
+**Depends on:** AddChooseAi merged (AiModelPreference.GITHUB_GPT4O in DB), T2.A+T2.B merged
+
+> **Why:** POST /analyze currently blocks the HTTP thread for 5-15 seconds while AI calls run.
+> CompletableFuture.get() on the HTTP thread exhausts the thread pool under load.
+> Kafka decouples HTTP acceptance from AI processing: return 202 immediately, process async.
+
+**Backend Claude Code prompt:**
+```
+// T2.C — Kafka async pipeline for plant identification
+
+Read BACKEND.md, STATE.md, IdentificationServiceImpl.java, IdentificationController.java,
+and docker-compose.yml before starting.
+
+MAVEN DEPENDENCY — add to pom.xml:
+  <dependency>
+    <groupId>org.springframework.kafka</groupId>
+    <artifactId>spring-kafka</artifactId>
+  </dependency>
+
+APPLICATION-DEV.YML additions:
+  spring:
+    kafka:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+      consumer:
+        group-id: plantpal-identification
+        auto-offset-reset: earliest
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+        properties:
+          spring.json.trusted.packages: "com.plantpal.*"
+      producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+DOCKER-COMPOSE.YML — add after the redis service:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    ports: ["2181:2181"]
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on: [zookeeper]
+    ports: ["29092:29092"]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+NEW EVENT CLASSES in identification/event/:
+
+1. IdentificationRequestedEvent.java:
+   @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
+   Fields: Long identificationId, Long userId, String photoUrl,
+           String aiModelPreference, List<String> organs, Instant requestedAt
+
+2. IdentificationCompletedEvent.java:
+   @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
+   Fields: Long identificationId, String status, Instant completedAt
+
+KAFKA TOPIC CONFIG in identification/config/KafkaTopicConfig.java (@Configuration):
+3. @Bean NewTopic identificationRequestedTopic() →
+     TopicBuilder.name("identification.requested").partitions(3).replicas(1).build()
+   @Bean NewTopic identificationCompletedTopic() →
+     TopicBuilder.name("identification.completed").partitions(3).replicas(1).build()
+
+KAFKA TEMPLATE BEAN in shared/config/KafkaConfig.java (@Configuration):
+4. @Bean KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> pf)
+   (Spring Boot auto-configures ProducerFactory — just expose the template)
+
+REFACTOR IdentificationServiceImpl — SPLIT identify() INTO TWO METHODS:
+5. Rename current identify() → processIdentification(IdentificationRequestedEvent event):
+   - @Async("aiTaskExecutor")
+   - Load the Identification entity from DB by event.identificationId
+   - Load user AiModelPreference from userRepository
+   - Run existing parallel AI logic (runIdentification + visionAnnotationClient.analyzeRegions)
+   - On completion: entity.status=COMPLETED, save, publish IdentificationCompletedEvent
+   - On error: entity.status=FAILED, save, log ERROR, publish IdentificationCompletedEvent(FAILED)
+   - Do NOT re-run rate-limit check here (it was already checked in submitIdentification)
+
+6. New method submitIdentification(List<MultipartFile> images, Long plantId, Long userId,
+                                    List<String> organs):
+   → CompletableFuture<IdentificationPendingResponse>
+   - Validate files (unchanged)
+   - Save photo to storage (unchanged)
+   - Persist Identification with status=PENDING (no AI call yet)
+   - Rate-limit check stays here (before publishing) — throws 429 if exceeded
+   - Publish IdentificationRequestedEvent to "identification.requested"
+     (include aiModelPreference from loadUserPreference(userId))
+   - Return immediately: new IdentificationPendingResponse(id, "PENDING")
+
+NEW DTO: dto/IdentificationPendingResponse.java:
+   Long identificationId, String status
+
+NEW CONSUMER: identification/consumer/IdentificationConsumer.java (@Component):
+7. @KafkaListener(topics = "identification.requested", groupId = "plantpal-identification",
+                  containerFactory = "kafkaListenerContainerFactory")
+   public void onIdentificationRequested(IdentificationRequestedEvent event) {
+     identificationService.processIdentification(event); // delegates to service
+   }
+
+UPDATE IdentificationController:
+8. POST /api/v1/identifications/analyze:
+   - Call submitIdentification() → ResponseEntity.accepted()
+     .body(ApiResponse.success(pendingResponse, "Analysis started — poll for result"))
+   - Remove the old join/wait pattern
+   - Return type: ResponseEntity<ApiResponse<IdentificationPendingResponse>>
+
+9. Ensure GET /api/v1/identifications/{id} exists and returns IdentificationResponse
+   with status field. Frontend polls this until status != "PENDING".
+
+10. Update Identification entity and IdentificationResponse to include
+    String status (PENDING / COMPLETED / FAILED) if not already present.
+
+BACKEND/.ENV.EXAMPLE additions:
+  KAFKA_BOOTSTRAP_SERVERS=localhost:29092
+
+UNIT TESTS — new nested class Kafka in IdentificationServiceImplTest:
+- submitIdentification: verify Identification persisted as PENDING,
+  verify kafkaTemplate.send("identification.requested", event) called with correct identificationId
+- processIdentification happy path: verify entity status set to COMPLETED, annotationRegions saved
+- processIdentification AI failure: verify entity status set to FAILED, no exception propagated
+Mock KafkaTemplate<String, Object> with @Mock; verify send() with any(String.class), any().
+```
+
+**Verify:** `docker-compose up -d` includes Kafka. POST /analyze returns 202 with identificationId. GET /{id} initially shows PENDING, then COMPLETED after ~10-15s. Consumer logs show "Processing identification event".
+
+---
+
+### T2.D — Kafka polling — identification frontend (Frontend) 🤖 AI
+**Branch:** `feature/PP-026-kafka-async` (same branch)
+**Depends on:** T2.C backend merged and deployed locally
+
+**Frontend Claude Code prompt:**
+```
+// T2.D — Frontend polling for async identification result
+
+Read FRONTEND.md, STATE.md, identification-page.component.ts, identification.service.ts,
+and identification.model.ts before starting.
+
+CONTEXT: POST /analyze now returns 202 immediately:
+  { data: { identificationId: number, status: "PENDING" }, message: "Analysis started" }
+The frontend must poll GET /api/v1/identifications/{id} every 3 seconds.
+
+1. identification.model.ts:
+   Add: export interface IdentificationPendingResponse { identificationId: number; status: string; }
+   Add status: string field to IdentificationResponse.
+
+2. identification.service.ts:
+   - Change analyze() return type to Observable<ApiResponse<IdentificationPendingResponse>>
+   - Add: getById(id: number): Observable<ApiResponse<IdentificationResponse>>
+     GET /api/v1/identifications/{id}
+   - Add: pollUntilComplete(id: number): Observable<IdentificationResponse>
+     Implementation:
+       return interval(3000).pipe(
+         startWith(0),
+         switchMap(() => this.getById(id)),
+         map(r => r.data),
+         takeWhile(result => result.status === 'PENDING', /* inclusive */ true),
+         filter(result => result.status !== 'PENDING'),
+         take(1),
+         timeout(32000),  // 32s total (10 polls × 3s + margin)
+       );
+     On timeout or FAILED status in the filter step, the subscriber's error handler fires.
+
+3. identification-page.component.ts — extend the state machine:
+   Current states: idle | analyzing | preview | error
+   Add state: 'pending' (between analyzing and preview)
+   
+   type PageState = 'idle' | 'analyzing' | 'pending' | 'preview' | 'error';
+   pendingIdentificationId: number | null = null;
+   
+   onPhotoSubmit():
+     this.state = 'analyzing';
+     this.identificationService.analyze(formData).subscribe({
+       next: r => {
+         this.pendingIdentificationId = r.data.identificationId;
+         this.state = 'pending';
+         this.startPolling(r.data.identificationId);
+       },
+       error: _ => this.state = 'error'
+     });
+   
+   startPolling(id: number):
+     this.identificationService.pollUntilComplete(id)
+       .pipe(takeUntil(this.destroy$))
+       .subscribe({
+         next: result => { this.result = result; this.state = 'preview'; },
+         error: _ => { this.state = 'error'; this.errorMessage = 'Analysis timed out — please try again.'; }
+       });
+   
+   In the template:
+   - state === 'analyzing': spinner + "Uploading photo..."
+   - state === 'pending': spinner + "Analysing your plant… (usually 10–20 seconds)"
+     Show a subtle progress indicator (indeterminate mat-progress-bar)
+   - state === 'preview': existing PreviewCardComponent
+   - state === 'error': show this.errorMessage
+
+4. In ngOnDestroy(), the takeUntil(this.destroy$) stops the poll automatically.
+   No explicit cleanup needed beyond what is already in the component.
+
+No new modules, routes, or services beyond these changes.
+```
+
+**Verify:** Upload a photo → spinner shows "Analysing your plant…" → result appears after ~15s. Cancel/navigate away → polling stops (no console errors). If backend is slow (>32s), error message appears.
+
+---
+
+### T2.E — Redis photo storage + SHA-256 deduplication (Backend) 🤖 AI
+**Branch:** `feature/PP-027-redis-photo-storage`
+**Depends on:** None (independent — can start after AddChooseAi merged)
+
+> **Why:** Photos currently live only on /tmp disk, which is ephemeral in containers.
+> Redis-backed storage gives persistence, instant CDN-like serving from memory, and
+> deduplication prevents storing the same photo twice.
+
+**Backend Claude Code prompt:**
+```
+// T2.E — Redis photo storage with SHA-256 deduplication
+
+Read BACKEND.md, STATE.md, LocalFileStorageService.java, CacheConfig.java,
+and SecurityConfig.java before starting.
+
+1. Extend FileStorageService interface (shared/storage/FileStorageService.java):
+   Add method: byte[] loadPhotoBytes(String photoUrl)
+   (Existing savePhoto() and deletePhoto() signatures unchanged)
+
+2. RedisTemplate<String, byte[]> bean — add to CacheConfig.java:
+   @Bean
+   public RedisTemplate<String, byte[]> byteRedisTemplate(RedisConnectionFactory factory) {
+     RedisTemplate<String, byte[]> tpl = new RedisTemplate<>();
+     tpl.setConnectionFactory(factory);
+     tpl.setKeySerializer(new StringRedisSerializer());
+     tpl.setValueSerializer(new ByteArrayRedisSerializer());
+     return tpl;
+   }
+   (Do NOT add @Primary — the default RedisTemplate<Object,Object> for caching must not be replaced)
+
+3. Update LocalFileStorageService.java:
+   Inject: RedisTemplate<String, byte[]> byteRedisTemplate
+   
+   In savePhoto(MultipartFile file) — add deduplication before saving:
+   a. Read file bytes: byte[] fileBytes = file.getBytes()
+   b. Compute hash: String hash = DigestUtils.sha256Hex(fileBytes)
+      (org.apache.commons.codec — already transitive via spring-boot-starter)
+   c. Check Redis: String existing = (String) byteRedisTemplate.opsForValue()
+                   .get("photo:hash:" + hash) — hmm, this needs a String template for the hash key
+      Better: Use StringRedisTemplate for hash→url mapping (inject as second dependency)
+      @Value-inject or use byteRedisTemplate with manual string conversion:
+      Actually: store the hash→URL mapping in a separate StringRedisTemplate:
+      Inject: StringRedisTemplate stringRedisTemplate
+      
+      Check: String existingUrl = stringRedisTemplate.opsForValue().get("photo:hash:" + hash);
+      If non-null: log.info("Photo dedup hit [hash={}]", hash); return existingUrl;
+   
+   d. Otherwise: generate UUID, build filename, save to disk (unchanged)
+   e. Store bytes in Redis: byteRedisTemplate.opsForValue()
+        .set("photo:" + uuid, fileBytes, Duration.ofDays(7))
+   f. Store hash→url: stringRedisTemplate.opsForValue()
+        .set("photo:hash:" + hash, "/photos/" + uuid, Duration.ofDays(7))
+   g. Return "/photos/" + uuid (unchanged)
+   
+   Implement loadPhotoBytes(String photoUrl):
+   - Extract uuid from URL (e.g. "/photos/abc-123.jpg" → "abc-123"):
+     String filename = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
+     String uuid = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+   - Try Redis first:
+     byte[] bytes = byteRedisTemplate.opsForValue().get("photo:" + uuid);
+     if (bytes != null) return bytes;
+   - Fall back to disk:
+     Path path = Paths.get(localStoragePath, filename); // inject @Value("${app.storage.local-path}")
+     if (!Files.exists(path)) throw new ResourceNotFoundException("Photo not found: " + photoUrl);
+     return Files.readAllBytes(path);
+
+4. New controller: shared/controller/PhotoController.java (@RestController):
+   @GetMapping("/api/v1/photos/{filename}")
+   public ResponseEntity<byte[]> getPhoto(@PathVariable String filename):
+     - Construct URL: "/photos/" + filename
+     - Call fileStorageService.loadPhotoBytes(url)
+     - Detect content type from filename extension (jpeg/png/webp → appropriate MediaType)
+     - Return ResponseEntity.ok().contentType(contentType).body(bytes)
+     - On ResourceNotFoundException: return 404
+
+5. SecurityConfig.java — permit photos endpoint:
+   .requestMatchers("/api/v1/photos/**").permitAll()
+   (Add this alongside the existing /actuator/health permit)
+
+6. Unit tests (LocalFileStorageServiceTest — new file or extend existing):
+   @ExtendWith(MockitoExtension.class) — mock RedisTemplate, StringRedisTemplate, do NOT use real Redis
+   - savePhoto: first upload → bytes stored in Redis, hash key stored, uuid returned
+   - savePhoto: same bytes second time → dedup hit, same URL returned, no disk write
+   - loadPhotoBytes: Redis hit → bytes returned without disk access (verify Files.readAllBytes not called)
+   - loadPhotoBytes: Redis miss → disk read
+   - loadPhotoBytes: neither → ResourceNotFoundException
+
+All constructor injection. No @Autowired.
+```
+
+**Verify:** Upload photo → GET /api/v1/photos/{uuid}.jpg returns bytes. Upload same photo twice → same URL (check logs for "dedup hit"). Redis CLI: `keys photo:*` shows entries.
+
+---
+
+### T2.F — Image dimension locking — annotation alignment (Both) 🤖 AI
+**Branch:** `feature/PP-027-redis-photo-storage` (same branch)
+**Depends on:** T2.E (same branch)
+
+> **Why:** Polygon annotation points are percentage-based (0-100%) relative to the exact
+> image dimensions sent to the AI. If the browser scales the image, overlays drift.
+> Recording the source dimensions at analysis time and validating on render catches misalignment.
+
+**Backend Claude Code prompt:**
+```
+// T2.F (backend) — Record source image dimensions at analysis time
+
+Read BACKEND.md, IdentificationServiceImpl.java, Identification.java,
+IdentificationResponse.java, OllamaClient.java.
+
+1. New shared utility class: shared/util/ImageUtil.java
+   public final class ImageUtil {
+     private ImageUtil() {}
+     
+     public static byte[] resizeAndConvertToJpeg(byte[] original, int maxSide) {
+       // Move the EXACT implementation from OllamaClient.resizeAndConvertToJpeg() here.
+       // Identical logic — BufferedImage, Graphics2D bilinear, JPEG output.
+     }
+     
+     public static int[] readDimensions(byte[] imageBytes) {
+       // Returns [width, height] or [0, 0] if unreadable
+       try {
+         BufferedImage img = ImageIO.read(new ByteArrayInputStream(imageBytes));
+         return img != null ? new int[]{img.getWidth(), img.getHeight()} : new int[]{0, 0};
+       } catch (Exception e) { return new int[]{0, 0}; }
+     }
+   }
+
+2. Update OllamaClient.java:
+   - Remove the private resizeAndConvertToJpeg() method
+   - Replace both calls with: ImageUtil.resizeAndConvertToJpeg(imageBytes, OLLAMA_MAX_IMAGE_SIDE_PX)
+   - Keep the OLLAMA_MAX_IMAGE_SIDE_PX constant
+
+3. Liquibase migration: 011_add_image_dimensions.sql
+   ALTER TABLE identifications
+     ADD COLUMN IF NOT EXISTS source_image_width  INT,
+     ADD COLUMN IF NOT EXISTS source_image_height INT;
+   Register in db.changelog-master.xml AFTER 010_add_user_preferences.sql entry.
+
+4. Identification.java entity — add fields:
+   @Column(name = "source_image_width")  Integer sourceImageWidth;
+   @Column(name = "source_image_height") Integer sourceImageHeight;
+
+5. IdentificationResponse.java — add fields:
+   Integer sourceImageWidth;
+   Integer sourceImageHeight;
+   (IdentificationMapper picks them up automatically if field names match)
+
+6. In IdentificationServiceImpl.identify() (or submitIdentification() if T2.C is applied):
+   After photo is read into byte[] imageBytes and BEFORE sending to AI:
+   a. Prepare the bytes: byte[] prepared = ImageUtil.resizeAndConvertToJpeg(imageBytes, 1024)
+      (Same 1024px cap as Ollama — ensures dimensions stored match what AI sees for ALL providers)
+   b. Read dimensions: int[] dims = ImageUtil.readDimensions(prepared)
+   c. Store on entity before first save:
+      identification.setSourceImageWidth(dims[0]);
+      identification.setSourceImageHeight(dims[1]);
+   d. Use prepared bytes (not original imageBytes) for ALL AI calls going forward.
+      This ensures GitHubModelsClient, OllamaClient all receive the same preprocessed image.
+
+7. Unit tests (IdentificationServiceImplTest):
+   - Verify sourceImageWidth and sourceImageHeight are set on the saved Identification.
+   - Test with a real small JPEG byte[] (create a 100x75 test image via BufferedImage+ImageIO)
+     to verify actual dimensions are read, not zeros.
+```
+
+**Frontend Claude Code prompt:**
+```
+// T2.F (frontend) — Aspect ratio warning in PhotoAnnotatorComponent
+
+Read FRONTEND.md, photo-annotator.component.ts, identification-result.component.html,
+plant-detail.component.html, preview-card.component.html.
+
+1. PhotoAnnotatorComponent — add two new @Input properties:
+   @Input() sourceImageWidth: number | null = null;
+   @Input() sourceImageHeight: number | null = null;
+   
+   Add property: aspectRatioMismatch = false;
+
+2. In the draw() method (after canvas dimensions are set), add:
+   private checkAspectRatio(): void {
+     if (!this.sourceImageWidth || !this.sourceImageHeight) {
+       this.aspectRatioMismatch = false;
+       return;
+     }
+     const aiAspect = this.sourceImageWidth / this.sourceImageHeight;
+     const img = this.imageEl?.nativeElement;
+     if (!img?.naturalWidth) return;
+     const renderAspect = img.naturalWidth / img.naturalHeight;
+     this.aspectRatioMismatch = Math.abs(aiAspect - renderAspect) / aiAspect > 0.02;
+   }
+   Call checkAspectRatio() at the end of the draw() method.
+
+3. In template — add warning below the canvas/image:
+   <div *ngIf="aspectRatioMismatch" class="aspect-warning">
+     ⚠ Annotation may be misaligned — image was resized by your browser
+   </div>
+   Style (.aspect-warning): small amber chip, font-size 0.75rem, margin-top 4px.
+   Use Angular Material color tokens — do not hardcode hex colors.
+
+4. Pass new inputs from all three parent components:
+   identification-result.component.html:
+     <app-photo-annotator [sourceImageWidth]="result.sourceImageWidth"
+                          [sourceImageHeight]="result.sourceImageHeight" ...>
+   plant-detail.component.html (Last Scan tab):
+     <app-photo-annotator [sourceImageWidth]="latestIdentification?.sourceImageWidth"
+                          [sourceImageHeight]="latestIdentification?.sourceImageHeight" ...>
+   preview-card.component.html:
+     <app-photo-annotator [sourceImageWidth]="identification.sourceImageWidth"
+                          [sourceImageHeight]="identification.sourceImageHeight" ...>
+
+5. Update identification.model.ts — add to IdentificationResponse interface:
+   sourceImageWidth?: number | null;
+   sourceImageHeight?: number | null;
+
+No new modules, routes, or services.
+```
+
+**Verify:** After identification, inspect IdentificationResponse — `sourceImageWidth` and `sourceImageHeight` are non-zero. Upload a portrait photo → canvas displays without misalignment warning. Check DB: `SELECT source_image_width, source_image_height FROM identifications` — values present.
+
+---
+
 ### T2.10 — Garden health dashboard 💡 Architect Suggestion
 **Branch:** `feature/PP-020-garden-dashboard`
 
