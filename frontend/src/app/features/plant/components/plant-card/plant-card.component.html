@@ -55,7 +55,7 @@
     <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
 
     <!-- Next water chip -->
-    <div class="next-water" *ngIf="plant.nextWaterDays != null">
+    <div class="next-water" *ngIf="plant.nextWaterDays !== null && plant.nextWaterDays !== undefined">
       <mat-icon class="water-icon">water_drop</mat-icon>
       <span>Next water: {{ plant.nextWaterDays }} day{{ plant.nextWaterDays !== 1 ? 's' : '' }}</span>
     </div>
