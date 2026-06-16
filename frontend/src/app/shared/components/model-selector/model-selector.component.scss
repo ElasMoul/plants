@@ -5,20 +5,19 @@
 }
 
 mat-button-toggle-group {
-  border-color: rgba(255, 255, 255, 0.4);
+  border: none;
+  border-radius: var(--radius-chip);
   height: 36px;
+  background: var(--color-primary);
+  overflow: hidden;
 }
 
 mat-button-toggle {
-  color: rgba(255, 255, 255, 0.8);
+  color: #424242;
 
   &.mat-button-toggle-checked {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.22);
     color: #fff;
-  }
-
-  &.mat-button-toggle {
-    color: #444444;
   }
 
   ::ng-deep .mat-button-toggle-button {
@@ -55,6 +54,6 @@ mat-button-toggle {
 
 .save-spinner {
   ::ng-deep circle {
-    stroke: rgba(255, 255, 255, 0.8);
+    stroke: var(--color-primary);
   }
 }

@@ -1,3 +1,4 @@
+// ── Toolbar ────────────────────────────────────────────────────
 .navbar {
   position: fixed;
   top: 0;
@@ -6,68 +7,68 @@
   z-index: 100;
   display: flex;
   align-items: center;
+  background: var(--color-background) !important;
+  color: var(--color-text-primary) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  height: 56px;
+  padding: 0 16px;
+
+  // Override Material toolbar default bg
+  &.mat-toolbar {
+    background: var(--color-background) !important;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
   gap: 8px;
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: inherit;
-    text-decoration: none;
-    font-size: 1.2rem;
-    font-weight: 500;
-    margin-right: 16px;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: 4px;
-
-    a {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .active-link {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 4px;
-    }
-  }
+  color: var(--color-primary);
+  text-decoration: none;
 }
 
-.app-content {
-  &.with-toolbar {
-    margin-top: 64px;
-  }
-
-  &.with-bottom-nav {
-    @media (max-width: 768px) {
-      padding-bottom: 60px;
-    }
-  }
+.brand-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--color-primary);
 }
 
-.user-email {
-  font-size: 0.85rem;
-  color: rgba(0, 0, 0, 0.54);
-  padding: 8px 16px;
+.brand-name {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+
+.login-btn {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.user-menu-btn {
+  color: var(--color-text-secondary);
+
+  @media (max-width: 768px) {
+    display: none !important;
+  }
 }
 
 .spacer {
   flex: 1 1 auto;
 }
 
-// ── Mobile: top bar shows brand only ───────────────────────────
-@media (max-width: 768px) {
-  .nav-label {
-    display: none;
+// ── App content ────────────────────────────────────────────────
+.app-content {
+  &.with-toolbar {
+    margin-top: 56px;
   }
 
-  .nav-links,
-  .ai-test-link,
-  .user-menu-btn {
-    display: none !important;
+  &.with-bottom-nav {
+    @media (max-width: 768px) {
+      padding-bottom: 72px;
+    }
   }
 }
 
@@ -82,26 +83,30 @@
     left: 0;
     right: 0;
     z-index: 100;
-    background: #fff;
-    border-top: 1px solid #e0e0e0;
-    height: 60px;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--color-surface);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    height: 64px;
+    padding: 6px 0 env(safe-area-inset-bottom, 0px);
   }
 }
 
 .bottom-nav-item {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  color: #757575;
   text-decoration: none;
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  padding: 8px 0;
-  transition: color 0.15s ease;
+  color: var(--color-text-secondary);
+}
+
+.nav-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 16px;
+  border-radius: var(--radius-chip);
+  transition: background 0.18s ease, color 0.18s ease;
 
   mat-icon {
     font-size: 22px;
@@ -110,7 +115,28 @@
     line-height: 22px;
   }
 
-  &.active {
-    color: #43a047;
+  &--active {
+    background: var(--color-success);
+    color: var(--color-primary);
+
+    mat-icon,
+    .nav-label {
+      color: var(--color-primary);
+    }
   }
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  @media (min-width: 769px) {
+    display: none;
+  }
+}
+
+// ── Model selector in toolbar ──────────────────────────────────
+.model-selector-toolbar {
+  margin-right: 8px;
 }

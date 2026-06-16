@@ -14,9 +14,11 @@
     tabindex="0"
     aria-label="Upload plant photos"
   >
-    <mat-icon class="upload-icon">cloud_upload</mat-icon>
-    <p class="drop-primary">Drag & drop photos here</p>
-    <p class="drop-secondary">or <strong>click to browse</strong></p>
+    <div class="upload-icon-circle">
+      <mat-icon class="upload-icon">local_florist</mat-icon>
+    </div>
+    <p class="drop-primary">Upload or take a photo</p>
+    <p class="drop-secondary">Drag & drop, or <strong>click to browse</strong></p>
     <p class="drop-hint">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
   </div>
 
@@ -40,11 +42,15 @@
     (change)="onFileChange($event)"
   />
 
-  <!-- Mobile camera shortcut -->
-  <div class="camera-row">
-    <button mat-stroked-button type="button" (click)="cameraInput.click()">
+  <!-- Choose photo / Take photo actions -->
+  <div class="action-row">
+    <button mat-stroked-button type="button" class="btn-pill btn-choose" (click)="fileInput.click()">
+      <mat-icon>photo_library</mat-icon>
+      Choose photo
+    </button>
+    <button mat-raised-button color="primary" type="button" class="btn-pill btn-camera" (click)="cameraInput.click()">
       <mat-icon>photo_camera</mat-icon>
-      Take a photo
+      Take photo
     </button>
   </div>
 
@@ -104,7 +110,7 @@
     mat-raised-button
     color="primary"
     type="button"
-    class="full-width mt-24"
+    class="full-width mt-24 btn-pill"
     [disabled]="entries.length === 0"
     (click)="onAnalyze()"
   >

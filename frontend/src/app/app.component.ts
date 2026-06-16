@@ -9,10 +9,10 @@ import { AuthService } from './core/services/auth.service';
 })
 export class AppComponent {
   readonly navLinks = [
-    { label: 'My Plants', route: '/plants', icon: 'local_florist' },
-    { label: 'Identify', route: '/identify', icon: 'search' },
-    { label: 'Reminders', route: '/reminders', icon: 'notifications' },
-    { label: 'Chat', route: '/chat', icon: 'chat' },
+    { label: 'Garden',     route: '/plants',    icon: 'local_florist' },
+    { label: 'Identify',   route: '/identify',  icon: 'document_scanner' },
+    { label: 'Reminders',  route: '/reminders', icon: 'notifications' },
+    { label: 'Chat',       route: '/chat',      icon: 'chat_bubble_outline' },
   ];
 
   constructor(

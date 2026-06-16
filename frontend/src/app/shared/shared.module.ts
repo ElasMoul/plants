@@ -1,11 +1,12 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,6 +23,7 @@ const MATERIAL_MODULES = [
   MatButtonModule,
   MatButtonToggleModule,
   MatCardModule,
+  MatCheckboxModule,
   MatFormFieldModule,
   MatInputModule,
   MatIconModule,
@@ -35,7 +37,14 @@ const MATERIAL_MODULES = [
 
 @NgModule({
   declarations: [ModelSelectorComponent],
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ...MATERIAL_MODULES],
-  exports: [CommonModule, RouterModule, ReactiveFormsModule, ...MATERIAL_MODULES, ModelSelectorComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
+  exports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    ReactiveFormsModule,
+    ...MATERIAL_MODULES,
+    ModelSelectorComponent,
+  ],
 })
 export class SharedModule {}

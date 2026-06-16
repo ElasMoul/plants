@@ -1,18 +1,52 @@
 <div class="page-container">
 
-  <h1 class="page-title">Identify Your Plant</h1>
-  <p class="page-subtitle">Upload up to 5 photos and let AI identify your plant species</p>
-
   <!-- idle: upload form -->
   <ng-container *ngIf="state === 'idle'">
+    <h1 class="page-title">Identify Your Plant</h1>
+    <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
     <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
   </ng-container>
 
-  <!-- analyzing: spinner -->
+  <!-- analyzing: custom progress screen -->
   <ng-container *ngIf="state === 'analyzing'">
-    <div class="loading-state">
-      <mat-spinner diameter="64"></mat-spinner>
-      <p class="loading-msg">Identifying your plant&hellip; this may take a few seconds</p>
+    <div class="analyzing-screen">
+
+      <div class="analyzing-illustration">
+        <div class="illustration-circle">
+          <mat-icon class="illustration-icon">local_florist</mat-icon>
+        </div>
+      </div>
+
+      <h2 class="analyzing-title">Identifying species&hellip;</h2>
+      <p class="analyzing-subtitle">
+        Our AI is examining the unique characteristics of your plant.
+      </p>
+
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">PROGRESS</span>
+          <span class="progress-pct">72%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="status-chips">
+        <span class="status-chip status-done">
+          <mat-icon>check_circle</mat-icon>
+          Image Quality: Optimal
+        </span>
+        <span class="status-chip status-done">
+          <mat-icon>check_circle</mat-icon>
+          Lighting: Consistent
+        </span>
+        <span class="status-chip status-active">
+          <mat-icon class="spin-icon">sync</mat-icon>
+          Neural Analysis: Active
+        </span>
+      </div>
+
     </div>
   </ng-container>
 
@@ -43,24 +77,23 @@
 
   <!-- error -->
   <ng-container *ngIf="state === 'error'">
-    <mat-card class="error-card">
-      <mat-card-content>
-        <div class="error-content">
-          <mat-icon color="warn" class="error-icon">error_outline</mat-icon>
-          <p class="error-msg">{{ errorMessage }}</p>
-        </div>
-      </mat-card-content>
-      <mat-card-actions>
-        <button mat-raised-button color="primary" type="button" (click)="retry()">
+    <div class="error-screen">
+      <div class="error-icon-wrap">
+        <mat-icon class="error-icon">hide_image</mat-icon>
+      </div>
+      <h2 class="error-title">We couldn't identify this plant</h2>
+      <p class="error-sub">{{ errorMessage }}</p>
+      <div class="error-actions">
+        <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="retry()">
           <mat-icon>refresh</mat-icon>
-          Retry
+          Try again
         </button>
-        <button mat-stroked-button type="button" (click)="reset()">
+        <button mat-stroked-button type="button" class="btn-pill" (click)="reset()">
           <mat-icon>add_photo_alternate</mat-icon>
           Change photo
         </button>
-      </mat-card-actions>
-    </mat-card>
+      </div>
+    </div>
   </ng-container>
 
 </div>

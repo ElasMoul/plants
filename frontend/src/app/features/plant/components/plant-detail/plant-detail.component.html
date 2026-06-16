@@ -6,41 +6,46 @@
   </div>
 
   <ng-container *ngIf="!loading && plant">
-    <!-- Header -->
-    <div class="detail-header">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/plants" aria-label="Back to plants">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        <div>
-          <h1 class="plant-name">{{ plant.nickname }}</h1>
-          <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
-        </div>
-      </div>
 
-      <div class="header-actions">
-        <button mat-stroked-button [routerLink]="['/plants', plant.id, 'edit']">
+    <!-- Hero -->
+    <div class="detail-hero" [class.no-photo]="!plant.photoUrl">
+      <img *ngIf="plant.photoUrl" [src]="plant.photoUrl" [alt]="plant.nickname" class="hero-img" />
+      <mat-icon *ngIf="!plant.photoUrl" class="hero-placeholder-icon">local_florist</mat-icon>
+      <div class="hero-overlay"></div>
+
+      <button mat-icon-button class="hero-back" routerLink="/plants" aria-label="Back to plants">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <div class="hero-actions">
+        <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
           <mat-icon>edit</mat-icon>
-          Edit
         </button>
-        <button mat-stroked-button color="warn" (click)="onArchive()">
+        <button mat-icon-button class="hero-action-btn" (click)="onArchive()" aria-label="Archive plant">
           <mat-icon>archive</mat-icon>
-          Archive
         </button>
       </div>
-    </div>
 
-    <!-- Photo -->
-    <div class="photo-banner" *ngIf="plant.photoUrl">
-      <img [src]="plant.photoUrl" [alt]="plant.nickname" class="banner-img" />
+      <div class="hero-text">
+        <span class="hero-species" *ngIf="plant.commonName || plant.species">
+          {{ plant.commonName || plant.species }}
+        </span>
+        <h1 class="hero-name">{{ plant.nickname }}</h1>
+      </div>
     </div>
 
     <!-- Tabs -->
-    <mat-tab-group animationDuration="200ms">
+    <mat-tab-group animationDuration="200ms" class="detail-tabs">
 
       <!-- Tab 1: Overview -->
       <mat-tab label="Overview">
         <div class="tab-content">
+
+          <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
+            <span class="attention-badge">ATTENTION NEEDED</span>
+            <p>This plant has reported health issues. Check the Last Scan tab for details.</p>
+          </div>
+
           <div class="info-grid">
             <div class="info-item" *ngIf="plant.species">
               <span class="info-label">Species</span>
@@ -105,7 +110,7 @@
             <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
             <h3>No care plan yet</h3>
             <p>Take a photo to get a personalised care plan for this plant.</p>
-            <button mat-raised-button color="primary" routerLink="/identify">
+            <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
               <mat-icon>camera_alt</mat-icon>
               Identify this plant
             </button>
@@ -131,7 +136,7 @@
             <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
             <h3>No scan yet</h3>
             <p>Identify this plant to see the annotated scan here.</p>
-            <button mat-raised-button color="primary" routerLink="/identify">
+            <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
               <mat-icon>camera_alt</mat-icon>
               Identify this plant
             </button>

@@ -26,6 +26,8 @@ export interface UpdatePlantRequest {
   acquiredAt?: string; // YYYY-MM-DD
 }
 
+export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
+
 export interface PlantResponse {
   id: number;
   userId: number;
@@ -39,4 +41,6 @@ export interface PlantResponse {
   acquiredAt: string | null;
   createdAt: string;
   updatedAt: string;
+  healthStatus?: HealthStatus;
+  nextWaterDays?: number | null;
 }

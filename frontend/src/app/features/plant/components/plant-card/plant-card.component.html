@@ -1,5 +1,7 @@
-<mat-card class="plant-card">
-  <div class="plant-photo" [routerLink]="['/plants', plant.id]">
+<div class="plant-card" [routerLink]="['/plants', plant.id]">
+
+  <!-- Photo with health badge overlay -->
+  <div class="plant-photo">
     <img
       *ngIf="plant.photoUrl; else photoPlaceholder"
       [src]="plant.photoUrl"
@@ -11,42 +13,52 @@
         <mat-icon>local_florist</mat-icon>
       </div>
     </ng-template>
+
+    <!-- Health badge -->
+    <span
+      *ngIf="plant.healthStatus"
+      class="health-badge"
+      [ngClass]="{
+        'badge-healthy':        plant.healthStatus === 'HEALTHY',
+        'badge-issues':         plant.healthStatus === 'ISSUES_DETECTED',
+        'badge-unknown':        plant.healthStatus === 'UNKNOWN'
+      }"
+    >
+      {{ plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus }}
+    </span>
+
+    <!-- Actions menu -->
+    <button
+      mat-icon-button
+      class="card-menu-btn"
+      [matMenuTriggerFor]="actionMenu"
+      (click)="$event.stopPropagation()"
+      aria-label="Plant actions"
+    >
+      <mat-icon>more_vert</mat-icon>
+    </button>
+    <mat-menu #actionMenu="matMenu">
+      <button mat-menu-item [routerLink]="['/plants', plant.id, 'edit']" (click)="$event.stopPropagation()">
+        <mat-icon>edit</mat-icon>
+        <span>Edit</span>
+      </button>
+      <button mat-menu-item class="archive-action" (click)="$event.stopPropagation(); archive.emit(plant.id)">
+        <mat-icon>archive</mat-icon>
+        <span>Archive</span>
+      </button>
+    </mat-menu>
   </div>
 
-  <mat-card-content>
-    <div class="card-header">
-      <h3 class="nickname" [routerLink]="['/plants', plant.id]">{{ plant.nickname }}</h3>
-      <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Plant actions">
-        <mat-icon>more_vert</mat-icon>
-      </button>
-      <mat-menu #actionMenu="matMenu">
-        <button mat-menu-item [routerLink]="['/plants', plant.id, 'edit']">
-          <mat-icon>edit</mat-icon>
-          <span>Edit</span>
-        </button>
-        <button mat-menu-item class="archive-action" (click)="archive.emit(plant.id)">
-          <mat-icon>archive</mat-icon>
-          <span>Archive</span>
-        </button>
-      </mat-menu>
+  <!-- Card body -->
+  <div class="card-body">
+    <h3 class="plant-name">{{ plant.nickname }}</h3>
+    <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
+
+    <!-- Next water chip -->
+    <div class="next-water" *ngIf="plant.nextWaterDays !== null && plant.nextWaterDays !== undefined">
+      <mat-icon class="water-icon">water_drop</mat-icon>
+      <span>Next water: {{ plant.nextWaterDays }} day{{ plant.nextWaterDays !== 1 ? 's' : '' }}</span>
     </div>
+  </div>
 
-    <p class="species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
-
-    <div class="meta-row" *ngIf="plant.location">
-      <mat-icon class="meta-icon">place</mat-icon>
-      <span>{{ plant.location }}</span>
-    </div>
-
-    <div class="meta-row" *ngIf="plant.acquiredAt">
-      <mat-icon class="meta-icon">calendar_today</mat-icon>
-      <span>Since {{ plant.acquiredAt | date:'mediumDate' }}</span>
-    </div>
-  </mat-card-content>
-
-  <mat-card-actions align="end">
-    <button mat-button color="primary" [routerLink]="['/plants', plant.id]">
-      View details
-    </button>
-  </mat-card-actions>
-</mat-card>
+</div>

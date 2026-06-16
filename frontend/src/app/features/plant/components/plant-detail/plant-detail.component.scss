@@ -1,7 +1,7 @@
 .detail-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 0 0 32px;
 }
 
 .loading-state {
@@ -10,67 +10,150 @@
   padding: 80px 0;
 }
 
-// ── Header ───────────────────────────────────────────────────
-.detail-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.plant-name {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-
-  @media (max-width: 600px) {
-    font-size: 1.4rem;
-  }
-}
-
-.plant-species {
-  margin: 4px 0 0;
-  color: #757575;
-  font-style: italic;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-// ── Photo banner ─────────────────────────────────────────────
-.photo-banner {
+// ── Hero ─────────────────────────────────────────────────────
+.detail-hero {
+  position: relative;
   width: 100%;
-  height: 240px;
-  border-radius: 8px;
+  height: 320px;
   overflow: hidden;
-  margin-bottom: 20px;
+  background: var(--color-surface-secondary);
 
   @media (max-width: 600px) {
-    height: 180px;
+    height: 260px;
+  }
+
+  &.no-photo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
-.banner-img {
+.hero-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-// ── Tab content ──────────────────────────────────────────────
+.hero-placeholder-icon {
+  font-size: 96px;
+  width: 96px;
+  height: 96px;
+  color: var(--color-primary-light);
+  opacity: 0.5;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+.hero-back,
+.hero-action-btn {
+  position: absolute;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.32) !important;
+  z-index: 2;
+}
+
+.hero-back {
+  top: 14px;
+  left: 14px;
+}
+
+.hero-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.hero-text {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 2;
+  color: #fff;
+}
+
+.hero-species {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.hero-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+
+  @media (max-width: 600px) {
+    font-size: 1.6rem;
+  }
+}
+
+// ── Tabs ─────────────────────────────────────────────────────
+.detail-tabs {
+  ::ng-deep .mat-mdc-tab-labels {
+    background: var(--color-surface);
+  }
+
+  ::ng-deep .mdc-tab-indicator__content--underline {
+    border-color: var(--color-primary) !important;
+  }
+
+  ::ng-deep .mdc-tab__text-label {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  ::ng-deep .mdc-tab--active .mdc-tab__text-label {
+    color: var(--color-primary) !important;
+  }
+}
+
 .tab-content {
-  padding: 24px 0;
+  padding: 24px 16px;
+}
+
+// ── Status banner ────────────────────────────────────────────
+.status-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-card);
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.25);
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+  }
+}
+
+.attention-badge {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 // ── Info grid ────────────────────────────────────────────────
@@ -88,11 +171,11 @@
 }
 
 .info-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9e9e9e;
+  color: var(--color-text-secondary);
 }
 
 .info-value {
@@ -100,23 +183,24 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  color: var(--color-text-primary);
 }
 
 .inline-icon {
   font-size: 16px;
   width: 16px;
   height: 16px;
-  color: #9e9e9e;
+  color: var(--color-text-secondary);
 }
 
 .status-active {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-surface-secondary);
+  color: var(--color-primary);
 }
 
 .status-archived {
   background-color: #fafafa;
-  color: #757575;
+  color: var(--color-text-secondary);
 }
 
 // ── Notes ────────────────────────────────────────────────────
@@ -127,15 +211,16 @@ mat-divider {
 .notes-section {
   h3 {
     margin: 0 0 8px;
-    font-size: 0.95rem;
+    font-family: var(--font-heading);
+    font-size: 1rem;
     font-weight: 600;
-    color: #424242;
+    color: var(--color-text-primary);
   }
 
   p {
     margin: 0;
     white-space: pre-wrap;
-    color: #616161;
+    color: var(--color-text-secondary);
     line-height: 1.6;
   }
 }
@@ -151,13 +236,14 @@ mat-divider {
 
   h3 {
     margin: 0;
-    font-weight: 500;
-    color: #424242;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--color-text-primary);
   }
 
   p {
     margin: 0;
-    color: #757575;
+    color: var(--color-text-secondary);
   }
 }
 
@@ -165,7 +251,13 @@ mat-divider {
   font-size: 56px;
   width: 56px;
   height: 56px;
-  color: #bdbdbd;
+  color: var(--color-primary-light);
+  opacity: 0.6;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+  padding: 0 20px !important;
 }
 
 // ── Care plan tab ─────────────────────────────────────────────
