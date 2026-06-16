@@ -251,6 +251,19 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   @Override
+  public Page<IdentificationResponse> getUserIdentifications(Long userId, Pageable pageable) {
+    return identificationRepository
+        .findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        .map(
+            entity -> {
+              IdentificationResponse resp = identificationMapper.toResponse(entity);
+              resp.setCarePlan(parseCarePlan(entity.getCarePlan()));
+              resp.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+              return resp;
+            });
+  }
+
+  @Override
   public Page<IdentificationResponse> getPlantIdentifications(
       Long plantId, Long userId, Pageable pageable) {
     if (!plantRepository.existsByIdAndUserId(plantId, userId)) {

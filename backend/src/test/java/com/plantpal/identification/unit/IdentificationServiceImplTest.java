@@ -22,6 +22,7 @@ import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
+import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
@@ -49,6 +50,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockMultipartFile;
@@ -800,6 +806,68 @@ class IdentificationServiceImplTest {
       assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
 
       verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("getUserIdentifications()")
+  class GetUserIdentifications {
+
+    @Test
+    @DisplayName(
+        "should return mapped page sorted by createdAt desc with carePlan and annotationRegions parsed")
+    void shouldReturnMappedPageWithParsedFields() throws Exception {
+      String carePlanJson =
+          """
+          {"wateringFrequencyDays":7,"fertilizingFrequencyDays":0,"repottingFrequencyMonths":12,
+           "careCards":[{"type":"WATERING","title":"Watering","icon":"water_drop","summary":"s",
+           "detail":"d","urgency":"LOW","seasonalVariation":null}],"beginnerWarnings":[]}
+          """;
+      String annotationJson =
+          "{\"regions\":[{\"label\":\"Monstera\",\"type\":\"PLANT\",\"confidence\":\"HIGH\"}]}";
+
+      Identification completedEntity =
+          Identification.builder()
+              .id(2L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.COMPLETED)
+              .scientificName("Monstera deliciosa")
+              .carePlan(carePlanJson)
+              .annotationRegions(annotationJson)
+              .build();
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+
+      Pageable pageable = PageRequest.of(0, 20, Sort.by("createdAt").descending());
+      Page<Identification> entityPage =
+          new PageImpl<>(List.of(completedEntity, pendingEntity), pageable, 2);
+      when(identificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable))
+          .thenReturn(entityPage);
+
+      IdentificationResponse mappedCompleted = IdentificationResponse.builder().id(2L).build();
+      IdentificationResponse mappedPending = IdentificationResponse.builder().id(1L).build();
+      when(identificationMapper.toResponse(completedEntity)).thenReturn(mappedCompleted);
+      when(identificationMapper.toResponse(pendingEntity)).thenReturn(mappedPending);
+
+      Page<IdentificationResponse> result =
+          identificationService.getUserIdentifications(USER_ID, pageable);
+
+      assertThat(result.getContent()).hasSize(2);
+      assertThat(result.getContent().get(0).getId()).isEqualTo(2L);
+      assertThat(result.getContent().get(0).getCarePlan()).isNotNull();
+      assertThat(result.getContent().get(0).getCarePlan().getWateringFrequencyDays()).isEqualTo(7);
+      assertThat(result.getContent().get(0).getAnnotationRegions()).hasSize(1);
+      assertThat(result.getContent().get(0).getAnnotationRegions().get(0).getType())
+          .isEqualTo("PLANT");
+
+      assertThat(result.getContent().get(1).getId()).isEqualTo(1L);
+      assertThat(result.getContent().get(1).getCarePlan()).isNotNull();
+      assertThat(result.getContent().get(1).getCarePlan().getCareCards()).isNotEmpty();
+      assertThat(result.getContent().get(1).getAnnotationRegions()).isEmpty();
     }
   }
 

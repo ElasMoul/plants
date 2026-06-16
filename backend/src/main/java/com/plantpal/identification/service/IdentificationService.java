@@ -20,6 +20,8 @@ public interface IdentificationService {
 
   IdentificationResponse getIdentification(Long id, Long userId);
 
+  Page<IdentificationResponse> getUserIdentifications(Long userId, Pageable pageable);
+
   Page<IdentificationResponse> getPlantIdentifications(
       Long plantId, Long userId, Pageable pageable);
 

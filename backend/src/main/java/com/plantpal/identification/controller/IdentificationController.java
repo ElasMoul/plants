@@ -79,6 +79,17 @@ public class IdentificationController {
     }
   }
 
+  @Operation(summary = "Get all identifications for the current user")
+  @GetMapping
+  public ResponseEntity<ApiResponse<Page<IdentificationResponse>>> getUserIdentifications(
+      @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    Long userId = getCurrentUserId();
+    Page<IdentificationResponse> page =
+        identificationService.getUserIdentifications(userId, pageable);
+    return ResponseEntity.ok(ApiResponse.success(page));
+  }
+
   @Operation(summary = "Get a single identification by id")
   @GetMapping("/{id}")
   public ResponseEntity<ApiResponse<IdentificationResponse>> getIdentification(
