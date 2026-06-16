@@ -1,4 +1,118 @@
 <div class="page-container">
-  <h1>Reminders</h1>
-  <p>Care reminders and push notifications — coming in Phase 3.</p>
+
+  <h1 class="page-title">Care Schedule</h1>
+  <p class="page-subtitle">Stay on top of watering, feeding, and repotting.</p>
+
+  <!-- Today -->
+  <div class="reminder-group" *ngIf="todayReminders.length">
+    <div class="group-header">
+      <span class="group-dot dot-today"></span>
+      <span class="group-label">Today</span>
+    </div>
+    <div class="reminder-card" *ngFor="let reminder of todayReminders" [class.done]="reminder.done">
+      <button
+        type="button"
+        class="check-toggle"
+        [class.checked]="reminder.done"
+        (click)="toggleDone(reminder)"
+        [attr.aria-label]="reminder.done ? 'Mark as not done' : 'Mark as done'"
+      >
+        <mat-icon>{{ reminder.done ? 'check' : '' }}</mat-icon>
+      </button>
+
+      <div class="care-icon-wrap">
+        <mat-icon>{{ reminder.icon }}</mat-icon>
+      </div>
+
+      <div class="reminder-body">
+        <p class="reminder-plant">{{ reminder.plantName }}</p>
+        <p class="reminder-species">{{ reminder.species }} &middot; {{ reminder.careType | titlecase }}</p>
+      </div>
+
+      <span
+        *ngIf="reminder.healthStatus"
+        class="health-badge"
+        [ngClass]="reminder.healthStatus === 'ISSUES_DETECTED' ? 'badge-issues' : 'badge-healthy'"
+      >
+        {{ reminder.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : 'HEALTHY' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Tomorrow -->
+  <div class="reminder-group" *ngIf="tomorrowReminders.length">
+    <div class="group-header">
+      <span class="group-dot dot-tomorrow"></span>
+      <span class="group-label">Tomorrow</span>
+    </div>
+    <div class="reminder-card" *ngFor="let reminder of tomorrowReminders" [class.done]="reminder.done">
+      <button
+        type="button"
+        class="check-toggle"
+        [class.checked]="reminder.done"
+        (click)="toggleDone(reminder)"
+        [attr.aria-label]="reminder.done ? 'Mark as not done' : 'Mark as done'"
+      >
+        <mat-icon>{{ reminder.done ? 'check' : '' }}</mat-icon>
+      </button>
+
+      <div class="care-icon-wrap">
+        <mat-icon>{{ reminder.icon }}</mat-icon>
+      </div>
+
+      <div class="reminder-body">
+        <p class="reminder-plant">{{ reminder.plantName }}</p>
+        <p class="reminder-species">{{ reminder.species }} &middot; {{ reminder.careType | titlecase }}</p>
+      </div>
+
+      <span
+        *ngIf="reminder.healthStatus"
+        class="health-badge"
+        [ngClass]="reminder.healthStatus === 'ISSUES_DETECTED' ? 'badge-issues' : 'badge-healthy'"
+      >
+        {{ reminder.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : 'HEALTHY' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Next week -->
+  <div class="reminder-group" *ngIf="nextWeekReminders.length">
+    <div class="group-header">
+      <span class="group-dot dot-nextweek"></span>
+      <span class="group-label">Next week</span>
+    </div>
+    <div class="reminder-card" *ngFor="let reminder of nextWeekReminders" [class.done]="reminder.done">
+      <button
+        type="button"
+        class="check-toggle"
+        [class.checked]="reminder.done"
+        (click)="toggleDone(reminder)"
+        [attr.aria-label]="reminder.done ? 'Mark as not done' : 'Mark as done'"
+      >
+        <mat-icon>{{ reminder.done ? 'check' : '' }}</mat-icon>
+      </button>
+
+      <div class="care-icon-wrap">
+        <mat-icon>{{ reminder.icon }}</mat-icon>
+      </div>
+
+      <div class="reminder-body">
+        <p class="reminder-plant">{{ reminder.plantName }}</p>
+        <p class="reminder-species">{{ reminder.species }} &middot; {{ reminder.careType | titlecase }}</p>
+      </div>
+
+      <span
+        *ngIf="reminder.healthStatus"
+        class="health-badge"
+        [ngClass]="reminder.healthStatus === 'ISSUES_DETECTED' ? 'badge-issues' : 'badge-healthy'"
+      >
+        {{ reminder.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : 'HEALTHY' }}
+      </span>
+    </div>
+  </div>
+
+  <button mat-fab color="primary" class="add-fab" aria-label="Add reminder">
+    <mat-icon>add</mat-icon>
+  </button>
+
 </div>

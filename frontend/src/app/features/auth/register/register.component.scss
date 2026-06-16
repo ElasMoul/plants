@@ -4,15 +4,50 @@
   align-items: center;
   min-height: 100vh;
   padding: 16px;
-  background: #f5f5f5;
+  background: var(--color-background);
 }
 
 .auth-card {
   width: 100%;
   max-width: 480px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 8px 4px;
 
-  mat-card-header {
-    margin-bottom: 16px;
+  ::ng-deep .mat-mdc-card-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 20px;
+    padding-top: 12px;
+  }
+
+  ::ng-deep .mat-mdc-card-header-text {
+    margin: 0;
+    text-align: center;
+  }
+
+  ::ng-deep .mdc-card-wrapper__text-section,
+  ::ng-deep .mat-mdc-card-avatar {
+    margin: 0 0 8px;
+  }
+
+  ::ng-deep .mat-mdc-card-avatar.mat-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 52px;
+    color: var(--color-primary) !important;
+  }
+
+  ::ng-deep mat-card-title.mat-mdc-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  ::ng-deep mat-card-subtitle.mat-mdc-card-subtitle {
+    color: var(--color-text-secondary);
   }
 }
 
@@ -30,8 +65,19 @@
   display: inline-block;
 }
 
+::ng-deep button.full-width.mt-24 {
+  border-radius: var(--radius-chip) !important;
+  height: 44px;
+}
+
 .login-link {
   text-align: center;
   width: 100%;
   margin: 0;
+  color: var(--color-text-secondary);
+
+  ::ng-deep a {
+    color: var(--color-primary-light) !important;
+    font-weight: 600;
+  }
 }

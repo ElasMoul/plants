@@ -1,0 +1,181 @@
+.page-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 100px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px 100px;
+  }
+}
+
+.page-title {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin: 0 0 28px;
+}
+
+// ── Groups ───────────────────────────────────────────────────
+.reminder-group {
+  margin-bottom: 28px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  &.dot-today {
+    background: var(--color-error);
+  }
+
+  &.dot-tomorrow {
+    background: var(--color-warning);
+  }
+
+  &.dot-nextweek {
+    background: var(--color-text-secondary);
+  }
+}
+
+.group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+// ── Reminder card ────────────────────────────────────────────
+.reminder-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: opacity 0.2s;
+
+  &.done {
+    opacity: 0.5;
+
+    .reminder-plant,
+    .reminder-species {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.check-toggle {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-secondary);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #fff;
+  }
+
+  &.checked {
+    border-color: var(--color-success);
+    background: var(--color-success);
+  }
+}
+
+.care-icon-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--color-primary-light);
+  }
+}
+
+.reminder-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-plant {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.reminder-species {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.health-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  &.badge-healthy {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.badge-issues {
+    background: var(--color-error);
+    color: #fff;
+  }
+}
+
+// ── FAB ──────────────────────────────────────────────────────
+.add-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  background-color: var(--color-primary) !important;
+
+  @media (min-width: 769px) {
+    bottom: 24px;
+  }
+}

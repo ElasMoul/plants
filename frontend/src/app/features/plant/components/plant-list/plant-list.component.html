@@ -1,11 +1,13 @@
 <div class="list-container">
+
   <!-- Header -->
   <div class="list-header">
-    <h1 class="page-title">My Plants</h1>
-    <button mat-raised-button color="primary" routerLink="/plants/new">
-      <mat-icon>add</mat-icon>
-      Add plant
-    </button>
+    <div>
+      <h1 class="garden-title">My Garden</h1>
+      <p class="garden-subtitle" *ngIf="!loading">
+        You have {{ plants.length }} plant{{ plants.length !== 1 ? 's' : '' }} under your care.
+      </p>
+    </div>
   </div>
 
   <!-- Loading skeleton -->
@@ -22,10 +24,12 @@
 
   <!-- Empty state -->
   <div *ngIf="!loading && plants.length === 0" class="empty-state">
-    <mat-icon class="empty-icon">local_florist</mat-icon>
-    <h2>No plants yet</h2>
-    <p>Add your first plant to start tracking its care.</p>
-    <button mat-raised-button color="primary" routerLink="/plants/new">
+    <div class="empty-icon-wrap">
+      <mat-icon class="empty-icon">local_florist</mat-icon>
+    </div>
+    <h2 class="empty-title">Your garden awaits</h2>
+    <p class="empty-sub">Add your first plant to start tracking its care.</p>
+    <button mat-raised-button color="primary" routerLink="/plants/new" class="empty-btn">
       <mat-icon>add</mat-icon>
       Add your first plant
     </button>
@@ -50,4 +54,17 @@
     (page)="onPageChange($event)"
     showFirstLastButtons
   ></mat-paginator>
+
 </div>
+
+<!-- FAB: add plant -->
+<button
+  *ngIf="!loading"
+  mat-fab
+  color="primary"
+  class="add-fab"
+  routerLink="/plants/new"
+  aria-label="Add plant"
+>
+  <mat-icon>add</mat-icon>
+</button>
