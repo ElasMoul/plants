@@ -6,7 +6,7 @@ const routes: Routes = [
   // Exact empty path redirect
   {
     path: '',
-    redirectTo: 'ai-test',
+    redirectTo: 'plants',
     pathMatch: 'full',
   },
   // Guarded feature routes — declared BEFORE the auth catch-all
@@ -33,13 +33,8 @@ const routes: Routes = [
     loadChildren: () => import('./features/chat/chat.module').then(m => m.ChatModule),
     canActivate: [AuthGuard],
   },
-  {
-    path: 'ai-test',
-    loadChildren: () =>
-      import('./features/ai-test/ai-test.module').then(m => m.AiTestModule),
-  },
   // Auth catch-all — prefix '' matches /login, /register, and unknown paths.
-  // Auth-routing handles login, register, and ** (fallback to ai-test).
+  // Auth-routing handles login, register, and ** (fallback to plants).
   // Must be last so specific routes above take priority.
   {
     path: '',

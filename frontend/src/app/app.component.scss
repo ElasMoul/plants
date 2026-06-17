@@ -52,10 +52,6 @@
 .user-menu-btn {
   flex-shrink: 0;
   color: var(--color-text-secondary);
-
-  @media (max-width: 768px) {
-    display: none !important;
-  }
 }
 
 .spacer {

@@ -24,50 +24,42 @@
 
       <div class="bubble" [class.bubble-user]="message.sender === 'user'" [class.bubble-ai]="message.sender === 'ai'">
         <p class="bubble-text">{{ message.text }}</p>
-
-        <span class="probability-chip" *ngIf="message.probability">
-          <mat-icon>insights</mat-icon>
-          {{ message.probability }}% confidence
-        </span>
-
-        <div class="care-tip" *ngIf="message.careTip">
-          <mat-icon>lightbulb</mat-icon>
-          <div>
-            <p class="care-tip-label">PlantPal care tip</p>
-            <p class="care-tip-text">{{ message.careTip }}</p>
-          </div>
-        </div>
       </div>
 
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="message-row" *ngIf="sending">
+      <div class="ai-avatar">
+        <mat-icon>local_florist</mat-icon>
+      </div>
+      <div class="bubble bubble-ai bubble-typing">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
     </div>
   </div>
 
   <!-- Quick chips -->
   <div class="quick-chips">
-    <button type="button" class="quick-chip" *ngFor="let chip of quickChips" (click)="useQuickChip(chip)">
+    <button type="button" class="quick-chip" *ngFor="let chip of quickChips" [disabled]="sending" (click)="useQuickChip(chip)">
       {{ chip }}
     </button>
   </div>
 
   <!-- Input bar -->
   <div class="input-bar">
-    <button mat-icon-button class="input-icon-btn" type="button" aria-label="Add photo">
-      <mat-icon>add</mat-icon>
-    </button>
-
     <input
       class="chat-input"
       type="text"
       placeholder="Ask about your plants..."
       [(ngModel)]="draft"
+      [disabled]="sending"
       (keydown.enter)="sendMessage()"
     />
 
-    <button mat-icon-button class="input-icon-btn" type="button" aria-label="Take photo">
-      <mat-icon>photo_camera</mat-icon>
-    </button>
-
-    <button mat-icon-button class="send-btn" type="button" (click)="sendMessage()" aria-label="Send message">
+    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" aria-label="Send message">
       <mat-icon>arrow_upward</mat-icon>
     </button>
   </div>
