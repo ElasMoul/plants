@@ -147,6 +147,14 @@ class IdentificationServiceImplTest {
     return captor.getValue();
   }
 
+  private byte[] testJpegBytes(int width, int height) throws Exception {
+    var image =
+        new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+    var out = new java.io.ByteArrayOutputStream();
+    javax.imageio.ImageIO.write(image, "JPEG", out);
+    return out.toByteArray();
+  }
+
   private List<AnnotationRegionDto> parseRegions(String json) throws Exception {
     var root = objectMapper.readTree(json);
     var regions = root.get("regions");
@@ -175,7 +183,7 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
@@ -220,7 +228,7 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       Identification pendingEntity =
           Identification.builder()
               .id(1L)
@@ -247,7 +255,7 @@ class IdentificationServiceImplTest {
       Long foreignPlantId = 99L;
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       Identification pendingEntity =
           Identification.builder()
@@ -277,7 +285,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should parse all care plan fields from combined identification response")
     void shouldParseValidCarePlan() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
@@ -311,7 +319,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return fallback care plan when identification response is malformed JSON")
     void shouldReturnFallbackOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
 
       Identification pendingEntity =
@@ -352,7 +360,7 @@ class IdentificationServiceImplTest {
           }
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
 
       Identification pendingEntity =
@@ -381,7 +389,7 @@ class IdentificationServiceImplTest {
     @DisplayName("fallback care plan always has at least one care card")
     void fallbackCareCardNeverNull() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("{}");
 
       Identification pendingEntity =
@@ -422,7 +430,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -457,7 +465,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -492,7 +500,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -524,7 +532,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -588,7 +596,7 @@ class IdentificationServiceImplTest {
 
     private IdentificationRequestedEvent stubHappyPath(String identificationJson) throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(identificationJson);
 
       Identification pendingEntity =
@@ -735,7 +743,7 @@ class IdentificationServiceImplTest {
     @DisplayName(
         "processIdentification happy path: marks entity COMPLETED and saves annotation regions")
     void shouldCompleteAndSaveAnnotations() throws Exception {
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any()))
           .thenReturn(
@@ -775,7 +783,7 @@ class IdentificationServiceImplTest {
     @DisplayName(
         "processIdentification AI failure: marks entity FAILED without propagating exception")
     void shouldMarkFailedWithoutThrowing() {
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
@@ -806,6 +814,41 @@ class IdentificationServiceImplTest {
       assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
 
       verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName("processIdentification: stores source image dimensions read from the photo")
+    void shouldStoreSourceImageDimensions() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(testJpegBytes(100, 75));
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      Identification saved = captor.getValue();
+      assertThat(saved.getSourceImageWidth()).isEqualTo(100);
+      assertThat(saved.getSourceImageHeight()).isEqualTo(75);
     }
   }
 

@@ -33,6 +33,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.shared.util.ImageUtil;
 import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
@@ -68,6 +69,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
   private static final int DEEPSEEK_RATE_LIMIT = 20;
   private static final int CURE_ADVICE_RATE_LIMIT = 10;
+  private static final int SOURCE_IMAGE_MAX_SIDE_PX = 1024;
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
 
@@ -177,11 +179,17 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     try {
-      byte[] imageBytes = fileStorageService.loadPhoto(identification.getPhotoUrl());
+      byte[] rawBytes = fileStorageService.loadPhotoBytes(identification.getPhotoUrl());
       String mediaType = resolveMediaType(identification.getPhotoUrl());
       AiModelPreference preference = AiModelPreference.valueOf(event.getAiModelPreference());
       Long plantId = identification.getPlantId();
       Long userId = identification.getUserId();
+
+      // Normalize once so the stored dimensions match what every AI provider actually sees.
+      byte[] imageBytes = ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
+      int[] dims = ImageUtil.readDimensions(imageBytes);
+      identification.setSourceImageWidth(dims[0]);
+      identification.setSourceImageHeight(dims[1]);
 
       // Fire identification + annotation in parallel
       CompletableFuture<String> identificationFuture =

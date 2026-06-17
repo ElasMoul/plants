@@ -103,17 +103,53 @@ Phase 2 — AI Plant Identification (in progress)
   - No new DTOs, no migration — reuses IdentificationResponse/ApiResponse<Page<T>>
   - 23 unit tests passing (new GetUserIdentifications nested class: mapped page, carePlan +
     annotationRegions parsed per item, ordering preserved from repository page)
+- T4.1 Chat module — connect /chat to Ollama, remove AI Test scratch endpoint ✅ (branch: chatfix)
+  - New com.plantpal.chat module: ChatRequest (@NotBlank message), ChatResponse (reply),
+    ChatService/ChatServiceImpl, ChatController
+  - POST /api/v1/chat → ApiResponse<ChatResponse>; userId from SecurityContextHolder, same pattern
+    as IdentificationController.getCurrentUserId()
+  - ChatServiceImpl.chat(): builds garden context from plantRepository.findAllByUserIdAndStatus(userId,
+    ACTIVE, PageRequest.of(0,50)) — "- nickname (commonName/species/"unknown species")" per line,
+    "No plants in the garden yet." if empty; concatenates CLAUDE.md's chat system prompt + garden
+    context + user message into one string (OllamaClient.chat(String) is single-arg, no separate
+    system-message param); chatBuckets rate limit (30/hour) — same Bucket4j pattern as
+    IdentificationServiceImpl's consumeRateLimit()/consumeCureRateLimit()
+  - Deleted identification/controller/AiTestController.java (dead code — frontend /ai-test page
+    already removed); SecurityConfig: removed now-dead /api/v1/test/** permitAll entry
+  - 3 unit tests passing (ChatServiceImplTest: garden context + reply, empty garden, 429 rate limit)
+- T2.E Redis photo storage + SHA-256 dedup ✅ (branch: chatfix)
+  - FileStorageService.loadPhoto(String) renamed to loadPhotoBytes(String) — consolidated rather than
+    adding a second near-duplicate method; updated the one call site (IdentificationServiceImpl.
+    processIdentification()) and all mock stubs in IdentificationServiceImplTest
+  - CacheConfig: new byteRedisTemplate bean (RedisTemplate<String,byte[]>, StringRedisSerializer key +
+    RedisSerializer.byteArray() value — NOT ByteArrayRedisSerializer, which is package-private in
+    spring-data-redis 3.2.5 and fails to compile). Not @Primary — default RedisTemplate<Object,Object>
+    for @Cacheable untouched.
+  - LocalFileStorageService: constructor now also takes RedisTemplate<String,byte[]> byteRedisTemplate +
+    StringRedisTemplate (Spring Boot auto-configures the latter). savePhoto() computes
+    DigestUtils.sha256Hex(fileBytes) (org.apache.commons.codec, transitive), checks
+    "photo:hash:{sha256}" in Redis first — dedup hit returns existing URL with no disk write;
+    otherwise saves to disk as before, then stores raw bytes at "photo:{uuid}" and the hash→url
+    mapping, both with 7-day TTL. loadPhotoBytes() tries "photo:{uuid}" in Redis first, falls back to
+    disk, throws ResourceNotFoundException if neither has it (404 via existing GlobalExceptionHandler
+    — no try/catch needed in the controller)
+  - New shared/controller/PhotoController.java: GET /api/v1/photos/{filename} → raw bytes,
+    Content-Type inferred from extension (jpeg/png/webp)
+  - SecurityConfig: added "/api/v1/photos/**" to the permitAll list (existing "/photos/**" static
+    StorageConfig handler left untouched)
+  - 5 unit tests passing (LocalFileStorageServiceTest: dedup hit/miss on savePhoto, Redis hit/disk
+    fallback/not-found on loadPhotoBytes) — mocks RedisTemplate/StringRedisTemplate, no real Redis
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
 - feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
 - AddChooseAi — AI model preference feature — merged PR #20 ✅
 - feature/PP-025-github-models-client — T2.A + T2.B complete, commit 086cd07 ✅ (open PR or merge to dev)
-- dev (current) — T2.D + T2.D2 frontend redesign complete, uncommitted
+- chatfix (current) — T4.1 + T2.E complete, uncommitted backend changes; frontend chat module +
+  ai-test removal already staged when this branch was created
 
 ## Next Tasks (in order)
-- T2.E — Redis photo storage + SHA-256 deduplication (feature/PP-027-redis-photo-storage) ← NEXT
-- T2.F — Image dimension locking + aspect-ratio warning in annotator (same branch)
+- T2.F — Image dimension locking + aspect-ratio warning in annotator ← NEXT
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
 

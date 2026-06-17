@@ -19,14 +19,21 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T2.C Kafka async identification pipeline ✅ (branch: dev)
+## Current Task — T4.1 + T2.E ✅ (branch: chatfix)
+T4.1: new com.plantpal.chat module (ChatRequest/ChatResponse/ChatService/ChatController) wired to
+OllamaClient.chat(String) with a garden-context-aware prompt; deleted dead AiTestController.
+T2.E: Redis-backed photo storage with SHA-256 dedup on savePhoto(); FileStorageService.loadPhoto()
+renamed to loadPhotoBytes() and made Redis-first/disk-fallback; new PhotoController serving
+GET /api/v1/photos/{filename}. See STATE.md "T4.1" and "T2.E" entries for full implementation notes.
+Next: T2.F — image dimension locking + aspect-ratio warning in annotator.
+
+## Previous Task — T2.C Kafka async identification pipeline ✅ (merged to dev)
 Replaced the blocking `.get()` in IdentificationController.analyze() with a Kafka-backed async
 pipeline: POST /analyze persists PENDING + publishes IdentificationRequestedEvent, returns 202
 immediately; IdentificationConsumer processes it off the HTTP thread; GET /{id} added for polling.
 See STATE.md "T2.C Kafka async identification pipeline" entry for full implementation notes.
-Next: T2.D — frontend polling for the new GET /{id} endpoint.
 
-## Previous Task — AddChooseAi (branch: AddChooseAi, merged)
+## Earlier Task — AddChooseAi (branch: AddChooseAi, merged)
 Add user-level AI model preference stored in DB, exposed via REST, wired into identification pipeline.
 
 ### ⚠️ Migration number is 010, NOT 009
@@ -108,14 +115,32 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - config/AsyncConfig.java       — aiTaskExecutor (core=2, max=5, queue=100)
 - config/JpaConfig.java
 - config/CacheConfig.java       — Redis, implements CachingConfigurer
+                                  ✅ T2.E: + byteRedisTemplate bean (RedisTemplate<String,byte[]>,
+                                  StringRedisSerializer key / RedisSerializer.byteArray() value, NOT
+                                  @Primary). Use RedisSerializer.byteArray() — ByteArrayRedisSerializer
+                                  is package-private in spring-data-redis 3.2.5, won't compile.
 - config/OpenApiConfig.java     — Swagger/springdoc
-- config/StorageConfig.java
+- config/StorageConfig.java     — static resource handler for /photos/** (separate from PhotoController)
 - config/KafkaConfig.java       — ✅ T2.C: KafkaTemplate<String,Object> bean (ProducerFactory autoconfigured)
+- controller/PhotoController.java — ✅ T2.E: GET /api/v1/photos/{filename} → raw bytes, Content-Type
+                                  inferred from extension; calls fileStorageService.loadPhotoBytes()
 - filter/CorrelationIdFilter.java — HIGHEST_PRECEDENCE, MDC + response header
 - filter/JwtAuthFilter.java
 - util/JwtUtil.java
-- storage/FileStorageService.java (interface) — ✅ T2.C added loadPhoto(String url) → byte[]
-- storage/LocalFileStorageService.java — ✅ T2.C implements loadPhoto() via Files.readAllBytes()
+- storage/FileStorageService.java (interface) — loadPhotoBytes(String photoUrl) → byte[]
+                                  (renamed from loadPhoto in T2.E — consolidated dedup-aware Redis+disk
+                                  logic into one method instead of adding a second near-duplicate)
+- storage/LocalFileStorageService.java — ✅ T2.E: constructor now also takes
+                                  RedisTemplate<String,byte[]> byteRedisTemplate + StringRedisTemplate
+                                  (Spring Boot auto-configures the latter — no bean needed).
+                                  savePhoto(): SHA-256 dedup via DigestUtils.sha256Hex (commons-codec,
+                                  transitive) — checks "photo:hash:{hash}" before writing to disk;
+                                  on hit returns the existing URL with zero disk I/O. On miss, saves to
+                                  disk as before then writes "photo:{uuid}" (raw bytes) and
+                                  "photo:hash:{hash}" (→ url), both 7-day TTL.
+                                  loadPhotoBytes(): Redis "photo:{uuid}" first, disk fallback, throws
+                                  ResourceNotFoundException if neither has it (auto-404 via
+                                  GlobalExceptionHandler — no try/catch needed in PhotoController)
 
 ### user/ — fully implemented
 - entity/User.java, entity/UserStatus.java
@@ -244,7 +269,6 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
                                              returns 202 + IdentificationPendingResponse immediately
                                              (no more blocking .get() on the full AI pipeline).
                                              Added GET /{id} → IdentificationResponse for polling.
-- controller/AiTestController.java — dev-only Ollama ping, NOT profile-guarded (known issue)
 
 ### reminder/ — MINIMAL (T2.6 bootstrap; full implementation T3.1)
 - entity/CareType.java   — ✅ T2.6; enum: WATERING, FERTILIZING, REPOTTING, PRUNING
@@ -252,7 +276,19 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
                             Uses @CreationTimestamp/@UpdateTimestamp from Hibernate instead
 - repository/ReminderRepository.java — ✅ T2.6; minimal JpaRepository<Reminder, Long>
 
-### chat/ — NOT STARTED
+### chat/ — ✅ T4.1: basic single-turn chat wired to Ollama
+- dto/ChatRequest.java  — @NotBlank message
+- dto/ChatResponse.java — reply (no @Setter — mirrors CureAdviceResponse style)
+- service/ChatService.java (interface) + service/impl/ChatServiceImpl.java
+  - chat(request, userId): rate-limit check (chatBuckets, 30/hour, same Bucket4j pattern as
+    IdentificationServiceImpl) → buildGardenContext(userId) → formats CLAUDE.md's chat system prompt
+    (SYSTEM_PROMPT_TEMPLATE.formatted(gardenContext)) + "\n\nUser: " + message into ONE string →
+    ollamaClient.chat(prompt) (single-arg — no separate system-message param on OllamaClient.chat())
+  - buildGardenContext(): plantRepository.findAllByUserIdAndStatus(userId, ACTIVE, PageRequest.of(0,50)),
+    "- " + nickname + " (" + commonName/species/"unknown species" + ")" per line, joined with \n;
+    "No plants in the garden yet." if empty
+- controller/ChatController.java — POST /api/v1/chat (bare path) → ApiResponse<ChatResponse>;
+  userId via SecurityContextHolder, same pattern as IdentificationController.getCurrentUserId()
 
 ## DB Migrations (in order)
 001_create_users.sql

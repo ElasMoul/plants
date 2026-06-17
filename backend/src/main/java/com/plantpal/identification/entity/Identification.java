@@ -68,4 +68,10 @@ public class Identification extends AuditableEntity {
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "annotation_regions", columnDefinition = "jsonb")
   private String annotationRegions;
+
+  @Column(name = "source_image_width")
+  private Integer sourceImageWidth;
+
+  @Column(name = "source_image_height")
+  private Integer sourceImageHeight;
 }
