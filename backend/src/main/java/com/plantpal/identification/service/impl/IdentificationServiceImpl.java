@@ -177,7 +177,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     try {
-      byte[] imageBytes = fileStorageService.loadPhoto(identification.getPhotoUrl());
+      byte[] imageBytes = fileStorageService.loadPhotoBytes(identification.getPhotoUrl());
       String mediaType = resolveMediaType(identification.getPhotoUrl());
       AiModelPreference preference = AiModelPreference.valueOf(event.getAiModelPreference());
       Long plantId = identification.getPlantId();

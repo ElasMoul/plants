@@ -19,8 +19,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 @EnableCaching
@@ -79,5 +82,16 @@ public class CacheConfig implements CachingConfigurer {
                     new GenericJackson2JsonRedisSerializer(redisMapper)));
 
     return RedisCacheManager.builder(connectionFactory).cacheDefaults(config).build();
+  }
+
+  // Raw byte[] storage for photo bytes (separate from the JSON-serialising cache above).
+  // Not @Primary — must not replace the default RedisTemplate<Object,Object> used for caching.
+  @Bean
+  public RedisTemplate<String, byte[]> byteRedisTemplate(RedisConnectionFactory connectionFactory) {
+    RedisTemplate<String, byte[]> template = new RedisTemplate<>();
+    template.setConnectionFactory(connectionFactory);
+    template.setKeySerializer(new StringRedisSerializer());
+    template.setValueSerializer(RedisSerializer.byteArray());
+    return template;
   }
 }

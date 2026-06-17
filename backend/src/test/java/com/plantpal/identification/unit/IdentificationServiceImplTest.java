@@ -175,7 +175,7 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
@@ -220,7 +220,7 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       Identification pendingEntity =
           Identification.builder()
               .id(1L)
@@ -247,7 +247,7 @@ class IdentificationServiceImplTest {
       Long foreignPlantId = 99L;
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       Identification pendingEntity =
           Identification.builder()
@@ -277,7 +277,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should parse all care plan fields from combined identification response")
     void shouldParseValidCarePlan() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
@@ -311,7 +311,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return fallback care plan when identification response is malformed JSON")
     void shouldReturnFallbackOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
 
       Identification pendingEntity =
@@ -352,7 +352,7 @@ class IdentificationServiceImplTest {
           }
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
 
       Identification pendingEntity =
@@ -381,7 +381,7 @@ class IdentificationServiceImplTest {
     @DisplayName("fallback care plan always has at least one care card")
     void fallbackCareCardNeverNull() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("{}");
 
       Identification pendingEntity =
@@ -422,7 +422,7 @@ class IdentificationServiceImplTest {
     @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -457,7 +457,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -492,7 +492,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -524,7 +524,7 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
@@ -588,7 +588,7 @@ class IdentificationServiceImplTest {
 
     private IdentificationRequestedEvent stubHappyPath(String identificationJson) throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(identificationJson);
 
       Identification pendingEntity =
@@ -735,7 +735,7 @@ class IdentificationServiceImplTest {
     @DisplayName(
         "processIdentification happy path: marks entity COMPLETED and saves annotation regions")
     void shouldCompleteAndSaveAnnotations() throws Exception {
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any()))
           .thenReturn(
@@ -775,7 +775,7 @@ class IdentificationServiceImplTest {
     @DisplayName(
         "processIdentification AI failure: marks entity FAILED without propagating exception")
     void shouldMarkFailedWithoutThrowing() {
-      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
