@@ -26,6 +26,19 @@
   }
 }
 
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}
+
+.btn-spinner {
+  display: inline-block;
+  margin-right: 8px;
+
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
+}
+
 // ── FAB ────────────────────────────────────────────────────────
 .add-fab {
   position: fixed;

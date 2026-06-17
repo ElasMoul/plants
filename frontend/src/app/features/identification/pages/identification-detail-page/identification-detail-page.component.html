@@ -9,12 +9,10 @@
   <div class="state-screen" *ngIf="state === 'pending'">
     <div class="scan-avatar">
       <img
-        *ngIf="result?.photoUrl"
-        [src]="result?.photoUrl"
+        [src]="result?.photoUrl || placeholderImage"
         alt="Plant being scanned"
         class="scan-photo"
       />
-      <mat-icon *ngIf="!result?.photoUrl" class="scan-placeholder-icon">local_florist</mat-icon>
       <div class="scan-sweep"></div>
       <div class="scan-ring"></div>
     </div>

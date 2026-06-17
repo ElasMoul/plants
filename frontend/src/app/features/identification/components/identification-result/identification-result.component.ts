@@ -6,6 +6,7 @@ import {
   SaveAsNewEvent,
   getConfidenceLevel,
 } from '../../models/identification.model';
+import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 @Component({
   selector: 'app-identification-result',
@@ -13,6 +14,7 @@ import {
   styleUrls: ['./identification-result.component.scss'],
 })
 export class IdentificationResultComponent {
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
   @Input() result!: IdentificationResponse;
   @Output() readonly saveAsNew = new EventEmitter<SaveAsNewEvent>();
   @Output() readonly updatePlant = new EventEmitter<number>();

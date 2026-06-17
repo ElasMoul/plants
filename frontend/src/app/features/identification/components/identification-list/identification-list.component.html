@@ -22,8 +22,7 @@
       (click)="onRowClick(item)"
     >
       <div class="row-photo">
-        <img *ngIf="item.photoUrl" [src]="item.photoUrl" [alt]="item.commonName || item.scientificName" />
-        <mat-icon *ngIf="!item.photoUrl">local_florist</mat-icon>
+        <img [src]="item.photoUrl || placeholderImage" [alt]="item.commonName || item.scientificName" />
       </div>
 
       <div class="row-body">

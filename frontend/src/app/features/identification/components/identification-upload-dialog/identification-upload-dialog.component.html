@@ -6,4 +6,15 @@
 
 <mat-dialog-actions align="end">
   <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    class="btn-pill"
+    [disabled]="!photoUpload?.entries?.length"
+    (click)="startIdentification()"
+  >
+    <mat-icon>biotech</mat-icon>
+    Start identification
+  </button>
 </mat-dialog-actions>

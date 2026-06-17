@@ -3,11 +3,27 @@
   <h1 class="page-title">Identify Your Plant</h1>
   <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
 
-  <app-photo-upload
-    *ngIf="hasIdentifications === false"
-    [submitting]="submitting"
-    (analyze)="onAnalyze($event)"
-  ></app-photo-upload>
+  <ng-container *ngIf="hasIdentifications === false">
+    <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
+
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="full-width mt-24 btn-pill"
+      [disabled]="!photoUpload?.entries?.length || submitting"
+      (click)="triggerAnalyze()"
+    >
+      <mat-progress-spinner
+        *ngIf="submitting"
+        diameter="18"
+        mode="indeterminate"
+        class="btn-spinner"
+      ></mat-progress-spinner>
+      <mat-icon *ngIf="!submitting">biotech</mat-icon>
+      {{ submitting ? 'Submitting…' : 'Identify Plant' }}
+    </button>
+  </ng-container>
 
   <app-identification-list (hasItemsChange)="hasIdentifications = $event"></app-identification-list>
 

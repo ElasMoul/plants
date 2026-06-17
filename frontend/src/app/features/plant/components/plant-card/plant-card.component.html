@@ -3,16 +3,10 @@
   <!-- Photo with health badge overlay -->
   <div class="plant-photo">
     <img
-      *ngIf="plant.photoUrl; else photoPlaceholder"
-      [src]="plant.photoUrl"
+      [src]="plant.photoUrl || placeholderImage"
       [alt]="plant.nickname"
       class="photo-img"
     />
-    <ng-template #photoPlaceholder>
-      <div class="photo-placeholder">
-        <mat-icon>local_florist</mat-icon>
-      </div>
-    </ng-template>
 
     <!-- Health badge -->
     <span

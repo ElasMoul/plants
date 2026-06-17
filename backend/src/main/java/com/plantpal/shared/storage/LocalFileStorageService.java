@@ -24,7 +24,7 @@ public class LocalFileStorageService implements FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(LocalFileStorageService.class);
 
-  private static final Duration PHOTO_TTL = Duration.ofDays(7);
+  private static final Duration PHOTO_TTL = Duration.ofDays(30);
   private static final String PHOTO_KEY_PREFIX = "photo:";
   private static final String PHOTO_HASH_KEY_PREFIX = "photo:hash:";
 
