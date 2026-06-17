@@ -45,7 +45,6 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
   }
 
   onRowClick(item: IdentificationResponse): void {
-    if (item.status === 'PENDING') return;
     this.router.navigate(['/identify', item.id]);
   }
 

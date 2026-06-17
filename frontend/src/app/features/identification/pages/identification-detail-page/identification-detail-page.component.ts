@@ -68,6 +68,8 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   private handleResult(data: IdentificationResponse): void {
+    this.result = data;
+
     if (data.status === 'PENDING') {
       this.state = 'pending';
       this.pollForCompletion(data.id);
@@ -81,7 +83,6 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
       this.router.navigate(['/plants', data.plantId]);
       return;
     }
-    this.result = data;
     this.state = 'ready';
   }
 

@@ -17,9 +17,8 @@
 
   <div class="identification-rows" *ngIf="!loading && !loadError && items.length">
     <div
-      class="identification-row"
+      class="identification-row row-clickable"
       *ngFor="let item of items; trackBy: trackById"
-      [class.row-clickable]="item.status !== 'PENDING'"
       (click)="onRowClick(item)"
     >
       <div class="row-photo">

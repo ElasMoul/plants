@@ -7,7 +7,17 @@
 
   <!-- pending: still being processed -->
   <div class="state-screen" *ngIf="state === 'pending'">
-    <mat-icon class="state-icon">local_florist</mat-icon>
+    <div class="scan-avatar">
+      <img
+        *ngIf="result?.photoUrl"
+        [src]="result?.photoUrl"
+        alt="Plant being scanned"
+        class="scan-photo"
+      />
+      <mat-icon *ngIf="!result?.photoUrl" class="scan-placeholder-icon">local_florist</mat-icon>
+      <div class="scan-sweep"></div>
+      <div class="scan-ring"></div>
+    </div>
     <h2 class="state-title">Analysing your plant&hellip;</h2>
     <p class="state-subtitle">Usually takes 10&ndash;20 seconds.</p>
     <mat-progress-bar mode="indeterminate" color="primary" class="state-progress"></mat-progress-bar>
