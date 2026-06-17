@@ -7,6 +7,7 @@ import { PlantService } from '../../services/plant.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { PlantResponse } from '../../models/plant.model';
 import { AnnotationRegion, CarePlanDto } from '../../../identification/models/identification.model';
+import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 
 @Component({
@@ -15,6 +16,7 @@ import { AnnotationRegion, CarePlanDto } from '../../../identification/models/id
   styleUrls: ['./plant-detail.component.scss'],
 })
 export class PlantDetailComponent implements OnInit, OnDestroy {
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
   plant: PlantResponse | null = null;
   loading = true;
   latestCarePlan: CarePlanDto | null = null;

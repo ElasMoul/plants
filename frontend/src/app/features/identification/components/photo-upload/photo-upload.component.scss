@@ -69,25 +69,6 @@
   margin: 10px 0 0;
 }
 
-.action-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-
-  @media (max-width: 480px) {
-    flex-direction: column;
-  }
-}
-
-.btn-pill {
-  border-radius: var(--radius-chip) !important;
-}
-
-.btn-choose,
-.btn-camera {
-  flex: 1;
-}
-
 .error-list {
   display: flex;
   align-items: flex-start;
@@ -162,13 +143,4 @@
 .organ-field {
   width: 100%;
   font-size: 13px;
-}
-
-.btn-spinner {
-  display: inline-block;
-  margin-right: 8px;
-
-  ::ng-deep circle {
-    stroke: currentColor;
-  }
 }

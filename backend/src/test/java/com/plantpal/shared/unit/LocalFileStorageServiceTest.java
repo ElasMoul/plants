@@ -65,8 +65,8 @@ class LocalFileStorageServiceTest {
       String url = fileStorageService.savePhoto(photo(bytes));
 
       assertThat(url).startsWith("/photos/").endsWith(".jpg");
-      verify(byteValueOps).set(anyString(), eq(bytes), eq(Duration.ofDays(7)));
-      verify(stringValueOps).set(anyString(), eq(url), eq(Duration.ofDays(7)));
+      verify(byteValueOps).set(anyString(), eq(bytes), eq(Duration.ofDays(30)));
+      verify(stringValueOps).set(anyString(), eq(url), eq(Duration.ofDays(30)));
     }
 
     @Test

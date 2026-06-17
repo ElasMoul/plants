@@ -10,6 +10,7 @@ import {
   SavePreviewEditEvent,
   getConfidenceLevel,
 } from '../../models/identification.model';
+import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 @Component({
   selector: 'app-preview-card',
@@ -17,6 +18,7 @@ import {
   styleUrls: ['./preview-card.component.scss'],
 })
 export class PreviewCardComponent implements OnInit {
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
   @Input() result!: IdentificationResponse;
   @Input() selectedRegionIndex: number | null = null;
   @Output() readonly saved = new EventEmitter<PlantResponse>();

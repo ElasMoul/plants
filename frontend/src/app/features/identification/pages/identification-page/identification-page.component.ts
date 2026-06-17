@@ -8,6 +8,7 @@ import { IdentificationService } from '../../services/identification.service';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
 import { IdentificationListComponent } from '../../components/identification-list/identification-list.component';
 import { IdentificationUploadDialogComponent } from '../../components/identification-upload-dialog/identification-upload-dialog.component';
+import { PhotoUploadComponent } from '../../components/photo-upload/photo-upload.component';
 
 @Component({
   selector: 'app-identification-page',
@@ -16,6 +17,7 @@ import { IdentificationUploadDialogComponent } from '../../components/identifica
 })
 export class IdentificationPageComponent implements OnDestroy {
   @ViewChild(IdentificationListComponent) listComponent?: IdentificationListComponent;
+  @ViewChild(PhotoUploadComponent) photoUpload?: PhotoUploadComponent;
 
   submitting = false;
   hasIdentifications: boolean | null = null;
@@ -47,6 +49,10 @@ export class IdentificationPageComponent implements OnDestroy {
           this.onAnalyze(payload);
         }
       });
+  }
+
+  triggerAnalyze(): void {
+    this.photoUpload?.onAnalyze();
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {

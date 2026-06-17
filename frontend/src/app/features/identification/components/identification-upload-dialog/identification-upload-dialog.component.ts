@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
+import { PhotoUploadComponent } from '../photo-upload/photo-upload.component';
 
 @Component({
   selector: 'app-identification-upload-dialog',
@@ -8,9 +9,15 @@ import { AnalyzeEmitPayload } from '../../models/identification.model';
   styleUrls: ['./identification-upload-dialog.component.scss'],
 })
 export class IdentificationUploadDialogComponent {
+  @ViewChild(PhotoUploadComponent) photoUpload?: PhotoUploadComponent;
+
   constructor(
     private readonly dialogRef: MatDialogRef<IdentificationUploadDialogComponent, AnalyzeEmitPayload>,
   ) {}
+
+  startIdentification(): void {
+    this.photoUpload?.onAnalyze();
+  }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
     this.dialogRef.close(payload);

@@ -45,6 +45,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       # Ollama runs on the host machine — host.docker.internal resolves on Docker Desktop
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+    volumes:
+      - photos_data:/tmp/plantpal/photos
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +87,7 @@ services:
     image: redis:7-alpine
     container_name: plantpal-redis
     restart: unless-stopped
+    command: redis-server --appendonly yes --save 60 1 --save 300 10
     ports:
       - "6379:6379"
     volumes:
@@ -141,6 +144,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  photos_data:
     driver: local
 
 # ─────────────────────────────────────────

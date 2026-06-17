@@ -1,9 +1,9 @@
 <div class="preview-container">
 
   <!-- Photo with annotation overlay -->
-  <div class="photo-banner" *ngIf="result.photoUrl">
+  <div class="photo-banner">
     <app-photo-annotator
-      [imageUrl]="result.photoUrl"
+      [imageUrl]="result.photoUrl || placeholderImage"
       [regions]="result.annotationRegions"
       [selectedRegionIndex]="selectedRegionIndex"
     ></app-photo-annotator>

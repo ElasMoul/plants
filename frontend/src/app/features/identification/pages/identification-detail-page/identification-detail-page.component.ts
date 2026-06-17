@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { IdentificationService } from '../../services/identification.service';
 import { IdentificationResponse, SavePreviewEditEvent } from '../../models/identification.model';
 import { PlantResponse } from '../../../plant/models/plant.model';
+import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 type DetailState = 'loading' | 'pending' | 'ready' | 'failed' | 'not-found';
 
@@ -15,6 +16,7 @@ type DetailState = 'loading' | 'pending' | 'ready' | 'failed' | 'not-found';
   styleUrls: ['./identification-detail-page.component.scss'],
 })
 export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
   state: DetailState = 'loading';
   result: IdentificationResponse | null = null;
 
@@ -68,6 +70,8 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   private handleResult(data: IdentificationResponse): void {
+    this.result = data;
+
     if (data.status === 'PENDING') {
       this.state = 'pending';
       this.pollForCompletion(data.id);
@@ -81,7 +85,6 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
       this.router.navigate(['/plants', data.plantId]);
       return;
     }
-    this.result = data;
     this.state = 'ready';
   }
 

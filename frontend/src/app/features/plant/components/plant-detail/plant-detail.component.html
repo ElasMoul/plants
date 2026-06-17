@@ -8,9 +8,8 @@
   <ng-container *ngIf="!loading && plant">
 
     <!-- Hero -->
-    <div class="detail-hero" [class.no-photo]="!plant.photoUrl">
-      <img *ngIf="plant.photoUrl" [src]="plant.photoUrl" [alt]="plant.nickname" class="hero-img" />
-      <mat-icon *ngIf="!plant.photoUrl" class="hero-placeholder-icon">local_florist</mat-icon>
+    <div class="detail-hero">
+      <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
       <div class="hero-overlay"></div>
 
       <button mat-icon-button class="hero-back" routerLink="/plants" aria-label="Back to plants">
@@ -142,9 +141,9 @@
             </button>
           </div>
 
-          <ng-container *ngIf="carePlanLoaded && hasIdentification && latestPhotoUrl">
+          <ng-container *ngIf="carePlanLoaded && hasIdentification">
             <app-photo-annotator
-              [imageUrl]="latestPhotoUrl"
+              [imageUrl]="latestPhotoUrl || placeholderImage"
               [regions]="latestAnnotationRegions"
               [selectedRegionIndex]="selectedRegionIndex"
             ></app-photo-annotator>

@@ -9,9 +9,9 @@
   <mat-card-content>
 
     <!-- Photo with annotation overlay -->
-    <div class="photo-section" *ngIf="result.photoUrl">
+    <div class="photo-section">
       <app-photo-annotator
-        [imageUrl]="result.photoUrl"
+        [imageUrl]="result.photoUrl || placeholderImage"
         [regions]="result.annotationRegions"
       ></app-photo-annotator>
     </div>

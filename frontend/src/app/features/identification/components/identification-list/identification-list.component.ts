@@ -4,6 +4,7 @@ import { Observable, Subject, Subscription, interval, of } from 'rxjs';
 import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
 import { IdentificationService } from '../../services/identification.service';
 import { IdentificationResponse } from '../../models/identification.model';
+import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 const PAGE_SIZE = 10;
 const POLL_INTERVAL_MS = 3000;
@@ -16,6 +17,7 @@ const POLL_INTERVAL_MS = 3000;
 export class IdentificationListComponent implements OnInit, OnDestroy {
   @Output() readonly hasItemsChange = new EventEmitter<boolean>();
 
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
   items: IdentificationResponse[] = [];
   loading = true;
   loadError = false;
@@ -45,7 +47,6 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
   }
 
   onRowClick(item: IdentificationResponse): void {
-    if (item.status === 'PENDING') return;
     this.router.navigate(['/identify', item.id]);
   }
 
