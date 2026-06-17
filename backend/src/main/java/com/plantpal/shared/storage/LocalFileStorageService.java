@@ -48,6 +48,21 @@ public class LocalFileStorageService implements FileStorageService {
   }
 
   @Override
+  public byte[] loadPhoto(String url) {
+    if (url == null || !url.startsWith("/photos/")) {
+      throw new PlantPalException("Invalid photo URL", 400);
+    }
+    String filename = url.substring("/photos/".length());
+    Path target = storageRoot.resolve(filename);
+    try {
+      return Files.readAllBytes(target);
+    } catch (IOException e) {
+      log.error("Failed to load photo: {}", filename, e);
+      throw new PlantPalException("Failed to load photo", 500);
+    }
+  }
+
+  @Override
   public void deletePhoto(String url) {
     if (url == null || !url.startsWith("/photos/")) return;
     String filename = url.substring("/photos/".length());

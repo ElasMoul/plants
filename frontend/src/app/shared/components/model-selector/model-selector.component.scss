@@ -4,56 +4,65 @@
   gap: 8px;
 }
 
-mat-button-toggle-group {
-  border: none;
-  border-radius: var(--radius-chip);
+.model-select {
+  display: inline-flex;
+  align-items: center;
   height: 36px;
+  min-width: 110px;
+  padding: 0 12px;
+  border-radius: var(--radius-chip);
   background: var(--color-primary);
-  overflow: hidden;
-}
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 
-mat-button-toggle {
-  color: #424242;
-
-  &.mat-button-toggle-checked {
-    background: rgba(255, 255, 255, 0.22);
+  ::ng-deep .mat-mdc-select-arrow {
     color: #fff;
   }
 
-  ::ng-deep .mat-button-toggle-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 10px;
-    height: 36px;
+  ::ng-deep .mat-mdc-select-trigger {
+    height: 100%;
   }
 
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
-  .toggle-label {
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-
-    @media (max-width: 768px) {
-      display: none;
-    }
+  @media (max-width: 480px) {
+    min-width: 0;
+    padding: 0 8px;
   }
 }
 
-@media (max-width: 768px) {
-  ::ng-deep .mat-button-toggle-button {
-    padding: 0 8px !important;
+.trigger-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.trigger-label {
+  vertical-align: middle;
+
+  @media (max-width: 480px) {
+    display: none;
   }
 }
 
 .save-spinner {
   ::ng-deep circle {
     stroke: var(--color-primary);
+  }
+}
+
+::ng-deep .model-select-panel {
+  mat-option {
+    display: flex;
+    align-items: center;
+
+    mat-icon {
+      margin-right: 8px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
   }
 }

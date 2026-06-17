@@ -1,8 +1,10 @@
 package com.plantpal.identification.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -15,11 +17,15 @@ import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
+import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
+import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.impl.IdentificationServiceImpl;
@@ -32,6 +38,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
 import com.plantpal.user.repository.UserRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +50,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -63,6 +76,7 @@ class IdentificationServiceImplTest {
   @Mock private UserRepository userRepository;
   @Mock private PlantNetClient plantNetClient;
   @Mock private OllamaClient ollamaClient;
+  @Mock private KafkaTemplate<String, Object> kafkaTemplate;
 
   private IdentificationServiceImpl identificationService;
 
@@ -84,7 +98,8 @@ class IdentificationServiceImplTest {
             gitHubModelsClient,
             userRepository,
             plantNetClient,
-            ollamaClient);
+            ollamaClient,
+            kafkaTemplate);
   }
 
   private MockMultipartFile validImage() {
@@ -121,16 +136,46 @@ class IdentificationServiceImplTest {
         """;
   }
 
+  /** Submits the identification request and captures the event published to Kafka. */
+  private IdentificationRequestedEvent submitAndCaptureEvent(
+      List<MultipartFile> images, List<String> organs, Long plantId, Long userId) throws Exception {
+    identificationService.submitIdentification(images, plantId, userId, organs).get();
+    ArgumentCaptor<IdentificationRequestedEvent> captor =
+        ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
+    verify(kafkaTemplate)
+        .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), captor.capture());
+    return captor.getValue();
+  }
+
+  private List<AnnotationRegionDto> parseRegions(String json) throws Exception {
+    var root = objectMapper.readTree(json);
+    var regions = root.get("regions");
+    List<AnnotationRegionDto> parsed =
+        objectMapper.convertValue(
+            regions,
+            objectMapper
+                .getTypeFactory()
+                .constructCollectionType(List.class, AnnotationRegionDto.class));
+    parsed.forEach(
+        r -> {
+          if (r.getPolygon() != null && r.getPolygon().size() < 3) {
+            r.setPolygon(null);
+          }
+        });
+    return parsed;
+  }
+
   @Nested
-  @DisplayName("identify()")
+  @DisplayName("submitIdentification() + processIdentification()")
   class Identify {
 
     @Test
-    @DisplayName("should complete happy path: DeepSeek vision → persist → update plant species")
+    @DisplayName("should complete happy path: GitHubModels vision → persist → update plant species")
     void shouldCompleteHappyPath() throws Exception {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
@@ -141,67 +186,54 @@ class IdentificationServiceImplTest {
               .photoUrl("/photos/uuid.jpg")
               .status(IdentificationStatus.PENDING)
               .build();
-      Identification completedEntity =
-          Identification.builder()
-              .id(1L)
-              .userId(USER_ID)
-              .plantId(PLANT_ID)
-              .photoUrl("/photos/uuid.jpg")
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
-              .healthStatus("HEALTHY")
-              .status(IdentificationStatus.COMPLETED)
-              .build();
 
-      when(identificationRepository.save(any()))
-          .thenReturn(pendingEntity)
-          .thenReturn(completedEntity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
       when(plantRepository.existsByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(true);
       when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
           .thenReturn(
               Optional.of(
                   Plant.builder().id(PLANT_ID).userId(USER_ID).nickname("My plant").build()));
 
-      IdentificationResponse response =
-          identificationService.identify(images, List.of("leaf"), PLANT_ID, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(images, List.of("leaf"), PLANT_ID, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getScientificName()).isEqualTo("Monstera deliciosa");
-      assertThat(response.getCommonName()).isEqualTo("Swiss cheese plant");
-      assertThat(response.getConfidence()).isEqualTo(0.9);
-      assertThat(response.getHealthStatus()).isEqualTo("HEALTHY");
-      assertThat(response.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
-      assertThat(response.getTopResults()).isEmpty();
-      assertThat(response.getCarePlan()).isNotNull();
-      assertThat(response.getCarePlan().getWateringFrequencyDays()).isEqualTo(7);
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(saved.getCommonName()).isEqualTo("Swiss cheese plant");
+      assertThat(saved.getConfidence()).isEqualTo(0.9);
+      assertThat(saved.getHealthStatus()).isEqualTo("HEALTHY");
+      assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
 
       verify(fileStorageService).savePhoto(any());
       verify(gitHubModelsClient).identifyPlant(any(), any());
-      verify(identificationRepository, times(2)).save(any(Identification.class));
       verify(plantRepository).save(any(Plant.class));
     }
 
     @Test
-    @DisplayName("should mark entity FAILED when DeepSeek throws")
-    void shouldMarkEntityFailedWhenDeepSeekThrows() {
+    @DisplayName("should mark entity FAILED when identification client throws")
+    void shouldMarkEntityFailedWhenIdentificationThrows() throws Exception {
       List<MultipartFile> images = List.of(validImage());
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
               .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any()))
-          .thenReturn(pendingEntity)
-          .thenReturn(pendingEntity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
       when(gitHubModelsClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
-      assertThatThrownBy(() -> identificationService.identify(images, null, null, USER_ID).get())
-          .isInstanceOf(PlantPalException.class)
-          .hasMessageContaining("Plant identification service unavailable");
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      identificationService.processIdentification(event);
 
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository, times(2)).save(captor.capture());
@@ -215,21 +247,22 @@ class IdentificationServiceImplTest {
       Long foreignPlantId = 99L;
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
               .plantId(foreignPlantId)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
       when(plantRepository.existsByIdAndUserId(foreignPlantId, USER_ID)).thenReturn(false);
 
-      identificationService.identify(images, null, foreignPlantId, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(images, null, foreignPlantId, USER_ID);
+      identificationService.processIdentification(event);
 
       verify(plantRepository, never()).save(any(Plant.class));
       verify(reminderRepository, never()).save(any(Reminder.class));
@@ -241,27 +274,30 @@ class IdentificationServiceImplTest {
   class CarePlanParsing {
 
     @Test
-    @DisplayName("should parse all care plan fields from DeepSeek combined response")
+    @DisplayName("should parse all care plan fields from combined identification response")
     void shouldParseValidCarePlan() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
 
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
-              .healthStatus("HEALTHY")
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      CarePlanDto carePlan = response.getCarePlan();
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      CarePlanDto carePlan =
+          objectMapper.readValue(captor.getAllValues().get(1).getCarePlan(), CarePlanDto.class);
+
       assertThat(carePlan).isNotNull();
       assertThat(carePlan.getWateringFrequencyDays()).isEqualTo(7);
       assertThat(carePlan.getFertilizingFrequencyDays()).isEqualTo(30);
@@ -272,25 +308,33 @@ class IdentificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("should return fallback care plan when DeepSeek returns malformed JSON")
+    @DisplayName("should return fallback care plan when identification response is malformed JSON")
     void shouldReturnFallbackOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
 
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getCarePlan()).isNotNull();
-      assertThat(response.getCarePlan().getCareCards()).isNotEmpty();
-      assertThat(response.getCarePlan().getCareCards().get(0).getType()).isEqualTo("WATERING");
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      CarePlanDto carePlan =
+          objectMapper.readValue(captor.getAllValues().get(1).getCarePlan(), CarePlanDto.class);
+
+      assertThat(carePlan).isNotNull();
+      assertThat(carePlan.getCareCards()).isNotEmpty();
+      assertThat(carePlan.getCareCards().get(0).getType()).isEqualTo("WATERING");
     }
 
     @Test
@@ -308,42 +352,57 @@ class IdentificationServiceImplTest {
           }
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
 
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getCarePlan()).isNotNull();
-      assertThat(response.getCarePlan().getCareCards()).isNotEmpty();
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      CarePlanDto carePlan =
+          objectMapper.readValue(captor.getAllValues().get(1).getCarePlan(), CarePlanDto.class);
+
+      assertThat(carePlan).isNotNull();
+      assertThat(carePlan.getCareCards()).isNotEmpty();
     }
 
     @Test
     @DisplayName("fallback care plan always has at least one care card")
     void fallbackCareCardNeverNull() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("{}");
 
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
-              .status(IdentificationStatus.COMPLETED)
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getCarePlan().getCareCards()).isNotNull().isNotEmpty();
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      CarePlanDto carePlan =
+          objectMapper.readValue(captor.getAllValues().get(1).getCarePlan(), CarePlanDto.class);
+
+      assertThat(carePlan.getCareCards()).isNotNull().isNotEmpty();
     }
   }
 
@@ -351,14 +410,11 @@ class IdentificationServiceImplTest {
   @DisplayName("annotation regions")
   class AnnotationRegions {
 
-    private Identification completedEntity() {
+    private Identification pendingEntity() {
       return Identification.builder()
           .id(1L)
           .userId(USER_ID)
-          .status(IdentificationStatus.COMPLETED)
-          .scientificName("Monstera deliciosa")
-          .commonName("Swiss cheese plant")
-          .confidence(0.9)
+          .status(IdentificationStatus.PENDING)
           .build();
     }
 
@@ -366,14 +422,20 @@ class IdentificationServiceImplTest {
     @DisplayName("should return empty annotationRegions when annotation JSON is malformed")
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
-      when(identificationRepository.save(any())).thenReturn(completedEntity());
+      when(identificationRepository.save(any())).thenReturn(pendingEntity());
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getAnnotationRegions()).isNotNull().isEmpty();
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      assertThat(captor.getAllValues().get(1).getAnnotationRegions())
+          .isEqualTo("not valid json {{{");
     }
 
     @Test
@@ -395,20 +457,28 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
-      when(identificationRepository.save(any())).thenReturn(completedEntity());
+      when(identificationRepository.save(any())).thenReturn(pendingEntity());
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getAnnotationRegions()).hasSize(2);
-      assertThat(response.getAnnotationRegions().get(0).getType()).isEqualTo("PLANT");
-      assertThat(response.getAnnotationRegions().get(0).getConfidence()).isEqualTo("HIGH");
-      assertThat(response.getAnnotationRegions().get(0).getPolygon()).hasSize(8);
-      assertThat(response.getAnnotationRegions().get(0).getPolygon().get(0).getXPct()).isEqualTo(5);
-      assertThat(response.getAnnotationRegions().get(1).getType()).isEqualTo("DISEASE");
-      assertThat(response.getAnnotationRegions().get(1).getPolygon()).hasSize(8);
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      List<AnnotationRegionDto> regions =
+          parseRegions(captor.getAllValues().get(1).getAnnotationRegions());
+
+      assertThat(regions).hasSize(2);
+      assertThat(regions.get(0).getType()).isEqualTo("PLANT");
+      assertThat(regions.get(0).getConfidence()).isEqualTo("HIGH");
+      assertThat(regions.get(0).getPolygon()).hasSize(8);
+      assertThat(regions.get(0).getPolygon().get(0).getXPct()).isEqualTo(5);
+      assertThat(regions.get(1).getType()).isEqualTo("DISEASE");
+      assertThat(regions.get(1).getPolygon()).hasSize(8);
     }
 
     @Test
@@ -422,18 +492,25 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
-      when(identificationRepository.save(any())).thenReturn(completedEntity());
+      when(identificationRepository.save(any())).thenReturn(pendingEntity());
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getAnnotationRegions()).hasSize(1);
-      assertThat(response.getAnnotationRegions().get(0).getPolygon()).isNull();
-      assertThat(response.getAnnotationRegions().get(0).getBoundingBox()).isNotNull();
-      assertThat(response.getAnnotationRegions().get(0).getBoundingBox().getWidthPct())
-          .isEqualTo(100);
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      List<AnnotationRegionDto> regions =
+          parseRegions(captor.getAllValues().get(1).getAnnotationRegions());
+
+      assertThat(regions).hasSize(1);
+      assertThat(regions.get(0).getPolygon()).isNull();
+      assertThat(regions.get(0).getBoundingBox()).isNotNull();
+      assertThat(regions.get(0).getBoundingBox().getWidthPct()).isEqualTo(100);
     }
 
     @Test
@@ -447,15 +524,23 @@ class IdentificationServiceImplTest {
           ]}
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
-      when(identificationRepository.save(any())).thenReturn(completedEntity());
+      when(identificationRepository.save(any())).thenReturn(pendingEntity());
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
 
-      IdentificationResponse response =
-          identificationService.identify(List.of(validImage()), null, null, USER_ID).get();
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
 
-      assertThat(response.getAnnotationRegions()).hasSize(1);
-      assertThat(response.getAnnotationRegions().get(0).getPolygon()).isNull();
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      List<AnnotationRegionDto> regions =
+          parseRegions(captor.getAllValues().get(1).getAnnotationRegions());
+
+      assertThat(regions).hasSize(1);
+      assertThat(regions.get(0).getPolygon()).isNull();
     }
   }
 
@@ -501,35 +586,35 @@ class IdentificationServiceImplTest {
           """;
     }
 
-    private void stubHappyPath(String identificationJson) {
+    private IdentificationRequestedEvent stubHappyPath(String identificationJson) throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
       when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(identificationJson);
 
-      Identification entity =
+      Identification pendingEntity =
           Identification.builder()
               .id(1L)
               .userId(USER_ID)
               .plantId(PLANT_ID)
-              .status(IdentificationStatus.COMPLETED)
-              .scientificName("Monstera deliciosa")
-              .commonName("Swiss cheese plant")
-              .confidence(0.9)
+              .status(IdentificationStatus.PENDING)
               .build();
-      when(identificationRepository.save(any())).thenReturn(entity);
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
       when(plantRepository.existsByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(true);
       when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
           .thenReturn(
               Optional.of(Plant.builder().id(PLANT_ID).userId(USER_ID).nickname("p").build()));
       when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+      return submitAndCaptureEvent(List.of(validImage()), null, PLANT_ID, USER_ID);
     }
 
     @Test
     @DisplayName(
         "should create WATERING, FERTILIZING, and REPOTTING reminders when fertilizingFrequencyDays > 0")
     void shouldCreateThreeRemindersWhenFertilizingEnabled() throws Exception {
-      stubHappyPath(identificationJsonWithFertilizing());
-
-      identificationService.identify(List.of(validImage()), null, PLANT_ID, USER_ID).get();
+      IdentificationRequestedEvent event = stubHappyPath(identificationJsonWithFertilizing());
+      identificationService.processIdentification(event);
 
       ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
       verify(reminderRepository, times(3)).save(captor.capture());
@@ -542,9 +627,8 @@ class IdentificationServiceImplTest {
     @Test
     @DisplayName("should skip FERTILIZING reminder when fertilizingFrequencyDays = 0")
     void shouldSkipFertilizingReminderWhenZero() throws Exception {
-      stubHappyPath(identificationJsonNoFertilizing());
-
-      identificationService.identify(List.of(validImage()), null, PLANT_ID, USER_ID).get();
+      IdentificationRequestedEvent event = stubHappyPath(identificationJsonNoFertilizing());
+      identificationService.processIdentification(event);
 
       ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
       verify(reminderRepository, times(2)).save(captor.capture());
@@ -557,9 +641,8 @@ class IdentificationServiceImplTest {
     @Test
     @DisplayName("should set correct frequencyDays on each reminder")
     void shouldSetCorrectFrequencyDays() throws Exception {
-      stubHappyPath(identificationJsonWithFertilizing());
-
-      identificationService.identify(List.of(validImage()), null, PLANT_ID, USER_ID).get();
+      IdentificationRequestedEvent event = stubHappyPath(identificationJsonWithFertilizing());
+      identificationService.processIdentification(event);
 
       ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
       verify(reminderRepository, atLeastOnce()).save(captor.capture());
@@ -578,6 +661,213 @@ class IdentificationServiceImplTest {
           .filter(r -> r.getCareType() == CareType.REPOTTING)
           .findFirst()
           .ifPresent(r -> assertThat(r.getFrequencyDays()).isEqualTo(6 * 30));
+    }
+  }
+
+  @Nested
+  @DisplayName("Kafka async pipeline")
+  class Kafka {
+
+    @Test
+    @DisplayName(
+        "submitIdentification: persists Identification as PENDING and publishes requested event")
+    void shouldPersistPendingAndPublishEvent() throws Exception {
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .plantId(PLANT_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationPendingResponse response =
+          identificationService
+              .submitIdentification(images, PLANT_ID, USER_ID, List.of("leaf"))
+              .get();
+
+      assertThat(response.getIdentificationId()).isEqualTo(1L);
+      assertThat(response.getStatus()).isEqualTo("PENDING");
+
+      ArgumentCaptor<Identification> entityCaptor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(entityCaptor.capture());
+      assertThat(entityCaptor.getValue().getStatus()).isEqualTo(IdentificationStatus.PENDING);
+
+      ArgumentCaptor<IdentificationRequestedEvent> eventCaptor =
+          ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
+      verify(kafkaTemplate)
+          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), eventCaptor.capture());
+      assertThat(eventCaptor.getValue().getIdentificationId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("submitIdentification: throws 429 and does not publish when rate limit exceeded")
+    void shouldThrowAndSkipPublishWhenRateLimited() {
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      for (int i = 0; i < 20; i++) {
+        identificationService.submitIdentification(images, null, USER_ID, null);
+      }
+
+      assertThatThrownBy(
+              () -> identificationService.submitIdentification(images, null, USER_ID, null))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+
+      verify(kafkaTemplate, times(20))
+          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName(
+        "processIdentification happy path: marks entity COMPLETED and saves annotation regions")
+    void shouldCompleteAndSaveAnnotations() throws Exception {
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any()))
+          .thenReturn(
+              "{\"regions\":[{\"label\":\"Monstera\",\"type\":\"PLANT\",\"confidence\":\"HIGH\"}]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      Identification saved = captor.getValue();
+      assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
+      assertThat(saved.getAnnotationRegions()).contains("Monstera");
+
+      verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName(
+        "processIdentification AI failure: marks entity FAILED without propagating exception")
+    void shouldMarkFailedWithoutThrowing() {
+      when(fileStorageService.loadPhoto(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any()))
+          .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      assertThatCode(() -> identificationService.processIdentification(event))
+          .doesNotThrowAnyException();
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
+
+      verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("getUserIdentifications()")
+  class GetUserIdentifications {
+
+    @Test
+    @DisplayName(
+        "should return mapped page sorted by createdAt desc with carePlan and annotationRegions parsed")
+    void shouldReturnMappedPageWithParsedFields() throws Exception {
+      String carePlanJson =
+          """
+          {"wateringFrequencyDays":7,"fertilizingFrequencyDays":0,"repottingFrequencyMonths":12,
+           "careCards":[{"type":"WATERING","title":"Watering","icon":"water_drop","summary":"s",
+           "detail":"d","urgency":"LOW","seasonalVariation":null}],"beginnerWarnings":[]}
+          """;
+      String annotationJson =
+          "{\"regions\":[{\"label\":\"Monstera\",\"type\":\"PLANT\",\"confidence\":\"HIGH\"}]}";
+
+      Identification completedEntity =
+          Identification.builder()
+              .id(2L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.COMPLETED)
+              .scientificName("Monstera deliciosa")
+              .carePlan(carePlanJson)
+              .annotationRegions(annotationJson)
+              .build();
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+
+      Pageable pageable = PageRequest.of(0, 20, Sort.by("createdAt").descending());
+      Page<Identification> entityPage =
+          new PageImpl<>(List.of(completedEntity, pendingEntity), pageable, 2);
+      when(identificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable))
+          .thenReturn(entityPage);
+
+      IdentificationResponse mappedCompleted = IdentificationResponse.builder().id(2L).build();
+      IdentificationResponse mappedPending = IdentificationResponse.builder().id(1L).build();
+      when(identificationMapper.toResponse(completedEntity)).thenReturn(mappedCompleted);
+      when(identificationMapper.toResponse(pendingEntity)).thenReturn(mappedPending);
+
+      Page<IdentificationResponse> result =
+          identificationService.getUserIdentifications(USER_ID, pageable);
+
+      assertThat(result.getContent()).hasSize(2);
+      assertThat(result.getContent().get(0).getId()).isEqualTo(2L);
+      assertThat(result.getContent().get(0).getCarePlan()).isNotNull();
+      assertThat(result.getContent().get(0).getCarePlan().getWateringFrequencyDays()).isEqualTo(7);
+      assertThat(result.getContent().get(0).getAnnotationRegions()).hasSize(1);
+      assertThat(result.getContent().get(0).getAnnotationRegions().get(0).getType())
+          .isEqualTo("PLANT");
+
+      assertThat(result.getContent().get(1).getId()).isEqualTo(1L);
+      assertThat(result.getContent().get(1).getCarePlan()).isNotNull();
+      assertThat(result.getContent().get(1).getCarePlan().getCareCards()).isNotEmpty();
+      assertThat(result.getContent().get(1).getAnnotationRegions()).isEmpty();
     }
   }
 

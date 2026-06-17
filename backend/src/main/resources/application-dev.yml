@@ -40,6 +40,20 @@ spring:
     contexts: dev
     change-log: classpath:db/changelog/db.changelog-master.xml
 
+  # ── Kafka — async identification pipeline ──────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: plantpal-identification
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.plantpal.*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 # ──── GitHub Models (gpt-4o vision: identification + annotation) ─────────────
 github:
   base-url: ${GITHUB_BASE_URL:https://models.inference.ai.azure.com}

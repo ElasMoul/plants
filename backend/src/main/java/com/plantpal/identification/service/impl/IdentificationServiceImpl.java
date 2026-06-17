@@ -7,17 +7,21 @@ import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
+import com.plantpal.identification.config.KafkaTopicConfig;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.DeepSeekPlantResult;
+import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.event.IdentificationCompletedEvent;
+import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
@@ -33,6 +37,9 @@ import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -40,11 +47,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -73,6 +83,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final UserRepository userRepository;
   private final PlantNetClient plantNetClient;
   private final OllamaClient ollamaClient;
+  private final KafkaTemplate<String, Object> kafkaTemplate;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -89,7 +100,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       GitHubModelsClient gitHubModelsClient,
       UserRepository userRepository,
       PlantNetClient plantNetClient,
-      OllamaClient ollamaClient) {
+      OllamaClient ollamaClient,
+      KafkaTemplate<String, Object> kafkaTemplate) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -102,48 +114,79 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.userRepository = userRepository;
     this.plantNetClient = plantNetClient;
     this.ollamaClient = ollamaClient;
+    this.kafkaTemplate = kafkaTemplate;
+  }
+
+  @Override
+  public CompletableFuture<IdentificationPendingResponse> submitIdentification(
+      List<MultipartFile> images, Long plantId, Long userId, List<String> organs) {
+
+    validateImages(images);
+
+    // Step 1: Save photos, collect URLs
+    List<String> photoUrls = new ArrayList<>();
+    for (MultipartFile image : images) {
+      photoUrls.add(fileStorageService.savePhoto(image));
+    }
+
+    // Step 2: Persist with PENDING status (no AI call yet)
+    Identification identification =
+        Identification.builder()
+            .userId(userId)
+            .plantId(plantId)
+            .photoUrl(photoUrls.get(0))
+            .status(IdentificationStatus.PENDING)
+            .build();
+    identification = identificationRepository.save(identification);
+    log.info("Identification submitted: id={}, userId={}", identification.getId(), userId);
+
+    // Step 3: Rate-limit check before publishing — fail fast, no wasted Kafka message
+    if (!consumeRateLimit(userId)) {
+      throw new PlantPalException("AI identification rate limit reached — try again later", 429);
+    }
+
+    // Step 4: Publish event for async processing by the Kafka consumer
+    AiModelPreference preference = loadUserPreference(userId);
+    IdentificationRequestedEvent event =
+        IdentificationRequestedEvent.builder()
+            .identificationId(identification.getId())
+            .userId(userId)
+            .photoUrl(identification.getPhotoUrl())
+            .aiModelPreference(preference.name())
+            .organs(organs)
+            .requestedAt(Instant.now())
+            .build();
+    kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC, event);
+    log.info("Published IdentificationRequestedEvent: id={}", identification.getId());
+
+    return CompletableFuture.completedFuture(
+        IdentificationPendingResponse.builder()
+            .identificationId(identification.getId())
+            .status(identification.getStatus().name())
+            .build());
   }
 
   @Override
   @Async("aiTaskExecutor")
-  public CompletableFuture<IdentificationResponse> identify(
-      List<MultipartFile> images, List<String> organs, Long plantId, Long userId) {
+  public void processIdentification(IdentificationRequestedEvent event) {
+    Identification identification =
+        identificationRepository.findById(event.getIdentificationId()).orElse(null);
+    if (identification == null) {
+      log.error("Identification not found for event: id={}", event.getIdentificationId());
+      return;
+    }
 
-    validateImages(images);
-
-    Identification identification = null;
     try {
-      // Step 1: Save photos, collect URLs
-      List<String> photoUrls = new ArrayList<>();
-      for (MultipartFile image : images) {
-        photoUrls.add(fileStorageService.savePhoto(image));
-      }
+      byte[] imageBytes = fileStorageService.loadPhoto(identification.getPhotoUrl());
+      String mediaType = resolveMediaType(identification.getPhotoUrl());
+      AiModelPreference preference = AiModelPreference.valueOf(event.getAiModelPreference());
+      Long plantId = identification.getPlantId();
+      Long userId = identification.getUserId();
 
-      // Step 2: Persist with PENDING status
-      identification =
-          Identification.builder()
-              .userId(userId)
-              .plantId(plantId)
-              .photoUrl(photoUrls.get(0))
-              .status(IdentificationStatus.PENDING)
-              .build();
-      identification = identificationRepository.save(identification);
-      log.info("Identification created: id={}, userId={}", identification.getId(), userId);
-
-      // Step 3: Rate-limit check before hitting DeepSeek
-      if (!consumeRateLimit(userId)) {
-        throw new PlantPalException("AI identification rate limit reached — try again later", 429);
-      }
-
-      // Step 4: Fire identification + annotation in parallel
-      MultipartFile primaryImage = images.get(0);
-      byte[] imageBytes = primaryImage.getBytes();
-      String mediaType = primaryImage.getContentType();
-      AiModelPreference preference = loadUserPreference(userId);
-
+      // Fire identification + annotation in parallel
       CompletableFuture<String> identificationFuture =
           CompletableFuture.supplyAsync(
-              () -> runIdentification(preference, images, imageBytes, mediaType, organs));
+              () -> runIdentification(preference, imageBytes, mediaType, event.getOrgans()));
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
@@ -151,7 +194,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       String rawResult;
       try {
         rawResult = identificationFuture.join();
-      } catch (java.util.concurrent.CompletionException ce) {
+      } catch (CompletionException ce) {
         Throwable cause = ce.getCause();
         throw (cause instanceof PlantPalException pex)
             ? pex
@@ -159,12 +202,12 @@ public class IdentificationServiceImpl implements IdentificationService {
       }
       String annotationJson = annotationFuture.join();
 
-      // Step 5: Parse combined result; fall back gracefully if DeepSeek JSON is malformed
+      // Parse combined result; fall back gracefully if AI JSON is malformed
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
       CarePlanDto carePlan =
           result.getCarePlan() != null ? result.getCarePlan() : fallbackCarePlan();
 
-      // Step 6: Persist completed identification
+      // Persist completed identification
       identification.setScientificName(result.getSpecies());
       identification.setCommonName(result.getCommonName());
       identification.setConfidence(confidenceToScore(result.getConfidence()));
@@ -176,25 +219,48 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setStatus(IdentificationStatus.COMPLETED);
       identification = identificationRepository.save(identification);
 
-      // Step 7: Update linked plant and auto-create reminders
+      // Update linked plant and auto-create reminders
       if (plantId != null && plantRepository.existsByIdAndUserId(plantId, userId)) {
         updatePlantSpecies(plantId, userId, result.getSpecies(), result.getCommonName());
         createRemindersFromCarePlan(carePlan, plantId, userId);
       }
 
-      // Step 8: Build response
-      IdentificationResponse response =
-          buildResponse(identification, carePlan, parseAnnotationRegions(annotationJson));
-      return CompletableFuture.completedFuture(response);
+      publishCompletedEvent(identification.getId(), IdentificationStatus.COMPLETED);
+      log.info("Identification processed: id={}", identification.getId());
 
-    } catch (PlantPalException e) {
-      markFailed(identification);
-      throw e;
     } catch (Exception e) {
-      log.error("Identification failed for userId={}", userId, e);
+      log.error("Identification processing failed: id={}", identification.getId(), e);
       markFailed(identification);
-      throw new PlantPalException("Identification failed: " + e.getMessage(), 500);
+      publishCompletedEvent(identification.getId(), IdentificationStatus.FAILED);
     }
+  }
+
+  @Override
+  public IdentificationResponse getIdentification(Long id, Long userId) {
+    Identification entity =
+        identificationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+    if (!entity.getUserId().equals(userId)) {
+      throw new ResourceNotFoundException("Identification not found");
+    }
+    IdentificationResponse response = identificationMapper.toResponse(entity);
+    response.setCarePlan(parseCarePlan(entity.getCarePlan()));
+    response.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+    return response;
+  }
+
+  @Override
+  public Page<IdentificationResponse> getUserIdentifications(Long userId, Pageable pageable) {
+    return identificationRepository
+        .findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        .map(
+            entity -> {
+              IdentificationResponse resp = identificationMapper.toResponse(entity);
+              resp.setCarePlan(parseCarePlan(entity.getCarePlan()));
+              resp.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+              return resp;
+            });
   }
 
   @Override
@@ -368,15 +434,13 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   private String runIdentification(
-      AiModelPreference preference,
-      List<MultipartFile> images,
-      byte[] imageBytes,
-      String mediaType,
-      List<String> organs) {
+      AiModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
     return switch (preference) {
       case PLANTNET ->
           plantNetToRawResult(
-              plantNetClient.identify(images, organs != null ? organs : List.of("auto")));
+              plantNetClient.identify(
+                  List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+                  organs != null ? organs : List.of("auto")));
       case OLLAMA_LLAVA -> {
         try {
           yield ollamaClient.identifyPlant(imageBytes, mediaType);
@@ -487,22 +551,72 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private IdentificationResponse buildResponse(
-      Identification entity, CarePlanDto carePlan, List<AnnotationRegionDto> annotationRegions) {
-    return IdentificationResponse.builder()
-        .id(entity.getId())
-        .plantId(entity.getPlantId())
-        .scientificName(entity.getScientificName())
-        .commonName(entity.getCommonName())
-        .confidence(entity.getConfidence())
-        .healthStatus(entity.getHealthStatus())
-        .healthNotes(entity.getHealthNotes())
-        .status(entity.getStatus())
-        .photoUrl(entity.getPhotoUrl())
-        .createdAt(entity.getCreatedAt())
-        .topResults(List.of())
-        .carePlan(carePlan)
-        .annotationRegions(annotationRegions)
-        .build();
+  private String resolveMediaType(String photoUrl) {
+    if (photoUrl == null) return MediaType.IMAGE_JPEG_VALUE;
+    String lower = photoUrl.toLowerCase();
+    if (lower.endsWith(".png")) return MediaType.IMAGE_PNG_VALUE;
+    if (lower.endsWith(".webp")) return "image/webp";
+    return MediaType.IMAGE_JPEG_VALUE;
+  }
+
+  private void publishCompletedEvent(Long identificationId, IdentificationStatus status) {
+    IdentificationCompletedEvent event =
+        IdentificationCompletedEvent.builder()
+            .identificationId(identificationId)
+            .status(status.name())
+            .completedAt(Instant.now())
+            .build();
+    kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC, event);
+  }
+
+  /** Adapts raw bytes loaded from storage into a {@link MultipartFile} for PlantNetClient. */
+  private static final class ByteArrayMultipartFile implements MultipartFile {
+    private final byte[] bytes;
+    private final String contentType;
+
+    ByteArrayMultipartFile(byte[] bytes, String contentType) {
+      this.bytes = bytes;
+      this.contentType = contentType;
+    }
+
+    @Override
+    public String getName() {
+      return "image";
+    }
+
+    @Override
+    public String getOriginalFilename() {
+      return "image.jpg";
+    }
+
+    @Override
+    public String getContentType() {
+      return contentType;
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return bytes.length == 0;
+    }
+
+    @Override
+    public long getSize() {
+      return bytes.length;
+    }
+
+    @Override
+    public byte[] getBytes() {
+      return bytes;
+    }
+
+    @Override
+    public InputStream getInputStream() {
+      return new ByteArrayInputStream(bytes);
+    }
+
+    @Override
+    public void transferTo(File dest) {
+      throw new UnsupportedOperationException();
+    }
   }
 }

@@ -99,6 +99,12 @@
             <version>${bucket4j.version}</version>
         </dependency>
 
+        <!-- ── Kafka – async identification pipeline ──────────────────────── -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- ── Mapping + Boilerplate ──────────────────────────────────────── -->
         <dependency>
             <groupId>org.mapstruct</groupId>

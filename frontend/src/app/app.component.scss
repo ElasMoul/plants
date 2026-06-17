@@ -23,6 +23,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   color: var(--color-primary);
   text-decoration: none;
 }
@@ -43,11 +44,13 @@
 }
 
 .login-btn {
+  flex-shrink: 0;
   font-weight: 600;
   color: var(--color-primary);
 }
 
 .user-menu-btn {
+  flex-shrink: 0;
   color: var(--color-text-secondary);
 
   @media (max-width: 768px) {
@@ -138,5 +141,7 @@
 
 // ── Model selector in toolbar ──────────────────────────────────
 .model-selector-toolbar {
+  flex-shrink: 1;
+  min-width: 0;
   margin-right: 8px;
 }

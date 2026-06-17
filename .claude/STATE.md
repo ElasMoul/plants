@@ -67,20 +67,117 @@ Phase 2 — AI Plant Identification (in progress)
   - Separate cureAdviceBuckets (10/hour) — independent from deepSeekBuckets (20/hour)
   - Ownership check before AI call; ResourceNotFoundException if not owned
   - 18 unit tests passing (4 new CureAdvice tests: happy path, rate-limited, not-owned, DeepSeek error)
+- T2.C Kafka async identification pipeline ✅
+  - spring-kafka dependency; spring.kafka.* config (consumer group plantpal-identification,
+    JsonDeserializer/JsonSerializer, trusted packages com.plantpal.*)
+  - docker-compose.yml: zookeeper + kafka (confluentinc 7.6.0) services; backend env override
+    KAFKA_BOOTSTRAP_SERVERS=kafka:9092 (vs. localhost:29092 for host-side dev)
+  - IdentificationRequestedEvent (identificationId, userId, photoUrl, aiModelPreference, organs,
+    requestedAt) + IdentificationCompletedEvent (identificationId, status, completedAt)
+  - KafkaTopicConfig (identification/config/): identification.requested + identification.completed
+    topics, 3 partitions/1 replica each. KafkaConfig (shared/config/): KafkaTemplate<String,Object> bean
+  - IdentificationServiceImpl.identify() split into submitIdentification() (validate → savePhoto →
+    persist PENDING → rate-limit check → loadUserPreference → publish IdentificationRequestedEvent →
+    return IdentificationPendingResponse) and processIdentification(event) (@Async("aiTaskExecutor");
+    loads entity by id, FileStorageService.loadPhoto() re-reads bytes from disk since the event only
+    carries photoUrl; runs parallel runIdentification + analyzeRegions; COMPLETED/FAILED + publishes
+    IdentificationCompletedEvent either way; never propagates exceptions out of the @Async method)
+  - runIdentification() signature dropped the `List<MultipartFile> images` param — PLANTNET branch now
+    wraps imageBytes in a private ByteArrayMultipartFile adapter (same pattern as PlantNetAnnotationClient)
+  - FileStorageService: added loadPhoto(String url) — LocalFileStorageService reads bytes back from disk
+  - IdentificationConsumer (identification/consumer/): @KafkaListener on identification.requested,
+    groupId plantpal-identification, delegates to identificationService.processIdentification(event)
+  - IdentificationController: POST /analyze → submitIdentification(), 202 Accepted +
+    IdentificationPendingResponse ("Analysis started — poll for result"); added GET /{id} →
+    IdentificationResponse (ownership-checked) for polling
+  - .env.example: KAFKA_BOOTSTRAP_SERVERS=localhost:29092
+  - 22 unit tests passing in IdentificationServiceImplTest (new Kafka nested class: submit persists
+    PENDING + publishes event, rate-limit blocks publish, processIdentification happy path marks
+    COMPLETED + saves annotations, processIdentification AI failure marks FAILED without throwing)
+- T2.D2 GET /api/v1/identifications (current-user list, paginated) ✅
+  - IdentificationService.getUserIdentifications(userId, pageable); IdentificationServiceImpl mirrors
+    getPlantIdentifications() exactly, minus the ownership check (userId itself scopes the query) —
+    uses existing IdentificationRepository.findByUserIdOrderByCreatedAtDesc()
+  - IdentificationController: GET (no path) → ApiResponse<Page<IdentificationResponse>>, 20/page default,
+    sorted createdAt desc. No route collision with GET /{id} or GET /plant/{plantId} (distinct path-segment counts)
+  - No new DTOs, no migration — reuses IdentificationResponse/ApiResponse<Page<T>>
+  - 23 unit tests passing (new GetUserIdentifications nested class: mapped page, carePlan +
+    annotationRegions parsed per item, ordering preserved from repository page)
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
 - feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
 - AddChooseAi — AI model preference feature — merged PR #20 ✅
 - feature/PP-025-github-models-client — T2.A + T2.B complete, commit 086cd07 ✅ (open PR or merge to dev)
+- dev (current) — T2.D + T2.D2 frontend redesign complete, uncommitted
 
 ## Next Tasks (in order)
-- T2.C — Kafka async identification pipeline — return 202, consumer processes (feature/PP-026-kafka-async) ← NEXT
-- T2.D — Frontend polling for pending identification (same branch)
-- T2.E — Redis photo storage + SHA-256 deduplication (feature/PP-027-redis-photo-storage)
+- T2.E — Redis photo storage + SHA-256 deduplication (feature/PP-027-redis-photo-storage) ← NEXT
 - T2.F — Image dimension locking + aspect-ratio warning in annotator (same branch)
 - T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
 - T2.11 — Manual testing for all Phase 2 features
+
+- T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
+  - `identification-page`: now shows the inline upload form only when the list is empty
+    (`hasIdentifications === false`); once at least one identification exists, the form is replaced by a
+    `mat-fab` ("add_a_photo") that opens `IdentificationUploadDialogComponent` (MatDialog) — same
+    `add-fab` fixed-position pattern as `plant-list`/`reminder-list` (bottom 80px mobile / 24px desktop)
+  - `IdentificationListComponent`: new `@Output() hasItemsChange` emitted from `fetchPage()`'s map step —
+    drives the page's form-vs-FAB decision; `hasIdentifications` stays `null` (shows neither) until the
+    first fetch resolves, avoiding a form/FAB flash
+  - `components/identification-upload-dialog/`: NEW — thin MatDialog wrapper around `app-photo-upload`;
+    closes immediately with the `AnalyzeEmitPayload` on submit (fire-and-forget, no internal HTTP call —
+    the page's existing `onAnalyze()` handles the actual POST + snackbar + `trackNew()` after the dialog
+    closes); no subscriptions inside the dialog itself, nothing to leak
+  - `ModelSelectorComponent`: replaced the 4-option `mat-button-toggle-group` with a standalone compact
+    `mat-select` pill (icon + label trigger, options keep their rate-limit `matTooltip`s) — this was also
+    the root cause of the profile icon vanishing (the toggle group's natural width could exceed available
+    toolbar space and squeeze the rightmost `account_circle` button out)
+  - `SharedModule`: swapped `MatButtonToggleModule` → `MatSelectModule` (toggle group no longer used anywhere)
+  - `app.component.scss`: added `flex-shrink: 0` to `.brand`, `.login-btn`, `.user-menu-btn` so the profile
+    button can never be squeezed off-screen by toolbar content again, regardless of viewport width
+
+- T2.D2 Identification list/detail redesign ✅ (frontend; backend endpoint pending)
+  - Replaced the full-screen analyzing/pending/preview/error state machine on the upload page with a
+    persistent list: upload form + `IdentificationListComponent` always visible together.
+  - `identification.service.ts`: added `getUserIdentifications(page, size)` → GET `/api/v1/identifications`
+    (paginated, current user, all plants) — **new backend endpoint required, not yet implemented**
+  - `components/identification-list/`: NEW — fetches first page on init; rows show thumbnail/name/date/
+    status chip (PENDING spinner / COMPLETED check / FAILED error); polls every 3s via `interval` +
+    `switchMap` while any row is PENDING, stops once none are; `trackNew(id)` called by the parent page
+    right after submit to optimistically prepend a placeholder row + refetch; clicking a non-PENDING row
+    navigates to `/identify/:id`
+  - `components/identification-preview-section/`: NEW — extracted the preview-card + annotation-list +
+    disease-detail-panel trio (with region-selection state) out of identification-page so it can be reused
+    by both the post-scan flow and the standalone detail page
+  - `pages/identification-detail-page/`: NEW — route `/identify/:id`; fetches by id; PENDING → polls via
+    `pollUntilComplete`; FAILED → error screen with "back to upload"; COMPLETED + `plantId` already set →
+    redirects to `/plants/:plantId` (canonical view is the plant's "Last Scan" tab, avoids duplicating that
+    UI); COMPLETED + `plantId` null → renders `identification-preview-section` (still unsaved, can save/edit/discard)
+  - `identification-page.component.ts/html`: collapsed to just photo-upload + identification-list; submit
+    flow shows a snackbar ("Identification started…") instead of taking over the screen; `submitting` flag
+    disables the upload form's Identify button with an inline spinner during the POST
+  - `photo-upload.component.ts/html`: added `@Input() submitting` — disables button + shows inline spinner
+    text "Submitting…" instead of the old full-page "analyzing" screen
+  - `identification-routing.module.ts`: added `{ path: ':id', component: IdentificationDetailPageComponent }`
+  - Old T2.D states (`analyzing`/`pending`/`preview`/`error` on the upload page itself) removed entirely —
+    superseded by the list-driven UX. `pollUntilComplete()` and `getById()` from T2.D are still used,
+    just called from the list and detail page instead of the upload page.
+
+- T2.D Frontend polling for async identification result ✅ (superseded by T2.D2 above — kept for history)
+  - `identification.model.ts`: added `IdentificationPendingResponse { identificationId, status }`
+  - `identification.service.ts`: `analyze()` now returns `Observable<ApiResponse<IdentificationPendingResponse>>`;
+    added `getById(id)` (GET `/{id}`); added `pollUntilComplete(id)` — `interval(3000)` + `startWith(0)` +
+    `switchMap` to `getById` + `takeWhile(status==='PENDING', inclusive)` + `filter` + throw on `FAILED` +
+    `take(1)` + `timeout(32000)`
+  - `identification-page.component.ts`: state machine extended `idle | analyzing | pending | preview | error`;
+    `onAnalyze()` now sets `pending` + `pendingIdentificationId` then calls private `startPolling()`;
+    polling subscription uses `takeUntil(this.destroy$)` so it stops automatically on navigate-away
+  - `identification-page.component.html`: new `pending` block — spinner + "Analysing your plant…
+    (usually 10–20 seconds)" + indeterminate `mat-progress-bar` (module already imported in IdentificationModule)
+  - FAILED status throws inside `pollUntilComplete` (not just timeout) so the component doesn't render
+    a preview card with empty AI fields — deviates slightly from the literal task pseudocode, which let
+    FAILED fall through to `next()`
 
 ## AddChooseAi Feature (branch: AddChooseAi — in progress)
 ### Backend
@@ -100,8 +197,9 @@ Phase 2 — AI Plant Identification (in progress)
 - `AiModelPreference` type + `UserPreferences` interface added to `core/models/user.model.ts`
   Values: 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITHUB_GPT4O' (4th added in T2.B)
 - `UserService` in `core/services/user.service.ts`: `getPreferences()` (cache-first via sessionStorage), `updatePreferences(pref)`
-- `ModelSelectorComponent` in `shared/components/model-selector/`: mat-button-toggle-group (4 options after T2.B),
-  loading spinner, revert-on-error, snack-bar feedback, matTooltip rate-limit warnings on each toggle
+- `ModelSelectorComponent` in `shared/components/model-selector/`: standalone `mat-select` dropdown pill
+  (4 options after T2.B; switched from mat-button-toggle-group in T2.D3 — see above), loading spinner,
+  revert-on-error, snack-bar feedback, matTooltip rate-limit warnings on each option
 - Declared + exported from `SharedModule`
 - Placed in `app.component.html` toolbar, hidden ≤768px
 
