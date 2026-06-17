@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService } from '../../../core/services/user.service';
 import { AiModelPreference } from '../../../core/models/user.model';
@@ -49,7 +50,12 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  onChange(value: AiModelPreference): void {
+  get selectedOption(): ModelOption | undefined {
+    return this.options.find(o => o.value === this.selected);
+  }
+
+  onChange(event: MatSelectChange): void {
+    const value = event.value as AiModelPreference;
     const previous = this.selected;
     this.saving = true;
 

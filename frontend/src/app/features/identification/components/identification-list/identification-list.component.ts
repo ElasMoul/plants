@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, Subject, Subscription, interval, of } from 'rxjs';
 import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
@@ -14,6 +14,8 @@ const POLL_INTERVAL_MS = 3000;
   styleUrls: ['./identification-list.component.scss'],
 })
 export class IdentificationListComponent implements OnInit, OnDestroy {
+  @Output() readonly hasItemsChange = new EventEmitter<boolean>();
+
   items: IdentificationResponse[] = [];
   loading = true;
   loadError = false;
@@ -58,6 +60,7 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
         this.items = res.data.content;
         this.loading = false;
         this.loadError = false;
+        this.hasItemsChange.emit(this.items.length > 0);
       }),
       catchError(() => {
         this.loading = false;

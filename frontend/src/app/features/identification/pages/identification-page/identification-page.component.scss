@@ -25,3 +25,16 @@
     margin-bottom: 20px;
   }
 }
+
+// ── FAB ────────────────────────────────────────────────────────
+.add-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 50;
+  background-color: var(--color-primary) !important;
+
+  @media (min-width: 769px) {
+    bottom: 24px;
+  }
+}

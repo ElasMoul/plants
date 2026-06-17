@@ -1,21 +1,27 @@
 <div class="model-selector-wrap">
-  <mat-button-toggle-group
+  <mat-select
+    class="model-select"
+    panelClass="model-select-panel"
     [value]="selected"
     [disabled]="saving"
     aria-label="AI model preference"
-    (change)="onChange($event.value)"
+    (selectionChange)="onChange($event)"
   >
-    <mat-button-toggle
+    <mat-select-trigger>
+      <mat-icon class="trigger-icon">{{ selectedOption?.icon }}</mat-icon>
+      <span class="trigger-label">{{ selectedOption?.label }}</span>
+    </mat-select-trigger>
+    <mat-option
       *ngFor="let opt of options"
       [value]="opt.value"
-      [attr.aria-label]="opt.label"
       [matTooltip]="opt.tooltip"
+      matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >
       <mat-icon>{{ opt.icon }}</mat-icon>
-      <span class="toggle-label">{{ opt.label }}</span>
-    </mat-button-toggle>
-  </mat-button-toggle-group>
+      {{ opt.label }}
+    </mat-option>
+  </mat-select>
 
   <mat-progress-spinner
     *ngIf="saving"

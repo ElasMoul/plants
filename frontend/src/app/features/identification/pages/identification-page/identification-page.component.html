@@ -3,8 +3,24 @@
   <h1 class="page-title">Identify Your Plant</h1>
   <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
 
-  <app-photo-upload [submitting]="submitting" (analyze)="onAnalyze($event)"></app-photo-upload>
+  <app-photo-upload
+    *ngIf="hasIdentifications === false"
+    [submitting]="submitting"
+    (analyze)="onAnalyze($event)"
+  ></app-photo-upload>
 
-  <app-identification-list></app-identification-list>
+  <app-identification-list (hasItemsChange)="hasIdentifications = $event"></app-identification-list>
 
 </div>
+
+<!-- FAB: identify a new plant — only once at least one identification exists -->
+<button
+  *ngIf="hasIdentifications === true"
+  mat-fab
+  color="primary"
+  class="add-fab"
+  (click)="openUploadDialog()"
+  aria-label="Identify a new plant"
+>
+  <mat-icon>add_a_photo</mat-icon>
+</button>
