@@ -147,6 +147,14 @@ class IdentificationServiceImplTest {
     return captor.getValue();
   }
 
+  private byte[] testJpegBytes(int width, int height) throws Exception {
+    var image =
+        new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB);
+    var out = new java.io.ByteArrayOutputStream();
+    javax.imageio.ImageIO.write(image, "JPEG", out);
+    return out.toByteArray();
+  }
+
   private List<AnnotationRegionDto> parseRegions(String json) throws Exception {
     var root = objectMapper.readTree(json);
     var regions = root.get("regions");
@@ -806,6 +814,41 @@ class IdentificationServiceImplTest {
       assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
 
       verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName("processIdentification: stores source image dimensions read from the photo")
+    void shouldStoreSourceImageDimensions() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(testJpegBytes(100, 75));
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      Identification saved = captor.getValue();
+      assertThat(saved.getSourceImageWidth()).isEqualTo(100);
+      assertThat(saved.getSourceImageHeight()).isEqualTo(75);
     }
   }
 

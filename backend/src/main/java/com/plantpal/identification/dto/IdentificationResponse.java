@@ -30,4 +30,6 @@ public class IdentificationResponse {
   private Instant createdAt;
   private CarePlanDto carePlan;
   private List<AnnotationRegionDto> annotationRegions;
+  private Integer sourceImageWidth;
+  private Integer sourceImageHeight;
 }

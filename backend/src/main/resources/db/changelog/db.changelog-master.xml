@@ -41,4 +41,7 @@
     <include file="db/changelog/migrations/010_add_user_preferences.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/011_add_image_dimensions.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
