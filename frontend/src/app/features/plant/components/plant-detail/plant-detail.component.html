@@ -163,6 +163,7 @@
               [region]="selectedRegion"
               [species]="plant.species ?? null"
               [identificationId]="latestIdentificationId!"
+              (carePlanUpdated)="onCarePlanUpdated($event)"
             ></app-disease-detail-panel>
           </ng-container>
 

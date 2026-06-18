@@ -4,7 +4,7 @@ import { Observable, interval } from 'rxjs';
 import { filter, map, startWith, switchMap, take, takeWhile, timeout } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
-import { IdentificationPendingResponse, IdentificationResponse } from '../models/identification.model';
+import { CarePlanDto, IdentificationPendingResponse, IdentificationResponse } from '../models/identification.model';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 32000;
@@ -73,6 +73,13 @@ export class IdentificationService {
       `${this.baseUrl}/${identificationId}/cure-advice`,
       { regionLabel, species },
     ).pipe(map(res => res.data.advice));
+  }
+
+  addCareCard(identificationId: number, regionLabel: string, adviceText: string): Observable<CarePlanDto> {
+    return this.http.post<ApiResponse<CarePlanDto>>(
+      `${this.baseUrl}/${identificationId}/care-plan/cards`,
+      { regionLabel, adviceText },
+    ).pipe(map(res => res.data));
   }
 
   getPlantIdentifications(

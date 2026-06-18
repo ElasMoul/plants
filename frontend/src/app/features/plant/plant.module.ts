@@ -18,6 +18,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule } from '@angular/material/dialog';
 
 import { PlantRoutingModule } from './plant-routing.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
@@ -59,6 +60,7 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     MatSnackBarModule,
     MatDividerModule,
     MatTooltipModule,
+    MatDialogModule,
   ],
   providers: [PlantService, IdentificationService],
 })

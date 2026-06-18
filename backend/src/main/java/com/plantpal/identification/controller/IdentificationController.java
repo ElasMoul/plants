@@ -1,5 +1,7 @@
 package com.plantpal.identification.controller;
 
+import com.plantpal.identification.dto.AddCareCardRequest;
+import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
@@ -130,6 +132,16 @@ public class IdentificationController {
       Thread.currentThread().interrupt();
       throw new PlantPalException("Cure advice request was interrupted", 500);
     }
+  }
+
+  @Operation(summary = "Add a generated care card (e.g. from cure advice) to the care plan")
+  @PostMapping("/{id}/care-plan/cards")
+  public ResponseEntity<ApiResponse<CarePlanDto>> addCareCard(
+      @PathVariable Long id, @RequestBody @Valid AddCareCardRequest req) {
+    Long userId = getCurrentUserId();
+    log.info("Add care card requested: userId={}, identificationId={}", userId, id);
+    CarePlanDto response = identificationService.addCareCard(id, req, userId);
+    return ResponseEntity.ok(ApiResponse.success(response, "Added to care plan"));
   }
 
   private Long getCurrentUserId() {

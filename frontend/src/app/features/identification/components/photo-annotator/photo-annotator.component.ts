@@ -20,8 +20,6 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
   HEALTHY_AREA: { fill: 'rgba(76, 175, 80, 0.2)',   stroke: '#2e7d32' },
 };
 
-const DIMMED_COLORS = { fill: 'rgba(200, 200, 200, 0.04)', stroke: '#ccc' };
-
 @Component({
   selector: 'app-photo-annotator',
   templateUrl: './photo-annotator.component.html',
@@ -99,10 +97,14 @@ export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDest
     ctx.clearRect(0, 0, w, h);
 
     for (let idx = 0; idx < this.regions.length; idx++) {
+      // Regions overlap heavily — once one is selected, only draw that one
+      // instead of dimming the rest (dimmed shapes still visually competed).
+      if (this.selectedRegionIndex !== null && this.selectedRegionIndex !== idx) {
+        continue;
+      }
       const region = this.regions[idx];
-      const dimmed = this.selectedRegionIndex !== null && this.selectedRegionIndex !== idx;
-      const colors = dimmed ? DIMMED_COLORS : REGION_COLORS[region.type];
-      const lineWidth = !dimmed && this.selectedRegionIndex !== null ? 3 : 2;
+      const colors = REGION_COLORS[region.type];
+      const lineWidth = this.selectedRegionIndex !== null ? 3 : 2;
       const label = region.label || region.type.replace(/_/g, ' ');
 
       if (region.polygon && region.polygon.length >= 3) {

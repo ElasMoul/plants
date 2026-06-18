@@ -8,6 +8,7 @@ import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
@@ -311,6 +312,46 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
     String advice = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
     return CompletableFuture.completedFuture(new CureAdviceResponse(advice));
+  }
+
+  @Override
+  public CarePlanDto addCareCard(Long id, AddCareCardRequest req, Long userId) {
+    Identification identification =
+        identificationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+    if (!identification.getUserId().equals(userId)) {
+      throw new ResourceNotFoundException("Identification not found");
+    }
+
+    CarePlanDto plan = parseCarePlan(identification.getCarePlan());
+    List<CareCardDto> careCards = new ArrayList<>(plan.getCareCards());
+    boolean alreadyAdded =
+        careCards.stream().anyMatch(card -> req.getRegionLabel().equals(card.getTitle()));
+
+    if (!alreadyAdded) {
+      careCards.add(
+          CareCardDto.builder()
+              .type("PEST")
+              .title(req.getRegionLabel())
+              .icon("healing")
+              .summary("Follow the steps below to treat this issue")
+              .detail(req.getAdviceText())
+              .urgency("HIGH")
+              .build());
+      plan.setCareCards(careCards);
+      identification.setCarePlan(serializeToJson(plan));
+      identificationRepository.save(identification);
+      log.info(
+          "Care card added: identificationId={}, userId={}, label={}",
+          id,
+          userId,
+          req.getRegionLabel());
+    } else {
+      plan.setCareCards(careCards);
+    }
+
+    return plan;
   }
 
   private DeepSeekPlantResult parseIdentificationResult(String raw) {
