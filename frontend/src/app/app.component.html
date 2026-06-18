@@ -31,6 +31,22 @@
 </mat-toolbar>
 
 <main class="app-content with-toolbar" [class.with-bottom-nav]="authService.isLoggedIn()">
+
+  <!-- Friendly in-app prompt before the native browser permission dialog -->
+  <div class="notification-banner" *ngIf="showNotificationBanner">
+    <mat-icon class="banner-icon">notifications_active</mat-icon>
+    <div class="banner-text">
+      <p class="banner-title">Get reminders on your phone</p>
+      <p class="banner-sub">We'll notify you when it's time to water or care for your plants.</p>
+    </div>
+    <div class="banner-actions">
+      <button mat-button type="button" (click)="dismissNotifications()">Not now</button>
+      <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="acceptNotifications()">
+        Enable
+      </button>
+    </div>
+  </div>
+
   <router-outlet></router-outlet>
 </main>
 

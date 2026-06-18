@@ -237,5 +237,29 @@ IdentificationModule) is fine for Ivy/AOT — each component carries its own com
 did split webpack's `features-plant-plant-module` lazy chunk into two pieces (~68KB extra,
 confirmed via `ng build` output). That's an expected trade-off of the cross-module import, not a bug.
 
+### T3.2 — Reminder Angular frontend + PWA push ✅ (Complete 2026-06-18)
+**Files changed:**
+- `features/reminder/reminder-list/` — rewired from hardcoded mock data to real
+  `ReminderService.getUserReminders()` / `completeReminder()`
+- `features/reminder/components/create-reminder-form/` — NEW: plant selector, care type, frequency,
+  first due date
+- `features/reminder/components/care-calendar/` — NEW: 7-day view of what's due each day
+- `features/reminder/components/care-log/` — NEW `CareLogModule` + `CareLogComponent` (timeline of
+  past care actions per plant); plugged into `plant-detail`'s "Care History" tab, replacing the
+  static "coming in Phase 3" placeholder that had been there since T2.9
+- `core/services/push-notification.service.ts` — NEW: `requestPermission()`,
+  `subscribeToNotifications()` (posts the `ServiceWorkerRegistration` `PushSubscription` object to
+  `POST /api/v1/notifications/subscribe`)
+- `app.component.ts/html` — inline "Get reminders on your phone" banner on first load (logged in +
+  not yet asked), Accept/Dismiss — own UI shown before the native browser permission prompt
+- `environment.ts`/`environment.prod.ts` — `+vapidPublicKey`
+- `plant.module.ts` — `+CareLogModule`, `+CareLogService`
+
+**Architecture note:** landed on the same branch as T3.1 (`feature/PP-011-reminder-module`) rather
+than the separate `feature/PP-012-reminder-frontend` the original plan named — backend and frontend
+shipped together in one PR.
+
 ### Next tasks (in order)
-- Phase 2 is complete. T3.1/T3.2 — Reminder module backend + frontend (not started)
+- T3.3 — Manual testing on a real device (push notification delivery, PWA installability, offline
+  reading) — needs a human with a phone, not something to automate
+- Phase 4 polish (chat streaming/history) — basic T4.1 chat already works

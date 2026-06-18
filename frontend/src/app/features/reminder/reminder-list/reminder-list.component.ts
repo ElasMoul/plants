@@ -1,44 +1,114 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ReminderService } from '../services/reminder.service';
+import { CareType, ReminderResponse } from '../models/reminder.model';
+import { PLACEHOLDER_IMAGE } from '../../../shared/constants/placeholder-image.constant';
+import { CreateReminderFormComponent } from '../components/create-reminder-form/create-reminder-form.component';
 
-interface MockReminder {
-  id: number;
-  plantName: string;
-  species: string;
-  careType: 'WATERING' | 'FERTILIZING' | 'REPOTTING' | 'PRUNING';
-  icon: string;
-  group: 'today' | 'tomorrow' | 'nextWeek';
-  healthStatus?: 'HEALTHY' | 'ISSUES_DETECTED';
-  done: boolean;
-}
+const CARE_ICONS: Record<CareType, string> = {
+  WATERING: 'water_drop',
+  FERTILIZING: 'eco',
+  REPOTTING: 'yard',
+  PRUNING: 'yard',
+};
 
 @Component({
   selector: 'app-reminder-list',
   templateUrl: './reminder-list.component.html',
   styleUrls: ['./reminder-list.component.scss'],
 })
-export class ReminderListComponent {
-  readonly reminders: MockReminder[] = [
-    { id: 1, plantName: 'Monty', species: 'Monstera deliciosa', careType: 'WATERING', icon: 'water_drop', group: 'today', healthStatus: 'ISSUES_DETECTED', done: false },
-    { id: 2, plantName: 'Fernando', species: 'Boston fern', careType: 'FERTILIZING', icon: 'grass', group: 'today', healthStatus: 'HEALTHY', done: false },
-    { id: 3, plantName: 'Spike', species: 'Snake plant', careType: 'WATERING', icon: 'water_drop', group: 'tomorrow', healthStatus: 'HEALTHY', done: false },
-    { id: 4, plantName: 'Petra', species: 'Fiddle leaf fig', careType: 'PRUNING', icon: 'content_cut', group: 'tomorrow', healthStatus: 'HEALTHY', done: false },
-    { id: 5, plantName: 'Basil Buddy', species: 'Sweet basil', careType: 'WATERING', icon: 'water_drop', group: 'nextWeek', healthStatus: 'HEALTHY', done: false },
-    { id: 6, plantName: 'Rosie', species: 'Rose bush', careType: 'REPOTTING', icon: 'eco', group: 'nextWeek', healthStatus: 'HEALTHY', done: false },
-  ];
+export class ReminderListComponent implements OnInit, OnDestroy {
+  readonly placeholderImage = PLACEHOLDER_IMAGE;
+  readonly skeletonRows = [1, 2, 3];
 
-  get todayReminders(): MockReminder[] {
-    return this.reminders.filter((r) => r.group === 'today');
+  reminders: ReminderResponse[] = [];
+  loading = true;
+  completingId: number | null = null;
+
+  private readonly destroy$ = new Subject<void>();
+
+  constructor(
+    private readonly reminderService: ReminderService,
+    private readonly dialog: MatDialog,
+    private readonly snackBar: MatSnackBar,
+    private readonly router: Router,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadReminders();
   }
 
-  get tomorrowReminders(): MockReminder[] {
-    return this.reminders.filter((r) => r.group === 'tomorrow');
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  get nextWeekReminders(): MockReminder[] {
-    return this.reminders.filter((r) => r.group === 'nextWeek');
+  careIcon(careType: CareType): string {
+    return CARE_ICONS[careType];
   }
 
-  toggleDone(reminder: MockReminder): void {
-    reminder.done = !reminder.done;
+  isOverdue(reminder: ReminderResponse): boolean {
+    return new Date(reminder.nextDueAt).getTime() < Date.now();
+  }
+
+  daysOverdue(reminder: ReminderResponse): number {
+    const diff = Date.now() - new Date(reminder.nextDueAt).getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  openCreateDialog(): void {
+    const dialogRef = this.dialog.open(CreateReminderFormComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      autoFocus: false,
+    });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((created?: boolean) => {
+        if (created) {
+          this.loadReminders();
+        }
+      });
+  }
+
+  completeReminder(reminder: ReminderResponse, event: Event): void {
+    event.stopPropagation();
+    this.completingId = reminder.id;
+    this.reminderService.completeReminder(reminder.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => this.loadReminders(),
+        error: () => {
+          this.completingId = null;
+          this.snackBar.open('Could not update reminder.', 'Dismiss', { duration: 4000 });
+        },
+      });
+  }
+
+  goToPlant(plantId: number): void {
+    this.router.navigate(['/plants', plantId]);
+  }
+
+  private loadReminders(): void {
+    this.loading = true;
+    this.completingId = null;
+    this.reminderService.getReminders()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.reminders = [...res.data].sort(
+            (a, b) => new Date(a.nextDueAt).getTime() - new Date(b.nextDueAt).getTime(),
+          );
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+        },
+      });
   }
 }

@@ -1,7 +1,11 @@
 package com.plantpal.reminder.repository;
 
 import com.plantpal.reminder.entity.Reminder;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,4 +21,11 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
   List<Reminder> findNearestWateringPerPlant(@Param("plantIds") List<Long> plantIds);
 
   List<Reminder> findByUserIdAndEnabledTrue(Long userId);
+
+  Page<Reminder> findByUserIdAndEnabledTrue(Long userId, Pageable pageable);
+
+  Optional<Reminder> findByIdAndUserId(Long id, Long userId);
+
+  @Query("SELECT r FROM Reminder r WHERE r.enabled = true AND r.nextDueAt <= :now")
+  List<Reminder> findAllDue(@Param("now") Instant now);
 }

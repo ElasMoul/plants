@@ -22,8 +22,10 @@ import { MatDialogModule } from '@angular/material/dialog';
 
 import { PlantRoutingModule } from './plant-routing.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
+import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
 import { IdentificationService } from '../identification/services/identification.service';
+import { CareLogService } from '../reminder/services/care-log.service';
 import { PlantListComponent } from './components/plant-list/plant-list.component';
 import { PlantCardComponent } from './components/plant-card/plant-card.component';
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
@@ -44,6 +46,7 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     RouterModule,
     PlantRoutingModule,
     CarePlanModule,
+    CareLogModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -62,6 +65,6 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     MatTooltipModule,
     MatDialogModule,
   ],
-  providers: [PlantService, IdentificationService],
+  providers: [PlantService, IdentificationService, CareLogService],
 })
 export class PlantModule {}
