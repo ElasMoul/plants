@@ -1,0 +1,12 @@
+<div class="calendar-strip">
+  <div class="calendar-day" *ngFor="let day of days" [class.is-today]="day.isToday">
+    <p class="day-label">{{ day.isToday ? 'Today' : day.label }}</p>
+    <p class="day-number">{{ day.dayNumber }}</p>
+
+    <div class="day-reminders">
+      <div class="day-chip" *ngFor="let reminder of day.reminders" [matTooltip]="reminder.plantNickname">
+        <mat-icon>{{ careIcon(reminder.careType) }}</mat-icon>
+      </div>
+    </div>
+  </div>
+</div>

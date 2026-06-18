@@ -90,10 +90,8 @@
 
       <!-- Tab 2: Care History -->
       <mat-tab label="Care History">
-        <div class="tab-content placeholder-tab">
-          <mat-icon class="placeholder-icon">event_available</mat-icon>
-          <h3>Care history coming in Phase 3</h3>
-          <p>Watering, fertilizing, and repotting logs will appear here.</p>
+        <div class="tab-content">
+          <app-care-log [plantId]="plant.id"></app-care-log>
         </div>
       </mat-tab>
 
