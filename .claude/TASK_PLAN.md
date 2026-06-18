@@ -2355,52 +2355,112 @@ confirm it degrades to null rather than throwing.
 
 5. shared/components/mermaid-diagram/ (new, declared in SharedModule):
    MermaidDiagramComponent: @Input() definition: string
-   ngOnChanges: dynamically `import('mermaid')`, call mermaid.render(uniqueId, this.definition) —
-   wrap in try/catch; on success, bind the returned SVG string via [innerHTML] using
-   DomSanitizer.bypassSecurityTrustHtml() (safe here — the HTML comes from mermaid's own renderer,
-   not directly from AI text); on failure (malformed mermaid syntax), set a `renderFailed` flag and
-   render nothing (no error shown to the user — diagrams are always a bonus, never required)
+   States, in order of what the user actually sees:
+   - While rendering: nothing visible yet — no spinner, no placeholder box. Mermaid renders
+     synchronously fast enough (it's small text, not an AI call) that a loading state would just
+     flicker. ngOnChanges dynamically `import('mermaid')`, calls
+     mermaid.render(uniqueId, this.definition) inside try/catch.
+   - On success: the returned SVG string is bound via [innerHTML] using
+     DomSanitizer.bypassSecurityTrustHtml() (safe here — the HTML comes from mermaid's own
+     renderer, not directly from AI text), wrapped in a card matching the app's existing card
+     treatment (--radius-card, --shadow-card, white surface, 16px padding) so the diagram doesn't
+     float loose on the page.
+   - On failure (malformed mermaid syntax from the AI): set a `renderFailed` flag and render
+     NOTHING — no error message, no broken-image icon, the component's host element collapses to
+     zero height. Diagrams are always a bonus on top of the step list, never required reading, so
+     a failure should be invisible rather than alarming.
 
-6. identification/components/care-plan/care-card.component.ts/.html — add an action row at the
-   bottom of each card, shown only when card.actionPlan is present:
-   - actionPlan.type === 'ROUTINE': button "Set reminder" → opens a small MatDialog confirming
-     careType + frequencyDays (pre-filled, editable) → on confirm, POST /api/v1/reminders via
-     ReminderService.createReminder(); if a reminder with this exact careType already exists and
-     is enabled for this plant (check via an @Input() existingCareTypes: CareType[] passed down
-     from the parent that already has the plant's reminder list), show "Already scheduled"
-     (disabled) instead of the button — simple existence check, not full dedup logic
-   - actionPlan.type === 'TREATMENT': button "Start treatment plan" → no dialog, straight to
+6. identification/components/care-plan/care-card.component.ts/.html — every care card currently
+   ends after its detail text. Add a thin divider + a new action row beneath it, but ONLY when
+   card.actionPlan is non-null (cards without one — most BEGINNER_TIP/SEASONAL cards — look
+   exactly as they do today, no empty row, no visual change at all):
+   - actionPlan.type === 'ROUTINE': a single outlined button, icon `notifications_active`, label
+     "Set reminder". Clicking opens a small MatDialog (reuse the compact dialog sizing already
+     established for IdentificationUploadDialogComponent — width ~360px) titled "Set a reminder"
+     with one line of explanatory text ("We'll remind you to {{ card.title | lowercase }} every:")
+     and a number input pre-filled with actionPlan.frequencyDays, suffixed "days", with Cancel /
+     "Set reminder" buttons. Confirming calls ReminderService.createReminder({plantId, careType:
+     card.type, frequencyDays, firstDueAt: now}). On success, the button in the card itself is
+     REPLACED by a small green checkmark + "Reminder set" text (mirrors exactly how
+     disease-detail-panel's "Add to care plan" button already swaps to "Added to care plan" after
+     success — same visual language, don't invent a new pattern). If a reminder of this exact
+     careType already exists and is enabled for this plant (passed down as @Input()
+     existingCareTypes: CareType[] from whichever parent already holds the plant's reminder list),
+     skip the button entirely and show the same "Reminder set" state immediately, greyed — the
+     user shouldn't be invited to create a duplicate.
+   - actionPlan.type === 'TREATMENT': a single filled button, icon `medical_services`, label
+     "Start treatment plan". No dialog — clicking goes straight to
      TreatmentPlanService.createFromActionPlan({plantId, title: card.title, sourceCareCardType:
-     card.type, actionPlan: card.actionPlan}) → snackbar "Treatment plan started" with a "View"
-     action button that navigates to /treatment-plans/{response.id}
+     card.type, actionPlan: card.actionPlan}). While the request is in flight, the button shows
+     an inline spinner + "Starting…" (same disabled-button-with-spinner pattern used elsewhere in
+     this app, e.g. preview-card's "Saving…"). On success, a snack-bar appears: "Treatment plan
+     started" with a "View" action button that navigates to /treatment-plans/{response.id}; the
+     card's button itself becomes a disabled "Plan in progress" state so it can't be started twice.
    care-plan.component needs a new @Input() plantId for this to construct requests; pass it down
    from plant-detail's <app-care-plan [carePlan] [plantId]="plant.id">
 
-7. identification/components/disease-detail-panel/disease-detail-panel.component.ts/.html:
-   - askForCure() now also stores `this.actionPlan = result.actionPlan`
-   - when actionPlan?.type === 'TREATMENT', show a SECOND button next to "Add to care plan":
-     "Start treatment plan" (same TreatmentPlanService call as above, title = region.label,
-     sourceCareCardType = 'PEST')
+7. identification/components/disease-detail-panel/disease-detail-panel.component.ts/.html: the
+   panel's `.panel-actions` row currently holds "Ask for cure" then, once advice loads, just
+   "Add to care plan". Extend it:
+   - askForCure() now also stores `this.actionPlan = result.actionPlan` alongside the existing
+     advice text.
+   - Once advice has loaded AND actionPlan?.type === 'TREATMENT', the actions row shows TWO
+     buttons side by side: the existing "Add to care plan" (outlined, keeps the card as a
+     permanent reference even after the plan finishes) and a new "Start treatment plan" (filled,
+     same TreatmentPlanService call as step 6, title = region.label, sourceCareCardType = 'PEST').
+     If actionPlan is null or ROUTINE (the AI judged this cure doesn't need a scheduled sequence —
+     e.g. "just keep an eye on it for a few days"), the row looks exactly as it does today: just
+     "Add to care plan". This is the common case, not the exception — most cure advice is a quick
+     fix, not a multi-day protocol, so most users will never see the second button.
    - "Add to care plan" call (IdentificationService.addCareCard) now also passes
-     `actionPlan: this.actionPlan` in the request body
+     `actionPlan: this.actionPlan` in the request body, so a card added this way stays actionable
+     later from the Care Plan tab too (step 6's action row), not just in this immediate moment.
 
 8. reminder/services/identification.service.ts (addCareCard signature) — add optional actionPlan
    param, included in the POST body.
 
 9. New reminder/pages/treatment-plan-detail/ (route: /treatment-plans/:id, added to
-   reminder-routing.module.ts, guarded like other routes):
-   - fetches via TreatmentPlanService.getTreatmentPlan(id)
-   - header: title + status chip (ACTIVE=mint, COMPLETED=mint-filled, ABANDONED=grey)
-   - <app-mermaid-diagram [definition]="plan.diagramContent"> if diagramContent present
-   - ordered step list: each step shows instruction + due date; enabled steps get a "Mark done"
-     button that calls the EXISTING POST /api/v1/care/done (MarkCareDoneRequest{reminderId:
-     step.id}) — no new completion endpoint needed, steps are reminders under the hood; disabled
-     (completed) steps show a checkmark instead
-   - empty/loading states matching this app's existing conventions (skeleton, not spinner-only)
+   reminder-routing.module.ts, guarded like other routes). This is a full page, reached either
+   from a care-card's "View" snackbar action or from a reminder-list chip (step 10). Layout, top
+   to bottom, matching this app's existing page conventions (cream background, card-based
+   sections, font-heading for the title):
+   - Header: back arrow (browser history, like plant-detail's hero-back), the plan's title in
+     font-heading, and a status chip beside it — "Active" (sage/mint outline), "Completed" (mint
+     filled, with a small check icon), or "Abandoned" (grey, only reachable if abandon support is
+     added later — not in this task).
+   - Progress line directly under the header, plain text not a component: "2 of 4 steps complete"
+     (computed client-side from the fetched steps — count where !reminder.enabled).
+   - If diagramContent is present: a card labelled "How this works" above the step list,
+     containing <app-mermaid-diagram [definition]="plan.diagramContent">. If diagramContent is
+     null (most plans — most treatments are linear and the AI was told not to over-use diagrams),
+     this section doesn't exist at all, the step list starts right after the progress line.
+   - Step list: a vertical timeline, visually similar to how reminder-list already groups
+     Today/Tomorrow/Next week with a small coloured dot — here each step is a numbered circle
+     (1, 2, 3...) connected by a thin vertical line to the next, consistent left-aligned column.
+     Each step row: the numbered circle + the instruction text + a due-date line underneath in
+     muted small text ("Due in 2 days" / "Overdue by 1 day" / "Completed Jun 18" once done,
+     formatted the same relative-date way reminder-list already does). Completed steps: circle
+     fills solid green with a checkmark instead of the number, instruction text gets a subtle
+     strikethrough, due-date line shows the completion date instead. Pending steps: circle stays
+     outlined, and the row ends with a small "Mark done" button (not a giant CTA — this is a
+     repeated list item, keep it compact) that calls the EXISTING POST /api/v1/care/done
+     (MarkCareDoneRequest{reminderId: step.id}) and then refetches the plan so the progress line
+     and status chip update together — no new completion endpoint needed, steps are reminders
+     under the hood.
+   - Loading state: skeleton blocks for the header + 3 fake step rows (reuse the pulse-animation
+     skeleton pattern already used in care-plan.component and plant-photo-timeline — don't invent
+     a fourth skeleton style in this codebase).
+   - Error state (plan not found / not owned): same placeholder-tab pattern used elsewhere
+     (camera_enhance-style icon swapped for something like `report_problem`, "Treatment plan not
+     found", a button back to the plant or to /reminders).
 
-10. reminder-list.component.html — for rows where reminder.treatmentPlanId is set, show a small
-    chip "Step {{ stepOrder }} · {{ treatmentPlanTitle }}" that links to
-    /treatment-plans/{{ treatmentPlanId }}, instead of the plain care-type label
+10. reminder-list.component.html — today every reminder row shows its care type as plain text
+    ("Watering", "Fertilizing", etc. via the `| titlecase` pipe already in use). For rows where
+    reminder.treatmentPlanId is set, replace that plain text with a small pill/chip instead:
+    icon `medical_services` + "Step {{ stepOrder }} · {{ treatmentPlanTitle }}", same chip sizing
+    and rounded styling as the existing health-badge chips elsewhere in this component, clickable
+    (routerLink to /treatment-plans/{{ treatmentPlanId }}) so a user looking at their daily list
+    can jump straight into the full plan context instead of just seeing an isolated step.
 
 Style: reuse existing tokens (--color-primary/--color-success/--radius-card/--shadow-card). No new
 colors. Mermaid's default theme will look foreign against the app's cream/forest-green palette —
