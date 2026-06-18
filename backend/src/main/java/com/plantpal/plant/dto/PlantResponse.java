@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class PlantResponse {
 
   private Long id;
@@ -33,4 +33,10 @@ public class PlantResponse {
   private Instant createdAt;
 
   private Instant updatedAt;
+
+  /** Mirrors {@code Identification.healthStatus} from the plant's latest scan, or null. */
+  private String healthStatus;
+
+  /** Days until the nearest enabled WATERING reminder is due; negative = overdue; null = none. */
+  private Integer nextWaterDays;
 }

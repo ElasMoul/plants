@@ -192,6 +192,116 @@ class PlantServiceTest {
       assertThat(result.getTotalElements()).isZero();
       assertThat(result.getContent()).isEmpty();
     }
+
+    @Test
+    @DisplayName(
+        "should populate healthStatus from latest identification and nextWaterDays from nearest"
+            + " watering reminder")
+    void shouldEnrichWithHealthAndWater() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      var plant = aPlant().withId(1L).withUserId(1L).build();
+      Page<Plant> plantPage = new PageImpl<>(java.util.List.of(plant));
+      var response = PlantResponse.builder().id(1L).build();
+
+      when(plantRepository.findAllByUserIdAndStatus(1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(plantPage);
+      when(plantMapper.toResponse(plant)).thenReturn(response);
+
+      Identification latest =
+          Identification.builder().id(5L).plantId(1L).healthStatus("HEALTHY").build();
+      when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of(latest));
+
+      // +12h margin: guards against ChronoUnit.DAYS truncation if a few ms elapse before the
+      // service re-reads Instant.now().
+      java.time.Instant nextDueAt =
+          java.time.Instant.now()
+              .plus(3, java.time.temporal.ChronoUnit.DAYS)
+              .plus(12, java.time.temporal.ChronoUnit.HOURS);
+      Reminder reminder =
+          Reminder.builder()
+              .id(7L)
+              .plantId(1L)
+              .careType(com.plantpal.reminder.entity.CareType.WATERING)
+              .nextDueAt(nextDueAt)
+              .enabled(true)
+              .build();
+      when(reminderRepository.findNearestWateringPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of(reminder));
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, pageable);
+
+      // Then
+      PlantResponse enriched = result.getContent().get(0);
+      assertThat(enriched.getHealthStatus()).isEqualTo("HEALTHY");
+      assertThat(enriched.getNextWaterDays()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("should leave healthStatus and nextWaterDays null when neither exists")
+    void shouldLeaveHealthAndWaterNullWhenAbsent() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      var plant = aPlant().withId(1L).withUserId(1L).build();
+      Page<Plant> plantPage = new PageImpl<>(java.util.List.of(plant));
+      var response = PlantResponse.builder().id(1L).build();
+
+      when(plantRepository.findAllByUserIdAndStatus(1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(plantPage);
+      when(plantMapper.toResponse(plant)).thenReturn(response);
+      when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+      when(reminderRepository.findNearestWateringPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, pageable);
+
+      // Then
+      PlantResponse enriched = result.getContent().get(0);
+      assertThat(enriched.getHealthStatus()).isNull();
+      assertThat(enriched.getNextWaterDays()).isNull();
+    }
+
+    @Test
+    @DisplayName("should return a negative nextWaterDays when the watering reminder is overdue")
+    void shouldReturnNegativeNextWaterDaysWhenOverdue() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      var plant = aPlant().withId(1L).withUserId(1L).build();
+      Page<Plant> plantPage = new PageImpl<>(java.util.List.of(plant));
+      var response = PlantResponse.builder().id(1L).build();
+
+      when(plantRepository.findAllByUserIdAndStatus(1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(plantPage);
+      when(plantMapper.toResponse(plant)).thenReturn(response);
+      when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+
+      // -12h margin: keeps the value solidly within the -2 day bucket despite truncation.
+      java.time.Instant overdueAt =
+          java.time.Instant.now()
+              .minus(2, java.time.temporal.ChronoUnit.DAYS)
+              .minus(12, java.time.temporal.ChronoUnit.HOURS);
+      Reminder reminder =
+          Reminder.builder()
+              .id(7L)
+              .plantId(1L)
+              .careType(com.plantpal.reminder.entity.CareType.WATERING)
+              .nextDueAt(overdueAt)
+              .enabled(true)
+              .build();
+      when(reminderRepository.findNearestWateringPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of(reminder));
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getNextWaterDays()).isEqualTo(-2);
+    }
   }
 
   @Nested

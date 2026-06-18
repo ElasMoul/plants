@@ -1834,25 +1834,218 @@ No new modules, routes, or services.
 > to understand the state of their whole garden. This is what turns PlantPal from a tool
 > into a habit.
 
-**Feature description:**
-- Dashboard card per plant: photo thumbnail + name + health badge + "next action" chip
-  ("Water in 2 days", "Overdue: fertilize!", "All good")
-- Overdue reminders highlighted in red at the top
-- Today's tasks section: "Today you need to water 2 plants and fertilize 1"
-- Health trend: if 2+ identifications exist for a plant, show "Getting better" / "Worsening"
-  based on change in health_status between identifications
-- Weekly streak: "You've cared for your plants 5 days in a row!" (gamification hook)
+> **Revised 2026-06-18 — split into 4 ordered sub-tasks.** The original single-prompt spec
+> assumed `care_logs` had a write path (for the weekly streak) — it doesn't; T3.1 (reminder
+> "mark care done") hasn't started, so `care_logs` is an empty table with no entity/repository
+> at all. **Streak is dropped from this task and deferred to T3.1.** Also discovered while
+> planning: `PlantResponse.healthStatus` / `nextWaterDays` are already rendered by
+> `plant-card.component.html` (health badge, water chip) but the backend never populates
+> either field — every plant card today silently shows neither. T2.10a fixes that first since
+> T2.10b's dashboard needs the exact same "latest identification per plant" batch query.
 
-**Architecture notes:**
-- New endpoint: GET /api/v1/dashboard → DashboardResponse
-  DashboardResponse contains:
-  - List<PlantSummaryDto> overduePlants
-  - List<PlantSummaryDto> todayPlants
-  - int currentStreak (days)
-  - HealthSummaryDto (totalPlants, healthyCount, issuesCount, unknownCount)
-- The streak is calculated from care_logs: count consecutive days where ≥ 1 log exists
-- This is a read-heavy, cache-friendly endpoint → @Cacheable("dashboard::{userId}", TTL 5 min)
-  @CacheEvict whenever a care log is added
+---
+
+### T2.10a — Backend: fix Plant health/water data 🤖 AI
+**Branch:** `feature/PP-020-garden-dashboard`
+
+**Claude Code prompt:**
+```
+// Phase 2 — Fix Plant overview data: populate healthStatus + nextWaterDays on PlantResponse
+
+Context: PlantResponse already declares fields that plant-card.component.html binds to
+(health badge, water chip), but PlantMapper only maps raw Plant entity columns — neither
+field has ever been populated. Fix this by deriving both server-side from existing data.
+No new tables.
+
+In com.plantpal.plant:
+
+1. dto/PlantResponse.java — add two fields:
+   private String healthStatus;   // mirrors Identification.healthStatus: HEALTHY | ISSUES_DETECTED | UNKNOWN | null
+   private Integer nextWaterDays;  // days until next WATERING reminder is due; negative = overdue; null = none
+
+2. com.plantpal.identification.repository.IdentificationRepository — add:
+   @Query("SELECT i FROM Identification i WHERE i.id IN " +
+          "(SELECT MAX(i2.id) FROM Identification i2 WHERE i2.plantId IN :plantIds GROUP BY i2.plantId)")
+   List<Identification> findLatestPerPlant(@Param("plantIds") List<Long> plantIds);
+
+3. com.plantpal.reminder.repository.ReminderRepository — add:
+   @Query("SELECT r FROM Reminder r WHERE r.plantId IN :plantIds AND r.careType = 'WATERING' " +
+          "AND r.enabled = true AND r.nextDueAt = (SELECT MIN(r2.nextDueAt) FROM Reminder r2 " +
+          "WHERE r2.plantId = r.plantId AND r2.careType = 'WATERING' AND r2.enabled = true)")
+   List<Reminder> findNearestWateringPerPlant(@Param("plantIds") List<Long> plantIds);
+
+4. PlantServiceImpl:
+   - Add private helper enrichWithHealthAndWater(List<PlantResponse> responses, List<Long> plantIds):
+     batch-fetch both queries above, build Map<Long,String> (plantId→healthStatus) and
+     Map<Long,Integer> (plantId→nextWaterDays, via (int) ChronoUnit.DAYS.between(Instant.now(),
+     reminder.getNextDueAt())), then rebuild each PlantResponse via toBuilder() (add
+     @Builder(toBuilder = true) to PlantResponse — keep it immutable, do NOT add @Setter)
+   - getUserPlants(): call the helper over all plant IDs on the fetched page before returning
+   - getPlant(): call the same helper with a singleton list
+   - Both call sites are inside @Cacheable methods — enrich BEFORE returning so the cached
+     value is already complete (no partial DTOs cached)
+
+5. IdentificationServiceImpl.processIdentification(): after persisting status COMPLETED
+   (success path only — not FAILED), evict the "plants" cache so re-scanning an existing plant
+   immediately reflects its new healthStatus on the next plant-list fetch. Inject CacheManager
+   via constructor, call cacheManager.getCache("plants").clear() right after the COMPLETED save.
+
+6. Unit tests:
+   - PlantServiceTest: getUserPlants() returns healthStatus from latest identification and
+     nextWaterDays from nearest enabled WATERING reminder; both null when neither exists;
+     nextWaterDays is negative when the reminder is overdue
+   - IdentificationServiceImplTest: processIdentification() COMPLETED path calls
+     cacheManager.getCache("plants").clear(); FAILED path does not
+```
+**Verify:** GET /api/v1/plants for a plant with an identification + watering reminder returns non-null `healthStatus` and `nextWaterDays`. No frontend change needed — plant-card immediately shows the health badge and water chip.
+
+---
+
+### T2.10b — Backend: dashboard aggregate endpoint 🤖 AI
+**Branch:** `feature/PP-020-garden-dashboard` (after T2.10a)
+
+**Claude Code prompt:**
+```
+// Phase 2 — Garden health dashboard backend: GET /api/v1/dashboard
+
+New module com.plantpal.dashboard — read-only aggregation over existing plant/identification/
+reminder data. No new tables. Depends on T2.10a's IdentificationRepository.findLatestPerPlant().
+
+1. dto/DashboardResponse.java:
+   HealthSummaryDto healthSummary;
+   List<ReminderSummaryDto> overdueReminders;
+   List<ReminderSummaryDto> todayReminders;
+   List<PlantHealthTrendDto> healthTrends;   // only plants with >= 2 identifications
+
+2. dto/HealthSummaryDto.java: totalPlants, healthyCount, issuesCount, unknownCount (all int)
+
+3. dto/ReminderSummaryDto.java: reminderId, plantId, plantNickname, plantPhotoUrl,
+   careType (String), nextDueAt (Instant), daysOverdue (int — 0 for today's items, positive N
+   for N days overdue)
+
+4. dto/PlantHealthTrendDto.java: plantId, plantNickname, trend (String):
+   - "IMPROVING": previous healthStatus == ISSUES_DETECTED AND latest == HEALTHY
+   - "WORSENING": previous healthStatus == HEALTHY AND latest == ISSUES_DETECTED
+   - "STABLE": anything else (including UNKNOWN combinations)
+
+5. service/DashboardService.java (interface) + service/impl/DashboardServiceImpl.java:
+   getDashboard(Long userId):
+   a) plantRepository.findAllByUserIdAndStatus(userId, ACTIVE, PageRequest.of(0, 200)) —
+      bounded, not unpaged; this is a personal-garden app, 200 active plants is a generous cap
+   b) healthSummary: batch-fetch latest identification per plantId (reuse
+      IdentificationRepository.findLatestPerPlant), count by healthStatus
+      (no identification → counts toward unknownCount)
+   c) overdueReminders / todayReminders: add ReminderRepository.findByUserIdAndEnabledTrue(Long)
+      (List<Reminder>, no pagination — bounded by plant count); partition by nextDueAt vs
+      start-of-today / start-of-tomorrow (inject Clock via constructor, default bean
+      Clock.systemDefaultZone(), for testability); sort ascending by nextDueAt; map to
+      ReminderSummaryDto by joining against a Map<Long,Plant> built from the plant list fetched
+      in (a) — skip reminders whose plant isn't in that map (archived)
+   d) healthTrends: for each plant, identificationRepository.findByPlantIdOrderByCreatedAtDesc(
+      plantId, PageRequest.of(0, 2)); skip plants with < 2 results; compare healthStatus per
+      the rules above
+
+   NOTE: deliberately NOT @Cacheable. Nothing currently evicts on reminder changes, and a cached
+   dashboard showing stale overdue/today counts would be actively misleading. Revisit once T3.1
+   (reminder mark-done) exists and a real eviction trigger can be wired in.
+
+6. controller/DashboardController.java:
+   GET /api/v1/dashboard → ApiResponse<DashboardResponse>, userId from SecurityContext
+   (same getCurrentUserId() pattern as IdentificationController/ChatController)
+
+7. Unit tests: DashboardServiceTest — health summary counts; overdue vs today partitioning using
+   an injected fixed Clock; trend IMPROVING/WORSENING/STABLE; empty garden returns a zeroed
+   summary + empty lists (never null)
+```
+**Verify:** with one plant overdue on watering and one due today, GET /api/v1/dashboard returns both in the correct buckets. A plant with two identifications (ISSUES_DETECTED then HEALTHY) appears in `healthTrends` as IMPROVING.
+
+---
+
+### T2.10c — Frontend: plant photo timeline 🤝 Assisted
+**Branch:** `feature/PP-020-garden-dashboard`
+
+**Claude Code prompt:**
+```
+// Phase 2 — Plant photo timeline: visually track a plant's progress over time
+
+Reuses the existing GET /api/v1/identifications/plant/{plantId} endpoint (already implemented,
+paginated, sorted createdAt DESC) — no backend changes needed.
+
+1. features/plant/components/plant-photo-timeline/ — NEW PlantPhotoTimelineComponent:
+   @Input() plantId!: number
+   On init: identificationService.getPlantIdentifications(plantId, 0, 20) — up to 20 most
+   recent scans. Reverse the fetched array before rendering (API returns newest-first; a
+   progress timeline should read oldest→newest, left→right).
+   Render a horizontally-scrollable strip (CSS overflow-x: auto, no carousel library): each
+   item = photo thumbnail + short date + small health dot (HEALTHY=mint/ISSUES=coral/UNKNOWN=grey,
+   use --color-success/--color-error/--color-text-secondary tokens)
+   Click → navigate to /identify/:id (existing IdentificationDetailPageComponent route)
+   Empty state: small muted "No scans yet — your first photo will start the timeline"
+   Loading: reuse the skeleton pattern already used in care-plan.component
+
+2. plant-detail.component.html — add <app-plant-photo-timeline [plantId]="plant.id"> at the TOP
+   of the existing "Overview" tab, above .info-grid. (Decision: not a 5th tab — a 5th tab would
+   sit next to "Care History," which is also still a Phase-3 placeholder; one richer Overview
+   tab beats two thin ones.)
+
+3. plant.module.ts — declare PlantPhotoTimelineComponent. IdentificationService is already
+   provided at PlantModule level (confirmed in plant-detail.component.ts) — no new providers.
+
+4. No model changes needed — IdentificationResponse already has photoUrl, healthStatus, createdAt.
+
+Style: thumbnail 80x80px, border-radius 8px, 2px solid border in the health color, 8px gap,
+date at 0.7rem in --color-text-secondary below each thumbnail.
+```
+**Verify:** a plant with 3+ scans shows a scrollable thumbnail strip at the top of its Overview tab, oldest on the left / most recent on the right, each with a date and health-colored border; clicking one opens that scan's detail page.
+
+---
+
+### T2.10d — Frontend: garden dashboard page 🤝 Assisted
+**Branch:** `feature/PP-020-garden-dashboard` (after T2.10b ships)
+
+**Claude Code prompt:**
+```
+// Phase 2 — Garden health dashboard: new landing page after login
+
+1. features/dashboard/ — NEW lazy module (DashboardModule), structured like features/reminder/:
+   - dashboard.module.ts, dashboard-routing.module.ts (single route: '' → GardenDashboardComponent)
+   - models/dashboard.model.ts: DashboardResponse, HealthSummaryDto, ReminderSummaryDto,
+     PlantHealthTrendDto — mirror T2.10b's backend DTOs field-for-field
+   - services/dashboard.service.ts: getDashboard() → GET /api/v1/dashboard,
+     Observable<ApiResponse<DashboardResponse>>
+
+2. pages/garden-dashboard/garden-dashboard.component.{ts,html,scss}:
+   - On init: dashboardService.getDashboard(), takeUntil(destroy$)
+   - Loading: skeleton state (reuse care-plan.component's skeleton pattern)
+   - Sections top to bottom:
+     a. Health summary strip: 3 stat chips (Healthy N / Issues N / Unknown N), mint/coral/grey
+     b. "Needs attention" (overdueReminders): red-left-border rows — plant photo thumb +
+        nickname + careType icon (water_drop/eco/yard) + "Overdue by N days"; omit section if empty
+     c. "Today" (todayReminders): same row style, neutral border; if empty show
+        "Nothing due today 🌿"
+     d. "Health trends": only plants where trend !== 'STABLE'; chip "↑ Improving" (mint) or
+        "↓ Worsening" (coral); omit section if empty
+     e. If healthSummary.totalPlants === 0: replace all of the above with a single empty state
+        — "Your garden is empty" + pill CTA button to /plants/new
+   - Every plant row navigates to /plants/:id on click
+
+3. app-routing.module.ts:
+   - Add: { path: 'dashboard', loadChildren: () => import('./features/dashboard/dashboard.module')
+     .then(m => m.DashboardModule), canActivate: [AuthGuard] }
+   - Change root redirect: { path: '', redirectTo: 'dashboard', pathMatch: 'full' } (was 'plants')
+   - Do NOT touch the 'plants' route — the full garden list still lives at /plants via the
+     bottom-nav "Garden" icon, unchanged
+
+4. Do NOT add a 5th bottom-nav icon. The bottom nav has 4 fixed items (Garden/Identify/
+   Reminders/Chat); T2.D3 already found that squeezing a 5th item risks pushing the profile
+   button off-screen. The dashboard is reached via the post-login redirect and the toolbar
+   brand link (app.component.html's "PlantPal" brand already routerLinks to "/" — resolves to
+   /dashboard automatically, no template change needed).
+
+Style: reuse --color-primary/--color-success/--color-error/--radius-card/--shadow-card tokens.
+No new colors.
+```
+**Verify:** logging in lands on /dashboard. A plant with an overdue watering reminder shows under "Needs attention." Archiving the last plant shows the empty-garden state. Clicking any plant row navigates to its detail page. Bottom nav still shows exactly 4 icons.
 
 ---
 

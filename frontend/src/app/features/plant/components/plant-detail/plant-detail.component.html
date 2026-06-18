@@ -40,6 +40,8 @@
       <mat-tab label="Overview">
         <div class="tab-content">
 
+          <app-plant-photo-timeline [plantId]="plant.id"></app-plant-photo-timeline>
+
           <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
             <span class="attention-badge">ATTENTION NEEDED</span>
             <p>This plant has reported health issues. Check the Last Scan tab for details.</p>

@@ -77,6 +77,8 @@ class IdentificationServiceImplTest {
   @Mock private PlantNetClient plantNetClient;
   @Mock private OllamaClient ollamaClient;
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
+  @Mock private org.springframework.cache.CacheManager cacheManager;
+  @Mock private org.springframework.cache.Cache plantsCache;
 
   private IdentificationServiceImpl identificationService;
 
@@ -99,7 +101,8 @@ class IdentificationServiceImplTest {
             userRepository,
             plantNetClient,
             ollamaClient,
-            kafkaTemplate);
+            kafkaTemplate,
+            cacheManager);
   }
 
   private MockMultipartFile validImage() {
@@ -849,6 +852,71 @@ class IdentificationServiceImplTest {
       Identification saved = captor.getValue();
       assertThat(saved.getSourceImageWidth()).isEqualTo(100);
       assertThat(saved.getSourceImageHeight()).isEqualTo(75);
+    }
+
+    @Test
+    @DisplayName("processIdentification COMPLETED path evicts the plants cache")
+    void shouldEvictPlantsCacheOnCompleted() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      when(cacheManager.getCache("plants")).thenReturn(plantsCache);
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      verify(cacheManager).getCache("plants");
+      verify(plantsCache).clear();
+    }
+
+    @Test
+    @DisplayName("processIdentification FAILED path does not evict the plants cache")
+    void shouldNotEvictPlantsCacheOnFailure() {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any()))
+          .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      verify(cacheManager, never()).getCache(any());
+      verify(plantsCache, never()).clear();
     }
   }
 

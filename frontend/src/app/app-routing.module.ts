@@ -6,11 +6,17 @@ const routes: Routes = [
   // Exact empty path redirect
   {
     path: '',
-    redirectTo: 'plants',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
   // Guarded feature routes — declared BEFORE the auth catch-all
   // so the prefix '' route below never steals them
+  {
+    path: 'dashboard',
+    loadChildren: () =>
+      import('./features/dashboard/dashboard.module').then(m => m.DashboardModule),
+    canActivate: [AuthGuard],
+  },
   {
     path: 'plants',
     loadChildren: () => import('./features/plant/plant.module').then(m => m.PlantModule),

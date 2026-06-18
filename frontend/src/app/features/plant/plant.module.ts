@@ -27,6 +27,7 @@ import { PlantListComponent } from './components/plant-list/plant-list.component
 import { PlantCardComponent } from './components/plant-card/plant-card.component';
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
 import { PlantDetailComponent } from './components/plant-detail/plant-detail.component';
+import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/plant-photo-timeline.component';
 
 @NgModule({
   declarations: [
@@ -34,6 +35,7 @@ import { PlantDetailComponent } from './components/plant-detail/plant-detail.com
     PlantCardComponent,
     PlantFormComponent,
     PlantDetailComponent,
+    PlantPhotoTimelineComponent,
   ],
   imports: [
     CommonModule,
