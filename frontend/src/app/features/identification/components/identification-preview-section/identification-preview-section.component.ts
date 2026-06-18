@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import {
   AnnotationRegion,
+  CarePlanDto,
   IdentificationResponse,
   SavePreviewEditEvent,
 } from '../../models/identification.model';
@@ -37,5 +38,9 @@ export class IdentificationPreviewSectionComponent {
 
   onDiscard(): void {
     this.discard.emit();
+  }
+
+  onCarePlanUpdated(plan: CarePlanDto): void {
+    this.result.carePlan = plan;
   }
 }

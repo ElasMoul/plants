@@ -35,3 +35,7 @@
   border-radius: 8px;
   pointer-events: none; // click-through to underlying image
 }
+
+canvas[hidden] {
+    display: none !important;
+}

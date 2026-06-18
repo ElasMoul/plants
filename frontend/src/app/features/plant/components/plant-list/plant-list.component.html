@@ -29,7 +29,7 @@
     </div>
     <h2 class="empty-title">Your garden awaits</h2>
     <p class="empty-sub">Add your first plant to start tracking its care.</p>
-    <button mat-raised-button color="primary" routerLink="/plants/new" class="empty-btn">
+    <button mat-raised-button color="primary" (click)="openIdentifyDialog()" class="empty-btn">
       <mat-icon>add</mat-icon>
       Add your first plant
     </button>
@@ -63,7 +63,7 @@
   mat-fab
   color="primary"
   class="add-fab"
-  routerLink="/plants/new"
+  (click)="openIdentifyDialog()"
   aria-label="Add plant"
 >
   <mat-icon>add</mat-icon>

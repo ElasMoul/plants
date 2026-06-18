@@ -8,6 +8,7 @@ import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.dto.CarePlanDto;
@@ -52,6 +53,8 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -70,6 +73,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final int DEEPSEEK_RATE_LIMIT = 20;
   private static final int CURE_ADVICE_RATE_LIMIT = 10;
   private static final int SOURCE_IMAGE_MAX_SIDE_PX = 1024;
+  private static final String PLANTS_CACHE = "plants";
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
 
@@ -86,6 +90,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final PlantNetClient plantNetClient;
   private final OllamaClient ollamaClient;
   private final KafkaTemplate<String, Object> kafkaTemplate;
+  private final CacheManager cacheManager;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -103,7 +108,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       UserRepository userRepository,
       PlantNetClient plantNetClient,
       OllamaClient ollamaClient,
-      KafkaTemplate<String, Object> kafkaTemplate) {
+      KafkaTemplate<String, Object> kafkaTemplate,
+      CacheManager cacheManager) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -117,6 +123,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.plantNetClient = plantNetClient;
     this.ollamaClient = ollamaClient;
     this.kafkaTemplate = kafkaTemplate;
+    this.cacheManager = cacheManager;
   }
 
   @Override
@@ -226,6 +233,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setAnnotationRegions(annotationJson);
       identification.setStatus(IdentificationStatus.COMPLETED);
       identification = identificationRepository.save(identification);
+      evictPlantsCache();
 
       // Update linked plant and auto-create reminders
       if (plantId != null && plantRepository.existsByIdAndUserId(plantId, userId)) {
@@ -304,6 +312,46 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
     String advice = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
     return CompletableFuture.completedFuture(new CureAdviceResponse(advice));
+  }
+
+  @Override
+  public CarePlanDto addCareCard(Long id, AddCareCardRequest req, Long userId) {
+    Identification identification =
+        identificationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+    if (!identification.getUserId().equals(userId)) {
+      throw new ResourceNotFoundException("Identification not found");
+    }
+
+    CarePlanDto plan = parseCarePlan(identification.getCarePlan());
+    List<CareCardDto> careCards = new ArrayList<>(plan.getCareCards());
+    boolean alreadyAdded =
+        careCards.stream().anyMatch(card -> req.getRegionLabel().equals(card.getTitle()));
+
+    if (!alreadyAdded) {
+      careCards.add(
+          CareCardDto.builder()
+              .type("PEST")
+              .title(req.getRegionLabel())
+              .icon("healing")
+              .summary("Follow the steps below to treat this issue")
+              .detail(req.getAdviceText())
+              .urgency("HIGH")
+              .build());
+      plan.setCareCards(careCards);
+      identification.setCarePlan(serializeToJson(plan));
+      identificationRepository.save(identification);
+      log.info(
+          "Care card added: identificationId={}, userId={}, label={}",
+          id,
+          userId,
+          req.getRegionLabel());
+    } else {
+      plan.setCareCards(careCards);
+    }
+
+    return plan;
   }
 
   private DeepSeekPlantResult parseIdentificationResult(String raw) {
@@ -556,6 +604,13 @@ public class IdentificationServiceImpl implements IdentificationService {
     } catch (Exception e) {
       log.warn("Malformed annotation regions JSON: {}", e.getMessage());
       return List.of();
+    }
+  }
+
+  private void evictPlantsCache() {
+    Cache cache = cacheManager.getCache(PLANTS_CACHE);
+    if (cache != null) {
+      cache.clear();
     }
   }
 

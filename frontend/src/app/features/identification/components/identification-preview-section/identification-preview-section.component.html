@@ -18,4 +18,5 @@
   [region]="selectedRegion"
   [species]="result.scientificName"
   [identificationId]="result.id"
+  (carePlanUpdated)="onCarePlanUpdated($event)"
 ></app-disease-detail-panel>

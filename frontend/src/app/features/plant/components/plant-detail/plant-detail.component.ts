@@ -84,6 +84,10 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       : null;
   }
 
+  onCarePlanUpdated(plan: CarePlanDto): void {
+    this.latestCarePlan = plan;
+  }
+
   onArchive(): void {
     if (!this.plant) return;
     this.plantService.archivePlant(this.plant.id).subscribe({

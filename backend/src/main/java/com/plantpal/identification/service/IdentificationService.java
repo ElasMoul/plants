@@ -1,5 +1,7 @@
 package com.plantpal.identification.service;
 
+import com.plantpal.identification.dto.AddCareCardRequest;
+import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
@@ -26,4 +28,6 @@ public interface IdentificationService {
       Long plantId, Long userId, Pageable pageable);
 
   CompletableFuture<CureAdviceResponse> getCureAdvice(Long id, CureAdviceRequest req, Long userId);
+
+  CarePlanDto addCareCard(Long id, AddCareCardRequest req, Long userId);
 }

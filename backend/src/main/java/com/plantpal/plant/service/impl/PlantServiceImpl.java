@@ -21,11 +21,15 @@ import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,10 +105,13 @@ public class PlantServiceImpl implements PlantService {
       key = "'u:' + #userId + ':p:' + #pageable.pageNumber + ':s:' + #pageable.pageSize")
   public Page<PlantResponse> getUserPlants(Long userId, Pageable pageable) {
     log.info("Fetching plants for userId={}, page={}", userId, pageable.getPageNumber());
-    return new RestPage<>(
+    Page<PlantResponse> page =
         plantRepository
             .findAllByUserIdAndStatus(userId, PlantStatus.ACTIVE, pageable)
-            .map(plantMapper::toResponse));
+            .map(plantMapper::toResponse);
+    List<Long> plantIds = page.getContent().stream().map(PlantResponse::getId).toList();
+    List<PlantResponse> enriched = enrichWithHealthAndWater(page.getContent(), plantIds);
+    return new RestPage<>(new PageImpl<>(enriched, pageable, page.getTotalElements()));
   }
 
   @Override
@@ -112,7 +119,35 @@ public class PlantServiceImpl implements PlantService {
   public PlantResponse getPlant(Long id, Long userId) {
     Plant plant = findOwnedPlant(id, userId);
     log.info("Fetched plant: id={}, userId={}", id, userId);
-    return plantMapper.toResponse(plant);
+    PlantResponse response = plantMapper.toResponse(plant);
+    return enrichWithHealthAndWater(List.of(response), List.of(id)).get(0);
+  }
+
+  private List<PlantResponse> enrichWithHealthAndWater(
+      List<PlantResponse> responses, List<Long> plantIds) {
+    if (plantIds.isEmpty()) {
+      return responses;
+    }
+
+    Map<Long, String> healthByPlantId =
+        identificationRepository.findLatestPerPlant(plantIds).stream()
+            .collect(Collectors.toMap(Identification::getPlantId, Identification::getHealthStatus));
+
+    Map<Long, Integer> nextWaterDaysByPlantId =
+        reminderRepository.findNearestWateringPerPlant(plantIds).stream()
+            .collect(
+                Collectors.toMap(
+                    Reminder::getPlantId,
+                    r -> (int) ChronoUnit.DAYS.between(Instant.now(), r.getNextDueAt())));
+
+    return responses.stream()
+        .map(
+            response ->
+                response.toBuilder()
+                    .healthStatus(healthByPlantId.get(response.getId()))
+                    .nextWaterDays(nextWaterDaysByPlantId.get(response.getId()))
+                    .build())
+        .toList();
   }
 
   @Override

@@ -1,9 +1,10 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-15 (session 11)
+> Last updated: 2026-06-18 (session 13)
 
 ## Current Phase
-Phase 2 — AI Plant Identification (in progress)
+Phase 2 — AI Plant Identification ✅ COMPLETE
+Phase 3 — Reminders + Push Notifications (not started) ← NEXT
 
 ## Completed Tasks
 - T0.1 GitHub repo + branch protection ✅
@@ -139,6 +140,74 @@ Phase 2 — AI Plant Identification (in progress)
     StorageConfig handler left untouched)
   - 5 unit tests passing (LocalFileStorageServiceTest: dedup hit/miss on savePhoto, Redis hit/disk
     fallback/not-found on loadPhotoBytes) — mocks RedisTemplate/StringRedisTemplate, no real Redis
+- T2.F Image dimension locking ✅ (branch: feature/PP-027-redis-photo-storage, merged)
+  - ImageUtil.resizeAndConvertToJpeg(bytes, maxSide) + ImageUtil.readDimensions(bytes) — shared
+    helper extracted out of OllamaClient into shared/util/ so IdentificationServiceImpl can reuse it
+  - processIdentification(): normalizes the photo once (1024px cap) before sending to ANY provider,
+    then records the resulting width/height as sourceImageWidth/sourceImageHeight on Identification
+    (migration 011_add_image_dimensions.sql) — guarantees the recorded dimensions match what every
+    AI provider actually saw, regardless of which one served the request
+  - IdentificationResponse: +sourceImageWidth, +sourceImageHeight (nullable — null for pre-T2.F rows)
+- T2.10 Garden health dashboard ✅ (branch: feature/PP-020-garden-dashboard) — split into 4 sub-tasks:
+  - T2.10a: PlantResponse now populates healthStatus + nextWaterDays (previously declared but never
+    set — plant-card.component.html had been rendering the badge/chip markup against permanently-null
+    fields since T2.9). IdentificationRepository.findLatestPerPlant() + ReminderRepository.
+    findNearestWateringPerPlant() batch-fetch per page to avoid N+1; PlantServiceImpl enriches inside
+    the existing @Cacheable methods so the cached DTO is already complete. IdentificationServiceImpl
+    now injects CacheManager and clears the "plants" cache after a COMPLETED re-scan.
+  - T2.10b: new GET /api/v1/dashboard → DashboardResponse (healthSummary, overdueReminders,
+    todayReminders, healthTrends). New com.plantpal.dashboard module. Deliberately NOT @Cacheable —
+    nothing evicts it yet and a stale overdue-reminders list would be actively misleading.
+    ReminderRepository.findByUserIdAndEnabledTrue() added for the overdue/today partition (injected
+    Clock via shared/config/ClockConfig.java for testability).
+  - T2.10c: new PlantPhotoTimelineComponent — horizontally-scrollable strip of every past scan for a
+    plant (oldest→newest, left→right; API returns newest-first so the component reverses it),
+    health-colored thumbnail border, click → /identify/:id. Reuses the existing paginated
+    GET /api/v1/identifications/plant/{plantId} endpoint, no backend change. Sits at the top of
+    plant-detail's "Overview" tab (not a new tab — avoids stacking next to the still-placeholder
+    "Care History" tab).
+  - T2.10d: new /dashboard landing page (DashboardModule, lazy). Root route redirect changed from
+    'plants' to 'dashboard'. Bottom nav intentionally left at 4 items (Garden/Identify/Reminders/
+    Chat) — reached via the toolbar brand link instead of a 5th icon.
+  - Verified live end-to-end with Playwright (Docker stack already running): dashboard renders
+    overdue/today sections correctly, plant-card health badge + water chip now populated.
+- T2.10e Session polish — annotation overlap, "Add to care plan", garden "add" entry points ✅
+  (branch: feature/PP-020-garden-dashboard, session 2026-06-18)
+  - **CSS cascade bug (root cause of "Hide annotations does nothing"):** styles.scss has a global
+    modern-reset rule `img, picture, video, canvas, svg { display: block; }`. Per CSS cascade rules,
+    normal-importance AUTHOR rules always beat normal-importance USER-AGENT rules regardless of
+    specificity — so that global reset was silently overriding the browser's own
+    `[hidden] { display: none; }` default the whole time. The canvas's `hidden` attribute was
+    toggling correctly (confirmed via Playwright — button label + DOM attribute both flipped, zero
+    console errors) but the computed `display` never changed. Fixed in
+    photo-annotator.component.scss: `canvas[hidden] { display: none !important; }` — now an
+    author-vs-author fight where the attribute selector's higher specificity (and the `!important`
+    insurance) wins. **Lesson:** testing `getAttribute('hidden')` is not sufficient to verify
+    visibility — must check computed `display` style too.
+  - PhotoAnnotatorComponent.drawAnnotations(): when a region is selected, non-selected regions are
+    now skipped entirely (`continue`) instead of drawn dimmed-grey — they heavily overlap the
+    selected region so dimming still visually competed with it. Removed the now-dead DIMMED_COLORS
+    constant.
+  - "Add to care plan" made functional (was permanently disabled since T2.9c): new
+    POST /api/v1/identifications/{id}/care-plan/cards (AddCareCardRequest: regionLabel, adviceText)
+    → IdentificationServiceImpl.addCareCard() loads the care plan, appends a PEST-type CareCardDto
+    built from the disease label + cure-advice text (skips re-adding if a card with that exact title
+    already exists — defends against double-click), persists, returns the updated CarePlanDto.
+    Ownership-checked like getCureAdvice; no rate limit (pure DB read+write, no AI call).
+    DiseaseDetailPanelComponent calls this after advice loads, emits `carePlanUpdated` so
+    identification-preview-section and plant-detail replace their local carePlan/latestCarePlan
+    reference immediately (no refetch needed). The pre-advice button stays disabled — nothing to add
+    yet — tooltip corrected from the stale "Available after saving plant" to "Get cure advice first".
+  - plant-list's FAB and empty-state "Add your first plant" CTA now open
+    IdentificationUploadDialogComponent (same dialog identify-page uses) instead of routing to the
+    manual /plants/new form — primary path to add a plant is via AI identification. Cross-module
+    component import (PlantModule → IdentificationModule's dialog component) split webpack's
+    `features-plant-plant-module` lazy chunk into two (~68KB extra) — expected trade-off, not a bug.
+    plant.module.ts: +MatDialogModule.
+  - 3 new backend unit tests (AddCareCard: append, idempotent-on-repeat, not-owned). Full suite:
+    82/82 passing. Frontend: `ng build` + `ng lint` both clean.
+- T2.11 Manual testing — Phase 2 complete ✅ — covered ad-hoc via the above session's live
+  Playwright + manual verification rather than a separate checklist pass. **Phase 2 is done.**
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
@@ -149,9 +218,10 @@ Phase 2 — AI Plant Identification (in progress)
   ai-test removal already staged when this branch was created
 
 ## Next Tasks (in order)
-- T2.F — Image dimension locking + aspect-ratio warning in annotator ← NEXT
-- T2.10 — Garden health dashboard (feature/PP-020-garden-dashboard)
-- T2.11 — Manual testing for all Phase 2 features
+- Phase 2 is complete. Next up is Phase 3:
+- T3.1 — Reminder module backend (entities, CRUD, scheduler, web-push) ← NEXT
+- T3.2 — Reminder module frontend (Angular + PWA push notifications)
+- T3.3 — Manual testing — Phase 3
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -319,8 +389,8 @@ Phase 2 — AI Plant Identification (in progress)
 007_add_annotation_regions.sql    ✅ T2.9 — annotation_regions JSONB (inserted BEFORE 008 in master XML)
 008_add_care_plan.sql             ✅ T2.6 — care_plan JSONB
 009_add_health_to_identifications.sql ✅ — health_status VARCHAR(30), health_notes TEXT
-010_add_user_preferences.sql          🔲 AddChooseAi — ai_model_preference VARCHAR(50) on users
-011_add_image_dimensions.sql          🔲 T2.F — source_image_width INT, source_image_height INT on identifications
+010_add_user_preferences.sql          ✅ AddChooseAi — ai_model_preference VARCHAR(50) on users
+011_add_image_dimensions.sql          ✅ T2.F — source_image_width INT, source_image_height INT on identifications
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.
@@ -332,16 +402,25 @@ which stores any JSON shape. Switching from boundingBox to polygon is a pure cod
   After T2.A, env var renames from DEEPSEEK_API_KEY → GITHUB_TOKEN; update backend/.env on all machines
 - JaCoCo gate needs to be restored to 80% with proper exclusions
 - Integration tests not running in CI (Testcontainers phase isolation issue)
-- AiTestController not @Profile("dev") guarded — will deploy to prod as-is
 - IdentificationControllerIT.java missing
 - PlantNetClient + plantnet/ DTOs are dead code — remove at next cleanup sprint
-- T2.8 frontend (one-click save UI) still pending
+- IdentificationResultComponent is dead code (orphaned — no route or template references it
+  anymore, superseded by identification-preview-section in the T2.D2 redesign); safe to delete
 - WebSocket (STOMP/SockJS): deferred to Phase 4. Will replace HTTP polling in both the
   identification result flow (T2.D) and the chat module (T4.x). Both share the same WS endpoint.
 - Kafka consumer error DLQ: currently failed identifications set status=FAILED and log ERROR.
   A proper dead-letter topic should be added in Phase 3 before prod load.
-- gpt-4o-mini annotation quality: if polygon quality is insufficient after T2.B ships,
-  fall back to gpt-4o by changing GITHUB_ANNOTATION_MODEL env var (no code change needed).
+- gpt-4o-mini annotation quality is visibly imprecise on disease contours (verified against a real
+  photo — polygon was in the right vicinity but didn't trace the actual damaged area). Not a code
+  bug — confirmed no EXIF/coordinate mismatch on the photo checked. If it keeps being unsatisfying,
+  switch GITHUB_ANNOTATION_MODEL back to gpt-4o (no code change needed) and compare.
+- CSS gotcha for future sessions: styles.scss's global `canvas { display: block; }` reset beats the
+  browser's own `[hidden] { display: none; }` default (author origin always wins over user-agent
+  origin, regardless of specificity). Any future component relying on `[hidden]` for a `<canvas>`,
+  `<img>`, `<video>`, or `<svg>` needs its own `tag[hidden] { display: none !important; }` override
+  — see photo-annotator.component.scss for the pattern.
+- ✅ RESOLVED: AiTestController was already deleted in T4.1 (dead code, /ai-test page removed)
+- ✅ RESOLVED: T2.8 frontend (one-click save UI) — preview-card's save form has been live all along
 
 ## Architectural Risks for T2.9a–T2.9d
 - Polygon degenerate case: AI may return < 3 points. Backend must null-out polygon < 3 points;

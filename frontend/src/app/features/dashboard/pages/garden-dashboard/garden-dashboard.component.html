@@ -1,0 +1,116 @@
+<div class="page-container">
+
+  <!-- Skeleton while loading -->
+  <div *ngIf="loading" class="skeleton-grid">
+    <div *ngFor="let s of skeletonRows" class="skeleton-card">
+      <div class="skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line long"></div>
+      </div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && dashboard">
+
+    <h1 class="page-title">Your Garden</h1>
+
+    <!-- Empty garden -->
+    <div class="empty-garden" *ngIf="dashboard.healthSummary.totalPlants === 0">
+      <mat-icon class="empty-icon">local_florist</mat-icon>
+      <h2>Your garden is empty</h2>
+      <p>Add your first plant to start tracking its health and care schedule.</p>
+      <button mat-raised-button color="primary" class="btn-pill" routerLink="/plants/new">
+        <mat-icon>add</mat-icon>
+        Add a plant
+      </button>
+    </div>
+
+    <ng-container *ngIf="dashboard.healthSummary.totalPlants > 0">
+
+      <!-- Health summary strip -->
+      <div class="health-strip">
+        <div class="stat-chip stat-healthy">
+          <span class="stat-count">{{ dashboard.healthSummary.healthyCount }}</span>
+          <span class="stat-label">Healthy</span>
+        </div>
+        <div class="stat-chip stat-issues">
+          <span class="stat-count">{{ dashboard.healthSummary.issuesCount }}</span>
+          <span class="stat-label">Issues</span>
+        </div>
+        <div class="stat-chip stat-unknown">
+          <span class="stat-count">{{ dashboard.healthSummary.unknownCount }}</span>
+          <span class="stat-label">Unknown</span>
+        </div>
+      </div>
+
+      <!-- Needs attention -->
+      <section class="dash-section" *ngIf="dashboard.overdueReminders.length">
+        <h2 class="section-heading">Needs attention</h2>
+        <div
+          class="reminder-row row-overdue"
+          *ngFor="let reminder of dashboard.overdueReminders"
+          (click)="goToPlant(reminder.plantId)"
+        >
+          <img
+            [src]="reminder.plantPhotoUrl || placeholderImage"
+            [alt]="reminder.plantNickname"
+            class="row-photo"
+          />
+          <div class="row-body">
+            <p class="row-name">{{ reminder.plantNickname }}</p>
+            <p class="row-detail">
+              <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
+              Overdue by {{ reminder.daysOverdue }} day{{ reminder.daysOverdue !== 1 ? 's' : '' }}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Today -->
+      <section class="dash-section">
+        <h2 class="section-heading">Today</h2>
+        <div
+          class="reminder-row"
+          *ngFor="let reminder of dashboard.todayReminders"
+          (click)="goToPlant(reminder.plantId)"
+        >
+          <img
+            [src]="reminder.plantPhotoUrl || placeholderImage"
+            [alt]="reminder.plantNickname"
+            class="row-photo"
+          />
+          <div class="row-body">
+            <p class="row-name">{{ reminder.plantNickname }}</p>
+            <p class="row-detail">
+              <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
+              {{ reminder.careType | titlecase }}
+            </p>
+          </div>
+        </div>
+        <p class="empty-note" *ngIf="!dashboard.todayReminders.length">Nothing due today 🌿</p>
+      </section>
+
+      <!-- Health trends -->
+      <section class="dash-section" *ngIf="notableTrends.length">
+        <h2 class="section-heading">Health trends</h2>
+        <div
+          class="trend-row"
+          *ngFor="let trend of notableTrends"
+          (click)="goToPlant(trend.plantId)"
+        >
+          <p class="row-name">{{ trend.plantNickname }}</p>
+          <span
+            class="trend-chip"
+            [ngClass]="trend.trend === 'IMPROVING' ? 'trend-improving' : 'trend-worsening'"
+          >
+            {{ trend.trend === 'IMPROVING' ? '↑ Improving' : '↓ Worsening' }}
+          </span>
+        </div>
+      </section>
+
+    </ng-container>
+
+  </ng-container>
+
+</div>

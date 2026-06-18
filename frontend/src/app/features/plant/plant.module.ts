@@ -18,6 +18,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule } from '@angular/material/dialog';
 
 import { PlantRoutingModule } from './plant-routing.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
@@ -27,6 +28,7 @@ import { PlantListComponent } from './components/plant-list/plant-list.component
 import { PlantCardComponent } from './components/plant-card/plant-card.component';
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
 import { PlantDetailComponent } from './components/plant-detail/plant-detail.component';
+import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/plant-photo-timeline.component';
 
 @NgModule({
   declarations: [
@@ -34,6 +36,7 @@ import { PlantDetailComponent } from './components/plant-detail/plant-detail.com
     PlantCardComponent,
     PlantFormComponent,
     PlantDetailComponent,
+    PlantPhotoTimelineComponent,
   ],
   imports: [
     CommonModule,
@@ -57,6 +60,7 @@ import { PlantDetailComponent } from './components/plant-detail/plant-detail.com
     MatSnackBarModule,
     MatDividerModule,
     MatTooltipModule,
+    MatDialogModule,
   ],
   providers: [PlantService, IdentificationService],
 })

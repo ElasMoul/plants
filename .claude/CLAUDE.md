@@ -779,12 +779,14 @@ open backend/target/site/jacoco/index.html
 | 2 — Identification Angular frontend | ✅ Complete | Photo upload, result display (PR #5 merged) |
 | 2 — DeepSeek care plan backend (T2.6) | ✅ Complete | DeepSeekClient, CareCardDto/CarePlanDto, parallel async, reminder bootstrap, migration 008 |
 | 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
-| 2 — One-click save flow (T2.8) | ✅ Complete (backend) | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders, 7 unit tests; frontend pending |
+| 2 — One-click save flow (T2.8) | ✅ Complete | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders; preview-card save form live on frontend |
 | 2 — DeepSeek vision identification | ✅ Complete | PlantNet replaced by gpt-4o (GitHub Models); single vision call returns species+health+carePlan; DeepSeekPlantResult DTO; migration 009 adds health_status/health_notes; 10 unit tests passing; branch: feature/PP-deepseek-identification |
-| 2 — Visual annotation (T2.9) | ✅ Complete (backend) | VisionAnnotationClient interface; DeepSeekAnnotationClient (@Primary) + PlantNetAnnotationClient; parallel async in identify(); migration 007 (inserted before 008); AnnotationRegionDto + BoundingBoxDto; 12 unit tests passing; frontend overlay pending |
-| 2 — Garden dashboard (T2.10) | 🔲 Not started | Overview of all plants + health + overdue reminders |
-| 3 — Reminders + Push | 🔲 Not started | |
-| 4 — AI Chat | 🔲 Not started | |
+| 2 — Visual annotation (T2.9) | ✅ Complete | VisionAnnotationClient interface; DeepSeekAnnotationClient (@Primary) + PlantNetAnnotationClient; polygon overlay frontend (PhotoAnnotatorComponent); cure-advice + add-to-care-plan wired up |
+| 2 — GitHubModelsClient split + Kafka async + Redis photos (T2.A–T2.E) | ✅ Complete | See STATE.md for full detail |
+| 2 — Garden dashboard (T2.10) | ✅ Complete | GET /api/v1/dashboard, plant health/water data fix, photo timeline, /dashboard landing page |
+| 2 — Manual testing (T2.11) | ✅ Complete | Covered ad-hoc via live Playwright + manual verification during T2.10 session |
+| 3 — Reminders + Push | 🔲 Not started ← NEXT | |
+| 4 — AI Chat | ✅ Complete (basic) | T4.1 — single-turn chat wired to Ollama with garden context |
 | 5 — Launch | 🔲 Not started | |
 
 ---

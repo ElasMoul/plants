@@ -18,6 +18,7 @@ import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
@@ -77,6 +78,8 @@ class IdentificationServiceImplTest {
   @Mock private PlantNetClient plantNetClient;
   @Mock private OllamaClient ollamaClient;
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
+  @Mock private org.springframework.cache.CacheManager cacheManager;
+  @Mock private org.springframework.cache.Cache plantsCache;
 
   private IdentificationServiceImpl identificationService;
 
@@ -99,7 +102,8 @@ class IdentificationServiceImplTest {
             userRepository,
             plantNetClient,
             ollamaClient,
-            kafkaTemplate);
+            kafkaTemplate,
+            cacheManager);
   }
 
   private MockMultipartFile validImage() {
@@ -850,6 +854,71 @@ class IdentificationServiceImplTest {
       assertThat(saved.getSourceImageWidth()).isEqualTo(100);
       assertThat(saved.getSourceImageHeight()).isEqualTo(75);
     }
+
+    @Test
+    @DisplayName("processIdentification COMPLETED path evicts the plants cache")
+    void shouldEvictPlantsCacheOnCompleted() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      when(cacheManager.getCache("plants")).thenReturn(plantsCache);
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      verify(cacheManager).getCache("plants");
+      verify(plantsCache).clear();
+    }
+
+    @Test
+    @DisplayName("processIdentification FAILED path does not evict the plants cache")
+    void shouldNotEvictPlantsCacheOnFailure() {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any()))
+          .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      verify(cacheManager, never()).getCache(any());
+      verify(plantsCache, never()).clear();
+    }
   }
 
   @Nested
@@ -983,6 +1052,123 @@ class IdentificationServiceImplTest {
       assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("Cure advice unavailable");
+    }
+  }
+
+  @Nested
+  @DisplayName("addCareCard()")
+  class AddCareCard {
+
+    private Identification ownedIdentificationWithPlan() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .scientificName("Monstera deliciosa")
+          .carePlan(
+              """
+              {
+                "wateringFrequencyDays": 7,
+                "fertilizingFrequencyDays": 30,
+                "repottingFrequencyMonths": 12,
+                "careCards": [
+                  {
+                    "type": "WATERING",
+                    "title": "Watering",
+                    "icon": "water_drop",
+                    "summary": "Water every 7 days",
+                    "detail": "Keep soil moist but not waterlogged.",
+                    "urgency": "MEDIUM",
+                    "seasonalVariation": "Water less in winter."
+                  }
+                ],
+                "beginnerWarnings": ["Avoid overwatering"]
+              }
+              """)
+          .build();
+    }
+
+    private AddCareCardRequest req() {
+      return AddCareCardRequest.builder()
+          .regionLabel("Yellowing leaf — possible overwatering")
+          .adviceText("1. Remove affected leaves. 2. Reduce watering.")
+          .build();
+    }
+
+    @Test
+    @DisplayName("should append a new card to the existing care plan and persist it")
+    void shouldAppendNewCard() {
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(ownedIdentificationWithPlan()));
+
+      CarePlanDto result = identificationService.addCareCard(1L, req(), USER_ID);
+
+      assertThat(result.getCareCards()).hasSize(2);
+      assertThat(result.getCareCards().get(0).getTitle()).isEqualTo("Watering");
+      assertThat(result.getCareCards().get(1).getTitle())
+          .isEqualTo("Yellowing leaf — possible overwatering");
+      assertThat(result.getCareCards().get(1).getType()).isEqualTo("PEST");
+      assertThat(result.getCareCards().get(1).getDetail())
+          .isEqualTo("1. Remove affected leaves. 2. Reduce watering.");
+      verify(identificationRepository).save(any(Identification.class));
+    }
+
+    @Test
+    @DisplayName("should not duplicate the card or re-save when the same region is added twice")
+    void shouldNotDuplicateOnRepeatedCalls() {
+      Identification entity = ownedIdentificationWithPlan();
+      when(identificationRepository.findById(1L)).thenReturn(java.util.Optional.of(entity));
+
+      identificationService.addCareCard(1L, req(), USER_ID);
+      // Simulate the persisted JSON reflecting the first call before the second call reads it
+      entity.setCarePlan(serializedPlanWithExtraCard());
+
+      CarePlanDto result = identificationService.addCareCard(1L, req(), USER_ID);
+
+      assertThat(result.getCareCards()).hasSize(2);
+      verify(identificationRepository, times(1)).save(any(Identification.class));
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when identification is not owned by user")
+    void shouldThrowWhenNotOwned() {
+      Identification foreignIdentification = Identification.builder().id(1L).userId(99L).build();
+      when(identificationRepository.findById(1L))
+          .thenReturn(java.util.Optional.of(foreignIdentification));
+
+      assertThatThrownBy(() -> identificationService.addCareCard(1L, req(), USER_ID))
+          .isInstanceOf(ResourceNotFoundException.class);
+      verify(identificationRepository, never()).save(any());
+    }
+
+    private String serializedPlanWithExtraCard() {
+      return """
+          {
+            "wateringFrequencyDays": 7,
+            "fertilizingFrequencyDays": 30,
+            "repottingFrequencyMonths": 12,
+            "careCards": [
+              {
+                "type": "WATERING",
+                "title": "Watering",
+                "icon": "water_drop",
+                "summary": "Water every 7 days",
+                "detail": "Keep soil moist but not waterlogged.",
+                "urgency": "MEDIUM",
+                "seasonalVariation": "Water less in winter."
+              },
+              {
+                "type": "PEST",
+                "title": "Yellowing leaf — possible overwatering",
+                "icon": "healing",
+                "summary": "Follow the steps below to treat this issue",
+                "detail": "1. Remove affected leaves. 2. Reduce watering.",
+                "urgency": "HIGH",
+                "seasonalVariation": null
+              }
+            ],
+            "beginnerWarnings": ["Avoid overwatering"]
+          }
+          """;
     }
   }
 }
