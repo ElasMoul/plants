@@ -4,13 +4,7 @@ import { takeUntil } from 'rxjs/operators';
 import { CareLogService } from '../../services/care-log.service';
 import { CareLogResponse } from '../../models/care-log.model';
 import { CareType } from '../../models/reminder.model';
-
-const CARE_ICONS: Record<CareType, string> = {
-  WATERING: 'water_drop',
-  FERTILIZING: 'eco',
-  REPOTTING: 'yard',
-  PRUNING: 'yard',
-};
+import { careIcon as getCareIcon } from '../../models/care-icon.util';
 
 @Component({
   selector: 'app-care-log',
@@ -49,6 +43,6 @@ export class CareLogComponent implements OnInit, OnDestroy {
   }
 
   careIcon(careType: CareType): string {
-    return CARE_ICONS[careType];
+    return getCareIcon(careType);
   }
 }

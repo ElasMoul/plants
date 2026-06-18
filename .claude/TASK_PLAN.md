@@ -2156,7 +2156,7 @@ In com.plantpal.reminder:
 ---
 
 ### T3.4 — Backend: actionable care plans (routines + treatment plans) 🤖 AI
-**Branch:** `feature/PP-028-actionable-care-plans`
+**Branch:** `feature/PP-028-actionable-care-plans-2`
 
 > **Why:** care actions aren't all the same shape. Some are simple recurring routines
 > (water every 7 days), some are finite multi-step treatments (apply neem oil day 1, recheck
@@ -2323,7 +2323,7 @@ confirm it degrades to null rather than throwing.
 ---
 
 ### T3.5 — Frontend: actionable care plans UI (reminders, treatment plans, diagrams) 🤝 Assisted
-**Branch:** `feature/PP-028-actionable-care-plans` (same branch as T3.4)
+**Branch:** `feature/PP-028-actionable-care-plans-2` (same branch as T3.4)
 
 **Claude Code prompt:**
 ```

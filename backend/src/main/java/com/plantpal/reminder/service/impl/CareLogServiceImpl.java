@@ -60,9 +60,7 @@ public class CareLogServiceImpl implements CareLogService {
             .build();
     careLog = careLogRepository.save(careLog);
 
-    reminder.setNextDueAt(
-        reminderService.calculateNextDueAt(performedAt, reminder.getFrequencyDays()));
-    reminderRepository.save(reminder);
+    reminderService.applyCompletionToReminder(reminder, performedAt);
 
     log.info(
         "Care logged: plantId={}, careType={}, userId={}",

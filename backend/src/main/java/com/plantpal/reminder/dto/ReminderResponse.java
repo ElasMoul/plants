@@ -23,4 +23,8 @@ public class ReminderResponse {
   private int frequencyDays;
   private Instant nextDueAt;
   private boolean enabled;
+  private boolean recurring;
+  private Long treatmentPlanId;
+  private String treatmentPlanTitle;
+  private Integer stepOrder;
 }

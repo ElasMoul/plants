@@ -1,0 +1,17 @@
+mat-dialog-content {
+  padding-top: 4px;
+}
+
+.dialog-text {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}

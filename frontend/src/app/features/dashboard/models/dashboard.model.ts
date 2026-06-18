@@ -1,4 +1,15 @@
-export type CareType = 'WATERING' | 'FERTILIZING' | 'REPOTTING' | 'PRUNING';
+// Mirrors backend CareType (T3.4) — same 10 values as reminder/identification's CareType/CareCardType
+export type CareType =
+  | 'WATERING'
+  | 'LIGHT'
+  | 'HUMIDITY'
+  | 'TEMPERATURE'
+  | 'FERTILIZING'
+  | 'REPOTTING'
+  | 'PRUNING'
+  | 'PEST'
+  | 'SEASONAL'
+  | 'BEGINNER_TIP';
 export type HealthTrend = 'IMPROVING' | 'WORSENING' | 'STABLE';
 
 export interface HealthSummaryDto {

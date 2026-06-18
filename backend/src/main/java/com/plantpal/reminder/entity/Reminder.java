@@ -50,6 +50,19 @@ public class Reminder {
   @Builder.Default
   private boolean enabled = true;
 
+  @Column(name = "recurring", nullable = false)
+  @Builder.Default
+  private boolean recurring = true;
+
+  @Column(name = "treatment_plan_id")
+  private Long treatmentPlanId;
+
+  @Column(name = "treatment_plan_title")
+  private String treatmentPlanTitle;
+
+  @Column(name = "step_order")
+  private Integer stepOrder;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;

@@ -5,8 +5,10 @@ import { takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PlantService } from '../../services/plant.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
+import { ReminderService } from '../../../reminder/services/reminder.service';
 import { PlantResponse } from '../../models/plant.model';
 import { AnnotationRegion, CarePlanDto } from '../../../identification/models/identification.model';
+import { CareType } from '../../../reminder/models/reminder.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 
@@ -27,6 +29,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   carePlanLoaded = false;
   selectedRegionIndex: number | null = null;
   selectedRegion: AnnotationRegion | null = null;
+  existingCareTypes: CareType[] = [];
 
   private readonly destroy$ = new Subject<void>();
 
@@ -35,6 +38,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly plantService: PlantService,
     private readonly identificationService: IdentificationService,
+    private readonly reminderService: ReminderService,
     private readonly snackBar: MatSnackBar,
   ) {}
 
@@ -68,6 +72,19 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.carePlanLoaded = true;
+        },
+      });
+
+    this.reminderService.getReminders()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.existingCareTypes = res.data
+            .filter(r => r.plantId === id && r.enabled)
+            .map(r => r.careType);
+        },
+        error: () => {
+          this.existingCareTypes = [];
         },
       });
   }

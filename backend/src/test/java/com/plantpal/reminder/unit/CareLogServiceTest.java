@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,7 +29,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -79,8 +79,8 @@ class CareLogServiceTest {
   class LogCare {
 
     @Test
-    @DisplayName("should save a care log and reschedule the reminder's nextDueAt")
-    void shouldLogCareAndRescheduleReminder() {
+    @DisplayName("should save a care log and delegate completion handling to ReminderService")
+    void shouldLogCareAndDelegateToReminderService() {
       MarkCareDoneRequest request = new MarkCareDoneRequest();
       request.setReminderId(REMINDER_ID);
       request.setNotes("Gave it a good soak");
@@ -95,10 +95,6 @@ class CareLogServiceTest {
                 saved.setId(77L);
                 return saved;
               });
-      Instant rescheduledTo = Instant.parse("2026-06-25T08:00:00Z");
-      when(reminderService.calculateNextDueAt(any(Instant.class), anyInt()))
-          .thenReturn(rescheduledTo);
-      when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
       when(plantRepository.findById(PLANT_ID)).thenReturn(Optional.of(plant()));
 
       CareLogResponse response = careLogService.logCare(request, USER_ID);
@@ -109,12 +105,11 @@ class CareLogServiceTest {
       assertThat(response.getCareType()).isEqualTo(CareType.WATERING);
       assertThat(response.getNotes()).isEqualTo("Gave it a good soak");
 
-      ArgumentCaptor<Reminder> reminderCaptor = ArgumentCaptor.forClass(Reminder.class);
-      verify(reminderRepository).save(reminderCaptor.capture());
-      assertThat(reminderCaptor.getValue().getNextDueAt()).isEqualTo(rescheduledTo);
-
-      verify(reminderService)
-          .calculateNextDueAt(any(Instant.class), org.mockito.ArgumentMatchers.eq(7));
+      // Rescheduling (or, for a one-time treatment step, disabling) is entirely
+      // ReminderService's responsibility — CareLogServiceImpl must not duplicate that logic.
+      verify(reminderService).applyCompletionToReminder(eq(reminder), any(Instant.class));
+      verify(reminderService, never()).calculateNextDueAt(any(Instant.class), anyInt());
+      verify(reminderRepository, never()).save(any());
     }
 
     @Test
@@ -129,7 +124,7 @@ class CareLogServiceTest {
           .isInstanceOf(ResourceNotFoundException.class);
 
       verify(careLogRepository, never()).save(any());
-      verify(reminderRepository, never()).save(any());
+      verify(reminderService, never()).applyCompletionToReminder(any(), any());
     }
   }
 

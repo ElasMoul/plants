@@ -96,6 +96,33 @@
   line-height: 1.65;
 }
 
+.action-divider {
+  margin: 12px 0;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.action-row .btn-pill {
+  border-radius: var(--radius-chip) !important;
+  font-size: 0.8rem;
+}
+
+.reminder-already-set {
+  opacity: 0.6;
+}
+
+.btn-spinner {
+  display: inline-block;
+  margin-right: 6px;
+
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
+}
+
 .seasonal-tip {
   display: flex;
   align-items: flex-start;

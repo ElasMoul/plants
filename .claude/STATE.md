@@ -1,10 +1,11 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-18 (session 14)
+> Last updated: 2026-06-18 (session 16)
 
 ## Current Phase
 Phase 2 — AI Plant Identification ✅ COMPLETE
-Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 done, T3.3 manual/device testing remaining)
+Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 + T3.4 backend + T3.5 frontend all done;
+T3.3 manual/device testing is the only thing left before Phase 3 is complete)
 
 ## Completed Tasks
 - T0.1 GitHub repo + branch protection ✅
@@ -249,6 +250,175 @@ Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 done, T3.3 manual/device
   - plant.module.ts: +CareLogModule, +CareLogService, +MatDialogModule (the last one already added
     in T2.10e for the identification-upload dialog)
   - `ng build` + `ng lint` both clean
+- T3.4 Backend: actionable care plans — ROUTINE reminders + multi-step TREATMENT plans ✅
+  (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-18)
+  - Migration 012_add_treatment_plans.sql: new `treatment_plans` table (title,
+    source_care_card_type, diagram_format, diagram_content, status); `reminders` gains
+    `recurring` (default true), `treatment_plan_id` (FK, ON DELETE CASCADE),
+    `treatment_plan_title` (denormalized — avoids a join on every reminder-list fetch),
+    `step_order`
+  - `CareType` expanded from 4 values to mirror `CareCardType`'s 10 (WATERING, LIGHT, HUMIDITY,
+    TEMPERATURE, FERTILIZING, REPOTTING, PRUNING, PEST, SEASONAL, BEGINNER_TIP) — additive,
+    existing rows unaffected
+  - New `TreatmentPlan` entity + `TreatmentPlanStatus` (ACTIVE|COMPLETED|ABANDONED) — does NOT
+    extend AuditableEntity, same pattern as `Reminder`. Treatment steps are one-time `Reminder`
+    rows (`recurring=false`), NOT a parallel entity.
+  - **Unified completion logic** (the actual bug found while designing this): `ReminderService.
+    completeReminder()` and `CareLogService.logCare()` were two independent "log + reschedule"
+    code paths. Replaced both with one `ReminderService.applyCompletionToReminder(reminder,
+    performedAt)`: recurring → reschedules nextDueAt (old behaviour, unchanged); one-time →
+    disables, and if it was the treatment plan's last enabled step
+    (`ReminderRepository.findByTreatmentPlanIdAndEnabledTrue` returns empty after disabling),
+    flips the plan to COMPLETED. `CareLogServiceImpl.logCare()` no longer touches
+    `reminderRepository.save()` itself — pure delegation.
+  - New `com.plantpal.identification.dto`: `ActionPlanDto` (type ROUTINE|TREATMENT,
+    frequencyDays, steps, diagram), `TreatmentStepDto` (order, instruction, dueOffsetDays),
+    `DiagramDto` (format — only "MERMAID" supported, content). `CareCardDto.actionPlan` added
+    (nullable — most cards stay informational-only).
+  - New `ActionPlanValidator.normalize()` (identification/util/) — the single choke-point every
+    AI-sourced action plan passes through before touching the DB: never throws, degrades to
+    null on anything malformed. ROUTINE: frequencyDays must be 1-365 or the whole plan is
+    rejected (null). TREATMENT: steps must be non-empty; truncated to first 10 (WARN logged);
+    each step's dueOffsetDays clamped to 0-180; **order is always re-numbered 1..N from scratch
+    — the AI's own order values are ignored entirely**, guaranteeing no gaps/dupes/out-of-
+    sequence regardless of what the model returns. Diagram kept only if format
+    equalsIgnoreCase "MERMAID" AND content non-blank AND ≤2000 chars, else just the diagram is
+    nulled (rest of the TREATMENT plan stays valid).
+  - `GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT` and `DeepSeekClient.
+    CARE_PLAN_SYSTEM_PROMPT` both updated with the same actionPlan schema addition per care
+    card (kept in sync — both feed the same `parseCarePlan()`), plus the "only TREATMENT for
+    3+ distinct actions" / "only diagram when there's real branching logic" guidance.
+  - `DeepSeekClient.generateCureAdvice()`: response_format changed to `json_object`; new
+    `CURE_ADVICE_SYSTEM_PROMPT` requests `{advice, actionPlan}` instead of plain text.
+    `IdentificationServiceImpl.parseCureAdvice()` parses via an internal `CureAdviceJson`
+    holder class; **on JSON parse failure, falls back to treating the entire raw string as
+    `advice` with `actionPlan=null`** — this is why the pre-existing CureAdvice unit tests
+    (which mock plain-text responses) kept passing unmodified: plain text is simply invalid
+    JSON, so it naturally exercises the fallback path. `CureAdviceResponse` gained
+    `actionPlan`.
+  - `AddCareCardRequest` gained an optional `actionPlan` field; `IdentificationServiceImpl.
+    addCareCard()` re-validates it through `ActionPlanValidator.normalize()` before attaching
+    — never trusts a client-supplied DTO without re-validating server-side, since this is the
+    one action-plan entry point that isn't AI-generated in the same request.
+  - New `TreatmentPlanService`/`Impl`: `createFromActionPlan(plantId, userId, title,
+    sourceCareCardType, actionPlan)` — rejects non-TREATMENT or empty-steps plans
+    (ValidationException), ownership-checks the plant, parses `sourceCareCardType` into a
+    `CareType` (ValidationException if missing/unrecognised), creates the `TreatmentPlan` row,
+    then one `Reminder` per step (`nextDueAt = now + dueOffsetDays`). `getTreatmentPlan(id,
+    userId)` — ownership-checked, returns ALL steps via the new
+    `ReminderRepository.findByTreatmentPlanIdOrderByStepOrder` (deliberately not the
+    enabled-only query — the detail view needs completed steps too).
+  - New `TreatmentPlanController`: `POST /api/v1/treatment-plans` (201), `GET
+    /api/v1/treatment-plans/{id}`. Both auto-protected by the existing `anyRequest()` security
+    rule — no SecurityConfig change needed.
+  - 39 new/updated unit tests: `ActionPlanValidatorTest` (21 — every clamp/reject/boundary
+    case, the highest-value test in this task), `TreatmentPlanServiceTest` (10),
+    `ReminderServiceTest` `ApplyCompletionToReminder` nested class (4: recurring reschedules,
+    one-time disables, last-step completes the plan, non-last-step leaves it ACTIVE),
+    `CareLogServiceTest` updated (verifies `logCare()` delegates to `applyCompletionToReminder`
+    and no longer duplicates rescheduling logic itself). Full backend suite: **132/132
+    passing**, checkstyle clean.
+  - Frontend (T3.5) appears partially underway on the same branch (untracked
+    `set-reminder-dialog.component.*`, `treatment-plan.model.ts`, `treatment-plan.service.ts`,
+    `shared/components/mermaid-diagram/`, plus modified care-card/disease-detail-panel files)
+    from a separate session — not verified or touched in this backend session.
+- T3.5 Frontend: actionable care plans UI — Mermaid diagrams, "Set reminder" / "Start treatment
+  plan" ✅ (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-18)
+  - `npm install mermaid` (official package, ESM) — dynamically `import('mermaid')`'d only inside
+    `MermaidDiagramComponent`, so mermaid's own internal per-diagram-type chunks (flowchart, gantt,
+    sequence, etc. — it code-splits itself) never touch the initial bundle, only load the first
+    time a diagram actually renders. Confirmed via `ng build`: initial bundle size unchanged.
+  - `identification.model.ts`: +`ActionPlanDto`/`TreatmentStepDto`/`DiagramDto`,
+    +`CareCardDto.actionPlan` — mirrors the backend DTOs from T3.4 field-for-field
+  - `identification.service.ts`: `getCureAdvice()` now returns `{advice, actionPlan}` (was
+    `Observable<string>`); `addCareCard()` gained an optional `actionPlan` param sent in the body
+  - **`reminder.model.ts`: `CareType` widened from 4 values to the same 10 as `CareCardType`** —
+    found mid-session by reading T3.4's STATE.md entry (not assumed), since the backend already
+    expanded `CareType` to mirror `CareCardType`. Without this, a ROUTINE actionPlan on a
+    LIGHT/HUMIDITY/TEMPERATURE/PEST/SEASONAL/BEGINNER_TIP card couldn't type-check against
+    `createReminder()`'s `careType` param. Propagated the same 4→10 fix to `dashboard.model.ts`'s
+    separate `CareType` duplicate — it would have compiled fine either way but silently shown no
+    icon for any reminder summary carrying one of the 6 new types. New
+    `reminder/models/care-icon.util.ts` (one `CARE_ICONS` map + `careIcon()` fn) replaces four
+    independently hand-maintained copies of the same Record (reminder-list, care-calendar,
+    care-log, dashboard) — dashboard kept its own copy since it's a separate lazy module with no
+    existing dependency on `reminder/`, not worth adding one just for an icon map.
+  - `ReminderResponse` also gained `treatmentPlanId`/`treatmentPlanTitle`/`stepOrder`/`recurring`
+    (matches the backend's `reminders` table additions) plus two fields **not confirmed against an
+    actual backend DTO field list** — flagged below.
+  - `reminder.service.ts`: removed the old `completeReminder()` (`POST /reminders/{id}/complete` —
+    never matched a real backend route) and replaced with `markCareDone(reminderId)` →
+    `POST /api/v1/care/done` with `{reminderId}` body — matches the real `CareLogController`
+    endpoint from T3.1. `reminder-list.component.ts`'s mark-done button now calls this.
+  - New `reminder/services/treatment-plan.service.ts`: `createFromActionPlan()` → POST
+    `/api/v1/treatment-plans`, `getTreatmentPlan(id)` → GET `/api/v1/treatment-plans/{id}` —
+    matches `TreatmentPlanController` from T3.4 exactly (path, both DTO shapes)
+  - New `shared/components/mermaid-diagram/` (declared+exported in `SharedModule`, not lazy):
+    `mermaid.initialize()` called once via a module-level boolean guard (not per-instance) with
+    `theme: 'base'` + the app's forest-green `themeVariables`; renders via
+    `mermaid.render(uniqueId, definition)` in a try/catch; success → SVG string through
+    `DomSanitizer.bypassSecurityTrustHtml()` (safe — SVG comes from mermaid's own renderer, not
+    raw AI text) into `[innerHTML]`; failure (malformed AI-generated mermaid syntax) → renders
+    nothing at all, no error UI, host collapses to 0 height — diagrams are always a bonus on top
+    of the step list, never required reading.
+  - `care-card.component.ts/html`: new action row behind a thin divider, only rendered when
+    `card.actionPlan` is non-null AND a real `plantId` is available (nullable — see below).
+    ROUTINE → outlined "Set reminder" opens new `SetReminderDialogComponent` (~360px MatDialog,
+    frequency pre-filled from `actionPlan.frequencyDays`) → `ReminderService.createReminder()`;
+    success swaps the button to a disabled "Reminder set" state (mirrors disease-detail-panel's
+    existing "Added to care plan" pattern — not a new visual language). New `@Input()
+    existingCareTypes: CareType[]` — if the plant already has an enabled reminder of this exact
+    careType, skips straight to the disabled "Reminder set" state so users aren't invited to
+    create a duplicate. TREATMENT → filled "Start treatment plan" calls `TreatmentPlanService.
+    createFromActionPlan()` directly (no dialog); spinner + "Starting…" while in flight; success →
+    snackbar ("Treatment plan started" + "View" action → `/treatment-plans/{id}`) and the button
+    becomes a disabled "Plan in progress" state.
+  - `care-plan.component.ts/html` gained `@Input() plantId: number | null` + `@Input()
+    existingCareTypes`, passed straight through to every `app-care-card`. **`plantId` is
+    nullable** because `<app-care-plan>` is also used in `preview-card` before a plant exists
+    (wired to `result.plantId`, non-null only if the user linked an existing plant during upload)
+    — the action row simply doesn't render when `plantId` is null. `plant-detail.component.ts`
+    now also calls `ReminderService.getReminders()` and filters to this plant's enabled care
+    types for `existingCareTypes`.
+  - `disease-detail-panel.component.ts/html` gained the same `[plantId]` input (from `plant.id` in
+    plant-detail, `result.plantId` in identification-preview-section) and a second "Start
+    treatment plan" button beside "Add to care plan" — shown only when `askForCure()`'s response
+    includes a TREATMENT actionPlan; the common case (null or ROUTINE) is visually unchanged from
+    before this session.
+  - New `reminder/pages/treatment-plan-detail/` — route `/treatment-plans/:id`. Header (back via
+    `Location.back()`, not a fixed routerLink, since this page is reachable from three different
+    places: a care-card snackbar, a disease-panel snackbar, or a reminder-list chip) + status chip
+    (Active/Completed/Abandoned) + "N of M steps complete" progress line + optional "How this
+    works" `<app-mermaid-diagram>` card (only if `diagramContent` is present) + a numbered-circle
+    vertical step timeline (same connecting-line visual language as `care-log`'s timeline) with a
+    compact "Mark done" per pending step → `markCareDone()` → refetches the whole plan so the
+    progress line and status chip update together — no separate completion endpoint needed.
+  - **Routing restructure — read before touching reminder routes again:** `/treatment-plans/:id`
+    needed to be a clean top-level URL, not nested under `/reminders`. Rather than mount
+    `ReminderModule` twice, `app-routing.module.ts`'s `reminders` entry changed from
+    `path: 'reminders'` to `path: ''` (commented), and `reminder-routing.module.ts` now defines
+    `'reminders'` and `'treatment-plans/:id'` as sibling routes under that empty mount.
+    `canActivate: [AuthGuard]` still guards the whole subtree regardless of the empty path. There
+    are now two `path: ''` entries in `app-routing.module.ts` — intentional, not a bug; array
+    order is what makes both work (the pre-existing auth-module catch-all stays last).
+  - `reminder-list.component.html`: rows where `reminder.treatmentPlanId` is set show a small
+    clickable `medical_services` chip ("Step N · {{ treatmentPlanTitle }}", routerLink to the
+    detail page, `stopPropagation()` so it doesn't also trigger the row's `/plants/:id`
+    navigation) instead of the plain `{{ careType | titlecase }}` text.
+  - `ng build` (dev + prod) and `ng lint` all clean. Production build also confirms
+    `ngsw.json`/service-worker generation still succeeds with mermaid in the dependency graph.
+
+  **Known gaps — flag for the next backend or frontend pass:**
+  - "Plan in progress" / "Reminder set" button states are session-only component booleans, not
+    derived from anything persisted on `CareCardDto` — a page refresh re-shows the actionable
+    button even after a plan/reminder was already created from that exact card. Lowest-risk fix:
+    a `CareCardDto.actionTaken` boolean from the backend, set once something has actually been
+    created from that specific card.
+  - `ReminderResponse.instruction` and `.completedAt` are frontend-invented fields, not confirmed
+    against an actual backend DTO field list (T3.4's STATE.md entry didn't enumerate
+    `ReminderResponse`'s/`ReminderSummaryDto`'s full shape). **Verify these serialize once backend
+    is live** — without `instruction` the treatment-plan step list falls back to the bare careType
+    label; without `completedAt` a completed step's date line is blank.
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
@@ -258,42 +428,21 @@ Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 done, T3.3 manual/device
 - chatfix — T4.1 + T2.E complete, merged ✅
 - feature/PP-020-garden-dashboard — T2.10a-d + T2.10e + T2.11 complete, 3 commits ✅ (Phase 2 done;
   open PR or merge to dev)
-- feature/PP-011-reminder-module (current) — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual
-  testing remaining before merge)
+- feature/PP-011-reminder-module — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual testing
+  remaining before merge)
+- feature/PP-028-actionable-care-plans-2 (current) — T3.4 backend + T3.5 frontend both complete
+  this session, `ng build`/`ng lint` clean (frontend) — **still uncommitted, see `git status`**
 
 ## Next Tasks (in order)
-- T3.4 — Backend: actionable care plans (ROUTINE reminders + multi-step TREATMENT plans with
-  optional Mermaid diagrams) ← NEXT — full Claude Code prompt in TASK_PLAN.md
-- T3.5 — Frontend: actionable care plans UI (same branch as T3.4)
+- Commit T3.4 + T3.5 on feature/PP-028-actionable-care-plans-2 (currently uncommitted — see
+  `git status` for the full file list), then open a PR / merge to dev
+- Verify the two flagged frontend-invented `ReminderResponse` fields (`instruction`,
+  `completedAt`) actually serialize from the real backend once running end-to-end — see the
+  "Known gaps" note under T3.5 above
 - T3.3 — Manual testing — Phase 3 (now also covers T3.4/T3.5 flows; still needs a human with a
   phone for the push/PWA checks)
 - T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
 - Phase 5 — Launch prep not started
-
-## T3.4/T3.5 — Actionable care plans (planned 2026-06-18, not yet implemented)
-Branch: `feature/PP-028-actionable-care-plans`. Design decided this session — see TASK_PLAN.md
-for the full prompts. Key points to remember when implementing or resuming:
-- A care card's action is either ROUTINE (recurring, just a frequency) or TREATMENT (finite
-  ordered steps, optional single Mermaid diagram for the whole sequence). No third shape —
-  anything that doesn't fit cleanly stays informational-only (no action buttons), by design.
-- Treatment steps are modelled as one-time `Reminder` rows (new `recurring`/`treatmentPlanId`/
-  `treatmentPlanTitle`/`stepOrder` columns, migration 012), NOT a parallel entity. One new
-  lightweight `TreatmentPlan` entity holds the title/diagram/status.
-- `CareType` enum expands from 4 values to mirror `CareCardType`'s 10 — additive, no migration
-  needed for existing rows.
-- ALL AI-sourced action plans (main care-plan generation AND restructured cure-advice) pass
-  through one `ActionPlanValidator.normalize()` choke-point before touching the DB or the
-  frontend — never throws, degrades to null (purely informational) on anything malformed/
-  out-of-range. This is the direct answer to "handle all varieties of AI answers."
-- Mermaid only, not raw SVG — the AI produces mermaid DSL text, `mermaid.js` renders it
-  client-side, so a malformed diagram just silently fails to render instead of risking broken/
-  unsafe markup reaching the DOM.
-- Found and fixed while designing: `ReminderService.completeReminder()` and
-  `CareLogService.logCare()` were two independent code paths both doing "log + reschedule" —
-  unified via a new shared `applyCompletionToReminder()` so the new recurring/one-time branch
-  only has to be written once.
-- `generateCureAdvice()` moves from plain-text response to JSON (`{advice, actionPlan}`) — this
-  is a deliberate evolution of T2.9d, kept backward-compatible by always populating `advice`.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -450,6 +599,20 @@ for the full prompts. Key points to remember when implementing or resuming:
 - **T2.F (accepted):** Record sourceImageWidth + sourceImageHeight on Identification entity after resize.
   Include in IdentificationResponse. Frontend shows "⚠ Annotation may be misaligned" if browser
   aspect ratio drifts >2% from the AI's source aspect ratio.
+- **T3.4 (accepted):** Single ActionPlanValidator.normalize() choke-point for all AI-sourced action
+  plans (ROUTINE/TREATMENT) — never throws, degrades to null on anything malformed. Reason: same
+  reliability problem as care-plan/annotation JSON parsing, now compounded by a richer nested shape
+  (steps, diagram) — one normalization point is easier to harden than validating at every call site.
+- **T3.4 (accepted):** Treatment steps modeled as one-time Reminder rows (recurring=false,
+  treatmentPlanId FK), not a parallel entity hierarchy. Reason: reuse the existing due-date/complete/
+  push-notification machinery instead of duplicating it for a second "kind" of schedulable item.
+- **T3.4 (accepted):** Unified completion logic — ReminderService.applyCompletionToReminder() is now
+  the only place "mark done" logic lives; both completeReminder() and CareLogService.logCare()
+  delegate to it. Reason: found two independent reimplementations of the same reschedule logic while
+  designing treatment-step completion; fixed instead of adding a third.
+- **T3.5 (accepted):** Mermaid DSL (client-rendered) over raw AI-generated SVG for diagrams. Reason:
+  Mermaid's renderer only ever emits valid SVG from valid-or-rejected DSL text; trusting raw
+  AI-generated SVG markup directly would be an XSS-shaped risk for no real benefit.
 
 ## DB Migration Sequence
 001_create_users.sql              ✅
@@ -463,6 +626,7 @@ for the full prompts. Key points to remember when implementing or resuming:
 009_add_health_to_identifications.sql ✅ — health_status VARCHAR(30), health_notes TEXT
 010_add_user_preferences.sql          ✅ AddChooseAi — ai_model_preference VARCHAR(50) on users
 011_add_image_dimensions.sql          ✅ T2.F — source_image_width INT, source_image_height INT on identifications
+012_add_treatment_plans.sql           ✅ T3.4 — treatment_plans table; reminders gains recurring/treatment_plan_id/treatment_plan_title/step_order
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.

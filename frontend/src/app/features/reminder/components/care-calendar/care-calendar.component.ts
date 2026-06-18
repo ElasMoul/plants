@@ -1,5 +1,6 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CareType, ReminderResponse } from '../../models/reminder.model';
+import { careIcon as getCareIcon } from '../../models/care-icon.util';
 
 interface CalendarDay {
   date: Date;
@@ -8,13 +9,6 @@ interface CalendarDay {
   isToday: boolean;
   reminders: ReminderResponse[];
 }
-
-const CARE_ICONS: Record<CareType, string> = {
-  WATERING: 'water_drop',
-  FERTILIZING: 'eco',
-  REPOTTING: 'yard',
-  PRUNING: 'yard',
-};
 
 const DAYS_IN_WEEK = 7;
 
@@ -35,7 +29,7 @@ export class CareCalendarComponent implements OnChanges {
   }
 
   careIcon(careType: CareType): string {
-    return CARE_ICONS[careType];
+    return getCareIcon(careType);
   }
 
   private buildDays(): void {

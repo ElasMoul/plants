@@ -25,15 +25,17 @@ RxJS, ReactiveFormsModule
 - All requests proxied via proxy.conf.json (/api → localhost:8080)
 
 ## Module Structure
-core/         — auth service, JWT interceptor, auth guard, models
-shared/       — reusable components, directives, pipes
+core/         — auth service, JWT interceptor, auth guard, models, push-notification.service
+shared/       — reusable components (model-selector, mermaid-diagram), constants
 features/
   auth/       — login, register ✅
-  plant/      — plant list, form, detail ✅
-  identification/ — photo upload, results (in progress)
-  reminder/   — care schedule (not started)
-  chat/       — AI chat (not started)
+  plant/      — plant list, form, detail (+ photo timeline, care log, care plan) ✅
+  identification/ — photo upload, results, care plan + actionable cards, disease detail ✅
+  reminder/   — list, calendar, create dialog, care log, treatment plans ✅
+  dashboard/  — garden health landing page (/dashboard) ✅
+  chat/       — basic single-turn chat, wired to backend ✅ (Phase 4 polish not started)
 layout/       — shell, navbar
+(ai-test/ removed in T4.1 — was a dev-only scratch page)
 
 ## API Contract
 Backend base URL proxied to localhost:8080.
@@ -63,6 +65,11 @@ See .claude/STATE.md for completed tasks and active branches.
 - plant/components/plant-list/plant-list.component.ts — CONVENTION NOTE: no takeUntil/ngOnDestroy on subscriptions (HTTP so no real leak, but violates rule)
 
 ### Feature module inventory
+> ⚠️ This table reflects the ORIGINAL session (2026-06-14). Badly stale — kept for history only.
+> For current status, read STATE.md's "Completed Tasks" list top to bottom; everything through
+> T3.5 is done as of 2026-06-18. Quick summary: auth/plant/identification/reminder/dashboard are
+> all fully built; chat/ has basic single-turn working (Phase 4 polish not started); ai-test/ was
+> deleted in T4.1.
 | Module | Files present | Real implementation |
 |---|---|---|
 | auth/ | login, register components + routing + module | ✅ Full |
@@ -258,6 +265,90 @@ confirmed via `ng build` output). That's an expected trade-off of the cross-modu
 **Architecture note:** landed on the same branch as T3.1 (`feature/PP-011-reminder-module`) rather
 than the separate `feature/PP-012-reminder-frontend` the original plan named — backend and frontend
 shipped together in one PR.
+
+### T3.5 — Actionable care plans UI: Mermaid diagrams + "Set reminder" / "Start treatment plan" ✅
+(Complete 2026-06-18, branch: feature/PP-028-actionable-care-plans-2 — same branch as T3.4 backend)
+
+**Files added:**
+- `shared/components/mermaid-diagram/` — `MermaidDiagramComponent`, declared+exported from
+  `SharedModule` (not lazy, since both `identification` and `reminder` feature modules need it).
+  Dynamically `import('mermaid')`s itself so the package's own internal per-diagram-type chunks
+  never touch the initial bundle.
+- `identification/components/care-plan/set-reminder-dialog.component.{ts,html,scss}` — small
+  ~360px MatDialog, ReactiveForms (FormBuilder, matches `create-reminder-form`'s pattern, not
+  ngModel), declared in `CarePlanModule` (not exported — only ever opened programmatically)
+- `reminder/services/treatment-plan.service.ts` + `reminder/models/treatment-plan.model.ts` —
+  `createFromActionPlan()` → POST `/api/v1/treatment-plans`, `getTreatmentPlan(id)` → GET
+  `/api/v1/treatment-plans/{id}`
+- `reminder/models/care-icon.util.ts` — single shared `CARE_ICONS` Record + `careIcon()` fn,
+  replacing four previously-independent copies (reminder-list, care-calendar, care-log; dashboard
+  intentionally kept its own — see below)
+- `reminder/pages/treatment-plan-detail/` — route `/treatment-plans/:id`; numbered-circle step
+  timeline (same visual language as `care-log`'s timeline), optional Mermaid "How this works"
+  card, status chip, progress line, compact per-step "Mark done"
+
+**Files changed:**
+- `identification/models/identification.model.ts` — `ActionPlanDto`/`TreatmentStepDto`/
+  `DiagramDto`, `CareCardDto.actionPlan` (mirrors backend T3.4 DTOs field-for-field)
+- `identification/services/identification.service.ts` — `getCureAdvice()` return type changed
+  `Observable<string>` → `Observable<{advice, actionPlan}>`; `addCareCard()` gained an optional
+  `actionPlan` param
+- `identification/components/care-plan/care-card.component.{ts,html,scss}` — new action row
+  (ROUTINE → dialog → `ReminderService.createReminder()`; TREATMENT → direct
+  `TreatmentPlanService.createFromActionPlan()` call), new `@Input() plantId: number | null` +
+  `@Input() existingCareTypes: CareType[]`
+- `identification/components/care-plan/care-plan.component.{ts,html}` — passes `plantId` +
+  `existingCareTypes` through to every card
+- `identification/components/care-plan/care-plan.module.ts` — +`SetReminderDialogComponent`,
+  +`ReactiveFormsModule`, +`MatDialogModule`, +`MatFormFieldModule`, +`MatInputModule`
+- `identification/components/disease-detail-panel/disease-detail-panel.component.{ts,html,scss}`
+  — second "Start treatment plan" button (only when advice's actionPlan is TREATMENT), new
+  `@Input() plantId: number | null`
+- `identification/identification.module.ts` + `plant/plant.module.ts` — both now also provide
+  `ReminderService` + `TreatmentPlanService` (CareCardComponent/DiseaseDetailPanelComponent live
+  in the shared `CarePlanModule` but their providers come from whichever feature module hosts them
+  — same pattern already established for `IdentificationService`/`CareLogService`)
+- `plant/components/plant-detail/plant-detail.component.{ts,html}` — fetches
+  `ReminderService.getReminders()`, filters to this plant's enabled care types for
+  `existingCareTypes`; passes `[plantId]`/`[existingCareTypes]` to `<app-care-plan>` and
+  `[plantId]` to `<app-disease-detail-panel>`
+- `reminder/models/reminder.model.ts` — **`CareType` widened 4 → 10 values** (now mirrors
+  `CareCardType` exactly — confirmed against the backend's T3.4 STATE.md entry mid-session, not
+  assumed); `ReminderResponse` gained `treatmentPlanId`/`treatmentPlanTitle`/`stepOrder`/
+  `recurring` (confirmed against backend) + `instruction`/`completedAt` (**frontend-invented,
+  unconfirmed** — see STATE.md's "Known gaps" note under T3.5)
+- `reminder/services/reminder.service.ts` — `completeReminder()` (POST `/reminders/{id}/complete`,
+  never matched a real route) replaced with `markCareDone(reminderId)` → POST `/api/v1/care/done`
+  `{reminderId}` — the actual `CareLogController` endpoint from T3.1
+- `reminder/reminder-list/reminder-list.component.{ts,html,scss}` — mark-done button now calls
+  `markCareDone()`; rows with `treatmentPlanId` show a clickable "Step N · Plan Title" chip
+  instead of the plain careType text
+- `reminder/reminder-routing.module.ts` + `app-routing.module.ts` — **routing restructure**, see
+  STATE.md's T3.5 entry for the full reasoning. Short version: `ReminderModule` now mounts at
+  `path: ''` instead of `path: 'reminders'` so its own routing module can define `'reminders'`
+  and `'treatment-plans/:id'` as siblings, giving the latter a clean top-level URL instead of
+  `/reminders/treatment-plans/:id`.
+- `reminder/reminder.module.ts` — +`TreatmentPlanDetailComponent`, +`TreatmentPlanService`
+- `dashboard/models/dashboard.model.ts` + `garden-dashboard.component.ts` — same `CareType` 4→10
+  widening propagated here too, since it had its own independent duplicate of the type
+
+**Architecture notes:**
+- **`plantId` is nullable on both `CarePlanComponent`/`CareCardComponent` and
+  `DiseaseDetailPanelComponent`** — `<app-care-plan>`/`<app-disease-detail-panel>` are used in
+  `preview-card`/`identification-preview-section` before a plant necessarily exists yet (wired to
+  `result.plantId`, which actually IS non-null if the user linked an existing plant during
+  upload). The action row/treatment button simply don't render when `plantId` is null — no
+  separate "no plant" empty state needed.
+- `MermaidDiagramComponent` calls `mermaid.initialize()` exactly once via a module-level boolean
+  guard (not in the constructor unconditionally) — calling it on every component instantiation
+  would silently no-op on the 2nd+ call anyway, but the guard makes the intent explicit.
+- Button success states (`reminderSet`, `treatmentStarted`) are plain component booleans, not
+  derived from any persisted backend flag — see STATE.md's "Known gaps" note for the page-refresh
+  caveat this creates.
+- `Location.back()` (not a fixed `routerLink`) for the treatment-plan-detail page's back button —
+  deliberately different from `plant-detail`'s hero-back (`routerLink="/plants"`), because this
+  page is reachable from three unrelated places (care-card snackbar, disease-panel snackbar,
+  reminder-list chip) with no single correct "back" destination.
 
 ### Next tasks (in order)
 - T3.3 — Manual testing on a real device (push notification delivery, PWA installability, offline

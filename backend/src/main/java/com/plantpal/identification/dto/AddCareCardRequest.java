@@ -17,4 +17,6 @@ public class AddCareCardRequest {
   @NotBlank private String regionLabel;
 
   @NotBlank private String adviceText;
+
+  private ActionPlanDto actionPlan;
 }

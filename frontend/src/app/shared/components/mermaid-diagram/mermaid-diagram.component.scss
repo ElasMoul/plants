@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+
+.mermaid-card {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.mermaid-content {
+  display: flex;
+  justify-content: center;
+
+  ::ng-deep svg {
+    max-width: 100%;
+    height: auto;
+  }
+}

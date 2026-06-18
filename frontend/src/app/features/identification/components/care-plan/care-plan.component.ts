@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CarePlanDto, CareCardDto } from '../../models/identification.model';
+import { CareType } from '../../../reminder/models/reminder.model';
 
 @Component({
   selector: 'app-care-plan',
@@ -9,6 +10,8 @@ import { CarePlanDto, CareCardDto } from '../../models/identification.model';
 export class CarePlanComponent {
   @Input() carePlan: CarePlanDto | null = null;
   @Input() maxCards: number | null = null;
+  @Input() plantId: number | null = null;
+  @Input() existingCareTypes: CareType[] = [];
 
   readonly skeletonCards = [1, 2, 3];
 

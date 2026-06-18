@@ -22,5 +22,44 @@
       <mat-icon>calendar_month</mat-icon>
       <span>{{ card.seasonalVariation }}</span>
     </div>
+
+    <!-- Action row — only when this card has an actionPlan and a real plant to attach to -->
+    <ng-container *ngIf="plantId !== null && card.actionPlan as plan">
+      <mat-divider class="action-divider"></mat-divider>
+
+      <div class="action-row" *ngIf="plan.type === 'ROUTINE'">
+        <button
+          mat-stroked-button
+          type="button"
+          class="btn-pill"
+          [class.reminder-already-set]="reminderAlreadyExisted"
+          [disabled]="reminderSet || settingReminder"
+          (click)="openReminderDialog($event)"
+        >
+          <mat-icon>{{ reminderSet ? 'check' : 'notifications_active' }}</mat-icon>
+          {{ reminderSet ? 'Reminder set' : (settingReminder ? 'Setting…' : 'Set reminder') }}
+        </button>
+      </div>
+
+      <div class="action-row" *ngIf="plan.type === 'TREATMENT'">
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          class="btn-pill"
+          [disabled]="startingTreatment || treatmentStarted"
+          (click)="startTreatmentPlan($event)"
+        >
+          <mat-progress-spinner
+            *ngIf="startingTreatment"
+            diameter="16"
+            mode="indeterminate"
+            class="btn-spinner"
+          ></mat-progress-spinner>
+          <mat-icon *ngIf="!startingTreatment">medical_services</mat-icon>
+          {{ treatmentStarted ? 'Plan in progress' : (startingTreatment ? 'Starting…' : 'Start treatment plan') }}
+        </button>
+      </div>
+    </ng-container>
   </div>
 </div>

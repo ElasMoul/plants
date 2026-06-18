@@ -28,4 +28,8 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
   @Query("SELECT r FROM Reminder r WHERE r.enabled = true AND r.nextDueAt <= :now")
   List<Reminder> findAllDue(@Param("now") Instant now);
+
+  List<Reminder> findByTreatmentPlanIdAndEnabledTrue(Long treatmentPlanId);
+
+  List<Reminder> findByTreatmentPlanIdOrderByStepOrder(Long treatmentPlanId);
 }

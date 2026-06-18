@@ -36,6 +36,8 @@
     <app-care-card
       *ngFor="let card of visibleCards"
       [card]="card"
+      [plantId]="plantId"
+      [existingCareTypes]="existingCareTypes"
     ></app-care-card>
   </div>
 

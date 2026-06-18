@@ -14,8 +14,11 @@ import com.plantpal.reminder.dto.ReminderResponse;
 import com.plantpal.reminder.entity.CareLog;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
+import com.plantpal.reminder.entity.TreatmentPlan;
+import com.plantpal.reminder.entity.TreatmentPlanStatus;
 import com.plantpal.reminder.repository.CareLogRepository;
 import com.plantpal.reminder.repository.ReminderRepository;
+import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.impl.ReminderServiceImpl;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import java.time.Instant;
@@ -42,6 +45,7 @@ class ReminderServiceTest {
   @Mock private ReminderRepository reminderRepository;
   @Mock private PlantRepository plantRepository;
   @Mock private CareLogRepository careLogRepository;
+  @Mock private TreatmentPlanRepository treatmentPlanRepository;
 
   private ReminderServiceImpl reminderService;
 
@@ -51,7 +55,8 @@ class ReminderServiceTest {
   @BeforeEach
   void setUp() {
     reminderService =
-        new ReminderServiceImpl(reminderRepository, plantRepository, careLogRepository);
+        new ReminderServiceImpl(
+            reminderRepository, plantRepository, careLogRepository, treatmentPlanRepository);
   }
 
   private Plant plant() {
@@ -248,6 +253,110 @@ class ReminderServiceTest {
       Instant nextDueAt = reminderService.calculateNextDueAt(lastDone, 0);
 
       assertThat(nextDueAt).isEqualTo(lastDone);
+    }
+  }
+
+  @Nested
+  @DisplayName("applyCompletionToReminder()")
+  class ApplyCompletionToReminder {
+
+    @Test
+    @DisplayName("should reschedule nextDueAt and leave a recurring reminder enabled")
+    void shouldRescheduleRecurringReminder() {
+      Reminder reminder =
+          Reminder.builder()
+              .id(1L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .careType(CareType.WATERING)
+              .frequencyDays(7)
+              .nextDueAt(Instant.parse("2026-06-18T08:00:00Z"))
+              .enabled(true)
+              .recurring(true)
+              .build();
+      Instant performedAt = Instant.parse("2026-06-18T08:00:00Z");
+
+      reminderService.applyCompletionToReminder(reminder, performedAt);
+
+      assertThat(reminder.isEnabled()).isTrue();
+      assertThat(reminder.getNextDueAt()).isEqualTo(performedAt.plus(7, ChronoUnit.DAYS));
+      verify(reminderRepository).save(reminder);
+      verify(treatmentPlanRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("should disable a one-time reminder without touching a treatment plan")
+    void shouldDisableOneTimeReminderWithNoPlan() {
+      Reminder reminder =
+          Reminder.builder()
+              .id(1L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .careType(CareType.PEST)
+              .enabled(true)
+              .recurring(false)
+              .build();
+
+      reminderService.applyCompletionToReminder(reminder, Instant.now());
+
+      assertThat(reminder.isEnabled()).isFalse();
+      verify(reminderRepository).save(reminder);
+      verify(treatmentPlanRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("should mark the treatment plan COMPLETED when the last step is finished")
+    void shouldCompleteTreatmentPlanOnLastStep() {
+      Reminder lastStep =
+          Reminder.builder()
+              .id(1L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .careType(CareType.PEST)
+              .enabled(true)
+              .recurring(false)
+              .treatmentPlanId(50L)
+              .stepOrder(3)
+              .build();
+      TreatmentPlan plan =
+          TreatmentPlan.builder().id(50L).status(TreatmentPlanStatus.ACTIVE).build();
+
+      when(reminderRepository.findByTreatmentPlanIdAndEnabledTrue(50L)).thenReturn(List.of());
+      when(treatmentPlanRepository.findById(50L)).thenReturn(Optional.of(plan));
+
+      reminderService.applyCompletionToReminder(lastStep, Instant.now());
+
+      assertThat(lastStep.isEnabled()).isFalse();
+      ArgumentCaptor<TreatmentPlan> planCaptor = ArgumentCaptor.forClass(TreatmentPlan.class);
+      verify(treatmentPlanRepository).save(planCaptor.capture());
+      assertThat(planCaptor.getValue().getStatus()).isEqualTo(TreatmentPlanStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("should leave the treatment plan ACTIVE when steps remain")
+    void shouldLeavePlanActiveWhenStepsRemain() {
+      Reminder step =
+          Reminder.builder()
+              .id(1L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .careType(CareType.PEST)
+              .enabled(true)
+              .recurring(false)
+              .treatmentPlanId(50L)
+              .stepOrder(1)
+              .build();
+      Reminder remainingStep =
+          Reminder.builder().id(2L).treatmentPlanId(50L).stepOrder(2).enabled(true).build();
+
+      when(reminderRepository.findByTreatmentPlanIdAndEnabledTrue(50L))
+          .thenReturn(List.of(remainingStep));
+
+      reminderService.applyCompletionToReminder(step, Instant.now());
+
+      assertThat(step.isEnabled()).isFalse();
+      verify(treatmentPlanRepository, never()).findById(any());
+      verify(treatmentPlanRepository, never()).save(any());
     }
   }
 }

@@ -22,8 +22,23 @@ public class DeepSeekClient {
   static final String CURE_ADVICE_SYSTEM_PROMPT =
       """
       You are a plant pathologist. Answer in plain English for a beginner gardener.
-      Be direct and practical. Do NOT use markdown. No headers, no bullet symbols — write
-      numbered steps as plain text: '1. Remove affected leaves. 2. Apply neem oil...'
+      Be direct and practical. Return ONLY valid JSON (no markdown, no preamble):
+
+      {
+        "advice": "<plain text, numbered steps as plain text — no markdown, no headers, no bullet"
+                   + " symbols: '1. Remove affected leaves. 2. Apply neem oil...'>",
+        "actionPlan": {
+          "type": "ROUTINE | TREATMENT | null — null if this is a single one-off tip",
+          "frequencyDays": "<int, ROUTINE only>",
+          "steps": [ { "order": <int>, "instruction": "<string>", "dueOffsetDays": <int> } ],
+          "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
+        }
+      }
+
+      Only set actionPlan.type=TREATMENT for genuinely multi-step processes (3+ distinct actions
+      over time) — a single one-off tip should have actionPlan: null.
+      Only include a diagram when the steps have real branching/decision logic worth visualising
+      — most linear step lists do not need one.
       """;
 
   static final String CARE_PLAN_SYSTEM_PROMPT =
@@ -43,7 +58,13 @@ public class DeepSeekClient {
             "summary": "<one sentence, e.g. Water every 7 days>",
             "detail": "<2-4 sentences, plain English, no jargon>",
             "urgency": "LOW | MEDIUM | HIGH",
-            "seasonalVariation": "<what changes in winter/summer, or null>"
+            "seasonalVariation": "<what changes in winter/summer, or null>",
+            "actionPlan": {
+              "type": "ROUTINE | TREATMENT | null — null if this card is purely informational",
+              "frequencyDays": "<int, ROUTINE only>",
+              "steps": [ { "order": <int>, "instruction": "<string>", "dueOffsetDays": <int> } ],
+              "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
+            }
           }
         ],
         "beginnerWarnings": ["warning1", "warning2"]
@@ -51,6 +72,10 @@ public class DeepSeekClient {
       Include 4-8 care cards covering the most important aspects for this specific plant.
       For rare/unusual care requirements, add extra cards. Omit irrelevant types.
       Write for someone who has never owned a plant before.
+      Only set actionPlan.type=TREATMENT for genuinely multi-step processes (3+ distinct actions
+      over time) — a single one-off tip should have actionPlan: null.
+      Only include a diagram when the steps have real branching/decision logic worth visualising
+      — most linear step lists do not need one.
       """;
 
   private final RestClient restClient;
@@ -89,7 +114,9 @@ public class DeepSeekClient {
                 Map.of("role", "system", "content", CURE_ADVICE_SYSTEM_PROMPT),
                 Map.of("role", "user", "content", userMessage)),
             "temperature",
-            0.3);
+            0.3,
+            "response_format",
+            Map.of("type", "json_object"));
 
     long start = System.currentTimeMillis();
     try {

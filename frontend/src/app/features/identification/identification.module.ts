@@ -15,6 +15,8 @@ import { IdentificationPageComponent } from './pages/identification-page/identif
 import { IdentificationDetailPageComponent } from './pages/identification-detail-page/identification-detail-page.component';
 import { IdentificationService } from './services/identification.service';
 import { PlantService } from '../plant/services/plant.service';
+import { ReminderService } from '../reminder/services/reminder.service';
+import { TreatmentPlanService } from '../reminder/services/treatment-plan.service';
 
 @NgModule({
   declarations: [
@@ -38,6 +40,8 @@ import { PlantService } from '../plant/services/plant.service';
   providers: [
     IdentificationService,
     PlantService,
+    ReminderService,
+    TreatmentPlanService,
   ],
 })
 export class IdentificationModule {}

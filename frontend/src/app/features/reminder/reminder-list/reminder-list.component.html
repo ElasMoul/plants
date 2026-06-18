@@ -45,7 +45,16 @@
       <div class="reminder-body">
         <p class="reminder-plant">{{ reminder.plantNickname }}</p>
         <p class="reminder-detail">
-          {{ reminder.careType | titlecase }}
+          <ng-container *ngIf="!reminder.treatmentPlanId">{{ reminder.careType | titlecase }}</ng-container>
+          <a
+            *ngIf="reminder.treatmentPlanId"
+            class="treatment-chip"
+            [routerLink]="['/treatment-plans', reminder.treatmentPlanId]"
+            (click)="$event.stopPropagation()"
+          >
+            <mat-icon class="chip-icon">medical_services</mat-icon>
+            Step {{ reminder.stepOrder }} &middot; {{ reminder.treatmentPlanTitle }}
+          </a>
           <ng-container *ngIf="isOverdue(reminder)">
             &middot; Overdue by {{ daysOverdue(reminder) }} day{{ daysOverdue(reminder) !== 1 ? 's' : '' }}
           </ng-container>

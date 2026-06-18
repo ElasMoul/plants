@@ -6,15 +6,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ReminderService } from '../services/reminder.service';
 import { CareType, ReminderResponse } from '../models/reminder.model';
+import { careIcon as getCareIcon } from '../models/care-icon.util';
 import { PLACEHOLDER_IMAGE } from '../../../shared/constants/placeholder-image.constant';
 import { CreateReminderFormComponent } from '../components/create-reminder-form/create-reminder-form.component';
-
-const CARE_ICONS: Record<CareType, string> = {
-  WATERING: 'water_drop',
-  FERTILIZING: 'eco',
-  REPOTTING: 'yard',
-  PRUNING: 'yard',
-};
 
 @Component({
   selector: 'app-reminder-list',
@@ -48,7 +42,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
   }
 
   careIcon(careType: CareType): string {
-    return CARE_ICONS[careType];
+    return getCareIcon(careType);
   }
 
   isOverdue(reminder: ReminderResponse): boolean {
@@ -79,7 +73,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
   completeReminder(reminder: ReminderResponse, event: Event): void {
     event.stopPropagation();
     this.completingId = reminder.id;
-    this.reminderService.completeReminder(reminder.id)
+    this.reminderService.markCareDone(reminder.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => this.loadReminders(),

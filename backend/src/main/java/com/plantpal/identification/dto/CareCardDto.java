@@ -20,4 +20,5 @@ public class CareCardDto {
   private String detail;
   private String urgency;
   private String seasonalVariation;
+  private ActionPlanDto actionPlan;
 }

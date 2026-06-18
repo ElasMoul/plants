@@ -171,6 +171,31 @@
   text-overflow: ellipsis;
 }
 
+.treatment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  vertical-align: middle;
+
+  &:hover {
+    background: var(--color-success);
+  }
+
+  .chip-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    color: var(--color-primary-light);
+  }
+}
+
 .check-toggle {
   flex-shrink: 0;
   width: 32px;
