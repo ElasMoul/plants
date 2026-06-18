@@ -1,10 +1,10 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-18 (session 13)
+> Last updated: 2026-06-18 (session 14)
 
 ## Current Phase
 Phase 2 — AI Plant Identification ✅ COMPLETE
-Phase 3 — Reminders + Push Notifications (not started) ← NEXT
+Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 done, T3.3 manual/device testing remaining)
 
 ## Completed Tasks
 - T0.1 GitHub repo + branch protection ✅
@@ -208,20 +208,64 @@ Phase 3 — Reminders + Push Notifications (not started) ← NEXT
     82/82 passing. Frontend: `ng build` + `ng lint` both clean.
 - T2.11 Manual testing — Phase 2 complete ✅ — covered ad-hoc via the above session's live
   Playwright + manual verification rather than a separate checklist pass. **Phase 2 is done.**
+- T3.1 Reminder + Care Log module backend ✅ (branch: feature/PP-011-reminder-module)
+  - entity/CareLog.java, entity/PushSubscription.java — map onto the care_logs and
+    push_subscriptions tables created back in migration 004/005; no new migration needed
+  - ReminderService/Impl: createReminder (ownership-checked against Plant), getUserReminders
+    (bounded at 200 via PageRequest — not unpaged, sorted nextDueAt ascending, batch-fetches
+    plants via findAllById to avoid N+1), completeReminder (writes a CareLog + recalculates
+    nextDueAt), deleteReminder (soft — sets enabled=false, never hard-deletes),
+    calculateNextDueAt(lastDone, frequencyDays) = lastDone.plus(frequencyDays, DAYS)
+  - CareLogService/Impl: logCare(MarkCareDoneRequest, userId) — looks up the Reminder (not the
+    plant directly), writes a CareLog with the reminder's careType, recalculates the reminder's
+    nextDueAt via ReminderService.calculateNextDueAt(); getPlantCareLogs (paginated,
+    ownership-checked through the Plant)
+  - WebPushService/Impl: nl.martijndwars:web-push, VAPID keys from @Value (web-push.public-key /
+    private-key — config + .env.example already existed from T0 scaffolding, no changes needed)
+  - ReminderScheduler: @Scheduled(cron = "0 0 8 * * *"), reminderRepository.findAllDue(Instant.now)
+    groups due reminders by userId, sends ONE push per user ("You have N plants to care for
+    today") not one per reminder; Clock injected via constructor (not bare Instant.now()) for
+    testability — same pattern as T2.10b's DashboardServiceImpl
+  - ReminderController (GET/POST /api/v1/reminders, DELETE /{id}), CareLogController
+    (POST /api/v1/care/done, GET /api/v1/care/plant/{plantId}), NotificationController
+    (POST /api/v1/notifications/subscribe)
+  - 11 new unit tests (ReminderServiceTest: calculateNextDueAt, completeReminder, createReminder,
+    deleteReminder, getUserReminders; CareLogServiceTest: logCare, getPlantCareLogs). Full backend
+    suite: 95/95 passing.
+- T3.2 Reminder Angular frontend + PWA push ✅ (branch: feature/PP-011-reminder-module — landed on
+  the same branch as T3.1, not split into a separate feature branch as the original plan assumed)
+  - features/reminder/: ReminderListComponent rewired from mock data to real
+    ReminderService.getUserReminders()/completeReminder(); CreateReminderFormComponent (plant
+    selector, care type, frequency, first due date); CareCalendarComponent (7-day due view)
+  - care-log/ — new CareLogModule + CareLogComponent (timeline of past care actions), plugged into
+    plant-detail's "Care History" tab — that tab had been a static "coming in Phase 3" placeholder
+    since T2.9
+  - core/services/push-notification.service.ts: requestPermission() (Notification.requestPermission
+    wrapped as a Promise<boolean>), subscribeToNotifications() (ServiceWorkerRegistration
+    PushSubscription → POST /api/v1/notifications/subscribe)
+  - app.component: inline "Get reminders on your phone" banner shown on first load (logged in +
+    not yet asked) with Accept/Dismiss — deliberately NOT the raw browser permission prompt first
+  - environment.ts/.prod.ts: +vapidPublicKey
+  - plant.module.ts: +CareLogModule, +CareLogService, +MatDialogModule (the last one already added
+    in T2.10e for the identification-upload dialog)
+  - `ng build` + `ng lint` both clean
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
 - feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
 - AddChooseAi — AI model preference feature — merged PR #20 ✅
 - feature/PP-025-github-models-client — T2.A + T2.B complete, commit 086cd07 ✅ (open PR or merge to dev)
-- chatfix (current) — T4.1 + T2.E complete, uncommitted backend changes; frontend chat module +
-  ai-test removal already staged when this branch was created
+- chatfix — T4.1 + T2.E complete, merged ✅
+- feature/PP-020-garden-dashboard — T2.10a-d + T2.10e + T2.11 complete, 3 commits ✅ (Phase 2 done;
+  open PR or merge to dev)
+- feature/PP-011-reminder-module (current) — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual
+  testing remaining before merge)
 
 ## Next Tasks (in order)
-- Phase 2 is complete. Next up is Phase 3:
-- T3.1 — Reminder module backend (entities, CRUD, scheduler, web-push) ← NEXT
-- T3.2 — Reminder module frontend (Angular + PWA push notifications)
-- T3.3 — Manual testing — Phase 3
+- T3.3 — Manual testing — Phase 3 (push notification on a real device, PWA installability,
+  offline reading) ← NEXT, needs a human with a phone
+- T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
+- Phase 5 — Launch prep not started
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty

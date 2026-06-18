@@ -19,8 +19,21 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard)
-T2.F, T2.10a–d, T2.10e all done this session — see STATE.md for full notes. Highlights:
+## Current Task — T3.1 Reminder + Care Log module ✅ (branch: feature/PP-011-reminder-module)
+Full CRUD + scheduler + web-push, all against tables that already existed since migration 004/005
+(CareLog, PushSubscription entities just never existed in code until now). Highlights:
+- ReminderService/Impl: createReminder, getUserReminders (bounded 200, batch-fetches plants to
+  avoid N+1), completeReminder (writes CareLog + recalculates nextDueAt), deleteReminder (soft —
+  enabled=false), calculateNextDueAt()
+- CareLogService/Impl: logCare() ties back to a Reminder (not the plant directly) and recalculates
+  its nextDueAt via ReminderService; getPlantCareLogs (paginated, ownership-checked)
+- ReminderScheduler: @Scheduled daily 8am, groups due reminders by user, ONE push per user not one
+  per reminder; Clock injected (same pattern as T2.10b's DashboardServiceImpl)
+- 11 new unit tests; full suite 95/95 passing
+See STATE.md "T3.1" entry for full notes. Next: T3.3 manual/device testing (needs a real phone).
+
+## Previous Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard, merged)
+T2.F, T2.10a–d, T2.10e all done — see STATE.md for full notes. Highlights:
 - New com.plantpal.dashboard module: DashboardController/Service/Impl, GET /api/v1/dashboard
   (healthSummary, overdueReminders, todayReminders, healthTrends). Deliberately not @Cacheable.
 - PlantResponse now actually populates healthStatus + nextWaterDays (was declared, never set).
@@ -28,9 +41,8 @@ T2.F, T2.10a–d, T2.10e all done this session — see STATE.md for full notes. 
   CareCardDto built from a disease label + cure-advice text; idempotent on the card title.
 - shared/util/ImageUtil.java: resizeAndConvertToJpeg() + readDimensions(), extracted so
   IdentificationServiceImpl can record sourceImageWidth/sourceImageHeight (migration 011).
-Phase 2 is complete. Next: T3.1 — Reminder module backend (full CRUD + scheduler + web-push).
 
-## Previous Task — T4.1 + T2.E ✅ (branch: chatfix, merged)
+## Earlier Task — T4.1 + T2.E ✅ (branch: chatfix, merged)
 T4.1: new com.plantpal.chat module (ChatRequest/ChatResponse/ChatService/ChatController) wired to
 OllamaClient.chat(String) with a garden-context-aware prompt; deleted dead AiTestController.
 T2.E: Redis-backed photo storage with SHA-256 dedup on savePhoto(); FileStorageService.loadPhoto()

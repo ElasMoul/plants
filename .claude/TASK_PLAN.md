@@ -2064,8 +2064,12 @@ Phase 2 is complete.
 
 ---
 
-### T3.1 — Reminder module — full backend 🤖 AI
+### T3.1 — Reminder module — full backend 🤖 AI ✅ DONE (2026-06-18)
 **Branch:** `feature/PP-011-reminder-module`
+> Implemented largely as specified, with two deviations: `getUserReminders` is bounded at 200
+> (PageRequest, not unpaged — personal-garden app) rather than a raw findAll, and
+> `ReminderScheduler` takes an injected `Clock` (not bare `Instant.now()`) for testability — same
+> pattern as T2.10b's `DashboardServiceImpl`. See STATE.md for full notes.
 
 **Claude Code prompt:**
 ```
@@ -2115,8 +2119,10 @@ In com.plantpal.reminder:
 
 ---
 
-### T3.2 — Reminder module — Angular frontend + PWA 🤝 Assisted
-**Branch:** `feature/PP-012-reminder-frontend`
+### T3.2 — Reminder module — Angular frontend + PWA 🤝 Assisted ✅ DONE (2026-06-18)
+**Branch:** `feature/PP-011-reminder-module` (landed on the same branch as T3.1, not a separate one)
+> CareLogComponent wired into plant-detail's "Care History" tab (was a Phase-3 placeholder since
+> T2.9). See STATE.md for full notes. Remaining: T3.3 manual/device testing below.
 
 **Claude Code prompt:**
 ```

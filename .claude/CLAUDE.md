@@ -785,7 +785,8 @@ open backend/target/site/jacoco/index.html
 | 2 — GitHubModelsClient split + Kafka async + Redis photos (T2.A–T2.E) | ✅ Complete | See STATE.md for full detail |
 | 2 — Garden dashboard (T2.10) | ✅ Complete | GET /api/v1/dashboard, plant health/water data fix, photo timeline, /dashboard landing page |
 | 2 — Manual testing (T2.11) | ✅ Complete | Covered ad-hoc via live Playwright + manual verification during T2.10 session |
-| 3 — Reminders + Push | 🔲 Not started ← NEXT | |
+| 3 — Reminder + Care Log module (T3.1, T3.2) | ✅ Complete | Full CRUD, scheduler, web-push, Angular frontend, PWA prompt banner |
+| 3 — Manual testing (T3.3) | 🔲 Not started ← NEXT | Needs a real device — push notification delivery, PWA installability, offline reading |
 | 4 — AI Chat | ✅ Complete (basic) | T4.1 — single-turn chat wired to Ollama with garden context |
 | 5 — Launch | 🔲 Not started | |
 
