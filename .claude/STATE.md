@@ -262,10 +262,38 @@ Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 done, T3.3 manual/device
   testing remaining before merge)
 
 ## Next Tasks (in order)
-- T3.3 — Manual testing — Phase 3 (push notification on a real device, PWA installability,
-  offline reading) ← NEXT, needs a human with a phone
+- T3.4 — Backend: actionable care plans (ROUTINE reminders + multi-step TREATMENT plans with
+  optional Mermaid diagrams) ← NEXT — full Claude Code prompt in TASK_PLAN.md
+- T3.5 — Frontend: actionable care plans UI (same branch as T3.4)
+- T3.3 — Manual testing — Phase 3 (now also covers T3.4/T3.5 flows; still needs a human with a
+  phone for the push/PWA checks)
 - T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
 - Phase 5 — Launch prep not started
+
+## T3.4/T3.5 — Actionable care plans (planned 2026-06-18, not yet implemented)
+Branch: `feature/PP-028-actionable-care-plans`. Design decided this session — see TASK_PLAN.md
+for the full prompts. Key points to remember when implementing or resuming:
+- A care card's action is either ROUTINE (recurring, just a frequency) or TREATMENT (finite
+  ordered steps, optional single Mermaid diagram for the whole sequence). No third shape —
+  anything that doesn't fit cleanly stays informational-only (no action buttons), by design.
+- Treatment steps are modelled as one-time `Reminder` rows (new `recurring`/`treatmentPlanId`/
+  `treatmentPlanTitle`/`stepOrder` columns, migration 012), NOT a parallel entity. One new
+  lightweight `TreatmentPlan` entity holds the title/diagram/status.
+- `CareType` enum expands from 4 values to mirror `CareCardType`'s 10 — additive, no migration
+  needed for existing rows.
+- ALL AI-sourced action plans (main care-plan generation AND restructured cure-advice) pass
+  through one `ActionPlanValidator.normalize()` choke-point before touching the DB or the
+  frontend — never throws, degrades to null (purely informational) on anything malformed/
+  out-of-range. This is the direct answer to "handle all varieties of AI answers."
+- Mermaid only, not raw SVG — the AI produces mermaid DSL text, `mermaid.js` renders it
+  client-side, so a malformed diagram just silently fails to render instead of risking broken/
+  unsafe markup reaching the DOM.
+- Found and fixed while designing: `ReminderService.completeReminder()` and
+  `CareLogService.logCare()` were two independent code paths both doing "log + reschedule" —
+  unified via a new shared `applyCompletionToReminder()` so the new recurring/one-time branch
+  only has to be written once.
+- `generateCureAdvice()` moves from plain-text response to JSON (`{advice, actionPlan}`) — this
+  is a deliberate evolution of T2.9d, kept backward-compatible by always populating `advice`.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
