@@ -194,7 +194,48 @@ without creating a lazy-module-imports-lazy-module cycle.
 - SessionStorage cache: survives navigation, cleared on browser close; correct for a "session preference"
 - Backend API contract: `GET/PUT /api/v1/users/me/preferences` → `ApiResponse<{ aiModelPreference: string }>`
 
+### T2.10 — Garden dashboard + photo timeline ✅ (Complete 2026-06-18)
+**Files added:**
+- `features/dashboard/` — new lazy DashboardModule: dashboard.module.ts, dashboard-routing.module.ts
+  (single route, GardenDashboardComponent), models/dashboard.model.ts (mirrors backend DTOs
+  field-for-field), services/dashboard.service.ts (getDashboard() → GET /api/v1/dashboard)
+- `pages/garden-dashboard/` — health summary chips, "Needs attention"/"Today"/"Health trends"
+  sections (each omitted entirely if empty), full empty-garden state when totalPlants === 0
+- `plant/components/plant-photo-timeline/` — horizontally-scrollable strip of every past scan for
+  a plant, reverses the API's newest-first order so it reads oldest→newest left→right, health-colored
+  thumbnail border, click → `/identify/:id`. Sits at the top of plant-detail's Overview tab.
+- `app-routing.module.ts`: root redirect changed from `'plants'` to `'dashboard'`; new guarded
+  `'dashboard'` route. Bottom nav left at 4 items on purpose (see T2.D3 history on toolbar squeeze).
+
+### T2.10e — Session polish ✅ (Complete 2026-06-18)
+**Annotation overlap (photo-annotator.component.ts):** when a region is selected, non-selected
+regions are now skipped entirely (`continue` in the draw loop) instead of drawn dimmed — they
+overlap the selected region heavily, so dimming still visually competed. Removed dead `DIMMED_COLORS`.
+
+**CSS gotcha found + fixed (photo-annotator.component.scss):** the toggle's `[hidden]` binding was
+toggling correctly the whole time (verified via Playwright: button label + DOM attribute both
+flipped, zero console errors) but had no visual effect, because `styles.scss`'s global
+`canvas { display: block; }` reset silently overrides the browser's own `[hidden] { display: none; }`
+default — author-origin CSS always beats user-agent-origin CSS regardless of selector specificity.
+Fix: `canvas[hidden] { display: none !important; }` scoped in the component's own stylesheet (now an
+author-vs-author fight, where the attribute selector wins on specificity too). **Any future
+`<canvas>`/`<img>`/`<video>`/`<svg>` relying on `[hidden]` needs this same per-tag override.**
+
+**"Add to care plan" made functional:** `IdentificationService.addCareCard(identificationId,
+regionLabel, adviceText)` → POST `/{id}/care-plan/cards`. `DiseaseDetailPanelComponent` calls it
+after cure advice loads (loading/added button states), emits `@Output() carePlanUpdated` so the
+parent replaces its local `carePlan`/`latestCarePlan` reference — wired in both
+`identification-preview-section` and `plant-detail`. The pre-advice button stays disabled (nothing
+to add yet); tooltip corrected from the stale "Available after saving plant" to "Get cure advice first".
+
+**Garden "add" entry points → identification dialog:** `plant-list`'s FAB and empty-state CTA now
+call `openIdentifyDialog()` (opens `IdentificationUploadDialogComponent`, same one identify-page
+uses) instead of `routerLink="/plants/new"`. On submit, posts via `IdentificationService.analyze()`,
+snackbar, then `router.navigate(['/identify'])`. Required adding `MatDialogModule` to
+`plant.module.ts`. Cross-module component import (PlantModule importing a component declared in
+IdentificationModule) is fine for Ivy/AOT — each component carries its own compiled scope — but it
+did split webpack's `features-plant-plant-module` lazy chunk into two pieces (~68KB extra,
+confirmed via `ng build` output). That's an expected trade-off of the cross-module import, not a bug.
+
 ### Next tasks (in order)
-- AddChooseAi — AI model selector (IN PROGRESS)
-- T2.10 — Garden dashboard (overview of all plants + health + overdue reminders)
-- T2.11 — Manual testing for all Phase 2 features
+- Phase 2 is complete. T3.1/T3.2 — Reminder module backend + frontend (not started)

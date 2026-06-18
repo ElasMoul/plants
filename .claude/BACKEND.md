@@ -19,13 +19,23 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T4.1 + T2.E ✅ (branch: chatfix)
+## Current Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard)
+T2.F, T2.10a–d, T2.10e all done this session — see STATE.md for full notes. Highlights:
+- New com.plantpal.dashboard module: DashboardController/Service/Impl, GET /api/v1/dashboard
+  (healthSummary, overdueReminders, todayReminders, healthTrends). Deliberately not @Cacheable.
+- PlantResponse now actually populates healthStatus + nextWaterDays (was declared, never set).
+- New POST /api/v1/identifications/{id}/care-plan/cards — addCareCard(), appends a PEST-type
+  CareCardDto built from a disease label + cure-advice text; idempotent on the card title.
+- shared/util/ImageUtil.java: resizeAndConvertToJpeg() + readDimensions(), extracted so
+  IdentificationServiceImpl can record sourceImageWidth/sourceImageHeight (migration 011).
+Phase 2 is complete. Next: T3.1 — Reminder module backend (full CRUD + scheduler + web-push).
+
+## Previous Task — T4.1 + T2.E ✅ (branch: chatfix, merged)
 T4.1: new com.plantpal.chat module (ChatRequest/ChatResponse/ChatService/ChatController) wired to
 OllamaClient.chat(String) with a garden-context-aware prompt; deleted dead AiTestController.
 T2.E: Redis-backed photo storage with SHA-256 dedup on savePhoto(); FileStorageService.loadPhoto()
 renamed to loadPhotoBytes() and made Redis-first/disk-fallback; new PhotoController serving
 GET /api/v1/photos/{filename}. See STATE.md "T4.1" and "T2.E" entries for full implementation notes.
-Next: T2.F — image dimension locking + aspect-ratio warning in annotator.
 
 ## Previous Task — T2.C Kafka async identification pipeline ✅ (merged to dev)
 Replaced the blocking `.get()` in IdentificationController.analyze() with a Kafka-backed async
@@ -173,6 +183,7 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
                                      List<AnnotationRegionDto> annotationRegions fields
 - dto/CureAdviceRequest.java       — ✅ T2.9d: @NotBlank regionLabel, nullable species
 - dto/CureAdviceResponse.java      — ✅ T2.9d: String advice
+- dto/AddCareCardRequest.java      — ✅ T2.10e: @NotBlank regionLabel, @NotBlank adviceText
 - dto/CareCardDto.java             — ✅ T2.6
 - dto/CarePlanDto.java             — ✅ T2.6
 - dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
@@ -229,6 +240,12 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
     calls deepSeekClient.generateCureAdvice(); throws ResourceNotFoundException if not owned,
     PlantPalException(429) if rate-limited, PlantPalException(503) if DeepSeek fails
   - CURE_ADVICE_RATE_LIMIT = 10; cureAdviceBuckets ConcurrentHashMap<Long, Bucket>
+  - addCareCard(id, req, userId): ✅ T2.10e — NOT @Async (no AI call, pure DB read+write), no rate
+    limit. Ownership-checked like getCureAdvice. parseCarePlan() → defensive-copy careCards into a
+    mutable ArrayList (fallbackCarePlan() returns List.of(...), which is immutable) → skip if a card
+    with that exact title already exists → else append a PEST-type CareCardDto (icon "healing",
+    urgency HIGH) built from req.regionLabel/adviceText → serializeToJson() → save → return the
+    updated CarePlanDto
 - client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
 - client/DeepSeekAnnotationClient.java— ✅ T2.9a + updated (AddChooseAi session):
                                          @Primary implementation; injects BOTH DeepSeekClient and OllamaClient.
@@ -290,6 +307,22 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - controller/ChatController.java — POST /api/v1/chat (bare path) → ApiResponse<ChatResponse>;
   userId via SecurityContextHolder, same pattern as IdentificationController.getCurrentUserId()
 
+### dashboard/ — ✅ T2.10b: read-only aggregation, no new tables
+- dto/DashboardResponse.java   — healthSummary, overdueReminders, todayReminders, healthTrends
+- dto/HealthSummaryDto.java    — totalPlants, healthyCount, issuesCount, unknownCount
+- dto/ReminderSummaryDto.java  — reminderId, plantId, plantNickname, plantPhotoUrl, careType,
+                                  nextDueAt, daysOverdue (0 for today's items)
+- dto/PlantHealthTrendDto.java — plantId, plantNickname, trend (IMPROVING/WORSENING/STABLE,
+                                  computed from the 2 most recent identifications per plant)
+- service/DashboardService.java (interface) + service/impl/DashboardServiceImpl.java
+  - getDashboard(userId): plants bounded at PageRequest.of(0, 200) (not unpaged — personal-garden
+    app, 200 is a generous cap); reuses IdentificationRepository.findLatestPerPlant() (added in
+    T2.10a) for the health summary; ReminderRepository.findByUserIdAndEnabledTrue() (new) partitioned
+    by nextDueAt vs start-of-today/start-of-tomorrow using an injected Clock (shared/config/
+    ClockConfig.java — Clock.systemDefaultZone() bean, for testability)
+  - Deliberately NOT @Cacheable — nothing evicts it yet; a stale dashboard would be misleading
+- controller/DashboardController.java — GET /api/v1/dashboard → ApiResponse<DashboardResponse>
+
 ## DB Migrations (in order)
 001_create_users.sql
 002_create_plants.sql
@@ -309,13 +342,13 @@ unit/PlantServiceTest.java                ← updated T2.8: +7 SaveFromIdentific
                                              (nickname fallbacks, ownership check, reminder creation)
                                              Now has @Mock IdentificationRepository, ReminderRepository,
                                              @Spy ObjectMapper = new ObjectMapper()
-unit/IdentificationServiceImplTest.java   ← 12 tests total; 4 nested classes:
-                                            Identify (3): happy path, DeepSeek throws→FAILED, not-owned plant skip
-                                            CarePlanParsing (4): valid/malformed/null/empty carePlan
-                                            ReminderCreation (3): with fertilizing, without fertilizing, correct frequencyDays
-                                            AnnotationRegions (2): ✅ T2.9 — malformed JSON→empty, valid JSON→2 regions with types/confidence/widthPct
-                                            NOTE: all tests construct IdentificationServiceImpl manually (8-param constructor).
-                                            @Mock VisionAnnotationClient visionAnnotationClient injected as 2nd ctor arg.
+unit/IdentificationServiceImplTest.java   ← 29 tests total (as of T2.10e); nested classes:
+                                            Identify, CarePlanParsing, AnnotationRegions, ReminderCreation,
+                                            Kafka, GetUserIdentifications, CureAdvice, AddCareCard (✅ T2.10e —
+                                            3 tests: append, idempotent-on-repeated-call, not-owned)
+                                            NOTE: all tests construct IdentificationServiceImpl manually
+                                            (13-param constructor — see DashboardServiceTest for the sibling
+                                            pattern using an injected fixed Clock instead of Instant.now()).
 unit/PlantNetClientTest.java
 unit/OllamaClientTest.java
 integration/AuthControllerIT.java

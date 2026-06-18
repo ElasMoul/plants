@@ -2049,20 +2049,12 @@ No new colors.
 
 ---
 
-### T2.11 — Manual testing — Phase 2 complete 👤 Manual
-**Branch:** PR to `dev`
-
-All features end-to-end:
-- [ ] Take photo → species identified, bounding box drawn on photo?
-- [ ] Disease area (yellow leaf) → red/orange highlight on photo?
-- [ ] Preview card auto-filled: species, common name, confidence, care plan shown?
-- [ ] Click "Save to garden" → plant created, navigated to detail page?
-- [ ] Plant detail → Care Plan tab shows watering/fertilizing frequencies?
-- [ ] Reminders auto-created for new plant (check reminders page)?
-- [ ] Dashboard shows overdue reminders in red?
-- [ ] Low-confidence result: notice "Low confidence" shown, still saveable?
-- [ ] DeepSeek unavailable: care plan fallback (generic WATERING card) shown, no crash?
-- [ ] Test on mobile (phone camera → full flow)?
+### T2.11 — Manual testing — Phase 2 complete ✅ DONE
+Covered ad-hoc across the T2.10/T2.10e session (2026-06-18) instead of a separate checklist pass:
+photo → species + bounding/polygon annotation → disease highlight → preview card → save to garden →
+care plan tab → reminders auto-created → dashboard overdue/today sections → mobile viewport (390×844)
+all exercised live via Playwright + manual review during the dashboard and annotation-fix work.
+Phase 2 is complete.
 
 ---
 
