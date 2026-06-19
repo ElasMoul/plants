@@ -19,7 +19,52 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T6.1 Species entity + migrations + endpoints ✅ (branch:
+## Current Task — T6.2 Treatment entity + migrations + endpoints ✅ (branch:
+feature/PP-030-treatment-entity, session 2026-06-19)
+New `com.plantpal.treatment` package (separate from `com.plantpal.reminder` — see ARCHITECT.md's
+"Two Treatment concepts" disambiguation; this `Treatment` is NOT the existing T3.4 `TreatmentPlan`):
+- `Treatment` entity (DRAFT|IN_PROGRESS|COMPLETED|DISMISSED), no AuditableEntity (same exception as
+  Reminder/TreatmentPlan). Migration `018_create_treatments.sql` registered directly after 016 (017
+  from T6.3 doesn't exist yet — left an XML comment so T6.3 inserts above 018, never renumber it).
+  Partial unique index enforces one active treatment per plant+disease at the DB level.
+- `TreatmentRepository`, `TreatmentResponse`/`CreateTreatmentRequest`, `TreatmentService`/Impl,
+  `TreatmentController` (`POST /treatments`, `POST /{id}/craft-plan`, `GET /{id}`,
+  `GET /plants/{id}/active-treatment`, `PATCH /{id}/complete`).
+- **Wraps, not duplicates, `TreatmentPlan`**: `craftPlan()` generates a TREATMENT-type
+  `ActionPlanDto` via `DeepSeekClient.generateCureAdvice()` (existing method, already returns
+  `{advice, actionPlan}`), then delegates to the existing
+  `TreatmentPlanService.createFromActionPlan(plantId, userId, diseaseName, "PEST", actionPlan)` —
+  `Treatment.treatmentPlanId` just stores the result. No reminder logic duplicated.
+- Added `DeepSeekClient.generateDiseaseDescription(species, diseaseName)` (new prompt, plain text).
+  Fired fire-and-forget from `createTreatment()` via `CompletableFuture.runAsync(...,
+  aiTaskExecutor)` — NOT `@Async`, since this is a same-class call (self-invocation defeats Spring's
+  AOP proxy); `@Async` IS used on `craftPlan()` itself since that's called from the controller, a
+  different bean. Failures degrade to null description, never block the response. New
+  `TREATMENT_AI_RATE_LIMIT = 10/hour` Bucket4j bucket shared by both AI call sites.
+- ⚠️ Deviated from the brief's literal `craftPlan(): TreatmentResponse` (synchronous) signature —
+  used `@Async` + `CompletableFuture<TreatmentResponse>` instead, matching CLAUDE.md's hard rule
+  and `IdentificationServiceImpl.getCureAdvice()`'s established pattern, since `craftPlan()` makes
+  a real 5-15s AI call. `TreatmentController.craftPlan()` mirrors
+  `IdentificationController.getCureAdvice()`'s `.get()`/`ExecutionException` unwrapping exactly.
+- ⚠️ `plant.activeTreatmentId` still doesn't exist (T6.3/migration 017) — `craftPlan()` and
+  `completeTreatment()` each have a `// TODO(T6.3)` at the exact set/clear point, exactly as the
+  brief instructed for this case. No new AskUserQuestion needed — T6.1 already established this gap
+  and got sign-off on the general approach.
+- New `TreatmentServiceTest` (7 tests). Two test-writing gotchas worth knowing for next time: (1)
+  with a synchronous `Runnable::run` test executor, `createTreatment()`'s fire-and-forget save runs
+  inline, so `treatmentRepository.save()` is called twice, not once — assert with `times(2)` +
+  `getAllValues().get(0)`. (2) `@Async` has no effect without a real Spring proxy in a unit test, so
+  `craftPlan()`'s synchronous-throw rejection path surfaces directly, not wrapped in
+  `ExecutionException` — assert `isInstanceOf` directly, no `.get()`/cause-chasing (matches
+  `IdentificationServiceImplTest`'s existing rate-limit test).
+- `mvn clean compile`, full unit suite, checkstyle all pass. Did NOT spin up docker-compose to
+  manually exercise the brief's end-to-end `POST /treatments` → `craft-plan` → `GET
+  /treatment-plans/{id}` check (no confirmed running Postgres/Kafka/Redis/GITHUB_TOKEN this
+  session) — verified at compile/unit-test level only, flagged to the user.
+Next: T6.3 (Plant FK columns) unblocks both this task's `activeTreatmentId` TODOs and T6.1's
+`getUserSpecies()` stub in one migration.
+
+## Previous Task — T6.1 Species entity + migrations + endpoints ✅ (branch:
 feature/PP-029-species-entity, session 2026-06-19)
 New `com.plantpal.species` package — first step of the Phase 6 species/treatment domain restructure
 (see ARCHITECT.md "Phase 6" and STATE.md's T6.1 entry for full design rationale):

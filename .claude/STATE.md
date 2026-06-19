@@ -6,13 +6,12 @@
 Phase 0 — Project Setup ✅ COMPLETE
 Phase 1 — Auth + Plant Management ✅ COMPLETE
 Phase 2 — AI Plant Identification ✅ COMPLETE
-Phase 3 — Reminders + Push Notifications — T3.1, T3.2, T3.4, T3.4b, T3.5, T3.6, T3.7, T3.8, T3.9
-  all done; T3.3 (manual/device testing) is the only thing left before Phase 3 is fully closed
+Phase 3 — ✅ COMPLETE
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
-Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ done; T6.2–T6.14 below not
-  started yet — full task prompts in TASK_PLAN.md)
+Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅ done; T6.3–T6.14
+  below not started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -660,10 +659,8 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ do
   open PR or merge to dev)
 - feature/PP-011-reminder-module — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual testing
   remaining before merge)
-- feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete this
-  session, backend 139/139 passing, `ng build`/`ng lint` clean (frontend) — **still uncommitted,
-  see `git status`**
-
+- feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete merged to dev as PR #33 ✅
+- feature/PP-030-treatment-entity (current) — T6.1 + T6.2 completed , next T6.3
 ## Next Tasks (in order)
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
@@ -706,7 +703,7 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ do
 | Task | Name | Agent | Branch | Depends on | Status |
 |---|---|---|---|---|---|
 | T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | ✅ |
-| T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | 🔲 |
+| T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | ✅ |
 | T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | 🔲 |
 | T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | 🔲 |
 | T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | 🔲 |
@@ -758,6 +755,74 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ do
     `spotless:apply` run (reformatted only, no logic changes).
   - **Next:** T6.2 (Treatment entity) and T6.3 (Plant FK columns — unblocks the getUserSpecies
     stub above) are next per the Phase 6 dependency table.
+
+- T6.2 Treatment entity + migrations + endpoints ✅ (backend, branch `feature/PP-030-treatment-entity`,
+  session 2026-06-19)
+  - New `com.plantpal.treatment` package (deliberately separate from `com.plantpal.reminder`,
+    despite depending on `TreatmentPlanService` there — see ARCHITECT.md's "Two Treatment
+    concepts" disambiguation): `Treatment` entity (DRAFT|IN_PROGRESS|COMPLETED|DISMISSED,
+    no `AuditableEntity` — same no-audit-columns exception as `Reminder`/`TreatmentPlan`, uses
+    `@CreationTimestamp`/`@UpdateTimestamp`), `TreatmentRepository`, `TreatmentResponse`/
+    `CreateTreatmentRequest` DTOs, `TreatmentService`/`TreatmentServiceImpl`, `TreatmentController`
+    (`POST /api/v1/treatments`, `POST /{id}/craft-plan`, `GET /{id}`,
+    `GET /api/v1/plants/{id}/active-treatment`, `PATCH /{id}/complete`).
+  - Migration `018_create_treatments.sql` — registered **directly after 016** in
+    db.changelog-master.xml (017/T6.3 doesn't exist yet, exactly as the task brief anticipated);
+    left an XML comment explaining the gap so T6.3 inserts 017 above 018 instead of renumbering.
+    Partial unique index `idx_treatments_active_per_disease ON (plant_id, disease_name) WHERE
+    status IN ('DRAFT','IN_PROGRESS')` enforces "one active treatment per plant+disease" at the
+    DB level, backed up by an application-level check in `createTreatment()`.
+  - **Wraps, doesn't duplicate, `TreatmentPlan`** (the recommended design from the task brief):
+    `craftPlan()` generates a TREATMENT-type `ActionPlanDto` via AI, then delegates reminder/step
+    creation entirely to the existing `TreatmentPlanService.createFromActionPlan(plantId, userId,
+    diseaseName, "PEST", actionPlan)` — `Treatment.treatmentPlanId` just stores the resulting
+    plan's id. No reminder-creation logic duplicated.
+  - AI reuse: `craftPlan()`'s action plan comes from the **existing**
+    `DeepSeekClient.generateCureAdvice(species, diseaseName)` (already returns
+    `{advice, actionPlan}` JSON in the TREATMENT shape) — parsed via a private holder class that
+    mirrors `IdentificationServiceImpl`'s `CureAdviceJson` exactly, then run through the existing
+    `ActionPlanValidator.normalize()`. Only `actionPlan` is used; `advice` is discarded since
+    `createTreatment()` already generates a dedicated `diseaseDescription`.
+  - Added **one new method** to `DeepSeekClient`: `generateDiseaseDescription(species,
+    diseaseName)` (new `DISEASE_DESCRIPTION_SYSTEM_PROMPT`, plain-text response, not JSON) — fired
+    fire-and-forget from `createTreatment()` via `CompletableFuture.runAsync(...,
+    aiTaskExecutor)` (NOT Spring's `@Async`, to sidestep the self-invocation/proxy problem since
+    this is a same-class call, not a call through a separate injected bean like T6.1's
+    `SpeciesEnrichmentService`). Failures degrade to a null `diseaseDescription` (logged WARN),
+    never block `createTreatment()`'s response. Rate-limited via a new per-user Bucket4j bucket
+    (`TREATMENT_AI_RATE_LIMIT = 10/hour`, shared between this fire-and-forget call and `craftPlan()`).
+  - ⚠️ **One deliberate deviation from the task brief's literal method signature:** the brief wrote
+    `craftPlan(id, userId): TreatmentResponse` (synchronous), but `craftPlan()` makes a real AI call
+    (5-15s) — CLAUDE.md's hard rule #5 ("Async AI calls... never block the HTTP thread") and every
+    other AI-calling service method in this codebase (`IdentificationServiceImpl.getCureAdvice()`)
+    use `@Async("aiTaskExecutor")` + `CompletableFuture<T>`. Followed the established codebase
+    pattern instead of the brief's literal signature — `TreatmentController.craftPlan()` mirrors
+    `IdentificationController.getCureAdvice()`'s exact `.get()`/`ExecutionException`-unwrapping shape.
+  - ⚠️ **Known gap, carried over from T6.1, NOT re-solved here:** `plant.activeTreatmentId` does
+    not exist yet (T6.3/migration 017). `craftPlan()` and `completeTreatment()` both have a
+    `// TODO(T6.3)` at the exact point they'd set/clear it — left as the brief explicitly
+    instructed ("if T6.3 hasn't landed yet, leave this line as a clearly marked TODO rather than
+    guessing the column name"), so no AskUserQuestion was needed for this one (T6.1's gap already
+    established the pattern and got the user's sign-off on the general approach).
+  - New `TreatmentServiceTest` (7 tests, unit/mocked): createTreatment success + duplicate-active
+    rejection + ownership check; craftPlan success (verifies the exact args passed to
+    `TreatmentPlanService.createFromActionPlan`) + DRAFT-only rejection; completeTreatment success
+    + IN_PROGRESS-only rejection. Constructed manually in `@BeforeEach` with `Runnable::run` as the
+    executor (deterministic synchronous fire-and-forget in tests, no real thread pool needed) —
+    this also means `createTreatment()`'s test sees 2 `save()` calls (DRAFT row + the
+    disease-description update), not 1; asserted with `times(2)` + `getAllValues().get(0)` for the
+    first save's content. Also discovered while writing the DRAFT-rejection test for `craftPlan()`:
+    without a real Spring AOP proxy, `@Async` has no effect in a unit test, so the
+    `ValidationException` propagates synchronously rather than via `ExecutionException` — asserted
+    directly (`isInstanceOf`, no `.get()`/cause-chasing), same pattern already established by
+    `IdentificationServiceImplTest`'s rate-limit test.
+  - `mvn clean compile`, full unit suite (`-Dtest='!*IT'`), and `checkstyle:check` all pass;
+    `spotless:apply` run (reformatted only, no logic changes). Did **not** spin up the full
+    docker-compose stack (Postgres/Kafka/Redis/GITHUB_TOKEN) to manually exercise the brief's
+    `POST /treatments` → `POST /{id}/craft-plan` → `GET /api/v1/treatment-plans/{treatmentPlanId}`
+    end-to-end check — wiring is verified at the compile/unit-test level only; flagged to the user.
+  - **Next:** T6.3 (Plant FK columns) is the natural next step — it unblocks both this task's two
+    `activeTreatmentId` TODOs and T6.1's `getUserSpecies()` stub in one migration.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -951,8 +1016,13 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ do
                                        this list ever looks stale again.
 016_create_species.sql                ✅ T6.1 — new species table
 017_alter_plants_add_species_fk.sql   🔲 T6.3 — plants.species_id/last_scan_id/active_treatment_id FK,
-                                       drops plants.species (String) (Phase 6, planned)
-018_create_treatments.sql             🔲 T6.2 — new treatments table (Phase 6, planned)
+                                       drops plants.species (String) (Phase 6, planned) — NOTE:
+                                       018 already shipped ahead of this one (see below); when 017
+                                       lands it inserts ABOVE 018 in db.changelog-master.xml, in its
+                                       correct numeric position — Liquibase applies by listed XML
+                                       order, not filename, so this is safe.
+018_create_treatments.sql             ✅ T6.2 — new treatments table; registered directly after 016
+                                       since 017 (T6.3) didn't exist yet when this shipped
 019_alter_identifications_add_plant_species_fk.sql 🔲 T6.3 — identifications.plant_id nullable
                                        (species-level scans), identifications.species_id FK (Phase 6, planned)
 

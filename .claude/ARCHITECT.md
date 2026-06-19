@@ -251,12 +251,15 @@ Species (extends AuditableEntity)
   revisit, without blocking the user's identification flow on it.
 
 ### New entity: Treatment (per-plant disease lifecycle) — see disambiguation below
+> ✅ T6.2 (2026-06-19): implemented as below — `Treatment` does NOT extend AuditableEntity (same
+> no-audit-columns exception as Reminder/TreatmentPlan; uses @CreationTimestamp/@UpdateTimestamp),
+> and there is no `planJson` field — see the "Open design question" resolution below.
 ```
-Treatment (extends AuditableEntity)
-  id, plantId, identificationId (the scan that detected it), diseaseName,
+Treatment (no AuditableEntity — @CreationTimestamp/@UpdateTimestamp instead)
+  id, plantId, userId, identificationId (the scan that detected it), diseaseName,
   diseaseDescription (AI-generated: what/why/risk if untreated),
   status (TreatmentStatus: DRAFT | IN_PROGRESS | COMPLETED | DISMISSED),
-  planJson (TEXT — careCard/actionPlan-shaped, same structure as existing care plans),
+  treatmentPlanId (Long, nullable — FK to treatment_plans.id, set once craft-plan has run),
   startedAt, completedAt (nullable)
 ```
 - User-scoped via `plantId` → `Plant.userId` (same ownership-check pattern as every other
@@ -279,14 +282,14 @@ Read this before touching either one:
   at `/treatment/:id`. Lives in a new `com.plantpal.treatment` package (NOT `reminder` —
   different bounded concept even though the underlying steps may eventually still be `Reminder`
   rows).
-- **Open design question flagged for whoever implements T6.2:** `Treatment.planJson` as
-  specified looks like it duplicates what `TreatmentPlan` already stores (careCard/actionPlan
-  JSON shape). Before writing migration 018, decide: does `Treatment` generate its own
-  `TreatmentPlan` row (via the existing `TreatmentPlanService.createFromActionPlan()`) and just
-  hold a `treatmentPlanId` FK + the disease-specific metadata (diseaseName, diseaseDescription,
-  identificationId)? That would reuse the entire existing Reminder-backed step/completion
-  machinery from T3.4 instead of building a second one. Recommended unless there's a concrete
-  reason `Treatment` needs to diverge from `TreatmentPlan`'s shape.
+- **✅ Open design question resolved (T6.2, 2026-06-19):** went with the recommended option —
+  `Treatment` has no `planJson` at all. `craftPlan()` generates a TREATMENT-type `ActionPlanDto`
+  via AI (reusing `DeepSeekClient.generateCureAdvice()`'s existing `{advice, actionPlan}` shape)
+  and delegates entirely to the existing `TreatmentPlanService.createFromActionPlan(plantId,
+  userId, diseaseName, "PEST", actionPlan)`; `Treatment` just stores the resulting
+  `treatmentPlanId` FK plus the disease-specific metadata (diseaseName, diseaseDescription,
+  identificationId). Reuses the entire Reminder-backed step/completion machinery from T3.4 instead
+  of building a second one — no JSON duplicated between the two entities.
 
 ### Identification flow — 3-path decision tree
 Where a scan is initiated determines what happens after the AI responds. All three paths share
@@ -344,16 +347,23 @@ DRAFT ──(user dismisses without starting)──► DISMISSED
   `diseaseDescription` (the "what is it / why does it happen / risk if untreated" text) be
   fetched async right away, same pattern as T6.4's species enrichment, so it's already there by
   the time the user opens the Treatment page.
-- `IN_PROGRESS` is reached by `POST /treatments/{id}/craft-plan` — generates the actual
-  step-by-step care cards (reusing the existing AI care-plan generation prompt shape) and, per
-  the disambiguation note above, ideally delegates to `TreatmentPlanService.createFromActionPlan()`
-  rather than reimplementing reminder creation.
+- `IN_PROGRESS` is reached by `POST /treatments/{id}/craft-plan` — ✅ T6.2: implemented exactly as
+  planned, delegates to `TreatmentPlanService.createFromActionPlan()` rather than reimplementing
+  reminder creation.
 - `COMPLETED` should reuse T3.4's existing completion-detection pattern: when the underlying
   `TreatmentPlan`'s last step is marked done, `ReminderService.applyCompletionToReminder()`
   already flips `TreatmentPlan.status` to COMPLETED — if `Treatment` wraps a `TreatmentPlan` (see
   above), `Treatment.status` should mirror that flip (e.g. via the same code path, not a second
   independent "is it done" check) and also set `plant.activeTreatmentId = null` +
   `Treatment.completedAt`.
+  ⚠️ **Not yet wired (T6.2 scope only covered manual completion):** T6.2 shipped
+  `PATCH /treatments/{id}/complete` as a standalone manual action (ownership-checked, requires
+  IN_PROGRESS, sets COMPLETED + completedAt) — it does NOT yet listen for
+  `applyCompletionToReminder()` flipping the underlying `TreatmentPlan` to COMPLETED when its last
+  step is done. Wiring that automatic sync (`TreatmentRepository.findByTreatmentPlanId()` already
+  exists for this lookup) is **T6.14's job** ("Reminders: wire treatment plan steps"), not done in
+  T6.2. Also still TODO either way: `plant.activeTreatmentId = null` on completion — blocked on
+  T6.3's `plants.active_treatment_id` column (see T6.2's STATE.md entry for the exact TODO markers).
 - `DISMISSED` is a manual user action at any point before COMPLETED — no AI/reminder side effects
   to unwind beyond disabling any reminders already created (same `disableRemindersForPlant`-style
   pattern as T3.8's archive-cascade fix, but scoped to this treatment's reminders only).
@@ -419,7 +429,7 @@ copy.
 
 ## Migration Sequencing
 - db.changelog-master.xml executes in XML-listed order, NOT by filename
-- Current sequence: 001→007→008→009→010→011→012→013→014→015→(016→017→018→019 planned, Phase 6)
+- Current sequence: 001→007→008→009→010→011→012→013→014→015→016→018 shipped; 017/019 (T6.3) planned
   - 007 is BEFORE 008 (annotation_regions JSONB added before care_plan JSONB)
   - 010: ai_model_preference on users (AddChooseAi branch)
   - 011: source_image_width, source_image_height on identifications (T2.F)
@@ -432,7 +442,11 @@ copy.
   - 016 (✅ T6.1, 2026-06-19): new `species` table
   - 017 (planned, T6.3): plants.{species_id, last_scan_id, active_treatment_id} FK columns
     (nullable), drops plants.species (String column — replaced by species_id FK)
-  - 018 (planned, T6.2): new `treatments` table
+  - 018 (✅ T6.2, 2026-06-19): new `treatments` table — shipped BEFORE 017 since T6.2 landed before
+    T6.3; registered directly after 016 in db.changelog-master.xml with an explanatory comment.
+    When 017 lands it inserts ABOVE 018 in the XML, in its correct numeric position — Liquibase
+    applies changesets in listed XML order, not filename order, so out-of-numeric-order XML
+    registration (016→018, with 017 inserted above 018 later) is safe.
   - 019 (planned, T6.3): identifications.plant_id becomes nullable (species-level scans have no
     plant yet), identifications.species_id FK added
 - When adding a new migration: always append to the XML list AND name the file with the next number

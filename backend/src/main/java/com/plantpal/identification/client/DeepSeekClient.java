@@ -119,6 +119,13 @@ public class DeepSeekClient {
       backticks only.
       """;
 
+  static final String DISEASE_DESCRIPTION_SYSTEM_PROMPT =
+      """
+      You are a plant pathologist. Explain a plant disease or pest issue in plain English for a
+      beginner gardener. In 2-4 sentences, cover what it is, why it happens, and the risk if left
+      untreated. Return ONLY the plain text explanation — no markdown, no headers, no JSON.
+      """;
+
   private final RestClient restClient;
   private final String model;
 
@@ -193,6 +200,61 @@ public class DeepSeekClient {
     } catch (RestClientException e) {
       log.error("Failed to reach DeepSeek cure advice API", e);
       throw new PlantPalException("Cure advice unavailable", 503);
+    }
+  }
+
+  public String generateDiseaseDescription(String species, String diseaseName) {
+    String effectiveSpecies = species != null ? species : "Unknown plant";
+    String userMessage = "Plant: " + effectiveSpecies + "\nDisease/pest issue: " + diseaseName;
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            model,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", DISEASE_DESCRIPTION_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userMessage)),
+            "temperature",
+            0.3);
+
+    long start = System.currentTimeMillis();
+    try {
+      DeepSeekApiResponse response =
+          restClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(DeepSeekApiResponse.class);
+
+      if (response == null
+          || response.choices() == null
+          || response.choices().isEmpty()
+          || response.choices().get(0).message() == null) {
+        throw new PlantPalException("Empty response from disease description service", 503);
+      }
+
+      String raw = response.choices().get(0).message().content();
+      log.debug("DeepSeek disease description raw response: {}", raw);
+      log.info(
+          "DeepSeek disease description generated in {}ms for diseaseName={}",
+          System.currentTimeMillis() - start,
+          diseaseName);
+      return stripThinkTags(raw);
+
+    } catch (RestClientResponseException e) {
+      log.error(
+          "DeepSeek disease description error status={}, body={}",
+          e.getStatusCode().value(),
+          e.getResponseBodyAsString());
+      throw new PlantPalException("Disease description unavailable", 503);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach DeepSeek disease description API", e);
+      throw new PlantPalException("Disease description unavailable", 503);
     }
   }
 
