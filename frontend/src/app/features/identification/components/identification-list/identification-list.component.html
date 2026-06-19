@@ -29,7 +29,10 @@
         <p class="row-name">
           {{ item.commonName || item.scientificName || 'Identifying…' }}
         </p>
-        <p class="row-date">{{ item.createdAt | date:'MMM d, h:mm a' }}</p>
+        <p class="row-date">
+          {{ item.createdAt | date:'MMM d, h:mm a' }}
+          <span class="model-chip" *ngIf="modelLabel(item) as model">{{ model }}</span>
+        </p>
       </div>
 
       <span class="status-chip" [ngClass]="'status-' + item.status.toLowerCase()">

@@ -784,6 +784,75 @@ class IdentificationServiceImplTest {
     }
 
     @Test
+    @DisplayName("processIdentification: persists aiModelUsed matching the requested preference")
+    void shouldPersistAiModelUsed() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("GITHUB_GPT4O")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      assertThat(captor.getValue().getAiModelUsed()).isEqualTo("GITHUB_GPT4O");
+    }
+
+    @Test
+    @DisplayName(
+        "processIdentification: aiModelUsed reflects the fallback provider when OLLAMA_LLAVA fails")
+    void shouldPersistFallbackAiModelUsed() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(ollamaClient.identifyPlant(any(), any()))
+          .thenThrow(new PlantPalException("Ollama unavailable", 503));
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("OLLAMA_LLAVA")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      assertThat(captor.getValue().getAiModelUsed()).isEqualTo("GITHUB_GPT4O");
+    }
+
+    @Test
     @DisplayName(
         "processIdentification AI failure: marks entity FAILED without propagating exception")
     void shouldMarkFailedWithoutThrowing() {

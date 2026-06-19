@@ -201,22 +201,23 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setSourceImageHeight(dims[1]);
 
       // Fire identification + annotation in parallel
-      CompletableFuture<String> identificationFuture =
+      CompletableFuture<IdentificationOutcome> identificationFuture =
           CompletableFuture.supplyAsync(
               () -> runIdentification(preference, imageBytes, mediaType, event.getOrgans()));
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
 
-      String rawResult;
+      IdentificationOutcome outcome;
       try {
-        rawResult = identificationFuture.join();
+        outcome = identificationFuture.join();
       } catch (CompletionException ce) {
         Throwable cause = ce.getCause();
         throw (cause instanceof PlantPalException pex)
             ? pex
             : new PlantPalException("Identification failed: " + cause.getMessage(), 500);
       }
+      String rawResult = outcome.rawJson();
       String annotationJson = annotationFuture.join();
 
       // Parse combined result; fall back gracefully if AI JSON is malformed
@@ -234,6 +235,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setRawResponse(rawResult);
       identification.setCarePlan(serializeToJson(carePlan));
       identification.setAnnotationRegions(annotationJson);
+      identification.setAiModelUsed(outcome.providerUsed());
       identification.setStatus(IdentificationStatus.COMPLETED);
       identification = identificationRepository.save(identification);
       evictPlantsCache();
@@ -516,25 +518,41 @@ public class IdentificationServiceImpl implements IdentificationService {
         .orElse(AiModelPreference.DEEPSEEK);
   }
 
-  private String runIdentification(
+  /** rawJson is the AI response; providerUsed is the model that actually served the request — may
+   * differ from the requested {@link AiModelPreference} when a fallback kicks in (e.g. OLLAMA_LLAVA
+   * failing over to GITHUB_GPT4O). */
+  private record IdentificationOutcome(String rawJson, String providerUsed) {}
+
+  private IdentificationOutcome runIdentification(
       AiModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
     return switch (preference) {
       case PLANTNET ->
-          plantNetToRawResult(
-              plantNetClient.identify(
-                  List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
-                  organs != null ? organs : List.of("auto")));
+          new IdentificationOutcome(
+              plantNetToRawResult(
+                  plantNetClient.identify(
+                      List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+                      organs != null ? organs : List.of("auto"))),
+              AiModelPreference.PLANTNET.name());
       case OLLAMA_LLAVA -> {
         try {
-          yield ollamaClient.identifyPlant(imageBytes, mediaType);
+          yield new IdentificationOutcome(
+              ollamaClient.identifyPlant(imageBytes, mediaType), AiModelPreference.OLLAMA_LLAVA.name());
         } catch (PlantPalException e) {
           log.warn(
               "Ollama identification failed ({}), falling back to GitHubModels", e.getMessage());
-          yield gitHubModelsClient.identifyPlant(imageBytes, mediaType);
+          yield new IdentificationOutcome(
+              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
+              AiModelPreference.GITHUB_GPT4O.name());
         }
       }
-      case GITHUB_GPT4O -> gitHubModelsClient.identifyPlant(imageBytes, mediaType);
-      default -> gitHubModelsClient.identifyPlant(imageBytes, mediaType);
+      case GITHUB_GPT4O ->
+          new IdentificationOutcome(
+              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
+              AiModelPreference.GITHUB_GPT4O.name());
+      default ->
+          new IdentificationOutcome(
+              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
+              AiModelPreference.DEEPSEEK.name());
     };
   }
 

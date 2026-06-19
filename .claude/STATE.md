@@ -464,6 +464,58 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
     before assuming this needs a fix too.
   - Full backend suite still green: 132/132 passing after the change.
 
+### T3.9 — Scans tab inline selection, cure-advice caching, "Add scan" button, AI model badge ✅
+  (branch: dev, session 2026-06-19, requested ad-hoc by the user)
+  - **Inline scan selection:** clicking a thumbnail in the Scans tab's photo timeline used to
+    navigate away to `/identify/:id`. `PlantPhotoTimelineComponent` now emits `@Output()
+    scanSelected` (full `IdentificationResponse`, already carries `carePlan`/`annotationRegions`
+    from `getPlantIdentifications` — no extra fetch needed) instead of using `routerLink`; also
+    auto-emits the newest scan once loaded if nothing is selected yet, and accepts `@Input()
+    selectedScanId` to highlight the active thumbnail (`box-shadow` ring). `ngOnInit`'s body moved
+    into a private `loadScans()`, with a new public `reload()` wrapper for the "Add scan" flow
+    below. `PlantDetailComponent` now holds `selectedScan: IdentificationResponse | null` and
+    renders the photo-annotator/annotation-list/disease-detail-panel block from it instead of the
+    old `latestPhotoUrl`/`latestAnnotationRegions`/`latestIdentificationId` trio (removed — fully
+    superseded). `latestIdentificationId` was kept, but repurposed: it's only used now to detect
+    whether `onCarePlanUpdated()`'s edited scan is the SAME one the Care Plan tab is showing
+    (`latestCarePlan`), so adding a cure-advice care card to a non-latest scan doesn't silently
+    overwrite the Care Plan tab with stale data.
+  - **Cure-advice caching:** `DiseaseDetailPanelComponent` previously reset `advice`/`actionPlan`
+    to `null` on every `region` input change (including re-selecting a region already asked
+    about), forcing a fresh "Ask for cure" click every time. New `Map<string, CureCacheEntry>`
+    keyed `${identificationId}:${regionLabel}` — `ngOnChanges` checks the cache first and restores
+    `advice`/`actionPlan`/`addedToPlan`/`treatmentStarted` immediately if present, skipping
+    straight to the advice view instead of "Ask for cure". Written to on every successful
+    `askForCure()`/`addToCarePlan()`/`startTreatmentPlan()` response. Keyed by identificationId so
+    switching scans (see above) never leaks one scan's advice into another, even if region labels
+    coincide.
+  - **"Add scan" button:** new button in the Scans tab header opens
+    `IdentificationUploadDialogComponent` pre-locked to the current plant — `PhotoUploadComponent`
+    gained `@Input() lockedPlantId`, which pre-sets `selectedPlantId` and hides the "Link to
+    existing plant" dropdown entirely (nothing to pick, already known) instead of just
+    pre-selecting it. `IdentificationUploadDialogComponent` now accepts optional `MAT_DIALOG_DATA`
+    (`{plantId, plantNickname}`, `@Optional()` since `plant-list`'s existing unlocked usage passes
+    no data at all) and shows "Add a scan for {{ plantNickname }}" as the dialog title when
+    present. `PlantDetailComponent.openAddScanDialog()` mirrors `plant-list`'s existing
+    `openIdentifyDialog()`/`submitIdentification()` pattern; on success it calls
+    `timeline.reload()` (via a new `@ViewChild`) rather than navigating away, so the new (still
+    PENDING) scan appears in the strip immediately without leaving the page.
+  - **AI model badge:** new `Identification.aiModelUsed` column (migration
+    `015_add_ai_model_used.sql`) + `IdentificationResponse.aiModelUsed` — set in
+    `IdentificationServiceImpl.processIdentification()` from a new `runIdentification()` return
+    type, `private record IdentificationOutcome(String rawJson, String providerUsed)`, instead of
+    just `String`. This was a deliberate accuracy fix, not just plumbing: the OLLAMA_LLAVA → 503 →
+    GitHubModels fallback path (existing behavior, unchanged) means the actual provider can differ
+    from the user's requested `AiModelPreference`; recording the *requested* preference alone
+    would have mislabeled GPT-4o-served identifications as "Ollama". Two new tests cover both the
+    direct case and the fallback case. Frontend: `aiModelLabel()` helper in
+    `identification.model.ts` maps the four preference values to display labels (`DEEPSEEK` →
+    "GPT-4o" — DeepSeek-R1 only ever generates care-plan *text*, gpt-4o still does the actual
+    identification, so labeling it "DeepSeek" would have been misleading to a user reading the
+    badge); shown as a small chip next to the date in `IdentificationListComponent`'s rows (the
+    "identification cards" the user meant).
+  - Backend: 142/142 tests passing, `mvn compile` clean. Frontend: `ng build` + `ng lint` clean.
+
 ### T3.8 — Four small fixes: reminder cascade-archive, cropped care-card text, Scans tab refactor,
   image lightbox ✅ (branch: dev, session 2026-06-19, requested ad-hoc by the user)
   - **Archive cascade bug:** `PlantServiceImpl.archivePlant()` archived the `Plant` row but left all

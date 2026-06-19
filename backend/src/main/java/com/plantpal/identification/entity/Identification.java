@@ -74,4 +74,7 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "source_image_height")
   private Integer sourceImageHeight;
+
+  @Column(name = "ai_model_used", length = 30)
+  private String aiModelUsed;
 }

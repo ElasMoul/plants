@@ -254,6 +254,22 @@ mat-divider {
 }
 
 // ── Scans tab ────────────────────────────────────────────────
+.scans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .scans-subheading {
+    margin: 0;
+  }
+
+  .btn-pill {
+    flex-shrink: 0;
+  }
+}
+
 .scans-subheading {
   margin: 0 0 12px;
   font-family: var(--font-heading);

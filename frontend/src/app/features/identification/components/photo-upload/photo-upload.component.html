@@ -69,7 +69,7 @@
   </div>
 
   <!-- Optional plant link -->
-  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length">
+  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length && !lockedPlantId">
     <mat-label>Link to existing plant (optional)</mat-label>
     <mat-icon matPrefix>local_florist</mat-icon>
     <mat-select

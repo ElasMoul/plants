@@ -32,4 +32,5 @@ public class IdentificationResponse {
   private List<AnnotationRegionDto> annotationRegions;
   private Integer sourceImageWidth;
   private Integer sourceImageHeight;
+  private String aiModelUsed;
 }

@@ -95,6 +95,19 @@
   color: var(--color-text-secondary);
 }
 
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;

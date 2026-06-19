@@ -7,6 +7,13 @@ import { ActionPlanDto, AnnotationRegion, CarePlanDto } from '../../models/ident
 import { IdentificationService } from '../../services/identification.service';
 import { TreatmentPlanService } from '../../../reminder/services/treatment-plan.service';
 
+interface CureCacheEntry {
+  advice: string;
+  actionPlan: ActionPlanDto | null;
+  addedToPlan: boolean;
+  treatmentStarted: boolean;
+}
+
 @Component({
   selector: 'app-disease-detail-panel',
   templateUrl: './disease-detail-panel.component.html',
@@ -28,6 +35,10 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   startingTreatment = false;
   treatmentStarted = false;
 
+  // Keyed by identificationId:regionLabel — re-selecting a region already asked about should
+  // show the cached advice instead of presenting "Ask for cure" again.
+  private readonly cureCache = new Map<string, CureCacheEntry>();
+
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -38,16 +49,41 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['region']) {
+    if (!changes['region'] && !changes['identificationId']) return;
+
+    this.loadingAdvice = false;
+    this.adviceError = false;
+    this.addingToPlan = false;
+    this.startingTreatment = false;
+
+    const key = this.cacheKey();
+    const cached = key ? this.cureCache.get(key) : undefined;
+    if (cached) {
+      this.advice = cached.advice;
+      this.actionPlan = cached.actionPlan;
+      this.addedToPlan = cached.addedToPlan;
+      this.treatmentStarted = cached.treatmentStarted;
+    } else {
       this.advice = null;
       this.actionPlan = null;
-      this.loadingAdvice = false;
-      this.adviceError = false;
-      this.addingToPlan = false;
       this.addedToPlan = false;
-      this.startingTreatment = false;
       this.treatmentStarted = false;
     }
+  }
+
+  private cacheKey(): string | null {
+    return this.region ? `${this.identificationId}:${this.region.label}` : null;
+  }
+
+  private cacheCurrent(): void {
+    const key = this.cacheKey();
+    if (!key || !this.advice) return;
+    this.cureCache.set(key, {
+      advice: this.advice,
+      actionPlan: this.actionPlan,
+      addedToPlan: this.addedToPlan,
+      treatmentStarted: this.treatmentStarted,
+    });
   }
 
   ngOnDestroy(): void {
@@ -76,6 +112,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
           this.advice = result.advice;
           this.actionPlan = result.actionPlan;
           this.loadingAdvice = false;
+          this.cacheCurrent();
         },
         error: () => {
           this.adviceError = true;
@@ -95,6 +132,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
         next: plan => {
           this.addingToPlan = false;
           this.addedToPlan = true;
+          this.cacheCurrent();
           this.carePlanUpdated.emit(plan);
         },
         error: () => {
@@ -120,6 +158,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
         next: res => {
           this.startingTreatment = false;
           this.treatmentStarted = true;
+          this.cacheCurrent();
           const snackRef = this.snackBar.open('Treatment plan started', 'View', { duration: 5000 });
           snackRef.onAction()
             .pipe(takeUntil(this.destroy$))

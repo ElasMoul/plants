@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, Subject, Subscription, interval, of } from 'rxjs';
 import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
 import { IdentificationService } from '../../services/identification.service';
-import { IdentificationResponse } from '../../models/identification.model';
+import { aiModelLabel, IdentificationResponse } from '../../models/identification.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 const PAGE_SIZE = 10;
@@ -52,6 +52,10 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
 
   trackById(_index: number, item: IdentificationResponse): number {
     return item.id;
+  }
+
+  modelLabel(item: IdentificationResponse): string | null {
+    return aiModelLabel(item.aiModelUsed);
   }
 
   private fetchPage(): Observable<void> {

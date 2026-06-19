@@ -15,7 +15,8 @@
     <div
       class="timeline-item"
       *ngFor="let scan of scans"
-      [routerLink]="['/identify', scan.id]"
+      [class.timeline-item-selected]="scan.id === selectedScanId"
+      (click)="select(scan)"
     >
       <img
         [src]="scan.photoUrl || placeholderImage"
