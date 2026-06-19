@@ -53,4 +53,7 @@
     <include file="db/changelog/migrations/014_add_step_detail.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/015_add_ai_model_used.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

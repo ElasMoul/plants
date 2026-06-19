@@ -95,7 +95,15 @@ public class PlantServiceImpl implements PlantService {
     Plant plant = findOwnedPlant(id, userId);
     plant.setStatus(PlantStatus.ARCHIVED);
     plantRepository.save(plant);
+    disableRemindersForPlant(id);
     log.info("Plant archived: id={}, userId={}", id, userId);
+  }
+
+  private void disableRemindersForPlant(Long plantId) {
+    List<Reminder> reminders = reminderRepository.findByPlantIdAndEnabledTrue(plantId);
+    reminders.forEach(r -> r.setEnabled(false));
+    reminderRepository.saveAll(reminders);
+    log.info("Disabled {} reminder(s) for archived plant: plantId={}", reminders.size(), plantId);
   }
 
   @Override

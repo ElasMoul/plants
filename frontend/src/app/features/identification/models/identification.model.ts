@@ -86,6 +86,18 @@ export interface CarePlanDto {
   beginnerWarnings: string[];
 }
 
+const AI_MODEL_LABELS: Record<string, string> = {
+  DEEPSEEK: 'GPT-4o',
+  GITHUB_GPT4O: 'GPT-4o',
+  OLLAMA_LLAVA: 'Ollama (local)',
+  PLANTNET: 'PlantNet',
+};
+
+export function aiModelLabel(model: string | null | undefined): string | null {
+  if (!model) return null;
+  return AI_MODEL_LABELS[model] ?? model;
+}
+
 export function getConfidenceLevel(score: number): ConfidenceLevel {
   if (score >= 0.80) return 'HIGH';
   if (score >= 0.50) return 'MEDIUM';
@@ -118,6 +130,7 @@ export interface IdentificationResponse {
   carePlan: CarePlanDto | null;
   annotationRegions: AnnotationRegion[] | null;
   createdAt: string;
+  aiModelUsed?: string | null;
 }
 
 export interface AnalyzeEmitPayload {

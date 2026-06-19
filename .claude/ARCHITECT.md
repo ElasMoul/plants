@@ -190,6 +190,32 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
   `normalizeDiagram()` is reused verbatim for step-level diagrams, just called once per step.
   `ReminderMapper` (from T3.4b) absorbed the three new fields at a single point, which is the
   payoff of having consolidated the mapper the session before.
+- **T3.7 fix (2026-06-19):** `ActionPlanValidator.normalize()` was NOT actually the single
+  choke-point it was documented as. It was wired into `addCareCard()` and `parseCureAdvice()`,
+  but the primary identification flow (`IdentificationServiceImpl.processIdentification()`)
+  persisted `result.getCarePlan()` — raw AI JSON from `GitHubModelsClient`/`DeepSeekClient` — with
+  **zero per-card `actionPlan` validation**, for every photo identification (the highest-volume
+  path). Fixed with a new private `normalizeActionPlans(CarePlanDto)` in
+  `IdentificationServiceImpl`, called right after `fallbackCarePlan()` resolution and before
+  `setCarePlan()`/persist — iterates `careCards` and replaces each card's `actionPlan` via the
+  existing `ActionPlanValidator.normalize()` (no new validation logic, just wiring the existing
+  validator into the path that was missing it). **Lesson:** a doc claiming "X is the single
+  choke-point" needs to be verified against every call site that touches the DB, not just the
+  ones that were top of mind when it was written.
+- **T3.7 fix (2026-06-19):** none of the three AI system prompts (`GitHubModelsClient.
+  PLANT_IDENTIFICATION_SYSTEM_PROMPT`, `DeepSeekClient.CARE_PLAN_SYSTEM_PROMPT`, `DeepSeekClient.
+  CURE_ADVICE_SYSTEM_PROMPT`) constrained which `CareCardType`s may carry an `actionPlan`, or
+  constrained Mermaid syntax beyond "valid MERMAID". Added to all three (Mermaid-syntax rule) and
+  to the two care-plan-generating prompts (per-card-type rule — not applicable to cure-advice,
+  which always implies a PEST-shaped card): `actionPlan` must be null for LIGHT/HUMIDITY/
+  TEMPERATURE/SEASONAL; ROUTINE valid only for WATERING/FERTILIZING/REPOTTING/PRUNING; TREATMENT
+  valid only for PEST and WATERING/FERTILIZING-with-issues; Mermaid diagrams restricted to
+  `flowchart LR`/`flowchart TD`, no `subgraph`/click events/style blocks, no double quotes in node
+  labels. Reason: `MermaidDiagramComponent` fails silently on malformed DSL (by design — diagrams
+  are a bonus, never required), which means a prompt that doesn't constrain syntax produces
+  diagrams that silently never render, indistinguishable from "no diagram was warranted." This is
+  the most likely explanation for why diagrams were flagged in STATE.md as "never confirmed
+  against a live AI response."
 
 ## Migration Sequencing
 - db.changelog-master.xml executes in XML-listed order, NOT by filename

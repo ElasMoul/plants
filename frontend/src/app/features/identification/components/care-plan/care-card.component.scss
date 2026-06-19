@@ -66,9 +66,7 @@
   margin: 2px 0 0;
   font-size: 0.8rem;
   color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .expand-icon {

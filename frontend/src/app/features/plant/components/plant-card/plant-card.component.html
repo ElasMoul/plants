@@ -6,6 +6,7 @@
       [src]="plant.photoUrl || placeholderImage"
       [alt]="plant.nickname"
       class="photo-img"
+      (click)="openLightbox($event)"
     />
 
     <!-- Health badge -->

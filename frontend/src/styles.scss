@@ -209,3 +209,15 @@ h6 {
 .mat-mdc-snack-bar-container {
   border-radius: 12px !important;
 }
+
+// ── Image lightbox dialog ──────────────────────────────────────
+.image-lightbox-panel .mat-mdc-dialog-container {
+  --mdc-dialog-container-color: transparent;
+  box-shadow: none;
+
+  .mdc-dialog__surface {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+}

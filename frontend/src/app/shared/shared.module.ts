@@ -16,9 +16,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialogModule } from '@angular/material/dialog';
 
 import { ModelSelectorComponent } from './components/model-selector/model-selector.component';
 import { MermaidDiagramComponent } from './components/mermaid-diagram/mermaid-diagram.component';
+import { ImageLightboxComponent } from './components/image-lightbox/image-lightbox.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -34,10 +36,11 @@ const MATERIAL_MODULES = [
   MatBadgeModule,
   MatTooltipModule,
   MatDividerModule,
+  MatDialogModule,
 ];
 
 @NgModule({
-  declarations: [ModelSelectorComponent, MermaidDiagramComponent],
+  declarations: [ModelSelectorComponent, MermaidDiagramComponent, ImageLightboxComponent],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
     CommonModule,
@@ -47,6 +50,7 @@ const MATERIAL_MODULES = [
     ...MATERIAL_MODULES,
     ModelSelectorComponent,
     MermaidDiagramComponent,
+    ImageLightboxComponent,
   ],
 })
 export class SharedModule {}

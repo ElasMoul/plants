@@ -30,6 +30,7 @@
   object-fit: cover;
   border-radius: 8px;
   border: 2px solid var(--color-text-secondary);
+  transition: box-shadow 0.15s ease;
 
   &.health-healthy {
     border-color: var(--color-success);
@@ -42,6 +43,10 @@
   &.health-unknown {
     border-color: var(--color-text-secondary);
   }
+}
+
+.timeline-item-selected .timeline-thumb {
+  box-shadow: 0 0 0 3px var(--color-primary);
 }
 
 .timeline-date {

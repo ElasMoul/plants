@@ -150,6 +150,29 @@ class PlantServiceTest {
       verify(plantRepository, never()).delete(any());
       verify(plantRepository, never()).deleteById(any());
     }
+
+    @Test
+    @DisplayName("should disable all enabled reminders for the archived plant")
+    void shouldDisableRemindersOnArchive() {
+      // Given
+      var plant = aPlant().withId(1L).withUserId(1L).withStatus(PlantStatus.ACTIVE).build();
+      when(plantRepository.findByIdAndUserIdAndStatus(1L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.of(plant));
+      when(plantRepository.save(any(Plant.class))).thenReturn(plant);
+
+      Reminder watering = Reminder.builder().id(1L).plantId(1L).enabled(true).build();
+      Reminder fertilizing = Reminder.builder().id(2L).plantId(1L).enabled(true).build();
+      when(reminderRepository.findByPlantIdAndEnabledTrue(1L))
+          .thenReturn(java.util.List.of(watering, fertilizing));
+
+      // When
+      plantService.archivePlant(1L, 1L);
+
+      // Then
+      assertThat(watering.isEnabled()).isFalse();
+      assertThat(fertilizing.isEnabled()).isFalse();
+      verify(reminderRepository).saveAll(java.util.List.of(watering, fertilizing));
+    }
   }
 
   @Nested
