@@ -266,6 +266,17 @@ confirmed via `ng build` output). That's an expected trade-off of the cross-modu
 than the separate `feature/PP-012-reminder-frontend` the original plan named — backend and frontend
 shipped together in one PR.
 
+**Bug found + fixed (2026-06-18):** `care-log.service.ts`'s `baseUrl` was
+`${environment.apiUrl}/care-logs` — the real `CareLogController` is mapped at `/api/v1/care`, not
+`/api/v1/care-logs`. Every `getPlantCareLogs()` request 404'd silently (the component's `error`
+callback just sets `loading = false`, no message shown), so `plant-detail`'s "Care History" tab
+always rendered empty regardless of actual data. Found via live testing, not caught by `ng
+build`/`ng lint`/unit tests since none of those exercise the real HTTP route. Fixed by correcting
+`baseUrl` to `${environment.apiUrl}/care`. Double-check any other frontend service's `baseUrl`
+against its controller's actual `@RequestMapping` rather than assuming the name matches the
+feature folder — `reminder.service.ts` and `push-notification.service.ts` were both checked in the
+same pass and are correct (`/api/v1/reminders`, `/api/v1/notifications`).
+
 ### T3.5 — Actionable care plans UI: Mermaid diagrams + "Set reminder" / "Start treatment plan" ✅
 (Complete 2026-06-18, branch: feature/PP-028-actionable-care-plans-2 — same branch as T3.4 backend)
 

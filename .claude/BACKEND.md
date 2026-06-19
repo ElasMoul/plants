@@ -63,6 +63,9 @@ Full CRUD + scheduler + web-push, all against tables that already existed since 
 - 11 new unit tests; full suite 95/95 passing
 NOTE: completeReminder()/logCare() rescheduling logic described above was superseded by
 applyCompletionToReminder() in T3.4 above — see that entry, not this one, for current behaviour.
+NOTE: `CareLogController` is correctly mapped at `/api/v1/care` (GET `/plant/{plantId}`, POST
+`/done`) — this backend side was always right. The bug was a frontend baseUrl mismatch
+(`care-log.service.ts` called `/api/v1/care-logs`); fixed 2026-06-18, see STATE.md's T3.2 entry.
 
 ## Earlier Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard, merged)
 T2.F, T2.10a–d, T2.10e all done — see STATE.md for full notes. Highlights:

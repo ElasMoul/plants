@@ -7,6 +7,7 @@ import com.plantpal.reminder.dto.ReminderResponse;
 import com.plantpal.reminder.entity.CareLog;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.entity.TreatmentPlanStatus;
+import com.plantpal.reminder.mapper.ReminderMapper;
 import com.plantpal.reminder.repository.CareLogRepository;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.repository.TreatmentPlanRepository;
@@ -161,19 +162,6 @@ public class ReminderServiceImpl implements ReminderService {
   }
 
   private ReminderResponse toResponse(Reminder reminder, Plant plant) {
-    return ReminderResponse.builder()
-        .id(reminder.getId())
-        .plantId(reminder.getPlantId())
-        .plantNickname(plant != null ? plant.getNickname() : null)
-        .plantPhotoUrl(plant != null ? plant.getPhotoUrl() : null)
-        .careType(reminder.getCareType())
-        .frequencyDays(reminder.getFrequencyDays())
-        .nextDueAt(reminder.getNextDueAt())
-        .enabled(reminder.isEnabled())
-        .recurring(reminder.isRecurring())
-        .treatmentPlanId(reminder.getTreatmentPlanId())
-        .treatmentPlanTitle(reminder.getTreatmentPlanTitle())
-        .stepOrder(reminder.getStepOrder())
-        .build();
+    return ReminderMapper.toResponse(reminder, plant);
   }
 }

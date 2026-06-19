@@ -250,6 +250,18 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
   - plant.module.ts: +CareLogModule, +CareLogService, +MatDialogModule (the last one already added
     in T2.10e for the identification-upload dialog)
   - `ng build` + `ng lint` both clean
+  - **Bug found via live user testing (2026-06-18), fixed same session:** `CareLogService.baseUrl`
+    was `${environment.apiUrl}/care-logs` but `CareLogController` is mapped at `/api/v1/care` (not
+    `/api/v1/care-logs`) — every `getPlantCareLogs()` call 404'd. `CareLogComponent.ngOnInit()`'s
+    `error` callback just sets `loading = false`, no toast/message, so the "Care History" tab
+    silently rendered an empty state regardless of how much real care-log data existed — looked
+    like "no data" rather than "broken request." This is why `ng build`/`ng lint`/unit tests all
+    passed clean despite the bug: unit tests mock the service layer directly and never exercise the
+    real HTTP path, and there's no `CareLogControllerIT`. Fixed by correcting the baseUrl to
+    `${environment.apiUrl}/care`. **Lesson:** a route typo between a frontend service's baseUrl and
+    its controller's `@RequestMapping` is invisible to build/lint/unit-test gates — only an actual
+    network call (manual click-through, or an integration test) catches it. Re-verify live before
+    trusting this fixed.
 - T3.4 Backend: actionable care plans — ROUTINE reminders + multi-step TREATMENT plans ✅
   (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-18)
   - Migration 012_add_treatment_plans.sql: new `treatment_plans` table (title,
@@ -414,11 +426,43 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
     button even after a plan/reminder was already created from that exact card. Lowest-risk fix:
     a `CareCardDto.actionTaken` boolean from the backend, set once something has actually been
     created from that specific card.
-  - `ReminderResponse.instruction` and `.completedAt` are frontend-invented fields, not confirmed
-    against an actual backend DTO field list (T3.4's STATE.md entry didn't enumerate
-    `ReminderResponse`'s/`ReminderSummaryDto`'s full shape). **Verify these serialize once backend
-    is live** — without `instruction` the treatment-plan step list falls back to the bare careType
-    label; without `completedAt` a completed step's date line is blank.
+  - ✅ RESOLVED 2026-06-19 (see T3.4b below): `ReminderResponse.instruction`/`.completedAt` are no
+    longer dead frontend fields — backend now populates both.
+
+### T3.4b — Fix: treatment-plan steps showed bare careType instead of instructions ✅
+  (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-19)
+  - **Bug, found via live screenshot:** every step in a treatment-plan detail page rendered the
+    plan's `careType` ("PEST") instead of the AI-generated instruction text — confirmed the
+    T3.5 "known gap" above was the root cause, not a rendering bug. `TreatmentStepDto.instruction`
+    (validated by `ActionPlanValidator`) was discarded the moment a step became a `Reminder` row:
+    `Reminder` entity had no column to hold it, so `TreatmentPlanServiceImpl.
+    createFromActionPlan()` never had anywhere to put it. `ReminderResponse` had no
+    `instruction`/`completedAt` fields either — the frontend had speculatively declared both as
+    optional (`reminder.model.ts`) anticipating a backend that never shipped them, so
+    `stepInstruction()`'s `step.instruction ?? step.careType` fallback fired on every single step.
+  - Migration `013_add_reminder_instruction.sql`: `reminders.instruction TEXT` (nullable —
+    only treatment-plan steps set it, routine reminders stay null)
+  - `Reminder` entity: +`instruction` field
+  - `TreatmentPlanServiceImpl.createFromActionPlan()`: each generated `Reminder` now sets
+    `.instruction(step.getInstruction())`
+  - New `reminder/mapper/ReminderMapper.java` (static utility, same pattern as
+    `ActionPlanValidator`): the single `Reminder`+`Plant` → `ReminderResponse` mapping point.
+    Replaces two independent hand-written copies that had drifted (`ReminderServiceImpl.
+    toResponse()` and `TreatmentPlanServiceImpl.toReminderResponse()` — neither one ever set
+    `instruction`/`completedAt`, which is exactly how this bug shipped unnoticed). Both service
+    classes now delegate their private `toResponse()`/`toReminderResponse()` methods to
+    `ReminderMapper.toResponse()`.
+  - `completedAt` populated as `reminder.getUpdatedAt()` when `!enabled`, else `null` — free, since
+    `@UpdateTimestamp` already flips the moment `applyCompletionToReminder()` disables a step; no
+    new timestamp tracking needed.
+  - No frontend changes required — `reminder.model.ts`'s `instruction`/`completedAt` fields were
+    already wired up and waiting.
+  - Diagram (the other thing flagged in the screenshot) is very likely NOT a bug: both
+    `GitHubModelsClient`'s and `DeepSeekClient`'s prompts explicitly say "only include a diagram
+    when the steps have real branching/decision logic" — a linear 4-step pest treatment has none,
+    so a null diagram there is expected. Re-check against a treatment plan with genuine branching
+    before assuming this needs a fix too.
+  - Full backend suite still green: 132/132 passing after the change.
 
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
@@ -434,11 +478,10 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
   this session, `ng build`/`ng lint` clean (frontend) — **still uncommitted, see `git status`**
 
 ## Next Tasks (in order)
-- Commit T3.4 + T3.5 on feature/PP-028-actionable-care-plans-2 (currently uncommitted — see
-  `git status` for the full file list), then open a PR / merge to dev
-- Verify the two flagged frontend-invented `ReminderResponse` fields (`instruction`,
-  `completedAt`) actually serialize from the real backend once running end-to-end — see the
-  "Known gaps" note under T3.5 above
+- Commit T3.4 + T3.5 + T3.4b on feature/PP-028-actionable-care-plans-2 (currently uncommitted —
+  see `git status` for the full file list), then open a PR / merge to dev
+- Re-verify the treatment-plan-detail screen live (Docker stack) now shows real instruction text
+  per step instead of the bare careType — T3.4b fixed the backend gap, not yet re-confirmed live
 - T3.3 — Manual testing — Phase 3 (now also covers T3.4/T3.5 flows; still needs a human with a
   phone for the push/PWA checks)
 - T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
@@ -627,6 +670,7 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
 010_add_user_preferences.sql          ✅ AddChooseAi — ai_model_preference VARCHAR(50) on users
 011_add_image_dimensions.sql          ✅ T2.F — source_image_width INT, source_image_height INT on identifications
 012_add_treatment_plans.sql           ✅ T3.4 — treatment_plans table; reminders gains recurring/treatment_plan_id/treatment_plan_title/step_order
+013_add_reminder_instruction.sql      ✅ T3.4b — reminders.instruction TEXT (nullable)
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.

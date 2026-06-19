@@ -166,15 +166,28 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
 - Chose Mermaid DSL (client-rendered) over raw AI-generated SVG for the same reason: Mermaid's
   renderer only ever emits valid SVG from valid-or-rejected DSL text; trusting raw
   AI-generated SVG markup directly would be an XSS-shaped risk for no real benefit.
+- **T3.4b fix (2026-06-19):** `TreatmentStepDto.instruction` was being validated all the way
+  through `ActionPlanValidator` and then silently dropped — `Reminder` had no column to hold it,
+  so every treatment-plan step rendered its bare `careType` instead of real instruction text.
+  Fixed: migration 013 adds `reminders.instruction TEXT`; `TreatmentPlanServiceImpl.
+  createFromActionPlan()` now sets it per step; new `reminder/mapper/ReminderMapper.java`
+  (static utility) is now the single `Reminder`→`ReminderResponse` mapping point, replacing two
+  independently hand-written copies in `ReminderServiceImpl` and `TreatmentPlanServiceImpl` that
+  had silently drifted (neither ever set `instruction`/`completedAt` — that drift is *how* this
+  bug shipped). `completedAt` is `reminder.getUpdatedAt()` when `!enabled`, else `null` — free,
+  since `@UpdateTimestamp` already flips on completion. **Lesson:** when a DTO field exists on the
+  frontend with no corresponding backend population, treat it as a live bug, not dead code — the
+  frontend was right to expect it.
 
 ## Migration Sequencing
 - db.changelog-master.xml executes in XML-listed order, NOT by filename
-- Current sequence: 001→007→008→009→010→011→012
+- Current sequence: 001→007→008→009→010→011→012→013
   - 007 is BEFORE 008 (annotation_regions JSONB added before care_plan JSONB)
   - 010: ai_model_preference on users (AddChooseAi branch)
   - 011: source_image_width, source_image_height on identifications (T2.F)
   - 012: treatment_plans table + reminders.{recurring, treatment_plan_id, treatment_plan_title,
     step_order} (T3.4)
+  - 013: reminders.instruction TEXT, nullable (T3.4b — see below)
 - When adding a new migration: always append to the XML list AND name the file with the next number
 - Never insert a migration between existing ones that have already run in prod
 

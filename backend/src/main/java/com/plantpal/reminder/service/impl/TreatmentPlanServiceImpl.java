@@ -10,6 +10,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.entity.TreatmentPlan;
 import com.plantpal.reminder.entity.TreatmentPlanStatus;
+import com.plantpal.reminder.mapper.ReminderMapper;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.TreatmentPlanService;
@@ -92,6 +93,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
               .treatmentPlanId(plan.getId())
               .treatmentPlanTitle(title)
               .stepOrder(step.getOrder())
+              .instruction(step.getInstruction())
               .build());
     }
     log.info(
@@ -142,19 +144,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
   }
 
   private ReminderResponse toReminderResponse(Reminder reminder, Plant plant) {
-    return ReminderResponse.builder()
-        .id(reminder.getId())
-        .plantId(reminder.getPlantId())
-        .plantNickname(plant != null ? plant.getNickname() : null)
-        .plantPhotoUrl(plant != null ? plant.getPhotoUrl() : null)
-        .careType(reminder.getCareType())
-        .frequencyDays(reminder.getFrequencyDays())
-        .nextDueAt(reminder.getNextDueAt())
-        .enabled(reminder.isEnabled())
-        .recurring(reminder.isRecurring())
-        .treatmentPlanId(reminder.getTreatmentPlanId())
-        .treatmentPlanTitle(reminder.getTreatmentPlanTitle())
-        .stepOrder(reminder.getStepOrder())
-        .build();
+    return ReminderMapper.toResponse(reminder, plant);
   }
 }

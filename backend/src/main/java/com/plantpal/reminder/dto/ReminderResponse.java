@@ -27,4 +27,6 @@ public class ReminderResponse {
   private Long treatmentPlanId;
   private String treatmentPlanTitle;
   private Integer stepOrder;
+  private String instruction;
+  private Instant completedAt;
 }

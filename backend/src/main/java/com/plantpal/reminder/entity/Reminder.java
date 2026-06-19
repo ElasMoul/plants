@@ -63,6 +63,9 @@ public class Reminder {
   @Column(name = "step_order")
   private Integer stepOrder;
 
+  @Column(name = "instruction", columnDefinition = "TEXT")
+  private String instruction;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;

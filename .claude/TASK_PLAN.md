@@ -2123,6 +2123,9 @@ In com.plantpal.reminder:
 **Branch:** `feature/PP-011-reminder-module` (landed on the same branch as T3.1, not a separate one)
 > CareLogComponent wired into plant-detail's "Care History" tab (was a Phase-3 placeholder since
 > T2.9). See STATE.md for full notes. Remaining: T3.3 manual/device testing below.
+> ⚠️ Found via live testing (2026-06-18) and fixed same session: `care-log.service.ts` called
+> `/api/v1/care-logs` instead of the real `/api/v1/care` route — Care History tab silently showed
+> empty for every plant. See STATE.md's T3.2 entry for the full root-cause note.
 
 **Claude Code prompt:**
 ```

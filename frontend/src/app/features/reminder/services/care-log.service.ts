@@ -7,7 +7,7 @@ import { CareLogResponse } from '../models/care-log.model';
 
 @Injectable()
 export class CareLogService {
-  private readonly baseUrl = `${environment.apiUrl}/care-logs`;
+  private readonly baseUrl = `${environment.apiUrl}/care`;
 
   constructor(private readonly http: HttpClient) {}
 
