@@ -31,5 +31,7 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
   List<Reminder> findByTreatmentPlanIdAndEnabledTrue(Long treatmentPlanId);
 
+  List<Reminder> findByPlantIdAndEnabledTrue(Long plantId);
+
   List<Reminder> findByTreatmentPlanIdOrderByStepOrder(Long treatmentPlanId);
 }

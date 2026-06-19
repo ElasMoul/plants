@@ -464,6 +464,67 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
     before assuming this needs a fix too.
   - Full backend suite still green: 132/132 passing after the change.
 
+### T3.8 — Four small fixes: reminder cascade-archive, cropped care-card text, Scans tab refactor,
+  image lightbox ✅ (branch: dev, session 2026-06-19, requested ad-hoc by the user)
+  - **Archive cascade bug:** `PlantServiceImpl.archivePlant()` archived the `Plant` row but left all
+    of its `Reminder`s (including treatment-plan steps, since those are just `recurring=false`
+    `Reminder` rows) enabled forever — an archived plant kept generating push notifications and
+    showing up in `getUserReminders()`/dashboard "Today"/"Needs attention" sections indefinitely.
+    Fixed: new `ReminderRepository.findByPlantIdAndEnabledTrue(plantId)` + private
+    `disableRemindersForPlant(plantId)` in `PlantServiceImpl`, called right after the plant save in
+    `archivePlant()` — disables (never deletes) every enabled reminder for that plant. New unit
+    test `shouldDisableRemindersOnArchive`.
+  - **Cropped care-card header text:** `care-card.component.scss`'s `.card-summary` had
+    `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` — any summary sentence longer
+    than the available header width silently truncated with no way to read the rest (expanding the
+    card didn't help, since the truncated text was in the always-visible header, not the
+    expand-only detail section). Fixed by removing the truncation rules, letting it wrap normally.
+  - **"Last Scan" → "Scans" tab refactor:** the tab only ever showed the single latest annotated
+    scan, with no way to see past scans or which photo went with which result. `<app-plant-photo-
+    timeline>` (built in T2.10c, was sitting in the Overview tab) moved into this tab instead —
+    semantically it's scan history, not general plant info — and the tab itself renamed "Last Scan"
+    → "Scans" (in both the tab label and the Overview tab's "Check the Scans tab" cross-reference
+    text). Layout: photo timeline (full scan history, click → `/identify/:id`) on top, "Latest scan"
+    subheading + divider, then the existing photo-annotator/annotation-list/disease-detail-panel
+    block unchanged below. No new component — pure relocation + a small heading.
+  - **Image lightbox:** new shared `ImageLightboxComponent` (`shared/components/image-lightbox/`,
+    declared+exported from `SharedModule`, opened via `MatDialog.open()`) — a plain MatDialog
+    showing the full-size image with a close button and click-outside-to-close, transparent dialog
+    panel (`.image-lightbox-panel` global override in `styles.scss`, since the default Material
+    dialog surface is an opaque white card that looked wrong around a photo). Wired into
+    `PlantCardComponent`'s photo (the garden/plant-list grid — interpreted "home plant area" as the
+    main plant grid, not the dashboard rows or plant-detail hero, since that's the page most
+    centrally about viewing plant photos; flagged to the user as a scoping call they can redirect)
+    — clicking the image opens the lightbox (`stopPropagation` so it doesn't also trigger the
+    card's `routerLink` navigation), clicking elsewhere on the card still navigates as before.
+  - `ng build` + `ng lint` clean (only pre-existing SCSS budget warnings). Backend: 140/140 passing.
+
+### T3.7 — Fix: actionPlan validation gap + missing prompt constraints ✅
+  (branch: dev, session 2026-06-19 — found via gap audit against a stale planning brief, not a
+  reported bug)
+  - **Bug:** `ActionPlanValidator.normalize()` was documented (ARCHITECT.md) as "the single
+    choke-point every AI-sourced action plan passes through before touching the DB," but it was
+    only wired into `addCareCard()` and `parseCureAdvice()`. The primary identification flow
+    (`IdentificationServiceImpl.processIdentification()`) persisted `result.getCarePlan()` —
+    straight from `GitHubModelsClient`/`DeepSeekClient`'s raw JSON — with zero per-card
+    `actionPlan` validation, for every single photo identification (the highest-volume path).
+    No frequencyDays clamping, no step truncation/reordering, no diagram length/format checks, no
+    degenerate-plan nulling, for that path.
+  - Fix: new private `IdentificationServiceImpl.normalizeActionPlans(CarePlanDto)` — iterates
+    `careCards`, replaces each card's `actionPlan` via the existing `ActionPlanValidator.normalize()`
+    (no new validation logic). Called once, right after `fallbackCarePlan()` resolution and before
+    `setCarePlan()`/persist in `processIdentification()`.
+  - Also added to all three AI system prompts: Mermaid diagrams restricted to `flowchart LR`/
+    `flowchart TD` only, no `subgraph`/click events/style blocks, no double quotes in node labels
+    (`MermaidDiagramComponent` fails silently on malformed DSL, so unconstrained syntax was
+    producing diagrams that silently never render — likely explains why diagrams were never
+    confirmed live). Also added the per-card-type restriction (actionPlan null for LIGHT/HUMIDITY/
+    TEMPERATURE/SEASONAL; ROUTINE only for WATERING/FERTILIZING/REPOTTING/PRUNING; TREATMENT only
+    for PEST and WATERING/FERTILIZING-with-issues) to the two care-plan-generating prompts.
+  - Full backend suite: 139/139 still passing, `mvn compile` clean. No DTO/schema changes — purely
+    wiring an existing validator into a path that was missing it, plus prompt text.
+  - See ARCHITECT.md "T3.7 fix" entries for the full reasoning.
+
 ### T3.6 — Per-step "How to" detail: substeps text + optional Mermaid diagram ✅
   (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-19)
   - **Feature request, not a bug:** user wanted a step like "create a solution to add to pot" to

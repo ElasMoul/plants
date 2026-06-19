@@ -252,3 +252,16 @@ mat-divider {
   justify-content: center;
   padding: 48px 0;
 }
+
+// ── Scans tab ────────────────────────────────────────────────
+.scans-subheading {
+  margin: 0 0 12px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.scans-divider {
+  margin: 24px 0;
+}

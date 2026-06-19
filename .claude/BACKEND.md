@@ -19,8 +19,25 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T3.4 Actionable care plans backend ✅ (branch: feature/PP-028-actionable-care-plans-2,
-uncommitted as of end of session — run `git status` first thing in a new session)
+## Current Task — T3.7 Fix: actionPlan validation gap + missing prompt constraints ✅ (branch: dev,
+session 2026-06-19)
+Found via a gap audit against a stale planning brief (the brief described a feature already shipped
+in T3.4/T3.5/T3.6 — but auditing it against the real code surfaced two genuine gaps):
+- `ActionPlanValidator.normalize()` was documented as the single choke-point for all AI-sourced
+  action plans, but `IdentificationServiceImpl.processIdentification()` (the primary photo
+  identification path) persisted `result.getCarePlan()` straight from AI JSON with NO per-card
+  `actionPlan` validation. Fixed with a new private `normalizeActionPlans(CarePlanDto)`, called
+  before `setCarePlan()`/persist — just wires the existing validator in, no new logic.
+- None of the 3 system prompts constrained Mermaid syntax (`flowchart LR`/`TD` only, no
+  `subgraph`/click/style, no double quotes in labels) or which `CareCardType`s may carry an
+  `actionPlan`. Added both rules to `GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT` and
+  `DeepSeekClient.CARE_PLAN_SYSTEM_PROMPT`; Mermaid-syntax rule only (not card-type, not
+  applicable) added to `DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT`.
+Full suite 139/139 passing, `mvn compile` clean. See STATE.md "T3.7" and ARCHITECT.md "T3.7 fix"
+entries for full reasoning.
+
+## Previous Task — T3.4 Actionable care plans backend ✅ (branch: feature/PP-028-actionable-care-plans-2,
+merged to dev via PR #33)
 ROUTINE reminders + multi-step TREATMENT plans, generated from AI care cards / cure advice. Highlights:
 - Migration 012_add_treatment_plans.sql: new `treatment_plans` table; `reminders` gains `recurring`
   (default true), `treatment_plan_id` (FK CASCADE), `treatment_plan_title` (denormalized),

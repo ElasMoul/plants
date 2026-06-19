@@ -223,6 +223,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
       CarePlanDto carePlan =
           result.getCarePlan() != null ? result.getCarePlan() : fallbackCarePlan();
+      normalizeActionPlans(carePlan);
 
       // Persist completed identification
       identification.setScientificName(result.getSpecies());
@@ -389,6 +390,15 @@ public class IdentificationServiceImpl implements IdentificationService {
       case "MEDIUM" -> 0.6;
       default -> 0.3;
     };
+  }
+
+  private void normalizeActionPlans(CarePlanDto carePlan) {
+    if (carePlan.getCareCards() == null) {
+      return;
+    }
+    for (CareCardDto card : carePlan.getCareCards()) {
+      card.setActionPlan(ActionPlanValidator.normalize(card.getActionPlan()));
+    }
   }
 
   private CarePlanDto parseCarePlan(String raw) {

@@ -1,0 +1,24 @@
+.lightbox-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: zoom-out;
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: 8px;
+  object-fit: contain;
+  cursor: default;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: #fff !important;
+  z-index: 2;
+}

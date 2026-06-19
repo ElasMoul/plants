@@ -40,11 +40,9 @@
       <mat-tab label="Overview">
         <div class="tab-content">
 
-          <app-plant-photo-timeline [plantId]="plant.id"></app-plant-photo-timeline>
-
           <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
             <span class="attention-badge">ATTENTION NEEDED</span>
-            <p>This plant has reported health issues. Check the Last Scan tab for details.</p>
+            <p>This plant has reported health issues. Check the Scans tab for details.</p>
           </div>
 
           <div class="info-grid">
@@ -127,9 +125,12 @@
         </div>
       </mat-tab>
 
-      <!-- Tab 4: Last Scan -->
-      <mat-tab label="Last Scan">
+      <!-- Tab 4: Scans -->
+      <mat-tab label="Scans">
         <div class="tab-content">
+
+          <h3 class="scans-subheading">Scan history</h3>
+          <app-plant-photo-timeline [plantId]="plant.id"></app-plant-photo-timeline>
 
           <div *ngIf="!carePlanLoaded" class="care-plan-loading">
             <mat-spinner diameter="32"></mat-spinner>
@@ -146,6 +147,9 @@
           </div>
 
           <ng-container *ngIf="carePlanLoaded && hasIdentification">
+            <mat-divider class="scans-divider"></mat-divider>
+            <h3 class="scans-subheading">Latest scan</h3>
+
             <app-photo-annotator
               [imageUrl]="latestPhotoUrl || placeholderImage"
               [regions]="latestAnnotationRegions"

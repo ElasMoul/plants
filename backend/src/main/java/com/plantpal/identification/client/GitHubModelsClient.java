@@ -80,6 +80,14 @@ public class GitHubModelsClient {
         own decision branching worth visualising (e.g. "mix solution → test on one leaf → no
         reaction? apply fully : dilute further"). This is rare — most steps, even within a
         TREATMENT plan, should have diagram: null.
+      - actionPlan must be null for card types: LIGHT, HUMIDITY, TEMPERATURE, SEASONAL. These are
+        environmental conditions, never ROUTINE or TREATMENT plans.
+      - ROUTINE actionPlan is valid only for: WATERING, FERTILIZING, REPOTTING, PRUNING.
+      - TREATMENT actionPlan is valid only for: PEST, and WATERING/FERTILIZING when issues are
+        detected.
+      - Mermaid diagrams must use only "flowchart LR" or "flowchart TD". Never use subgraph,
+        click events, or style blocks. Node labels must not contain double quotes — use single
+        quotes or backticks only.
       """;
 
   static final String ANNOTATION_SYSTEM_PROMPT =
