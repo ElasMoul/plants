@@ -56,4 +56,7 @@
     <include file="db/changelog/migrations/015_add_ai_model_used.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/016_create_species.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

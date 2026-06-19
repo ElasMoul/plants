@@ -11,7 +11,7 @@ Phase 3 — Reminders + Push Notifications — T3.1, T3.2, T3.4, T3.4b, T3.5, T3
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
-Phase 6 — Species & Treatment Domain Restructure 🔲 PLANNED THIS SESSION (T6.1–T6.14 below, none
+Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅ done; T6.2–T6.14 below not
   started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
@@ -705,7 +705,7 @@ Phase 6 — Species & Treatment Domain Restructure 🔲 PLANNED THIS SESSION (T6
 
 | Task | Name | Agent | Branch | Depends on | Status |
 |---|---|---|---|---|---|
-| T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | 🔲 |
+| T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | ✅ |
 | T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | 🔲 |
 | T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | 🔲 |
 | T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | 🔲 |
@@ -719,6 +719,45 @@ Phase 6 — Species & Treatment Domain Restructure 🔲 PLANNED THIS SESSION (T6
 | T6.12 | Treatment page | Frontend | `feature/PP-036-treatment-page` | T6.2 | 🔲 |
 | T6.13 | Chat: plant context injection | Frontend + Backend | `feature/PP-037-chat-plant-context` | T6.3 | 🔲 |
 | T6.14 | Reminders: wire treatment plan steps | Backend | `feature/PP-030-treatment-entity` (same) | T6.2 | 🔲 |
+
+- T6.1 Species entity + migrations + endpoints ✅ (backend, branch `feature/PP-029-species-entity`,
+  session 2026-06-19)
+  - New `com.plantpal.species` package: `Species` entity (extends `AuditableEntity`, NOT user-scoped
+    — no userId field, no ownership check on the row itself), `SpeciesStatus` (ACTIVE|NEEDS_REVIEW),
+    `SpeciesRepository` (findByScientificName, existsByScientificName), `SpeciesMapper` (MapStruct,
+    toResponse only), `SpeciesResponse`/`SpeciesSummaryDto` DTOs, `SpeciesService`/`SpeciesServiceImpl`,
+    `SpeciesController` (`GET /api/v1/species/{id}` public read, `GET /api/v1/species/mine` paginated).
+  - Migration `016_create_species.sql`, registered in db.changelog-master.xml after 015.
+    ⚠️ The task brief's SQL used `created_by`/`updated_by BIGINT`, but `AuditableEntity` stores
+    those as `String` (every existing migration uses `VARCHAR(255)` for these columns) — corrected
+    to `VARCHAR(255)` to avoid a Hibernate schema-validation failure at startup.
+  - `findOrCreate(scientificName, commonName)`: looks up by scientificName, creates with
+    status=ACTIVE on miss, then fires `SpeciesEnrichmentService.enrich(id)` via an
+    `Optional<SpeciesEnrichmentService>` constructor dependency — no implementation exists yet
+    (T6.4 will add one); `Optional.empty()` makes the call a safe no-op in the meantime, and the
+    enrichment call itself is not blocking (no `@Async` needed on this service — that lives on
+    T6.4's future implementation).
+  - ⚠️ **Known gap, intentionally deferred:** `getUserSpecies(userId, pageable)` is currently a
+    **stub** — it logs a WARN and returns `Page.empty(pageable)`. The task brief specified grouping
+    the caller's ACTIVE `Plant` rows by `speciesId`, but `Plant.speciesId` does not exist yet
+    (planned for **T6.3 / migration 017**, not yet built) — confirmed via grep, no `speciesId`
+    anywhere in the codebase before this session. Flagged to the user via AskUserQuestion; chosen
+    resolution was to stub this one method and keep migration boundaries exactly as ARCHITECT.md's
+    Phase 6 plan laid them out, rather than pulling `plants.species_id` forward into this migration.
+    **T6.3 must wire this up for real** — reuse `IdentificationRepository.findLatestPerPlant()` for
+    `healthSummary`, same batch-fetch pattern as `PlantServiceImpl.enrichWithHealthAndWater()`;
+    exclude plants with `speciesId IS NULL`. The TODO comment in `SpeciesServiceImpl.getUserSpecies()`
+    has the same note.
+  - New `SpeciesServiceTest` (5 tests, unit/mocked): findOrCreate hit/miss + enrichment-fired
+    verification, getSpecies found/not-found, and a stub-behavior test for getUserSpecies
+    (asserts empty page — full coverage of grouping/plantCount/healthSummary lands with T6.3).
+    `Optional<SpeciesEnrichmentService>` isn't `@InjectMocks`-friendly, so the service is
+    constructed manually in `@BeforeEach` (same documented pattern as other non-mockable-param
+    services).
+  - `mvn clean compile`, full unit suite (`-Dtest='!*IT'`), and `checkstyle:check` all pass;
+    `spotless:apply` run (reformatted only, no logic changes).
+  - **Next:** T6.2 (Treatment entity) and T6.3 (Plant FK columns — unblocks the getUserSpecies
+    stub above) are next per the Phase 6 dependency table.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -910,7 +949,7 @@ Phase 6 — Species & Treatment Domain Restructure 🔲 PLANNED THIS SESSION (T6
                                        migration shipped correctly in T3.9, only this doc list lagged.
                                        Cross-check db.changelog-master.xml as the source of truth if
                                        this list ever looks stale again.
-016_create_species.sql                🔲 T6.1 — new species table (Phase 6, planned)
+016_create_species.sql                ✅ T6.1 — new species table
 017_alter_plants_add_species_fk.sql   🔲 T6.3 — plants.species_id/last_scan_id/active_treatment_id FK,
                                        drops plants.species (String) (Phase 6, planned)
 018_create_treatments.sql             🔲 T6.2 — new treatments table (Phase 6, planned)

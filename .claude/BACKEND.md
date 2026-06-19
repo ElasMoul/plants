@@ -19,7 +19,35 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T3.7 Fix: actionPlan validation gap + missing prompt constraints ✅ (branch: dev,
+## Current Task — T6.1 Species entity + migrations + endpoints ✅ (branch:
+feature/PP-029-species-entity, session 2026-06-19)
+New `com.plantpal.species` package — first step of the Phase 6 species/treatment domain restructure
+(see ARCHITECT.md "Phase 6" and STATE.md's T6.1 entry for full design rationale):
+- `Species` entity (extends AuditableEntity) — deliberately NOT user-scoped (no userId field, no
+  per-row ownership check; two users owning the same botanical species share one row).
+  `SpeciesStatus` ACTIVE|NEEDS_REVIEW. Migration `016_create_species.sql`, registered after 015.
+- `SpeciesRepository` (findByScientificName/existsByScientificName), `SpeciesMapper` (MapStruct,
+  toResponse only), `SpeciesResponse`/`SpeciesSummaryDto`, `SpeciesService`/`SpeciesServiceImpl`,
+  `SpeciesController` (`GET /{id}` public read, `GET /mine` paginated).
+- `findOrCreate()` creates on miss + fires `SpeciesEnrichmentService.enrich(id)` through an
+  `Optional<SpeciesEnrichmentService>` constructor param — no implementation exists until T6.4;
+  `Optional.empty()` keeps it a safe no-op until then.
+- ⚠️ **`getUserSpecies()` is a stub** (`Page.empty()` + WARN log) — it needs `Plant.speciesId`,
+  which doesn't exist until T6.3/migration 017. Confirmed via grep before starting (no `speciesId`
+  anywhere in the codebase). Flagged to the user mid-session; chose to keep T6.1/T6.3 migration
+  boundaries exactly as planned rather than pulling `plants.species_id` forward. **T6.3 must
+  replace this stub** — group ACTIVE plants by speciesId, reuse
+  `IdentificationRepository.findLatestPerPlant()` for healthSummary (same pattern as
+  `PlantServiceImpl.enrichWithHealthAndWater()`), exclude null-speciesId plants.
+- Fixed one brief/codebase mismatch: the task's migration SQL used `BIGINT` for
+  `created_by`/`updated_by`; `AuditableEntity` stores these as `String` and every existing
+  migration uses `VARCHAR(255)` — used `VARCHAR(255)` to avoid a Hibernate schema-validation
+  failure at startup.
+- New `SpeciesServiceTest` (5 tests). `mvn clean compile`, full unit suite, checkstyle all pass.
+Next: T6.2 (Treatment entity) or T6.3 (Plant FK columns, unblocks `getUserSpecies`) per the Phase 6
+dependency table in STATE.md.
+
+## Previous Task — T3.7 Fix: actionPlan validation gap + missing prompt constraints ✅ (branch: dev,
 session 2026-06-19)
 Found via a gap audit against a stale planning brief (the brief described a feature already shipped
 in T3.4/T3.5/T3.6 — but auditing it against the real code surfaced two genuine gaps):
