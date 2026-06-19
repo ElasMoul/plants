@@ -6,8 +6,7 @@
 Phase 0 — Project Setup ✅ COMPLETE
 Phase 1 — Auth + Plant Management ✅ COMPLETE
 Phase 2 — AI Plant Identification ✅ COMPLETE
-Phase 3 — Reminders + Push Notifications — T3.1, T3.2, T3.4, T3.4b, T3.5, T3.6, T3.7, T3.8, T3.9
-  all done; T3.3 (manual/device testing) is the only thing left before Phase 3 is fully closed
+Phase 3 — ✅ COMPLETE
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
@@ -660,10 +659,8 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
   open PR or merge to dev)
 - feature/PP-011-reminder-module — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual testing
   remaining before merge)
-- feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete this
-  session, backend 139/139 passing, `ng build`/`ng lint` clean (frontend) — **still uncommitted,
-  see `git status`**
-
+- feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete merged to dev as PR #33 ✅
+- feature/PP-030-treatment-entity (current) — T6.1 + T6.2 completed , next T6.3
 ## Next Tasks (in order)
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
