@@ -1,11 +1,31 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-19 (session 17)
+> Last updated: 2026-06-19 (session 18 — Architect planning session)
 
 ## Current Phase
+Phase 0 — Project Setup ✅ COMPLETE
+Phase 1 — Auth + Plant Management ✅ COMPLETE
 Phase 2 — AI Plant Identification ✅ COMPLETE
-Phase 3 — Reminders + Push Notifications (T3.1 + T3.2 + T3.4 backend + T3.5 frontend all done;
-T3.3 manual/device testing is the only thing left before Phase 3 is complete)
+Phase 3 — Reminders + Push Notifications — T3.1, T3.2, T3.4, T3.4b, T3.5, T3.6, T3.7, T3.8, T3.9
+  all done; T3.3 (manual/device testing) is the only thing left before Phase 3 is fully closed
+Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
+Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
+  performance/caching, security hardening, API docs, deployment, beta testing, release)
+Phase 6 — Species & Treatment Domain Restructure 🔲 PLANNED THIS SESSION (T6.1–T6.14 below, none
+  started yet — full task prompts in TASK_PLAN.md)
+
+> ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
+> "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
+> T3.1/T3.2/T3.4/T3.4b/T3.5/T3.6/T3.7/T3.8/T3.9 already exist (Reminder + Care Log + Actionable
+> Care Plans + the EXISTING `TreatmentPlan` entity from T3.4 — a different concept from this
+> session's new `Treatment` entity, see ARCHITECT.md's disambiguation note), and migrations
+> 012–015 are already applied. A second collision turned up while drafting this: TASK_PLAN.md
+> ALSO already has a pre-existing (unstarted) "Phase 5 — Launch" section with its own T5.1–T5.8.
+> Filed as **Phase 6, T6.1–T6.14, migrations 016–019** to avoid both collisions.
+> **Execution-order note:** despite the higher number, Phase 6 (this restructure) is intended to
+> run BEFORE Phase 5 (Launch) — the phase numbers here reflect order of definition in the docs,
+> not recommended execution order. See `.claude/PHASE6_SESSION_PROGRESS.md` for this planning
+> session's resume trail if it was interrupted.
 
 ## Completed Tasks
 - T0.1 GitHub repo + branch protection ✅
@@ -654,7 +674,51 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
 - T3.3 — Manual testing — Phase 3 (now also covers T3.4/T3.5 flows; still needs a human with a
   phone for the push/PWA checks)
 - T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
-- Phase 5 — Launch prep not started
+- Phase 6 — Species & Treatment domain restructure (T6.1–T6.14 below) — recommended to execute
+  BEFORE Phase 5, see TASK_PLAN.md for full prompts
+- Phase 5 — Launch prep (T5.1–T5.8, already defined in TASK_PLAN.md, not started)
+
+## Phase 6 — Species & Treatment Domain Restructure (planned 2026-06-19, session 18)
+> Restructures the core domain from plant-centric to species-centric: a new shared `Species`
+> entity (one row per botanical species, shared across users), a new `Treatment` entity (active
+> disease-treatment plan for a specific plant+disease), a 5-item bottom nav + new Home screen, a
+> species-first Garden page, and a redesigned Plant page (sticky header, icon button bar nav).
+> Full task prompts are in TASK_PLAN.md. None of T6.1–T6.14 have been started — this is a
+> planning-only session. See ARCHITECT.md for the new domain model patterns, the identification
+> 3-path decision tree, the Treatment lifecycle state machine, and the sticky-header Angular
+> pattern.
+
+> ⚠️ **Naming collision to watch for during implementation:** this Phase introduces a `Treatment`
+> entity (disease treatment for a plant). T3.4 already introduced a DIFFERENT `TreatmentPlan`
+> entity (multi-step reminder-backed plan, ACTIVE|COMPLETED|ABANDONED, routed at
+> `/treatment-plans/:id`). They are NOT the same thing and will coexist:
+> - `TreatmentPlan` (T3.4, existing) — generic multi-step action plan generated from ANY care
+>   card's `actionPlan` (could be routine watering reminders OR a pest treatment), backed by
+>   `Reminder` rows.
+> - `Treatment` (T6.2, new) — specifically a disease-treatment record tied to one
+>   `plant_id + identification_id + diseaseName`, with its own `planJson` and lifecycle, reached
+>   from the Plant page's new icon-button-bar "treatment" tab.
+> T6.2's `Treatment.planJson` likely OVERLAPS conceptually with what `TreatmentPlan` already
+> does. Flagged in TASK_PLAN.md's T6.2 prompt — whoever implements T6.2 should re-evaluate
+> whether `Treatment` should just wrap/reference a `TreatmentPlan` row instead of duplicating the
+> careCard/actionPlan JSON storage, before writing the migration.
+
+| Task | Name | Agent | Branch | Depends on | Status |
+|---|---|---|---|---|---|
+| T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | 🔲 |
+| T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | 🔲 |
+| T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | 🔲 |
+| T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | 🔲 |
+| T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | 🔲 |
+| T6.6 | Species detail page | Frontend | `feature/PP-032-garden-species-first` (same) | T6.1, T6.4 | 🔲 |
+| T6.7 | Home page | Frontend | `feature/PP-033-home-page` | T6.3 | 🔲 |
+| T6.8 | Bottom nav 5 items + routing | Frontend | `feature/PP-033-home-page` (same) | T6.7 | 🔲 |
+| T6.9 | Identification flow redesign — species matching | Frontend + Backend | `feature/PP-034-identification-species-matching` | T6.1, T6.3 | 🔲 |
+| T6.10 | Plant page: sticky header + icon button bar | Frontend | `feature/PP-035-plant-page-redesign` | T6.3 | 🔲 |
+| T6.11 | Plant page: scans tab + treatment CTA | Frontend | `feature/PP-035-plant-page-redesign` (same) | T6.2, T6.10 | 🔲 |
+| T6.12 | Treatment page | Frontend | `feature/PP-036-treatment-page` | T6.2 | 🔲 |
+| T6.13 | Chat: plant context injection | Frontend + Backend | `feature/PP-037-chat-plant-context` | T6.3 | 🔲 |
+| T6.14 | Reminders: wire treatment plan steps | Backend | `feature/PP-030-treatment-entity` (same) | T6.2 | 🔲 |
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -841,11 +905,26 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
 012_add_treatment_plans.sql           ✅ T3.4 — treatment_plans table; reminders gains recurring/treatment_plan_id/treatment_plan_title/step_order
 013_add_reminder_instruction.sql      ✅ T3.4b — reminders.instruction TEXT (nullable)
 014_add_step_detail.sql               ✅ T3.6 — reminders.step_detail TEXT, step_diagram_format VARCHAR(20), step_diagram_content TEXT (all nullable)
+015_add_ai_model_used.sql             ✅ T3.9 — identifications.ai_model_used VARCHAR(50) (nullable)
+                                       ⚠️ this entry was missing from this list until 2026-06-19 — the
+                                       migration shipped correctly in T3.9, only this doc list lagged.
+                                       Cross-check db.changelog-master.xml as the source of truth if
+                                       this list ever looks stale again.
+016_create_species.sql                🔲 T6.1 — new species table (Phase 6, planned)
+017_alter_plants_add_species_fk.sql   🔲 T6.3 — plants.species_id/last_scan_id/active_treatment_id FK,
+                                       drops plants.species (String) (Phase 6, planned)
+018_create_treatments.sql             🔲 T6.2 — new treatments table (Phase 6, planned)
+019_alter_identifications_add_plant_species_fk.sql 🔲 T6.3 — identifications.plant_id nullable
+                                       (species-level scans), identifications.species_id FK (Phase 6, planned)
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.
 
 ⚠️ Migration 011 inserts AFTER 010. Verify db.changelog-master.xml order matches file numbering.
+
+⚠️ Phase 6 migration numbers (016–019) deliberately skip the user's originally-requested
+012–015 — those numbers are already used by T3.4/T3.4b/T3.6/T3.9. See the "Phase 6" section
+above for the full renumbering rationale.
 
 ## Open Items (technical debt)
 - **CRITICAL:** Rotate GITHUB_TOKEN (GitHub PAT) — was shared in chat sessions; regenerate at github.com/settings/tokens
