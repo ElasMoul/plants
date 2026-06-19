@@ -50,4 +50,7 @@
     <include file="db/changelog/migrations/013_add_reminder_instruction.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/014_add_step_detail.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

@@ -30,6 +30,9 @@ public final class ReminderMapper {
         .stepOrder(reminder.getStepOrder())
         .instruction(reminder.getInstruction())
         .completedAt(reminder.isEnabled() ? null : reminder.getUpdatedAt())
+        .stepDetail(reminder.getStepDetail())
+        .stepDiagramFormat(reminder.getStepDiagramFormat())
+        .stepDiagramContent(reminder.getStepDiagramContent())
         .build();
   }
 }

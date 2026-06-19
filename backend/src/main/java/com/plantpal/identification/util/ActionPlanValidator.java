@@ -27,6 +27,7 @@ public final class ActionPlanValidator {
   private static final int MIN_DUE_OFFSET_DAYS = 0;
   private static final int MAX_DUE_OFFSET_DAYS = 180;
   private static final int MAX_DIAGRAM_CONTENT_LENGTH = 2000;
+  private static final int MAX_STEP_DETAIL_LENGTH = 1000;
 
   private ActionPlanValidator() {}
 
@@ -75,6 +76,8 @@ public final class ActionPlanValidator {
               .instruction(step.getInstruction())
               .dueOffsetDays(
                   clamp(step.getDueOffsetDays(), MIN_DUE_OFFSET_DAYS, MAX_DUE_OFFSET_DAYS))
+              .detail(normalizeStepDetail(step.getDetail()))
+              .diagram(normalizeDiagram(step.getDiagram()))
               .build());
     }
 
@@ -83,6 +86,16 @@ public final class ActionPlanValidator {
         .steps(normalizedSteps)
         .diagram(normalizeDiagram(raw.getDiagram()))
         .build();
+  }
+
+  private static String normalizeStepDetail(String detail) {
+    if (detail == null || detail.isBlank()) {
+      return null;
+    }
+    String trimmed = detail.strip();
+    return trimmed.length() > MAX_STEP_DETAIL_LENGTH
+        ? trimmed.substring(0, MAX_STEP_DETAIL_LENGTH)
+        : trimmed;
   }
 
   private static DiagramDto normalizeDiagram(DiagramDto diagram) {

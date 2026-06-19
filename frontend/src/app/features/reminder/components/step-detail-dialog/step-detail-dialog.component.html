@@ -1,0 +1,14 @@
+<h2 mat-dialog-title>{{ data.instruction }}</h2>
+
+<mat-dialog-content>
+  <p class="step-detail-text" *ngIf="data.stepDetail">{{ data.stepDetail }}</p>
+
+  <app-mermaid-diagram
+    *ngIf="data.stepDiagramContent"
+    [definition]="data.stepDiagramContent"
+  ></app-mermaid-diagram>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Close</button>
+</mat-dialog-actions>

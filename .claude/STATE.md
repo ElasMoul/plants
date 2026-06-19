@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-18 (session 16)
+> Last updated: 2026-06-19 (session 17)
 
 ## Current Phase
 Phase 2 — AI Plant Identification ✅ COMPLETE
@@ -464,6 +464,59 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
     before assuming this needs a fix too.
   - Full backend suite still green: 132/132 passing after the change.
 
+### T3.6 — Per-step "How to" detail: substeps text + optional Mermaid diagram ✅
+  (branch: feature/PP-028-actionable-care-plans-2, session 2026-06-19)
+  - **Feature request, not a bug:** user wanted a step like "create a solution to add to pot" to
+    carry richer guidance than a one-line instruction — either AI-generated explanatory text
+    (substeps/precautions) or an illustration. Two options were on the table: per-step Mermaid
+    diagrams (reusing the existing plan-level diagram pattern), or a "How to" button opening a
+    modal with text. Went with both, combined: each `TreatmentStepDto` can now carry an optional
+    `detail` (free text) AND an optional `diagram` (same `DiagramDto` shape as the plan-level one)
+    — a step row only shows the "How to" icon-button when at least one is present; the modal
+    renders whichever the AI actually provided. This is additive to (not a replacement for) the
+    plan-level diagram from T3.4, which still only fires for branching logic *across* steps.
+  - `TreatmentStepDto` (identification/dto/): +`detail` (String), +`diagram` (DiagramDto)
+  - `ActionPlanValidator.normalizeTreatment()`: each step's `detail` is trimmed, blank→null,
+    capped at 1000 chars (`normalizeStepDetail()`); each step's `diagram` reuses the exact same
+    `normalizeDiagram()` private method already used for the plan-level diagram — same
+    MERMAID-only / non-blank / ≤2000-char rules, just called once per step too. 7 new
+    `ActionPlanValidatorTest` cases (nested `StepDetailAndDiagram`), including one proving a
+    step's diagram is validated independently from the plan's (one can be present while the other
+    is null).
+  - Migration `014_add_step_detail.sql`: `reminders.step_detail TEXT`,
+    `reminders.step_diagram_format VARCHAR(20)`, `reminders.step_diagram_content TEXT` — all
+    nullable, only ever set for treatment-plan steps that got per-step detail from the AI.
+  - `Reminder` entity, `ReminderResponse`, `ReminderMapper`: all three fields plumbed through —
+    `ReminderMapper` (introduced in T3.4b above) meant this was a single mapping point to update
+    instead of two.
+  - `TreatmentPlanServiceImpl.createFromActionPlan()`: copies `step.getDetail()` and
+    `step.getDiagram()` onto each generated `Reminder` row.
+  - All three AI system prompts updated in lockstep (the established T3.4 pattern —
+    `GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT`, `DeepSeekClient.
+    CURE_ADVICE_SYSTEM_PROMPT`, `DeepSeekClient.CARE_PLAN_SYSTEM_PROMPT`): each step in the JSON
+    schema gained `detail` and `diagram` fields, with explicit guidance that both are rare — "only
+    fill detail when the step needs more than the one-line instruction (mixing ratio, multi-part
+    procedure, precautions)" and "only give a step its own diagram when it has its own
+    multi-part procedure or branching — this is rarer than even the plan-level diagram."
+  - Frontend: `identification.model.ts` `TreatmentStepDto` +`detail?`/+`diagram?`;
+    `reminder.model.ts` `ReminderResponse` +`stepDetail?`/+`stepDiagramFormat?`/
+    +`stepDiagramContent?`.
+  - New `reminder/components/step-detail-dialog/` (`StepDetailDialogComponent`, declared in
+    `ReminderModule` — `MatDialogModule` was already imported there from `SetReminderDialogComponent`):
+    plain MatDialog, header = step instruction, body = `stepDetail` text (if present) +
+    `<app-mermaid-diagram>` (if `stepDiagramContent` present) — same dynamic-import/render-failure-
+    is-silent behavior as every other Mermaid usage in the app, nothing new to harden there.
+  - `treatment-plan-detail.component.ts/html`: each step row's instruction text is now wrapped in
+    a flex row (`.step-instruction-row`) alongside a small `mat-icon-button` ("How to" /
+    `info_outline`, `matTooltip="Additional info on how to"`) — `*ngIf="hasStepDetail(step)"` so
+    the button only renders when the step actually has `stepDetail` or `stepDiagramContent`; click
+    opens `StepDetailDialogComponent` with the step's data. No change to the plan-level diagram
+    section above the step list — that's still T3.4/T3.5's behavior, untouched.
+  - Backend: 139/139 tests passing (132 + 7 new). `mvn compile` clean.
+  - Frontend: `ng build` and `ng lint` both clean (only pre-existing SCSS budget warnings, one of
+    which grew slightly from the new `.step-instruction-row`/`.btn-how-to` styles — not a new
+    warning, an existing one on this same file from T3.4/T3.5's step-list CSS).
+
 ## Active Branches
 - feature/PP-023-enhanced-annotation-backend — merged to dev as PR #15 ✅
 - feature/PP-017-visual-annotation — T2.9b + T2.9c complete, merged PR #17 ✅
@@ -474,14 +527,17 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
   open PR or merge to dev)
 - feature/PP-011-reminder-module — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual testing
   remaining before merge)
-- feature/PP-028-actionable-care-plans-2 (current) — T3.4 backend + T3.5 frontend both complete
-  this session, `ng build`/`ng lint` clean (frontend) — **still uncommitted, see `git status`**
+- feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete this
+  session, backend 139/139 passing, `ng build`/`ng lint` clean (frontend) — **still uncommitted,
+  see `git status`**
 
 ## Next Tasks (in order)
-- Commit T3.4 + T3.5 + T3.4b on feature/PP-028-actionable-care-plans-2 (currently uncommitted —
-  see `git status` for the full file list), then open a PR / merge to dev
-- Re-verify the treatment-plan-detail screen live (Docker stack) now shows real instruction text
-  per step instead of the bare careType — T3.4b fixed the backend gap, not yet re-confirmed live
+- Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
+  uncommitted — see `git status` for the full file list), then open a PR / merge to dev
+- Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
+  (T3.4b), and the new "How to" button + modal appears/works for AI-generated steps that actually
+  came back with `stepDetail`/`stepDiagramContent` (T3.6) — neither has been confirmed against a
+  live AI response yet, only unit-tested and build-verified
 - T3.3 — Manual testing — Phase 3 (now also covers T3.4/T3.5 flows; still needs a human with a
   phone for the push/PWA checks)
 - T4.1 already done (basic chat); Phase 4 polish (streaming, history) not started
@@ -671,6 +727,7 @@ T3.3 manual/device testing is the only thing left before Phase 3 is complete)
 011_add_image_dimensions.sql          ✅ T2.F — source_image_width INT, source_image_height INT on identifications
 012_add_treatment_plans.sql           ✅ T3.4 — treatment_plans table; reminders gains recurring/treatment_plan_id/treatment_plan_title/step_order
 013_add_reminder_instruction.sql      ✅ T3.4b — reminders.instruction TEXT (nullable)
+014_add_step_detail.sql               ✅ T3.6 — reminders.step_detail TEXT, step_diagram_format VARCHAR(20), step_diagram_content TEXT (all nullable)
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.

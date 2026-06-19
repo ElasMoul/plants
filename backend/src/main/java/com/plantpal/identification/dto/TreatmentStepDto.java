@@ -16,4 +16,6 @@ public class TreatmentStepDto {
   private int order;
   private String instruction;
   private int dueOffsetDays;
+  private String detail;
+  private DiagramDto diagram;
 }

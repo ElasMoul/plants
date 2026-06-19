@@ -289,4 +289,118 @@ class ActionPlanValidatorTest {
       assertThat(ActionPlanValidator.normalize(raw).getDiagram()).isNull();
     }
   }
+
+  @Nested
+  @DisplayName("normalize() — TREATMENT step detail + per-step diagram")
+  class StepDetailAndDiagram {
+
+    private TreatmentStepDto stepWithDetail(String detail) {
+      return TreatmentStepDto.builder()
+          .order(1)
+          .instruction("Mix neem oil solution")
+          .dueOffsetDays(0)
+          .detail(detail)
+          .build();
+    }
+
+    @Test
+    @DisplayName("should keep a normal-length step detail")
+    void shouldKeepNormalStepDetail() {
+      ActionPlanDto raw =
+          ActionPlanDto.builder()
+              .type("TREATMENT")
+              .steps(List.of(stepWithDetail("Mix 1 part neem oil with 10 parts water.")))
+              .build();
+
+      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail())
+          .isEqualTo("Mix 1 part neem oil with 10 parts water.");
+    }
+
+    @Test
+    @DisplayName("should null out a blank step detail")
+    void shouldNullOutBlankStepDetail() {
+      ActionPlanDto raw =
+          ActionPlanDto.builder().type("TREATMENT").steps(List.of(stepWithDetail("   "))).build();
+
+      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail()).isNull();
+    }
+
+    @Test
+    @DisplayName("should leave step detail null when none was supplied")
+    void shouldHandleNullStepDetail() {
+      ActionPlanDto raw =
+          ActionPlanDto.builder().type("TREATMENT").steps(List.of(stepWithDetail(null))).build();
+
+      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail()).isNull();
+    }
+
+    @Test
+    @DisplayName("should truncate a step detail longer than 1000 chars")
+    void shouldTruncateOversizedStepDetail() {
+      String oversized = "a".repeat(1500);
+      ActionPlanDto raw =
+          ActionPlanDto.builder()
+              .type("TREATMENT")
+              .steps(List.of(stepWithDetail(oversized)))
+              .build();
+
+      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail())
+          .hasSize(1000);
+    }
+
+    @Test
+    @DisplayName("should keep a valid per-step MERMAID diagram")
+    void shouldKeepValidStepDiagram() {
+      TreatmentStepDto step =
+          TreatmentStepDto.builder()
+              .order(1)
+              .instruction("Mix solution")
+              .dueOffsetDays(0)
+              .diagram(DiagramDto.builder().format("MERMAID").content("graph TD; A-->B;").build())
+              .build();
+      ActionPlanDto raw = ActionPlanDto.builder().type("TREATMENT").steps(List.of(step)).build();
+
+      DiagramDto result = ActionPlanValidator.normalize(raw).getSteps().get(0).getDiagram();
+
+      assertThat(result).isNotNull();
+      assertThat(result.getFormat()).isEqualTo("MERMAID");
+    }
+
+    @Test
+    @DisplayName("should null out a non-MERMAID per-step diagram while keeping the step")
+    void shouldNullOutNonMermaidStepDiagram() {
+      TreatmentStepDto step =
+          TreatmentStepDto.builder()
+              .order(1)
+              .instruction("Mix solution")
+              .dueOffsetDays(0)
+              .diagram(DiagramDto.builder().format("PLANTUML").content("@startuml").build())
+              .build();
+      ActionPlanDto raw = ActionPlanDto.builder().type("TREATMENT").steps(List.of(step)).build();
+
+      ActionPlanDto result = ActionPlanValidator.normalize(raw);
+
+      assertThat(result.getSteps().get(0).getDiagram()).isNull();
+      assertThat(result.getSteps().get(0).getInstruction()).isEqualTo("Mix solution");
+    }
+
+    @Test
+    @DisplayName("per-step diagram is independent from the plan-level diagram")
+    void stepDiagramIsIndependentFromPlanDiagram() {
+      TreatmentStepDto step =
+          TreatmentStepDto.builder()
+              .order(1)
+              .instruction("Mix solution")
+              .dueOffsetDays(0)
+              .diagram(DiagramDto.builder().format("MERMAID").content("graph TD; A-->B;").build())
+              .build();
+      ActionPlanDto raw =
+          ActionPlanDto.builder().type("TREATMENT").steps(List.of(step)).diagram(null).build();
+
+      ActionPlanDto result = ActionPlanValidator.normalize(raw);
+
+      assertThat(result.getDiagram()).isNull();
+      assertThat(result.getSteps().get(0).getDiagram()).isNotNull();
+    }
+  }
 }

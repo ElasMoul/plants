@@ -29,4 +29,7 @@ public class ReminderResponse {
   private Integer stepOrder;
   private String instruction;
   private Instant completedAt;
+  private String stepDetail;
+  private String stepDiagramFormat;
+  private String stepDiagramContent;
 }

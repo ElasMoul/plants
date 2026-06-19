@@ -124,8 +124,10 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
 > fungicide day 0, repeat day 3, inspect day 7) that benefit from explanation, sometimes a diagram.
 - Shape: `CareCardDto.actionPlan: ActionPlanDto | null`. `ActionPlanDto`: `type` (ROUTINE |
   TREATMENT), `frequencyDays` (ROUTINE), `steps: TreatmentStepDto[]` + `diagram: DiagramDto | null`
-  (TREATMENT). `TreatmentStepDto`: order, instruction, dueOffsetDays. `DiagramDto`: format
-  (only "MERMAID" supported), content.
+  (TREATMENT, plan-level — only for branching across steps). `TreatmentStepDto`: order,
+  instruction, dueOffsetDays, + (T3.6) optional `detail` (free text) and optional `diagram`
+  (same `DiagramDto` shape, step-level — for a single step's own multi-part procedure or
+  branching, e.g. mixing a solution). `DiagramDto`: format (only "MERMAID" supported), content.
 - **ActionPlanValidator.normalize()** (identification/util/) is the single choke-point every
   AI-sourced action plan passes through before touching the DB — never throws, degrades to
   `null` on anything malformed (same philosophy as `parseCarePlan()`/`parseAnnotationRegions()`).
@@ -178,16 +180,27 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
   since `@UpdateTimestamp` already flips on completion. **Lesson:** when a DTO field exists on the
   frontend with no corresponding backend population, treat it as a live bug, not dead code — the
   frontend was right to expect it.
+- **T3.6 (accepted, 2026-06-19):** Per-step "How to" detail — `TreatmentStepDto` gained an
+  optional `detail` (free text) and an optional `diagram` (same `DiagramDto` shape as the existing
+  plan-level diagram), surfaced via a small icon-button per step that opens a modal
+  (`StepDetailDialogComponent`). Reason: the plan-level diagram (T3.4) only fires for branching
+  across steps; there was no way to give an individual step (e.g. "mix a treatment solution") its
+  own richer explanation or illustration. Chose to extend the existing `DiagramDto`/Mermaid
+  pattern per-step rather than invent a new diagram mechanism — `ActionPlanValidator`'s
+  `normalizeDiagram()` is reused verbatim for step-level diagrams, just called once per step.
+  `ReminderMapper` (from T3.4b) absorbed the three new fields at a single point, which is the
+  payoff of having consolidated the mapper the session before.
 
 ## Migration Sequencing
 - db.changelog-master.xml executes in XML-listed order, NOT by filename
-- Current sequence: 001→007→008→009→010→011→012→013
+- Current sequence: 001→007→008→009→010→011→012→013→014
   - 007 is BEFORE 008 (annotation_regions JSONB added before care_plan JSONB)
   - 010: ai_model_preference on users (AddChooseAi branch)
   - 011: source_image_width, source_image_height on identifications (T2.F)
   - 012: treatment_plans table + reminders.{recurring, treatment_plan_id, treatment_plan_title,
     step_order} (T3.4)
   - 013: reminders.instruction TEXT, nullable (T3.4b — see below)
+  - 014: reminders.{step_detail, step_diagram_format, step_diagram_content}, all nullable (T3.6)
 - When adding a new migration: always append to the XML list AND name the file with the next number
 - Never insert a migration between existing ones that have already run in prod
 

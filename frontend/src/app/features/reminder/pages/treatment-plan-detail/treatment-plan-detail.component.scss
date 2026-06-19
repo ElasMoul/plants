@@ -252,16 +252,39 @@
   padding-bottom: 24px;
 }
 
+.step-instruction-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
 .step-instruction {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 0.92rem;
   font-weight: 500;
   color: var(--color-text-primary);
   line-height: 1.4;
+  padding-top: 2px;
 
   &.done {
     text-decoration: line-through;
     color: var(--color-text-secondary);
+  }
+}
+
+.btn-how-to {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  color: var(--color-text-secondary);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
   }
 }
 

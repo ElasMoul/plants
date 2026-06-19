@@ -56,6 +56,8 @@ export interface TreatmentStepDto {
   order: number;
   instruction: string;
   dueOffsetDays: number;
+  detail?: string | null;
+  diagram?: DiagramDto | null;
 }
 
 export interface ActionPlanDto {

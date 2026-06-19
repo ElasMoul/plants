@@ -28,6 +28,11 @@ export interface ReminderResponse {
   // Free-text step description — only set for treatment-plan steps, null for routine reminders
   instruction?: string | null;
   completedAt?: string | null;
+  // Optional richer guidance for a single step — substeps/precautions text and/or a Mermaid
+  // diagram, only set when the AI judged this specific step worth the extra detail.
+  stepDetail?: string | null;
+  stepDiagramFormat?: 'MERMAID' | null;
+  stepDiagramContent?: string | null;
 }
 
 export interface CreateReminderRequest {

@@ -1,12 +1,14 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { TreatmentPlanService } from '../../services/treatment-plan.service';
 import { ReminderService } from '../../services/reminder.service';
 import { ReminderResponse } from '../../models/reminder.model';
 import { TreatmentPlanResponse } from '../../models/treatment-plan.model';
+import { StepDetailDialogComponent } from '../../components/step-detail-dialog/step-detail-dialog.component';
 
 type PageState = 'loading' | 'ready' | 'error';
 
@@ -28,6 +30,7 @@ export class TreatmentPlanDetailComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly location: Location,
+    private readonly dialog: MatDialog,
     private readonly treatmentPlanService: TreatmentPlanService,
     private readonly reminderService: ReminderService,
   ) {}
@@ -59,6 +62,21 @@ export class TreatmentPlanDetailComponent implements OnInit, OnDestroy {
 
   stepInstruction(step: ReminderResponse): string {
     return step.instruction ?? step.careType;
+  }
+
+  hasStepDetail(step: ReminderResponse): boolean {
+    return !!step.stepDetail || !!step.stepDiagramContent;
+  }
+
+  openStepDetail(step: ReminderResponse): void {
+    this.dialog.open(StepDetailDialogComponent, {
+      width: '420px',
+      data: {
+        instruction: this.stepInstruction(step),
+        stepDetail: step.stepDetail ?? null,
+        stepDiagramContent: step.stepDiagramContent ?? null,
+      },
+    });
   }
 
   dueLabel(step: ReminderResponse): string {

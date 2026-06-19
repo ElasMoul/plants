@@ -47,7 +47,15 @@ public class GitHubModelsClient {
               "actionPlan": {
                 "type": "ROUTINE | TREATMENT | null — null if this card is purely informational",
                 "frequencyDays": "<int, ROUTINE only>",
-                "steps": [ { "order": <int>, "instruction": "<string>", "dueOffsetDays": <int> } ],
+                "steps": [
+                  {
+                    "order": <int>,
+                    "instruction": "<string>",
+                    "dueOffsetDays": <int>,
+                    "detail": "<2-4 sentences of substeps/precautions for this specific step, or null>",
+                    "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
+                  }
+                ],
                 "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
               }
             }
@@ -63,8 +71,15 @@ public class GitHubModelsClient {
       - Write for someone who has never owned a plant before.
       - Only set actionPlan.type=TREATMENT for genuinely multi-step processes (3+ distinct actions
         over time) — a single one-off tip should have actionPlan: null.
-      - Only include a diagram when the steps have real branching/decision logic worth visualising
-        — most linear step lists do not need one.
+      - Only include a plan-level diagram when the steps have real branching/decision logic worth
+        visualising — most linear step lists do not need one.
+      - Only fill a step's own "detail" when that step needs more than the one-line instruction —
+        e.g. a mixing ratio, a multi-part procedure, or precautions to take. Leave it null for
+        simple steps ("Inspect leaves for new spots").
+      - Only give a step its own "diagram" when that single step has a multi-part procedure or its
+        own decision branching worth visualising (e.g. "mix solution → test on one leaf → no
+        reaction? apply fully : dilute further"). This is rare — most steps, even within a
+        TREATMENT plan, should have diagram: null.
       """;
 
   static final String ANNOTATION_SYSTEM_PROMPT =

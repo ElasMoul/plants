@@ -66,6 +66,15 @@ public class Reminder {
   @Column(name = "instruction", columnDefinition = "TEXT")
   private String instruction;
 
+  @Column(name = "step_detail", columnDefinition = "TEXT")
+  private String stepDetail;
+
+  @Column(name = "step_diagram_format", length = 20)
+  private String stepDiagramFormat;
+
+  @Column(name = "step_diagram_content", columnDefinition = "TEXT")
+  private String stepDiagramContent;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
