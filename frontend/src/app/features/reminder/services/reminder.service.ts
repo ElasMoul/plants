@@ -8,6 +8,7 @@ import { CreateReminderRequest, ReminderResponse } from '../models/reminder.mode
 @Injectable()
 export class ReminderService {
   private readonly baseUrl = `${environment.apiUrl}/reminders`;
+  private readonly careUrl = `${environment.apiUrl}/care`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -19,7 +20,7 @@ export class ReminderService {
     return this.http.post<ApiResponse<ReminderResponse>>(this.baseUrl, request);
   }
 
-  completeReminder(id: number): Observable<ApiResponse<ReminderResponse>> {
-    return this.http.post<ApiResponse<ReminderResponse>>(`${this.baseUrl}/${id}/complete`, {});
+  markCareDone(reminderId: number): Observable<ApiResponse<ReminderResponse>> {
+    return this.http.post<ApiResponse<ReminderResponse>>(`${this.careUrl}/done`, { reminderId });
   }
 }

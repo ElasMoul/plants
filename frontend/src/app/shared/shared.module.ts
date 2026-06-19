@@ -18,6 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 
 import { ModelSelectorComponent } from './components/model-selector/model-selector.component';
+import { MermaidDiagramComponent } from './components/mermaid-diagram/mermaid-diagram.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -36,7 +37,7 @@ const MATERIAL_MODULES = [
 ];
 
 @NgModule({
-  declarations: [ModelSelectorComponent],
+  declarations: [ModelSelectorComponent, MermaidDiagramComponent],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
     CommonModule,
@@ -45,6 +46,7 @@ const MATERIAL_MODULES = [
     ReactiveFormsModule,
     ...MATERIAL_MODULES,
     ModelSelectorComponent,
+    MermaidDiagramComponent,
   ],
 })
 export class SharedModule {}

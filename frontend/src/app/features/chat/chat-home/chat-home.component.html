@@ -41,14 +41,16 @@
     </div>
   </div>
 
-  <!-- Quick chips -->
+</div>
+
+<!-- Composer — fixed above the bottom nav so it's always reachable, never scrolls out of view -->
+<div class="chat-composer">
   <div class="quick-chips">
     <button type="button" class="quick-chip" *ngFor="let chip of quickChips" [disabled]="sending" (click)="useQuickChip(chip)">
       {{ chip }}
     </button>
   </div>
 
-  <!-- Input bar -->
   <div class="input-bar">
     <input
       class="chat-input"
@@ -63,5 +65,4 @@
       <mat-icon>arrow_upward</mat-icon>
     </button>
   </div>
-
 </div>

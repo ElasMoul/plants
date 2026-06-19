@@ -94,6 +94,57 @@
   font-size: 0.85rem;
   color: var(--color-text-secondary);
   line-height: 1.65;
+
+  & + .detail-list {
+    margin-top: 10px;
+  }
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    padding-left: 4px;
+
+    &::marker {
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+  }
+}
+
+.action-divider {
+  margin: 12px 0;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.action-row .btn-pill {
+  border-radius: var(--radius-chip) !important;
+  font-size: 0.8rem;
+}
+
+.reminder-already-set {
+  opacity: 0.6;
+}
+
+.btn-spinner {
+  display: inline-block;
+  margin-right: 6px;
+
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
 }
 
 .seasonal-tip {

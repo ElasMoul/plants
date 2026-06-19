@@ -1,9 +1,13 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ReminderListComponent } from './reminder-list/reminder-list.component';
+import { TreatmentPlanDetailComponent } from './pages/treatment-plan-detail/treatment-plan-detail.component';
 
+// Mounted at the app root ('' — see app-routing.module.ts) so treatment plans get a clean
+// top-level /treatment-plans/:id URL instead of being nested under /reminders.
 const routes: Routes = [
-  { path: '', component: ReminderListComponent },
+  { path: 'reminders', component: ReminderListComponent },
+  { path: 'treatment-plans/:id', component: TreatmentPlanDetailComponent },
 ];
 
 @NgModule({

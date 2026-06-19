@@ -19,7 +19,38 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T3.1 Reminder + Care Log module ✅ (branch: feature/PP-011-reminder-module)
+## Current Task — T3.4 Actionable care plans backend ✅ (branch: feature/PP-028-actionable-care-plans-2,
+uncommitted as of end of session — run `git status` first thing in a new session)
+ROUTINE reminders + multi-step TREATMENT plans, generated from AI care cards / cure advice. Highlights:
+- Migration 012_add_treatment_plans.sql: new `treatment_plans` table; `reminders` gains `recurring`
+  (default true), `treatment_plan_id` (FK CASCADE), `treatment_plan_title` (denormalized),
+  `step_order`. Treatment steps are one-time `Reminder` rows, NOT a parallel entity.
+- `CareType` expanded 4→10 values (mirrors CareCardType) — additive, no migration impact.
+- New `TreatmentPlan`/`TreatmentPlanStatus` (ACTIVE|COMPLETED|ABANDONED) entity — same
+  no-AuditableEntity pattern as `Reminder`.
+- **Unified completion logic**: `ReminderService.applyCompletionToReminder(reminder, performedAt)`
+  replaces what used to be two independent "log + reschedule" implementations in
+  `ReminderServiceImpl.completeReminder()` and `CareLogServiceImpl.logCare()`. Recurring →
+  reschedules; one-time → disables, and completes the parent TreatmentPlan if it was the last
+  enabled step (`ReminderRepository.findByTreatmentPlanIdAndEnabledTrue` empty after disabling).
+- New `ActionPlanValidator.normalize()` (identification/util/) — single choke-point every
+  AI-sourced `ActionPlanDto` passes through; never throws, degrades to null on anything malformed.
+  ROUTINE: frequencyDays 1-365 or reject. TREATMENT: non-empty steps, truncate to 10, clamp
+  dueOffsetDays 0-180, **always re-numbers order 1..N from scratch** (ignores AI's order values
+  entirely). Diagram kept only if format=="MERMAID" (case-insensitive) + non-blank + ≤2000 chars.
+- `DeepSeekClient.generateCureAdvice()` now returns JSON (`{advice, actionPlan}`, response_format
+  json_object) instead of plain text — `IdentificationServiceImpl.parseCureAdvice()` falls back to
+  raw-string-as-advice on parse failure, which is exactly what made the pre-existing CureAdvice
+  unit tests (mocking plain text) keep passing unmodified.
+- New `TreatmentPlanService`/`Impl`/`Controller`: `POST /api/v1/treatment-plans`,
+  `GET /api/v1/treatment-plans/{id}`.
+- 39 new/updated unit tests (ActionPlanValidatorTest 21, TreatmentPlanServiceTest 10,
+  ReminderServiceTest +4, CareLogServiceTest updated). Full suite: 132/132 passing, checkstyle clean.
+See STATE.md "T3.4" entry for full notes. Next: T3.5 frontend (separate session — substantial
+uncommitted frontend work already exists on this branch from another session but is NOT verified
+against this backend contract yet); then T3.3 manual/device testing.
+
+## Previous Task — T3.1 Reminder + Care Log module ✅ (branch: feature/PP-011-reminder-module)
 Full CRUD + scheduler + web-push, all against tables that already existed since migration 004/005
 (CareLog, PushSubscription entities just never existed in code until now). Highlights:
 - ReminderService/Impl: createReminder, getUserReminders (bounded 200, batch-fetches plants to
@@ -30,9 +61,13 @@ Full CRUD + scheduler + web-push, all against tables that already existed since 
 - ReminderScheduler: @Scheduled daily 8am, groups due reminders by user, ONE push per user not one
   per reminder; Clock injected (same pattern as T2.10b's DashboardServiceImpl)
 - 11 new unit tests; full suite 95/95 passing
-See STATE.md "T3.1" entry for full notes. Next: T3.3 manual/device testing (needs a real phone).
+NOTE: completeReminder()/logCare() rescheduling logic described above was superseded by
+applyCompletionToReminder() in T3.4 above — see that entry, not this one, for current behaviour.
+NOTE: `CareLogController` is correctly mapped at `/api/v1/care` (GET `/plant/{plantId}`, POST
+`/done`) — this backend side was always right. The bug was a frontend baseUrl mismatch
+(`care-log.service.ts` called `/api/v1/care-logs`); fixed 2026-06-18, see STATE.md's T3.2 entry.
 
-## Previous Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard, merged)
+## Earlier Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard, merged)
 T2.F, T2.10a–d, T2.10e all done — see STATE.md for full notes. Highlights:
 - New com.plantpal.dashboard module: DashboardController/Service/Impl, GET /api/v1/dashboard
   (healthSummary, overdueReminders, todayReminders, healthTrends). Deliberately not @Cacheable.
@@ -81,35 +116,41 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 
 ---
 
-## AI Provider Map (current — branch: AddChooseAi)
+## AI Provider Map (current — post T2.A split + T3.4)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|
-| DeepSeekClient (visionModel) | gpt-4o | Plant photo identification + health + care plan (single call) | GitHub Models (models.inference.ai.azure.com) |
-| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + cure advice | GitHub Models (models.inference.ai.azure.com) |
-| DeepSeekAnnotationClient (@Primary) | gpt-4o via DeepSeekClient.analyzeRegions() | Polygon annotation regions; falls back to OllamaClient on 429 | GitHub Models |
+| GitHubModelsClient (identificationModel) | gpt-4o | Plant photo identification + health + care plan incl. actionPlan (single call) | GitHub Models |
+| GitHubModelsClient (annotationModel) | gpt-4o-mini | Polygon annotation regions | GitHub Models |
+| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + cure advice (now `{advice, actionPlan}` JSON) | GitHub Models |
+| DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt retry on EOF, falls back to OllamaClient on 429 | GitHub Models |
 | OllamaClient | llava-phi3 | (1) OLLAMA_LLAVA preference for identification (2) Annotation fallback on 429 | localhost:11434 |
 | PlantNetAnnotationClient | — | Non-primary fallback; maps species results to full-image PLANT regions | plantnet.org |
-| PlantNetClient | — | Dead code in main flow; used only by PlantNetAnnotationClient | plantnet.org |
+| PlantNetClient | — | Used only by PlantNetAnnotationClient + PLANTNET preference | plantnet.org |
 
-### DeepSeekClient — key facts
-- Single client handles both vision (gpt-4o) and text (DeepSeek-R1) via two config properties:
-  - `${deepseek.model}` → text model for generateCarePlan(), generateCureAdvice()
-  - `${deepseek.vision-model}` → vision model for identifyPlant(), analyzeRegions()
-- Auth: `Authorization: Bearer <DEEPSEEK_API_KEY>` (GitHub PAT)
-- HTTP/2 via JDK HttpClient (NO forced HTTP_1_1 — Azure endpoint requires HTTP/2)
-- Read timeout: 5 minutes (gpt-4o vision can be slow)
-- `stripThinkTags(String raw)`: **package-private static** — strips `<think>...</think>` (R1) AND
-  markdown ` ```json...``` ` fences (gpt-4o sometimes ignores response_format). Used by both
-  DeepSeekClient methods AND OllamaClient (which also wraps JSON in fences).
-- Debug log of full raw response before stripping in ALL four methods (identifyPlant, analyzeRegions,
-  generateCarePlan, generateCureAdvice) — log level DEBUG
-- response_format: json_object on JSON-returning calls; generateCureAdvice() uses plain text (no format)
+### GitHubModelsClient / DeepSeekClient split (T2.A) — key facts
+- **GitHubModelsClient**: owns `identifyPlant()` + `analyzeRegions()` (vision). Two separate model
+  configs: `${github.models.identification-model:gpt-4o}` / `${github.models.annotation-model:gpt-4o-mini}`.
+  Holds `PLANT_IDENTIFICATION_SYSTEM_PROMPT` + `ANNOTATION_SYSTEM_PROMPT` (both include the T3.4
+  `actionPlan` schema addition per care card now).
+- **DeepSeekClient**: text-only — `generateCarePlan()` (CARE_PLAN_SYSTEM_PROMPT, also has the
+  actionPlan schema addition, kept in sync with GitHubModelsClient's prompt) + `generateCureAdvice()`
+  (CURE_ADVICE_SYSTEM_PROMPT — ✅ T3.4: now requests `{advice, actionPlan}` JSON, response_format
+  json_object, NOT plain text anymore). Uses `${deepseek.model:DeepSeek-R1}`.
+- Both clients: Auth `Authorization: Bearer <GITHUB_TOKEN>`; HTTP/2 via JDK HttpClient (NO forced
+  HTTP_1_1 — Azure endpoint requires HTTP/2); read timeout 5 minutes.
+- `DeepSeekClient.stripThinkTags(String raw)`: **package-private static**, lives on DeepSeekClient
+  even though GitHubModelsClient calls it too — strips `<think>...</think>` (R1) AND markdown
+  ` ```json...``` ` fences (gpt-4o sometimes ignores response_format). Used by GitHubModelsClient,
+  DeepSeekClient, and OllamaClient (which also wraps JSON in fences).
+- Debug log of full raw response before stripping in every vision/text method — log level DEBUG.
 
 ## Non-Negotiable Conventions
 - Constructor injection only. Never @Autowired on fields.
 - Member order: logger → static constants → final fields →
   non-final fields → constructor → public methods → private methods
-- All entities extend AuditableEntity (EXCEPT Reminder — its DB table has no created_by/updated_by)
+- All entities extend AuditableEntity (EXCEPT Reminder, CareLog, PushSubscription, TreatmentPlan —
+  these tables have no created_by/updated_by; Reminder/TreatmentPlan use Hibernate's
+  @CreationTimestamp/@UpdateTimestamp instead)
 - All controllers return ApiResponse<T> — never raw objects
 - All exceptions extend PlantPalException → GlobalExceptionHandler
 - Soft deletes only (status = ARCHIVED)
@@ -194,10 +235,17 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes,
                                      List<AnnotationRegionDto> annotationRegions fields
 - dto/CureAdviceRequest.java       — ✅ T2.9d: @NotBlank regionLabel, nullable species
-- dto/CureAdviceResponse.java      — ✅ T2.9d: String advice
-- dto/AddCareCardRequest.java      — ✅ T2.10e: @NotBlank regionLabel, @NotBlank adviceText
-- dto/CareCardDto.java             — ✅ T2.6
+- dto/CureAdviceResponse.java      — ✅ T2.9d + T3.4: String advice, ActionPlanDto actionPlan (new)
+- dto/AddCareCardRequest.java      — ✅ T2.10e + T3.4: @NotBlank regionLabel, @NotBlank adviceText,
+                                     ActionPlanDto actionPlan (new, optional — re-validated server-side
+                                     via ActionPlanValidator.normalize() before attaching, never trusted as-is)
+- dto/CareCardDto.java             — ✅ T2.6 + T3.4: +ActionPlanDto actionPlan (nullable)
 - dto/CarePlanDto.java             — ✅ T2.6
+- dto/ActionPlanDto.java           — ✅ T3.4: type ("ROUTINE"|"TREATMENT"), frequencyDays
+                                     (ROUTINE only), List<TreatmentStepDto> steps (TREATMENT only),
+                                     DiagramDto diagram (TREATMENT only, nullable)
+- dto/TreatmentStepDto.java        — ✅ T3.4: order (int), instruction (String), dueOffsetDays (int)
+- dto/DiagramDto.java              — ✅ T3.4: format (only "MERMAID" supported), content (mermaid DSL text)
 - dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
                                      confidence (HIGH/MEDIUM/LOW),
                                      List<PolygonPointDto> polygon (nullable — primary shape),
@@ -224,10 +272,13 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
                                      identificationService.processIdentification(event)
 - mapper/IdentificationMapper.java — ignores topResults, carePlan, AND annotationRegions (all set manually in service)
 - repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
+- util/ActionPlanValidator.java    — ✅ T3.4: static normalize(ActionPlanDto) — never throws, the
+                                     single choke-point every AI-sourced action plan passes through.
+                                     See "Current Task" section above for the exact clamp/reject rules.
 - service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-  - Constructor: 13 params — deepSeekClient, visionAnnotationClient, identificationRepository,
+  - Constructor: 14 params — deepSeekClient, visionAnnotationClient, identificationRepository,
     identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper,
-    gitHubModelsClient, userRepository, plantNetClient, ollamaClient, kafkaTemplate
+    gitHubModelsClient, userRepository, plantNetClient, ollamaClient, kafkaTemplate, cacheManager
   - submitIdentification() (sync, fast): validate → savePhoto → persist PENDING → rate-limit check →
     loadUserPreference → publish IdentificationRequestedEvent → return IdentificationPendingResponse
   - processIdentification(event) (@Async("aiTaskExecutor"), called by IdentificationConsumer):
@@ -249,14 +300,20 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
   - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
   - fallbackCarePlan(): single WATERING card, 7-day frequency
   - getCureAdvice(id, request, userId): @Async, ownership check, cureAdviceBuckets (10/hour),
-    calls deepSeekClient.generateCureAdvice(); throws ResourceNotFoundException if not owned,
-    PlantPalException(429) if rate-limited, PlantPalException(503) if DeepSeek fails
+    calls deepSeekClient.generateCureAdvice() → ✅ T3.4: raw response is now JSON
+    (`{advice, actionPlan}`), parsed via parseCureAdvice() into an internal CureAdviceJson holder
+    (private static class — same Lombok-getter/setter style as DeepSeekPlantResult, NOT a record).
+    On JsonProcessingException, falls back to advice=rawString, actionPlan=null (never lets a
+    malformed response fail the call). actionPlan run through ActionPlanValidator.normalize().
+    Throws ResourceNotFoundException if not owned, PlantPalException(429) if rate-limited,
+    PlantPalException(503) if DeepSeek fails.
   - CURE_ADVICE_RATE_LIMIT = 10; cureAdviceBuckets ConcurrentHashMap<Long, Bucket>
   - addCareCard(id, req, userId): ✅ T2.10e — NOT @Async (no AI call, pure DB read+write), no rate
     limit. Ownership-checked like getCureAdvice. parseCarePlan() → defensive-copy careCards into a
     mutable ArrayList (fallbackCarePlan() returns List.of(...), which is immutable) → skip if a card
     with that exact title already exists → else append a PEST-type CareCardDto (icon "healing",
-    urgency HIGH) built from req.regionLabel/adviceText → serializeToJson() → save → return the
+    urgency HIGH) built from req.regionLabel/adviceText + ✅ T3.4:
+    ActionPlanValidator.normalize(req.getActionPlan()) → serializeToJson() → save → return the
     updated CarePlanDto
 - client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
 - client/DeepSeekAnnotationClient.java— ✅ T2.9a + updated (AddChooseAi session):
@@ -299,11 +356,80 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
                                              (no more blocking .get() on the full AI pipeline).
                                              Added GET /{id} → IdentificationResponse for polling.
 
-### reminder/ — MINIMAL (T2.6 bootstrap; full implementation T3.1)
-- entity/CareType.java   — ✅ T2.6; enum: WATERING, FERTILIZING, REPOTTING, PRUNING
-- entity/Reminder.java   — ✅ T2.6; does NOT extend AuditableEntity (table has no created_by/updated_by)
-                            Uses @CreationTimestamp/@UpdateTimestamp from Hibernate instead
-- repository/ReminderRepository.java — ✅ T2.6; minimal JpaRepository<Reminder, Long>
+### reminder/ — fully implemented (T3.1 CRUD/scheduler/push + T3.4 treatment plans complete)
+- entity/CareType.java   — ✅ T3.4: 10 values (WATERING, LIGHT, HUMIDITY, TEMPERATURE, FERTILIZING,
+                            REPOTTING, PRUNING, PEST, SEASONAL, BEGINNER_TIP) — was 4, expanded to
+                            mirror CareCardType; additive, no migration impact on existing rows
+- entity/Reminder.java   — does NOT extend AuditableEntity (table has no created_by/updated_by);
+                            uses @CreationTimestamp/@UpdateTimestamp from Hibernate instead.
+                            ✅ T3.4 additions: boolean recurring (@Builder.Default true), Long
+                            treatmentPlanId (nullable), String treatmentPlanTitle (nullable,
+                            denormalized — avoids a join on every reminder-list fetch),
+                            Integer stepOrder (nullable)
+- entity/CareLog.java    — ✅ T3.1; maps onto the care_logs table (existed since migration 004,
+                            entity just never existed in code before T3.1). NO createdAt field —
+                            the table truly has no such column, only performed_at (learned the hard
+                            way: an earlier draft added @CreationTimestamp created_at and broke
+                            schema-validation on startup — do NOT re-add it)
+- entity/PushSubscription.java — ✅ T3.1; maps onto push_subscriptions table (migration 005)
+- entity/TreatmentPlan.java — ✅ T3.4: id, plantId, userId, title, sourceCareCardType (String,
+                            nullable), diagramFormat, diagramContent, status (TreatmentPlanStatus),
+                            createdAt/updatedAt via @CreationTimestamp/@UpdateTimestamp — same
+                            no-AuditableEntity pattern as Reminder
+- entity/TreatmentPlanStatus.java — ✅ T3.4: ACTIVE | COMPLETED | ABANDONED
+- repository/ReminderRepository.java — findByUserIdAndEnabledTrue(userId) [List, used by dashboard]
+                            + findByUserIdAndEnabledTrue(userId, Pageable) [Page, used by
+                            getUserReminders], findByIdAndUserId, findAllDue(Instant) [scheduler],
+                            findNearestWateringPerPlant(plantIds) [dashboard], ✅ T3.4:
+                            findByTreatmentPlanIdAndEnabledTrue(planId) [completion check — "any
+                            steps left?"], findByTreatmentPlanIdOrderByStepOrder(planId)
+                            [detail view — ALL steps including completed/disabled ones]
+- repository/CareLogRepository.java — ✅ T3.1; findByPlantIdOrderByPerformedAtDesc(plantId, pageable)
+- repository/PushSubscriptionRepository.java — ✅ T3.1; findByUserIdAndEnabledTrue(userId)
+- repository/TreatmentPlanRepository.java — ✅ T3.4: findByIdAndUserId, findByPlantIdAndUserId
+- service/ReminderService.java (interface) + service/impl/ReminderServiceImpl.java
+  - Constructor: 4 params — reminderRepository, plantRepository, careLogRepository,
+    treatmentPlanRepository (the last one added in T3.4)
+  - createReminder, getUserReminders (bounded 200, PageRequest.of(0,200,Sort.by("nextDueAt")),
+    batch-fetches plants via findAllById to avoid N+1), deleteReminder (soft — enabled=false),
+    calculateNextDueAt(lastDone, frequencyDays) = lastDone.plus(frequencyDays, DAYS)
+  - completeReminder(id, userId): writes a CareLog, then ✅ T3.4: delegates the reschedule-or-disable
+    decision to applyCompletionToReminder() (see below) instead of inlining it
+  - ✅ T3.4 applyCompletionToReminder(reminder, performedAt) — the unified completion handler used by
+    BOTH ReminderServiceImpl.completeReminder() and CareLogServiceImpl.logCare(): if
+    reminder.isRecurring() → nextDueAt = calculateNextDueAt(performedAt, frequencyDays), save; else
+    → enabled=false, save, then if treatmentPlanId != null check
+    findByTreatmentPlanIdAndEnabledTrue(planId) — if now empty, load the TreatmentPlan and flip it
+    to COMPLETED. Does NOT persist the CareLog itself (caller's job — notes differ per call site).
+- service/CareLogService.java (interface) + service/impl/CareLogServiceImpl.java
+  - logCare(MarkCareDoneRequest, userId): looks up the Reminder (not the plant directly), writes a
+    CareLog with the reminder's careType + notes, then ✅ T3.4: calls
+    reminderService.applyCompletionToReminder(reminder, performedAt) — does NOT call
+    reminderRepository.save() or reminderService.calculateNextDueAt() itself anymore (that
+    duplicated logic was the bug found while designing T3.4, now eliminated)
+  - getPlantCareLogs(plantId, userId, pageable) — paginated, ownership-checked through the Plant
+- service/WebPushService.java (interface) + service/impl/WebPushServiceImpl.java — ✅ T3.1:
+  nl.martijndwars:web-push, VAPID keys from @Value (app.web-push.public-key/private-key/subject —
+  config + .env.example already existed from T0 scaffolding)
+- service/TreatmentPlanService.java (interface) + service/impl/TreatmentPlanServiceImpl.java — ✅ T3.4
+  - createFromActionPlan(plantId, userId, title, sourceCareCardType, actionPlan): rejects
+    non-TREATMENT or empty-steps plans (ValidationException), ownership-checks the plant via
+    plantRepository.findByIdAndUserId, parses sourceCareCardType into a CareType
+    (ValidationException if null/blank/unrecognised — CareType.valueOf() wrapped in try/catch),
+    creates the TreatmentPlan row, then one Reminder per step (recurring=false, treatmentPlanId,
+    treatmentPlanTitle=title, stepOrder=step.order, nextDueAt=now+dueOffsetDays, frequencyDays=0
+    [unused when recurring=false])
+  - getTreatmentPlan(id, userId): ownership-checked; returns ALL steps via
+    findByTreatmentPlanIdOrderByStepOrder (deliberately not the enabled-only query)
+- scheduler/ReminderScheduler.java — ✅ T3.1: @Scheduled(cron="0 0 8 * * *"),
+  reminderRepository.findAllDue(Instant.now(clock)) grouped by userId, sends ONE push per user
+  ("You have N plants to care for today") not one per reminder; Clock injected via constructor
+  (same pattern as T2.10b's DashboardServiceImpl) for testability
+- controller/ReminderController.java — GET/POST /api/v1/reminders, DELETE /{id}
+- controller/CareLogController.java — POST /api/v1/care/done, GET /api/v1/care/plant/{plantId}
+- controller/NotificationController.java — POST /api/v1/notifications/subscribe
+- controller/TreatmentPlanController.java — ✅ T3.4: POST /api/v1/treatment-plans (201),
+  GET /api/v1/treatment-plans/{id}. Both auto-protected by the existing anyRequest() security rule.
 
 ### chat/ — ✅ T4.1: basic single-turn chat wired to Ollama
 - dto/ChatRequest.java  — @NotBlank message
@@ -344,31 +470,58 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 006_alter_identifications.sql      ← raw_response TEXT not JSONB
 007_add_annotation_regions.sql     ← ✅ T2.9 — adds annotation_regions JSONB to identifications
 008_add_care_plan.sql              ← ✅ T2.6 — adds care_plan JSONB to identifications
-009_add_health_to_identifications.sql ← ✅ feature/PP-deepseek-identification — adds health_status VARCHAR(30), health_notes TEXT
+009_add_health_to_identifications.sql ← ✅ adds health_status VARCHAR(30), health_notes TEXT
+010_add_user_preferences.sql       ← ✅ AddChooseAi — users.ai_model_preference VARCHAR(50)
+011_add_image_dimensions.sql       ← ✅ T2.F — identifications.source_image_width/height INT
+012_add_treatment_plans.sql        ← ✅ T3.4 — new treatment_plans table; reminders gains
+                                      recurring/treatment_plan_id/treatment_plan_title/step_order
 
-Current master XML order: 001→009 inclusive (007 inserted BEFORE 008, correct order).
+Current master XML order: 001→012 inclusive, strictly sequential, never reordered.
 
-## Test Inventory
+## Test Inventory (full suite: 132/132 passing as of T3.4, checkstyle clean)
 unit/UserServiceTest.java
-unit/PlantServiceTest.java                ← updated T2.8: +7 SaveFromIdentification tests
-                                             (nickname fallbacks, ownership check, reminder creation)
-                                             Now has @Mock IdentificationRepository, ReminderRepository,
-                                             @Spy ObjectMapper = new ObjectMapper()
-unit/IdentificationServiceImplTest.java   ← 29 tests total (as of T2.10e); nested classes:
-                                            Identify, CarePlanParsing, AnnotationRegions, ReminderCreation,
-                                            Kafka, GetUserIdentifications, CureAdvice, AddCareCard (✅ T2.10e —
-                                            3 tests: append, idempotent-on-repeated-call, not-owned)
-                                            NOTE: all tests construct IdentificationServiceImpl manually
-                                            (13-param constructor — see DashboardServiceTest for the sibling
-                                            pattern using an injected fixed Clock instead of Instant.now()).
+unit/PlantServiceTest.java                ← +7 SaveFromIdentification tests (nickname fallbacks,
+                                             ownership check, reminder creation); @Mock
+                                             IdentificationRepository, ReminderRepository, @Spy
+                                             ObjectMapper = new ObjectMapper()
+unit/IdentificationServiceImplTest.java   ← nested classes: Identify, CarePlanParsing,
+                                             AnnotationRegions, ReminderCreation, Kafka,
+                                             GetUserIdentifications, CureAdvice, AddCareCard.
+                                             Constructs IdentificationServiceImpl manually
+                                             (14-param constructor — see DashboardServiceTest for the
+                                             sibling pattern using an injected fixed Clock instead of
+                                             Instant.now()). CureAdvice tests mock
+                                             deepSeekClient.generateCureAdvice() returning PLAIN TEXT
+                                             — this is intentional: plain text is invalid JSON, so it
+                                             naturally exercises parseCureAdvice()'s fallback path
+                                             (advice=rawString, actionPlan=null) without needing
+                                             updates after the T3.4 JSON-response change.
+unit/ActionPlanValidatorTest.java         ← ✅ T3.4, 21 tests — the highest-value test in that task;
+                                             every clamp/reject/boundary case for normalize()
 unit/PlantNetClientTest.java
 unit/OllamaClientTest.java
+reminder/unit/ReminderServiceTest.java    ← nested: CreateReminder, GetUserReminders,
+                                             CompleteReminder, DeleteReminder, CalculateNextDueAt,
+                                             ✅ T3.4 ApplyCompletionToReminder (4: recurring
+                                             reschedules, one-time disables, last-step completes the
+                                             plan, non-last-step leaves it ACTIVE)
+reminder/unit/CareLogServiceTest.java     ← ✅ T3.4 updated: logCare() test now verifies delegation
+                                             to reminderService.applyCompletionToReminder() and
+                                             explicitly asserts reminderRepository.save()/
+                                             calculateNextDueAt() are NOT called directly (proves no
+                                             duplicate rescheduling logic remains in this class)
+reminder/unit/TreatmentPlanServiceTest.java ← ✅ T3.4, 10 tests — step count/dueOffsetDays math,
+                                             ROUTINE-plan rejection, ownership checks, diagram
+                                             persistence, sourceCareCardType validation
+dashboard/unit/DashboardServiceTest.java
+chat/unit/ChatServiceImplTest.java
+shared/unit/LocalFileStorageServiceTest.java
 integration/AuthControllerIT.java
 integration/PlantControllerIT.java
 AbstractIntegrationTest.java    ← Testcontainers base (PostgreSQL + Redis)
 testdata/PlantTestDataBuilder.java
 testdata/UserTestDataBuilder.java
-MISSING: IdentificationControllerIT.java
+MISSING: IdentificationControllerIT.java, TreatmentPlanControllerIT.java
 
 
 ## Bug Fixes Applied
@@ -389,11 +542,13 @@ MISSING: IdentificationControllerIT.java
 
 ## Known Issues / Open Items
 - JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI
-- AiTestController is not @Profile("dev") guarded — will deploy to prod
+- ✅ RESOLVED (T4.1): AiTestController deleted entirely (was the "not @Profile(dev) guarded" risk —
+  no longer exists, don't re-add it)
 - ✅ RESOLVED (T2.C): IdentificationController no longer blocks the HTTP thread on the full AI
   pipeline — POST /analyze persists PENDING + publishes to Kafka and returns 202 immediately;
   GET /{id} polls for the result once IdentificationConsumer finishes processIdentification().
-- IdentificationControllerIT missing
+- IdentificationControllerIT missing; TreatmentPlanControllerIT also missing (T3.4, no integration
+  test written — only unit tests against mocked repositories)
 - Branch protection on main + dev configured but integration tests not running in CI
 - Spotless (Google Java Format) flags CRLF line endings on new files written by Claude Code
   on Windows. Fix with: cd backend && mvn spotless:apply
@@ -401,11 +556,17 @@ MISSING: IdentificationControllerIT.java
   However, PlantNetAnnotationClient is NOT @Primary, so DeepSeekAnnotationClient is used by default.
   PlantNet annotation path is a non-primary fallback; clean up only if vision annotation is fully removed.
 - plantnet/ DTOs (PlantNetResponse, PlantNetResult, etc.) still in use by PlantNetAnnotationClient.
-- OllamaClient (llava-phi3) is now active — annotation fallback on 429 AND OLLAMA_LLAVA preference path.
-  AiTestController still references it and is not @Profile("dev") guarded (known issue).
-- DEEPSEEK_API_KEY in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
+- OllamaClient (llava-phi3) is active — annotation fallback on 429 AND OLLAMA_LLAVA preference path.
+- GITHUB_TOKEN in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
   GitHub Models rate limits: 50 requests/day for gpt-4o (vision). 429 on annotation → Ollama fallback.
   429 on identification → PlantPalException 429 bubbles to user (no automatic fallback at that layer).
+- T3.4 backend work is uncommitted as of end of this session on feature/PP-028-actionable-care-plans-2
+  — commit it before starting anything else, or a `git stash`/branch switch will lose it.
+- T3.5 frontend has substantial uncommitted work on the SAME branch from a separate session
+  (set-reminder-dialog, treatment-plan.model.ts/.service.ts, mermaid-diagram component, modified
+  care-card/disease-detail-panel) that has NOT been verified against the now-complete backend
+  contract — don't assume it's done or correct without checking `ng build`/`ng lint` and the actual
+  request/response shapes against ReminderResponse/TreatmentPlanResponse as implemented here.
 
 ## Key Files
 backend/src/main/java/com/plantpal/shared/dto/ApiResponse.java
@@ -413,7 +574,11 @@ backend/src/main/java/com/plantpal/shared/exception/GlobalExceptionHandler.java
 backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java
 backend/src/main/java/com/plantpal/identification/client/PlantNetClient.java
 backend/src/main/java/com/plantpal/identification/client/DeepSeekClient.java
+backend/src/main/java/com/plantpal/identification/client/GitHubModelsClient.java
 backend/src/main/java/com/plantpal/identification/service/impl/IdentificationServiceImpl.java
+backend/src/main/java/com/plantpal/identification/util/ActionPlanValidator.java
+backend/src/main/java/com/plantpal/reminder/service/impl/ReminderServiceImpl.java
+backend/src/main/java/com/plantpal/reminder/service/impl/TreatmentPlanServiceImpl.java
 backend/src/main/resources/db/changelog/db.changelog-master.xml
 backend/src/main/resources/application-dev.yml
 backend/.env.example

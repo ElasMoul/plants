@@ -6,8 +6,11 @@ import com.plantpal.reminder.dto.CreateReminderRequest;
 import com.plantpal.reminder.dto.ReminderResponse;
 import com.plantpal.reminder.entity.CareLog;
 import com.plantpal.reminder.entity.Reminder;
+import com.plantpal.reminder.entity.TreatmentPlanStatus;
+import com.plantpal.reminder.mapper.ReminderMapper;
 import com.plantpal.reminder.repository.CareLogRepository;
 import com.plantpal.reminder.repository.ReminderRepository;
+import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import java.time.Instant;
@@ -33,14 +36,17 @@ public class ReminderServiceImpl implements ReminderService {
   private final ReminderRepository reminderRepository;
   private final PlantRepository plantRepository;
   private final CareLogRepository careLogRepository;
+  private final TreatmentPlanRepository treatmentPlanRepository;
 
   public ReminderServiceImpl(
       ReminderRepository reminderRepository,
       PlantRepository plantRepository,
-      CareLogRepository careLogRepository) {
+      CareLogRepository careLogRepository,
+      TreatmentPlanRepository treatmentPlanRepository) {
     this.reminderRepository = reminderRepository;
     this.plantRepository = plantRepository;
     this.careLogRepository = careLogRepository;
+    this.treatmentPlanRepository = treatmentPlanRepository;
   }
 
   @Override
@@ -101,8 +107,7 @@ public class ReminderServiceImpl implements ReminderService {
             .performedAt(performedAt)
             .build());
 
-    reminder.setNextDueAt(calculateNextDueAt(performedAt, reminder.getFrequencyDays()));
-    reminder = reminderRepository.save(reminder);
+    applyCompletionToReminder(reminder, performedAt);
     log.info("Reminder completed: id={}, userId={}", id, userId);
 
     Plant plant = plantRepository.findById(reminder.getPlantId()).orElse(null);
@@ -126,16 +131,37 @@ public class ReminderServiceImpl implements ReminderService {
     return lastDone.plus(frequencyDays, ChronoUnit.DAYS);
   }
 
+  @Override
+  @Transactional
+  public void applyCompletionToReminder(Reminder reminder, Instant performedAt) {
+    if (reminder.isRecurring()) {
+      reminder.setNextDueAt(calculateNextDueAt(performedAt, reminder.getFrequencyDays()));
+      reminderRepository.save(reminder);
+      return;
+    }
+
+    reminder.setEnabled(false);
+    reminderRepository.save(reminder);
+
+    Long treatmentPlanId = reminder.getTreatmentPlanId();
+    if (treatmentPlanId == null) {
+      return;
+    }
+    List<Reminder> remainingSteps =
+        reminderRepository.findByTreatmentPlanIdAndEnabledTrue(treatmentPlanId);
+    if (remainingSteps.isEmpty()) {
+      treatmentPlanRepository
+          .findById(treatmentPlanId)
+          .ifPresent(
+              plan -> {
+                plan.setStatus(TreatmentPlanStatus.COMPLETED);
+                treatmentPlanRepository.save(plan);
+                log.info("Treatment plan completed: id={}", treatmentPlanId);
+              });
+    }
+  }
+
   private ReminderResponse toResponse(Reminder reminder, Plant plant) {
-    return ReminderResponse.builder()
-        .id(reminder.getId())
-        .plantId(reminder.getPlantId())
-        .plantNickname(plant != null ? plant.getNickname() : null)
-        .plantPhotoUrl(plant != null ? plant.getPhotoUrl() : null)
-        .careType(reminder.getCareType())
-        .frequencyDays(reminder.getFrequencyDays())
-        .nextDueAt(reminder.getNextDueAt())
-        .enabled(reminder.isEnabled())
-        .build();
+    return ReminderMapper.toResponse(reminder, plant);
   }
 }

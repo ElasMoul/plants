@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from './core/services/auth.service';
 import { PushNotificationService } from './core/services/push-notification.service';
@@ -30,6 +31,12 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
+
+    // Always land at the top of the new page — Angular's own scroll restoration only resets
+    // on forward navigation and restores position on back/forward, which isn't what we want here.
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => window.scrollTo({ top: 0, left: 0 }));
   }
 
   acceptNotifications(): void {

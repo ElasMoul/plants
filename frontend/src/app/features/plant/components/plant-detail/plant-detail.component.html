@@ -117,7 +117,11 @@
 
           <!-- Care plan from latest identification -->
           <ng-container *ngIf="carePlanLoaded && hasIdentification">
-            <app-care-plan [carePlan]="latestCarePlan"></app-care-plan>
+            <app-care-plan
+              [carePlan]="latestCarePlan"
+              [plantId]="plant.id"
+              [existingCareTypes]="existingCareTypes"
+            ></app-care-plan>
           </ng-container>
 
         </div>
@@ -161,6 +165,7 @@
               [region]="selectedRegion"
               [species]="plant.species ?? null"
               [identificationId]="latestIdentificationId!"
+              [plantId]="plant.id"
               (carePlanUpdated)="onCarePlanUpdated($event)"
             ></app-disease-detail-panel>
           </ng-container>

@@ -26,6 +26,8 @@ import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
 import { IdentificationService } from '../identification/services/identification.service';
 import { CareLogService } from '../reminder/services/care-log.service';
+import { ReminderService } from '../reminder/services/reminder.service';
+import { TreatmentPlanService } from '../reminder/services/treatment-plan.service';
 import { PlantListComponent } from './components/plant-list/plant-list.component';
 import { PlantCardComponent } from './components/plant-card/plant-card.component';
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
@@ -65,6 +67,6 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     MatTooltipModule,
     MatDialogModule,
   ],
-  providers: [PlantService, IdentificationService, CareLogService],
+  providers: [PlantService, IdentificationService, CareLogService, ReminderService, TreatmentPlanService],
 })
 export class PlantModule {}

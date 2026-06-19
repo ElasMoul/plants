@@ -44,4 +44,13 @@
     <include file="db/changelog/migrations/011_add_image_dimensions.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/012_add_treatment_plans.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/013_add_reminder_instruction.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/014_add_step_detail.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

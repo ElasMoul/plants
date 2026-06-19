@@ -1,0 +1,96 @@
+<div class="page-container">
+
+  <!-- Loading skeleton -->
+  <ng-container *ngIf="state === 'loading'">
+    <div class="skeleton-header">
+      <div class="skeleton-circle"></div>
+      <div class="skeleton-line skeleton-title"></div>
+    </div>
+    <div class="skeleton-step" *ngFor="let s of skeletonSteps">
+      <div class="skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line long"></div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Error -->
+  <div class="state-screen" *ngIf="state === 'error'">
+    <mat-icon class="state-icon error-icon">report_problem</mat-icon>
+    <h2 class="state-title">Treatment plan not found</h2>
+    <p class="state-subtitle">It may have been removed, or you don't have access to it.</p>
+    <button mat-stroked-button type="button" class="btn-pill" (click)="goToReminders()">
+      <mat-icon>arrow_back</mat-icon>
+      Back to reminders
+    </button>
+  </div>
+
+  <!-- Ready -->
+  <ng-container *ngIf="state === 'ready' && plan">
+
+    <div class="plan-header">
+      <button mat-icon-button class="back-btn" (click)="goBack()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="plan-title">{{ plan.title }}</h1>
+      <span class="status-chip" [ngClass]="'status-' + plan.status.toLowerCase()">
+        <mat-icon *ngIf="plan.status === 'COMPLETED'">check_circle</mat-icon>
+        {{ plan.status | titlecase }}
+      </span>
+    </div>
+
+    <p class="progress-line">{{ completedCount }} of {{ totalCount }} steps complete</p>
+
+    <!-- Diagram — only when the AI included one -->
+    <div class="diagram-section" *ngIf="plan.diagramContent">
+      <p class="section-label">How this works</p>
+      <app-mermaid-diagram [definition]="plan.diagramContent"></app-mermaid-diagram>
+    </div>
+
+    <!-- Step list -->
+    <div class="step-list">
+      <div class="step-row" *ngFor="let step of plan.steps; let last = last">
+        <div class="step-marker">
+          <div class="step-circle" [class.completed]="!step.enabled">
+            <mat-icon *ngIf="!step.enabled">check</mat-icon>
+            <span *ngIf="step.enabled">{{ step.stepOrder ?? '•' }}</span>
+          </div>
+          <div class="step-connector" *ngIf="!last"></div>
+        </div>
+
+        <div class="step-body">
+          <div class="step-instruction-row">
+            <p class="step-instruction" [class.done]="!step.enabled">{{ stepInstruction(step) }}</p>
+            <button
+              *ngIf="hasStepDetail(step)"
+              mat-icon-button
+              type="button"
+              class="btn-how-to"
+              matTooltip="Additional info on how to"
+              (click)="openStepDetail(step)"
+            >
+              <mat-icon>info_outline</mat-icon>
+            </button>
+          </div>
+          <p class="step-due">
+            <ng-container *ngIf="!step.enabled">Completed {{ step.completedAt | date:'MMM d' }}</ng-container>
+            <ng-container *ngIf="step.enabled">{{ dueLabel(step) }}</ng-container>
+          </p>
+          <button
+            *ngIf="step.enabled"
+            mat-stroked-button
+            type="button"
+            class="btn-mark-done"
+            [disabled]="markingDoneId === step.id"
+            (click)="markStepDone(step)"
+          >
+            {{ markingDoneId === step.id ? 'Marking…' : 'Mark done' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>

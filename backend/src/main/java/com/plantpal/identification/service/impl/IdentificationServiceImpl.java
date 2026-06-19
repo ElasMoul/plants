@@ -8,6 +8,7 @@ import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CareCardDto;
@@ -26,6 +27,7 @@ import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
+import com.plantpal.identification.util.ActionPlanValidator;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
@@ -310,8 +312,8 @@ public class IdentificationServiceImpl implements IdentificationService {
     if (!consumeCureRateLimit(userId)) {
       throw new PlantPalException("Cure advice rate limit reached — try again later", 429);
     }
-    String advice = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
-    return CompletableFuture.completedFuture(new CureAdviceResponse(advice));
+    String raw = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
+    return CompletableFuture.completedFuture(parseCureAdvice(raw));
   }
 
   @Override
@@ -338,6 +340,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               .summary("Follow the steps below to treat this issue")
               .detail(req.getAdviceText())
               .urgency("HIGH")
+              .actionPlan(ActionPlanValidator.normalize(req.getActionPlan()))
               .build());
       plan.setCareCards(careCards);
       identification.setCarePlan(serializeToJson(plan));
@@ -362,6 +365,20 @@ public class IdentificationServiceImpl implements IdentificationService {
     } catch (JsonProcessingException e) {
       log.warn("Malformed identification JSON from DeepSeek, using fallback: {}", e.getMessage());
       return new DeepSeekPlantResult(null, "Unknown Plant", "LOW", "UNKNOWN", null, null);
+    }
+  }
+
+  private CureAdviceResponse parseCureAdvice(String raw) {
+    try {
+      CureAdviceJson parsed = objectMapper.readValue(raw, CureAdviceJson.class);
+      return CureAdviceResponse.builder()
+          .advice(parsed.getAdvice())
+          .actionPlan(ActionPlanValidator.normalize(parsed.getActionPlan()))
+          .build();
+    } catch (JsonProcessingException e) {
+      log.warn(
+          "Malformed cure advice JSON, falling back to raw text as advice: {}", e.getMessage());
+      return CureAdviceResponse.builder().advice(raw).actionPlan(null).build();
     }
   }
 
@@ -630,6 +647,28 @@ public class IdentificationServiceImpl implements IdentificationService {
             .completedAt(Instant.now())
             .build();
     kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC, event);
+  }
+
+  /** Wire shape returned by {@link DeepSeekClient#generateCureAdvice}. */
+  private static final class CureAdviceJson {
+    private String advice;
+    private ActionPlanDto actionPlan;
+
+    public String getAdvice() {
+      return advice;
+    }
+
+    public void setAdvice(String advice) {
+      this.advice = advice;
+    }
+
+    public ActionPlanDto getActionPlan() {
+      return actionPlan;
+    }
+
+    public void setActionPlan(ActionPlanDto actionPlan) {
+      this.actionPlan = actionPlan;
+    }
   }
 
   /** Adapts raw bytes loaded from storage into a {@link MultipartFile} for PlantNetClient. */

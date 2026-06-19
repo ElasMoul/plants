@@ -12,8 +12,11 @@ import { CareLogModule } from './components/care-log/care-log.module';
 import { ReminderListComponent } from './reminder-list/reminder-list.component';
 import { CreateReminderFormComponent } from './components/create-reminder-form/create-reminder-form.component';
 import { CareCalendarComponent } from './components/care-calendar/care-calendar.component';
+import { TreatmentPlanDetailComponent } from './pages/treatment-plan-detail/treatment-plan-detail.component';
+import { StepDetailDialogComponent } from './components/step-detail-dialog/step-detail-dialog.component';
 import { ReminderService } from './services/reminder.service';
 import { CareLogService } from './services/care-log.service';
+import { TreatmentPlanService } from './services/treatment-plan.service';
 import { PlantService } from '../plant/services/plant.service';
 
 @NgModule({
@@ -21,6 +24,8 @@ import { PlantService } from '../plant/services/plant.service';
     ReminderListComponent,
     CreateReminderFormComponent,
     CareCalendarComponent,
+    TreatmentPlanDetailComponent,
+    StepDetailDialogComponent,
   ],
   imports: [
     SharedModule,
@@ -34,6 +39,6 @@ import { PlantService } from '../plant/services/plant.service';
     MatInputModule,
     MatSelectModule,
   ],
-  providers: [ReminderService, CareLogService, PlantService],
+  providers: [ReminderService, CareLogService, TreatmentPlanService, PlantService],
 })
 export class ReminderModule {}

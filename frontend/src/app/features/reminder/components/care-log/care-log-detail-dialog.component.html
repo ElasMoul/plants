@@ -1,0 +1,25 @@
+<h2 mat-dialog-title class="dialog-title">
+  <span class="title-icon-wrap"><mat-icon>{{ icon }}</mat-icon></span>
+  {{ data.careType | titlecase }}
+</h2>
+
+<mat-dialog-content>
+  <p class="detail-row">
+    <mat-icon class="row-icon">event</mat-icon>
+    {{ data.performedAt | date:'EEEE, MMM d, y' }} at {{ data.performedAt | date:'h:mm a' }}
+  </p>
+
+  <p class="detail-row" *ngIf="data.plantNickname">
+    <mat-icon class="row-icon">local_florist</mat-icon>
+    {{ data.plantNickname }}
+  </p>
+
+  <div class="notes-block" *ngIf="data.notes">
+    <p class="notes-label">Notes</p>
+    <p class="notes-text">{{ data.notes }}</p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Close</button>
+</mat-dialog-actions>

@@ -45,6 +45,28 @@ export type CareCardType =
   | 'SEASONAL'
   | 'BEGINNER_TIP';
 
+export type ActionPlanType = 'ROUTINE' | 'TREATMENT';
+
+export interface DiagramDto {
+  format: 'MERMAID';
+  content: string;
+}
+
+export interface TreatmentStepDto {
+  order: number;
+  instruction: string;
+  dueOffsetDays: number;
+  detail?: string | null;
+  diagram?: DiagramDto | null;
+}
+
+export interface ActionPlanDto {
+  type: ActionPlanType;
+  frequencyDays?: number;
+  steps?: TreatmentStepDto[];
+  diagram?: DiagramDto | null;
+}
+
 export interface CareCardDto {
   type: CareCardType;
   title: string;
@@ -53,6 +75,7 @@ export interface CareCardDto {
   detail: string;
   urgency: 'LOW' | 'MEDIUM' | 'HIGH';
   seasonalVariation: string | null;
+  actionPlan?: ActionPlanDto | null;
 }
 
 export interface CarePlanDto {

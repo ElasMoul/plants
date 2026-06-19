@@ -4,7 +4,12 @@ import { Observable, interval } from 'rxjs';
 import { filter, map, startWith, switchMap, take, takeWhile, timeout } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
-import { CarePlanDto, IdentificationPendingResponse, IdentificationResponse } from '../models/identification.model';
+import {
+  ActionPlanDto,
+  CarePlanDto,
+  IdentificationPendingResponse,
+  IdentificationResponse,
+} from '../models/identification.model';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 32000;
@@ -68,17 +73,26 @@ export class IdentificationService {
     );
   }
 
-  getCureAdvice(identificationId: number, regionLabel: string, species: string): Observable<string> {
-    return this.http.post<ApiResponse<{ advice: string }>>(
+  getCureAdvice(
+    identificationId: number,
+    regionLabel: string,
+    species: string,
+  ): Observable<{ advice: string; actionPlan: ActionPlanDto | null }> {
+    return this.http.post<ApiResponse<{ advice: string; actionPlan: ActionPlanDto | null }>>(
       `${this.baseUrl}/${identificationId}/cure-advice`,
       { regionLabel, species },
-    ).pipe(map(res => res.data.advice));
+    ).pipe(map(res => res.data));
   }
 
-  addCareCard(identificationId: number, regionLabel: string, adviceText: string): Observable<CarePlanDto> {
+  addCareCard(
+    identificationId: number,
+    regionLabel: string,
+    adviceText: string,
+    actionPlan?: ActionPlanDto | null,
+  ): Observable<CarePlanDto> {
     return this.http.post<ApiResponse<CarePlanDto>>(
       `${this.baseUrl}/${identificationId}/care-plan/cards`,
-      { regionLabel, adviceText },
+      { regionLabel, adviceText, actionPlan: actionPlan ?? null },
     ).pipe(map(res => res.data));
   }
 

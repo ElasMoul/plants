@@ -28,8 +28,12 @@ const routes: Routes = [
       import('./features/identification/identification.module').then(m => m.IdentificationModule),
     canActivate: [AuthGuard],
   },
+  // ReminderModule is mounted at the root ('') rather than under a 'reminders' prefix —
+  // its own routing module defines both 'reminders' and 'treatment-plans/:id' as siblings,
+  // so treatment plans get a clean top-level URL instead of /reminders/treatment-plans/:id.
+  // canActivate here still guards the whole lazy-loaded subtree, same as every other entry.
   {
-    path: 'reminders',
+    path: '',
     loadChildren: () =>
       import('./features/reminder/reminder.module').then(m => m.ReminderModule),
     canActivate: [AuthGuard],

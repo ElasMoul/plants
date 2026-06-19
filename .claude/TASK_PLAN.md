@@ -2123,6 +2123,9 @@ In com.plantpal.reminder:
 **Branch:** `feature/PP-011-reminder-module` (landed on the same branch as T3.1, not a separate one)
 > CareLogComponent wired into plant-detail's "Care History" tab (was a Phase-3 placeholder since
 > T2.9). See STATE.md for full notes. Remaining: T3.3 manual/device testing below.
+> ⚠️ Found via live testing (2026-06-18) and fixed same session: `care-log.service.ts` called
+> `/api/v1/care-logs` instead of the real `/api/v1/care` route — Care History tab silently showed
+> empty for every plant. See STATE.md's T3.2 entry for the full root-cause note.
 
 **Claude Code prompt:**
 ```
@@ -2156,7 +2159,7 @@ In com.plantpal.reminder:
 ---
 
 ### T3.4 — Backend: actionable care plans (routines + treatment plans) 🤖 AI
-**Branch:** `feature/PP-028-actionable-care-plans`
+**Branch:** `feature/PP-028-actionable-care-plans-2`
 
 > **Why:** care actions aren't all the same shape. Some are simple recurring routines
 > (water every 7 days), some are finite multi-step treatments (apply neem oil day 1, recheck
@@ -2323,7 +2326,7 @@ confirm it degrades to null rather than throwing.
 ---
 
 ### T3.5 — Frontend: actionable care plans UI (reminders, treatment plans, diagrams) 🤝 Assisted
-**Branch:** `feature/PP-028-actionable-care-plans` (same branch as T3.4)
+**Branch:** `feature/PP-028-actionable-care-plans-2` (same branch as T3.4)
 
 **Claude Code prompt:**
 ```

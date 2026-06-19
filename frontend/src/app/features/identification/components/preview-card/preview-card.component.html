@@ -43,7 +43,7 @@
   <!-- Care plan preview — first 3 cards -->
   <div class="care-preview" *ngIf="result.carePlan">
     <p class="section-label">Care Plan Preview</p>
-    <app-care-plan [carePlan]="result.carePlan" [maxCards]="3"></app-care-plan>
+    <app-care-plan [carePlan]="result.carePlan" [maxCards]="3" [plantId]="result.plantId"></app-care-plan>
   </div>
 
   <mat-divider class="section-divider"></mat-divider>
