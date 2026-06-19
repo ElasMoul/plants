@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ReminderService } from '../services/reminder.service';
 import { CareType, ReminderResponse } from '../models/reminder.model';
+import { DaySelection } from '../components/care-calendar/care-calendar.component';
 import { careIcon as getCareIcon } from '../models/care-icon.util';
 import { PLACEHOLDER_IMAGE } from '../../../shared/constants/placeholder-image.constant';
 import { CreateReminderFormComponent } from '../components/create-reminder-form/create-reminder-form.component';
@@ -22,6 +23,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
   reminders: ReminderResponse[] = [];
   loading = true;
   completingId: number | null = null;
+  daySelection: DaySelection | null = null;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -86,6 +88,14 @@ export class ReminderListComponent implements OnInit, OnDestroy {
 
   goToPlant(plantId: number): void {
     this.router.navigate(['/plants', plantId]);
+  }
+
+  get displayedReminders(): ReminderResponse[] {
+    return this.daySelection?.reminders ?? this.reminders;
+  }
+
+  onDaySelected(selection: DaySelection | null): void {
+    this.daySelection = selection;
   }
 
   private loadReminders(): void {

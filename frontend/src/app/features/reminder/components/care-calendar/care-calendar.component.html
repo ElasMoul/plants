@@ -1,5 +1,11 @@
 <div class="calendar-strip">
-  <div class="calendar-day" *ngFor="let day of days" [class.is-today]="day.isToday">
+  <div
+    class="calendar-day"
+    *ngFor="let day of days; let i = index"
+    [class.is-today]="day.isToday"
+    [class.is-selected]="selectedIndex === i"
+    (click)="selectDay(i, day)"
+  >
     <p class="day-label">{{ day.isToday ? 'Today' : day.label }}</p>
     <p class="day-number">{{ day.dayNumber }}</p>
 

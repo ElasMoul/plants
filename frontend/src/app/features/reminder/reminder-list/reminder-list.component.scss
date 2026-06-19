@@ -68,6 +68,31 @@
   50%       { opacity: 0.5; }
 }
 
+// ── Day filter note ──────────────────────────────────────────
+.filter-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: -8px 0 16px;
+
+  strong {
+    color: var(--color-text-primary);
+  }
+}
+
+.filter-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 // ── Empty state ──────────────────────────────────────────────
 .empty-state {
   display: flex;

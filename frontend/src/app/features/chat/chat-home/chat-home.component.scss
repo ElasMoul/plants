@@ -1,13 +1,12 @@
+// This page follows the same layout pattern as the rest of the app (normal document scroll,
+// content cleared by padding-bottom under the fixed bottom-nav) rather than an internal
+// height:100% flex-scroll region — the shared <main> ancestor has no fixed height for that
+// region to size against, so the composer is pinned via position:fixed instead.
 :host {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  display: block;
 }
 
 .chat-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
@@ -70,12 +69,17 @@
 
 // ── Messages ─────────────────────────────────────────────────
 .chat-messages {
-  flex: 1;
-  overflow-y: auto;
   padding: 16px;
+  // Generous bottom clearance for the fixed composer (quick-chips + input-bar) plus the
+  // fixed bottom-nav on mobile — better a little extra whitespace than a clipped last message.
+  padding-bottom: 210px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  @media (min-width: 769px) {
+    padding-bottom: 130px;
+  }
 }
 
 .message-row {
@@ -215,11 +219,30 @@
   color: var(--color-text-primary);
 }
 
-// ── Quick chips ──────────────────────────────────────────────
+// ── Composer (quick chips + input bar) ──────────────────────────
+// Fixed to the viewport, above the app's bottom-nav (z-index 100) on mobile, flush to the
+// bottom on desktop where the bottom-nav is hidden. left:0/right:0 + margin:0 auto centers
+// a fixed-position element the same way it would in normal flow.
+.chat-composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+
+  @media (min-width: 769px) {
+    bottom: 0;
+  }
+}
+
 .quick-chips {
   display: flex;
   gap: 8px;
-  padding: 0 16px 12px;
+  padding: 10px 16px 0;
   overflow-x: auto;
   flex-shrink: 0;
 }

@@ -344,8 +344,7 @@ class ActionPlanValidatorTest {
               .steps(List.of(stepWithDetail(oversized)))
               .build();
 
-      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail())
-          .hasSize(1000);
+      assertThat(ActionPlanValidator.normalize(raw).getSteps().get(0).getDetail()).hasSize(1000);
     }
 
     @Test

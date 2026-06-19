@@ -22,8 +22,9 @@
       </div>
       <div class="log-body">
         <p class="log-type">{{ log.careType | titlecase }}</p>
-        <p class="log-date">{{ log.performedAt | date:'MMM d, y' }} &middot; {{ log.performedAt | date:'h:mm a' }}</p>
+        <p class="log-date">{{ log.performedAt | date:'MMM d, y' }} at {{ log.performedAt | date:'h:mm a' }}</p>
         <p class="log-notes" *ngIf="log.notes">{{ log.notes }}</p>
+        <button type="button" class="log-details-btn" (click)="viewDetails(log)">View details</button>
       </div>
     </div>
   </div>

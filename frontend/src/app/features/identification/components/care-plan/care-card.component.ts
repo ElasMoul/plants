@@ -9,6 +9,7 @@ import { CareType } from '../../../reminder/models/reminder.model';
 import { ReminderService } from '../../../reminder/services/reminder.service';
 import { TreatmentPlanService } from '../../../reminder/services/treatment-plan.service';
 import { SetReminderDialogComponent } from './set-reminder-dialog.component';
+import { parseDetailAsList, ParsedDetail } from '../../../../shared/utils/detail-list.util';
 
 const CARD_COLORS: Record<CareCardType, string> = {
   WATERING:     '#1565C0',
@@ -34,6 +35,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() existingCareTypes: CareType[] = [];
 
   expanded = false;
+  detailList: ParsedDetail | null = null;
   reminderSet = false;
   reminderAlreadyExisted = false;
   settingReminder = false;
@@ -51,6 +53,9 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['card']) {
+      this.detailList = parseDetailAsList(this.card.detail);
+    }
     if (changes['card'] || changes['existingCareTypes']) {
       // AI only attaches a ROUTINE actionPlan to cards whose type maps to a real reminder CareType
       const alreadyExists = this.existingCareTypes.includes(this.card.type as CareType);

@@ -7,8 +7,8 @@ import com.plantpal.reminder.entity.Reminder;
 /**
  * Single source of truth for {@link Reminder} → {@link ReminderResponse} mapping. Previously
  * duplicated independently in {@code ReminderServiceImpl} and {@code TreatmentPlanServiceImpl},
- * which is how {@code instruction}/{@code completedAt} were added to the DTO but only ever wired
- * up on the frontend — neither copy of the mapper actually populated them.
+ * which is how {@code instruction}/{@code completedAt} were added to the DTO but only ever wired up
+ * on the frontend — neither copy of the mapper actually populated them.
  */
 public final class ReminderMapper {
 

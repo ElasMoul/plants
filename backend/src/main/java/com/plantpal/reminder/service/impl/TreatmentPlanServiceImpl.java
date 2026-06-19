@@ -96,8 +96,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
               .instruction(step.getInstruction())
               .stepDetail(step.getDetail())
               .stepDiagramFormat(step.getDiagram() != null ? step.getDiagram().getFormat() : null)
-              .stepDiagramContent(
-                  step.getDiagram() != null ? step.getDiagram().getContent() : null)
+              .stepDiagramContent(step.getDiagram() != null ? step.getDiagram().getContent() : null)
               .build());
     }
     log.info(

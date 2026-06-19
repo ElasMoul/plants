@@ -1,7 +1,15 @@
 <h2 mat-dialog-title>{{ data.instruction }}</h2>
 
 <mat-dialog-content>
-  <p class="step-detail-text" *ngIf="data.stepDetail">{{ data.stepDetail }}</p>
+  <ng-container *ngIf="detailList; else plainStepDetail">
+    <p class="step-detail-text" *ngIf="detailList.intro">{{ detailList.intro }}</p>
+    <ol class="step-detail-list">
+      <li *ngFor="let item of detailList.items">{{ item }}</li>
+    </ol>
+  </ng-container>
+  <ng-template #plainStepDetail>
+    <p class="step-detail-text" *ngIf="data.stepDetail">{{ data.stepDetail }}</p>
+  </ng-template>
 
   <app-mermaid-diagram
     *ngIf="data.stepDiagramContent"

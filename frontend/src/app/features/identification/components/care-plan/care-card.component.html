@@ -17,7 +17,17 @@
 
   <div class="card-detail" *ngIf="expanded">
     <mat-divider></mat-divider>
-    <p class="detail-text">{{ card.detail }}</p>
+
+    <ng-container *ngIf="detailList; else plainDetail">
+      <p class="detail-text" *ngIf="detailList.intro">{{ detailList.intro }}</p>
+      <ol class="detail-list">
+        <li *ngFor="let item of detailList.items">{{ item }}</li>
+      </ol>
+    </ng-container>
+    <ng-template #plainDetail>
+      <p class="detail-text">{{ card.detail }}</p>
+    </ng-template>
+
     <div class="seasonal-tip" *ngIf="card.seasonalVariation">
       <mat-icon>calendar_month</mat-icon>
       <span>{{ card.seasonalVariation }}</span>

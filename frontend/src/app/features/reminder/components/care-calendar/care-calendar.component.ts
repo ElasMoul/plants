@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CareType, ReminderResponse } from '../../models/reminder.model';
 import { careIcon as getCareIcon } from '../../models/care-icon.util';
 
@@ -7,6 +7,11 @@ interface CalendarDay {
   label: string;
   dayNumber: string;
   isToday: boolean;
+  reminders: ReminderResponse[];
+}
+
+export interface DaySelection {
+  label: string;
   reminders: ReminderResponse[];
 }
 
@@ -19,17 +24,33 @@ const DAYS_IN_WEEK = 7;
 })
 export class CareCalendarComponent implements OnChanges {
   @Input() reminders: ReminderResponse[] = [];
+  @Output() daySelected = new EventEmitter<DaySelection | null>();
 
   days: CalendarDay[] = [];
+  selectedIndex: number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['reminders']) {
       this.buildDays();
+      // Reminder list just reloaded (e.g. after marking one done) — drop any stale day filter
+      // rather than risk showing a selection that no longer matches the rebuilt buckets.
+      this.selectedIndex = null;
+      this.daySelected.emit(null);
     }
   }
 
   careIcon(careType: CareType): string {
     return getCareIcon(careType);
+  }
+
+  selectDay(index: number, day: CalendarDay): void {
+    if (this.selectedIndex === index) {
+      this.selectedIndex = null;
+      this.daySelected.emit(null);
+      return;
+    }
+    this.selectedIndex = index;
+    this.daySelected.emit({ label: day.isToday ? 'Today' : `${day.label} ${day.dayNumber}`, reminders: day.reminders });
   }
 
   private buildDays(): void {

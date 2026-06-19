@@ -16,7 +16,17 @@
 
   <ng-container *ngIf="!loading">
 
-    <app-care-calendar *ngIf="reminders.length" [reminders]="reminders"></app-care-calendar>
+    <app-care-calendar
+      *ngIf="reminders.length"
+      [reminders]="reminders"
+      (daySelected)="onDaySelected($event)"
+    ></app-care-calendar>
+
+    <!-- Active day filter -->
+    <p class="filter-note" *ngIf="daySelection">
+      Showing reminders for <strong>{{ daySelection.label }}</strong>
+      <button type="button" class="filter-clear" (click)="onDaySelected(null)">Show all</button>
+    </p>
 
     <!-- Empty state -->
     <div class="empty-state" *ngIf="!reminders.length">
@@ -25,10 +35,17 @@
       <p>Add a care reminder to start tracking watering, feeding, and repotting.</p>
     </div>
 
+    <!-- Empty state — day filter active but nothing due that day -->
+    <div class="empty-state" *ngIf="reminders.length && daySelection && !daySelection.reminders.length">
+      <mat-icon class="empty-icon">event_available</mat-icon>
+      <h2>Nothing due {{ daySelection.label }}</h2>
+      <p>No reminders fall on this day.</p>
+    </div>
+
     <!-- Reminder cards — sorted by nextDueAt, overdue highlighted -->
     <div
       class="reminder-card"
-      *ngFor="let reminder of reminders"
+      *ngFor="let reminder of displayedReminders"
       [class.overdue]="isOverdue(reminder)"
       (click)="goToPlant(reminder.plantId)"
     >
