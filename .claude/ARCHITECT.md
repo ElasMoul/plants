@@ -429,7 +429,7 @@ copy.
   - 014: reminders.{step_detail, step_diagram_format, step_diagram_content}, all nullable (T3.6)
   - 015: identifications.ai_model_used VARCHAR(50), nullable (T3.9) — this entry was missing from
     this doc until 2026-06-19; the migration itself was always correct, only this list lagged
-  - 016 (planned, T6.1): new `species` table
+  - 016 (✅ T6.1, 2026-06-19): new `species` table
   - 017 (planned, T6.3): plants.{species_id, last_scan_id, active_treatment_id} FK columns
     (nullable), drops plants.species (String column — replaced by species_id FK)
   - 018 (planned, T6.2): new `treatments` table
