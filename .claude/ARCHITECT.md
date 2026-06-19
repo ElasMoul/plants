@@ -217,9 +217,209 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
   the most likely explanation for why diagrams were flagged in STATE.md as "never confirmed
   against a live AI response."
 
+## Phase 6 — Species & Treatment Domain Restructure (planned 2026-06-19)
+> Filed as Phase 6 / T6.1–T6.14 / migrations 016–019 — NOT the Phase 2/T3.x/012–015 numbers the
+> brief originally suggested, which collide with already-shipped work. See STATE.md's "Phase 6"
+> section for the full task list + the renumbering rationale, and
+> `.claude/PHASE5_SESSION_PROGRESS.md` for this planning session's resume trail.
+
+### Why this restructure
+The domain has been plant-centric since Phase 1: a `Plant` row owns a free-text `species` string,
+and every identification scan is tied to a specific plant (or nothing). As the garden grows past
+a few plants, two gaps show up: (1) two plants of the same species duplicate care-plan knowledge
+that should be shared, and (2) a detected disease has no persistent home of its own — it's just
+an annotation region on one scan, with no lifecycle (start treatment → follow steps → resolve).
+Phase 6 introduces `Species` (shared botanical knowledge) and `Treatment` (a disease's own
+lifecycle) as first-class entities, and reshapes navigation/identification flow around them.
+
+### New entity: Species (shared across users)
+```
+Species (extends AuditableEntity)
+  id, scientificName (unique), commonName, description, careOverview, imageUrl,
+  externalDataSource ("AI" | "WIKIPEDIA" | "MANUAL"), externalDataFetchedAt,
+  status (SpeciesStatus: ACTIVE | NEEDS_REVIEW)
+```
+- **Shared, not per-user.** Two users who both own a Monstera deliciosa point at the SAME
+  `Species` row. This is the first entity in the codebase that is intentionally NOT
+  user-scoped — every other entity (Plant, Identification, Reminder, TreatmentPlan) is owned by
+  exactly one user. Service methods that touch `Species` must NOT add a `userId` ownership check
+  on the Species row itself (there's no owner) — only on the `Plant` rows that reference it.
+- `scientificName` is the natural dedup key (unique constraint) — `findOrCreate` semantics:
+  identification flow looks up by scientificName first, creates only on miss.
+- `status = NEEDS_REVIEW` exists for the case where AI enrichment (T6.4) fails or returns
+  low-confidence data — surfaces a row that a human (or a later re-enrichment pass) should
+  revisit, without blocking the user's identification flow on it.
+
+### New entity: Treatment (per-plant disease lifecycle) — see disambiguation below
+```
+Treatment (extends AuditableEntity)
+  id, plantId, identificationId (the scan that detected it), diseaseName,
+  diseaseDescription (AI-generated: what/why/risk if untreated),
+  status (TreatmentStatus: DRAFT | IN_PROGRESS | COMPLETED | DISMISSED),
+  planJson (TEXT — careCard/actionPlan-shaped, same structure as existing care plans),
+  startedAt, completedAt (nullable)
+```
+- User-scoped via `plantId` → `Plant.userId` (same ownership-check pattern as every other
+  plant-child entity — load the Plant, verify `plant.userId == requestUserId`, never trust a
+  bare `treatmentId` without that check).
+- One `Treatment` per `(plantId, diseaseName)` pair that's currently active — a plant can only
+  have one DRAFT/IN_PROGRESS treatment at a time per disease (the Plant page CTA is "Start
+  Treatment Plan" vs "Treatment in Progress", which implies this 1-per-disease invariant; enforce
+  it in `TreatmentService.createTreatment()`, not just in the frontend).
+
+### ⚠️ Two "Treatment" concepts — do not conflate
+This codebase will have TWO different things with "Treatment" in the name after Phase 6 ships.
+Read this before touching either one:
+- **`TreatmentPlan`** (T3.4, already shipped) — a generic multi-step action plan generated from
+  ANY care card's `actionPlan` field (could be a pest treatment, but could just as easily be a
+  repotting checklist). Backed by `Reminder` rows (`recurring=false`, `treatmentPlanId` FK).
+  Routed at `/treatment-plans/:id`. Lives in `com.plantpal.reminder`.
+- **`Treatment`** (T6.2, new) — specifically a disease's own record: one row per
+  `plantId + diseaseName`, reached from the Plant page's icon-button-bar "treatment" tab, routed
+  at `/treatment/:id`. Lives in a new `com.plantpal.treatment` package (NOT `reminder` —
+  different bounded concept even though the underlying steps may eventually still be `Reminder`
+  rows).
+- **Open design question flagged for whoever implements T6.2:** `Treatment.planJson` as
+  specified looks like it duplicates what `TreatmentPlan` already stores (careCard/actionPlan
+  JSON shape). Before writing migration 018, decide: does `Treatment` generate its own
+  `TreatmentPlan` row (via the existing `TreatmentPlanService.createFromActionPlan()`) and just
+  hold a `treatmentPlanId` FK + the disease-specific metadata (diseaseName, diseaseDescription,
+  identificationId)? That would reuse the entire existing Reminder-backed step/completion
+  machinery from T3.4 instead of building a second one. Recommended unless there's a concrete
+  reason `Treatment` needs to diverge from `TreatmentPlan`'s shape.
+
+### Identification flow — 3-path decision tree
+Where a scan is initiated determines what happens after the AI responds. All three paths share
+the same underlying `IdentificationService` AI call (gpt-4o vision, T2.A/T2.C async pipeline) —
+only the post-processing branches.
+
+```
+Scan initiated from...
+│
+├─ Garden list ("identify new plant") ── Flow 1
+│    AI identifies species
+│    └─ scientificName exists in species table?
+│         ├─ NO  → create Species row, fire async enrichment (T6.4)
+│         └─ YES → show "Is this your plant's species? [Yes] [No, re-scan]"
+│    └─ species confirmed →
+│         └─ user already has a Plant of this species?
+│              ├─ NO  → auto-create Plant, attach speciesId
+│              └─ YES → "Which plant is this?" → pick existing Plant, or "New plant"
+│    Identification saved with speciesId + plantId
+│
+├─ Species detail page ("add plant of this species") ── Flow 2
+│    Backend already knows the expected species (passed in the request) — AI still runs
+│    identification (confirms/corrects), but the species-confirmation step is SKIPPED.
+│    └─ straight to "Add as new plant of {species}?" + nickname form
+│    Plant created, attached to the known Species — no ambiguity to resolve.
+│
+└─ Plant detail page ("scan plant", health check) ── Flow 3
+     plantId + speciesId already known and pre-filled on the request — full identification +
+     annotation runs (same as today), but purely for HEALTH, not re-identifying the species.
+     Result saved with plantId + speciesId already set (no matching step at all).
+     └─ disease detected?
+          ├─ NO active Treatment for that diseaseName  → "Start Treatment Plan" CTA
+          ├─ active Treatment exists for that diseaseName → "Treatment in Progress" → link to it
+          └─ no disease (healthy)                         → existing care-plan UI, unchanged
+```
+- Flow 1 is the only path that needs species *matching/disambiguation* UI — Flows 2 and 3 already
+  know which Species/Plant they're working with from the entry point, so they skip straight to
+  the next decision.
+- The species-confirmation and plant-selection prompts in Flow 1 are NOT part of the async AI
+  pipeline — they're synchronous UI steps the user resolves AFTER the (already-completed)
+  identification result comes back. Don't try to fold them into `processIdentification()`'s
+  Kafka consumer; that method's job ends at returning a parsed result. A new
+  `POST /api/v1/identifications/{id}/resolve-species` (or similar — T6.9 backend prompt should
+  define the exact shape) handles the user's confirm/select choice afterward.
+
+### Treatment lifecycle state machine
+```
+DRAFT ──(user clicks "Craft Treatment Plan" / "Start Treatment Plan")──► IN_PROGRESS
+IN_PROGRESS ──(all steps marked done)──► COMPLETED
+IN_PROGRESS ──(user dismisses)──► DISMISSED
+DRAFT ──(user dismisses without starting)──► DISMISSED
+```
+- `Treatment` is created in `DRAFT` status the moment a disease is detected with no existing
+  active treatment for it (NOT lazily when the user clicks the CTA) — this lets
+  `diseaseDescription` (the "what is it / why does it happen / risk if untreated" text) be
+  fetched async right away, same pattern as T6.4's species enrichment, so it's already there by
+  the time the user opens the Treatment page.
+- `IN_PROGRESS` is reached by `POST /treatments/{id}/craft-plan` — generates the actual
+  step-by-step care cards (reusing the existing AI care-plan generation prompt shape) and, per
+  the disambiguation note above, ideally delegates to `TreatmentPlanService.createFromActionPlan()`
+  rather than reimplementing reminder creation.
+- `COMPLETED` should reuse T3.4's existing completion-detection pattern: when the underlying
+  `TreatmentPlan`'s last step is marked done, `ReminderService.applyCompletionToReminder()`
+  already flips `TreatmentPlan.status` to COMPLETED — if `Treatment` wraps a `TreatmentPlan` (see
+  above), `Treatment.status` should mirror that flip (e.g. via the same code path, not a second
+  independent "is it done" check) and also set `plant.activeTreatmentId = null` +
+  `Treatment.completedAt`.
+- `DISMISSED` is a manual user action at any point before COMPLETED — no AI/reminder side effects
+  to unwind beyond disabling any reminders already created (same `disableRemindersForPlant`-style
+  pattern as T3.8's archive-cascade fix, but scoped to this treatment's reminders only).
+
+### Species data enrichment — async pattern (T6.4)
+Mirrors the existing async-AI patterns already in the codebase (T2.6 parallel care-plan
+generation, T2.9 parallel annotation) rather than inventing a new one:
+```
+Species created (new scientificName, Flow 1 cache miss)
+  → persist Species row immediately with status=ACTIVE, description=null, careOverview=null
+    (identification flow does NOT block on enrichment — same philosophy as T2.C's async
+    identification pipeline: never make the user wait on a slow external call)
+  → @Async("aiTaskExecutor") fire-and-forget: SpeciesEnrichmentService.enrich(speciesId)
+       1. Call AI (GitHubModelsClient or DeepSeekClient — text-only, no image needed) with the
+          prompt from the brief: description + careOverview + imageUrl + source
+       2. Parse response (same "never throw, degrade gracefully" philosophy as
+          ActionPlanValidator/parseCarePlan/parseAnnotationRegions) — on failure, leave
+          description/careOverview/imageUrl null and flip status to NEEDS_REVIEW instead of
+          retrying inline
+       3. On success: update the Species row, externalDataSource="AI", externalDataFetchedAt=now
+  → Priority 2 (explicitly deferred, not in T6.4's scope): Wikipedia API fallback when AI
+    enrichment fails — flagged as a future task, do not implement speculatively in T6.4
+```
+- No new rate-limit bucket needed if reusing `DeepSeekClient`/`GitHubModelsClient` — but DO
+  confirm enrichment calls don't silently consume the same per-user identification rate-limit
+  bucket (T6.4's prompt should make this an explicit constructor/config decision, not an
+  accident).
+- Frontend implication: the Species detail page (T6.6) must handle `description == null` as a
+  normal, expected loading/pending state (e.g. "Gathering info about this species…" rather than
+  an error), since enrichment is fire-and-forget and may not have completed by the time the user
+  navigates there.
+
+### Angular pattern: sticky-on-scroll header + icon button bar (T6.10)
+New pattern for this codebase — neither `mat-tab-group` nor any existing sticky-header component
+exists yet, so T6.10 establishes the precedent other "detail" pages (Treatment page, T6.12) will
+copy.
+- **Sticky collapse:** use plain CSS `position: sticky; top: 0;` on the header block
+  (photo+name+species), NOT Angular CDK Overlay — CDK Overlay is for floating panels/dialogs, not
+  scroll-driven layout, and would be solving this with the wrong tool. Pair with an
+  `IntersectionObserver` watching a 1px sentinel element placed just below the header: when the
+  sentinel scrolls out of view, add a `.collapsed` class (smaller photo, condensed name) — this
+  is the same "scroll-driven class toggle" technique, just CSS-sticky instead of JS-positioned, so
+  the browser handles the actual pinning and JS only handles the visual collapse state.
+- **Icon button bar replacing `mat-tab-group`:** a plain horizontal flex row of
+  `mat-icon-button`s, each with a `matTooltip` (no visible text — this is a deliberate
+  information-density choice for mobile, not an accessibility oversight; `matTooltip` covers
+  desktop hover, and the icons should be common-enough (home/history/treatment/scan) that
+  long-press-to-reveal-tooltip on mobile is an acceptable fallback). Active button gets a filled
+  dark-green circle background (same visual language as the bottom nav's active-pill style from
+  DESIGN_PROGRESS.md). Body content below switches via a plain `*ngSwitch` on an
+  `activeSection: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans'` component property —
+  NOT Angular routing (these are sub-views of one page, not separate routes; switching them
+  should never trigger a route change or lose scroll position in the sticky header above).
+- **"Actions" button opens a bottom sheet**, not a dropdown menu — use `MatBottomSheet`, which is
+  already a known-good fit for this codebase's mobile-first design (T2.9c's
+  `DiseaseDetailPanelComponent` already uses card-based mobile patterns; a bottom sheet is the
+  next logical mobile-friendly Material primitive, no new dependency needed since
+  `@angular/material` already ships `MatBottomSheetModule`).
+- **Conditional "treatment" button:** only rendered when `plant.activeTreatmentId != null` — this
+  means `PlantResponse` needs that field (T6.3 backend), and the icon button bar's `*ngFor` over
+  buttons should filter it out entirely (not just disable it) when null, same as how T3.4/T3.5's
+  care-card action row simply doesn't render when there's nothing actionable.
+
 ## Migration Sequencing
 - db.changelog-master.xml executes in XML-listed order, NOT by filename
-- Current sequence: 001→007→008→009→010→011→012→013→014
+- Current sequence: 001→007→008→009→010→011→012→013→014→015→(016→017→018→019 planned, Phase 6)
   - 007 is BEFORE 008 (annotation_regions JSONB added before care_plan JSONB)
   - 010: ai_model_preference on users (AddChooseAi branch)
   - 011: source_image_width, source_image_height on identifications (T2.F)
@@ -227,8 +427,18 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
     step_order} (T3.4)
   - 013: reminders.instruction TEXT, nullable (T3.4b — see below)
   - 014: reminders.{step_detail, step_diagram_format, step_diagram_content}, all nullable (T3.6)
+  - 015: identifications.ai_model_used VARCHAR(50), nullable (T3.9) — this entry was missing from
+    this doc until 2026-06-19; the migration itself was always correct, only this list lagged
+  - 016 (planned, T6.1): new `species` table
+  - 017 (planned, T6.3): plants.{species_id, last_scan_id, active_treatment_id} FK columns
+    (nullable), drops plants.species (String column — replaced by species_id FK)
+  - 018 (planned, T6.2): new `treatments` table
+  - 019 (planned, T6.3): identifications.plant_id becomes nullable (species-level scans have no
+    plant yet), identifications.species_id FK added
 - When adding a new migration: always append to the XML list AND name the file with the next number
 - Never insert a migration between existing ones that have already run in prod
+- ⚠️ Phase 6's 016–019 numbers deliberately skip past 012–015 (which the original brief assumed
+  were free but are already in use) — see STATE.md's "Phase 6" section for the full rationale
 
 ## Your Behavior
 - Flag architectural gaps before Claude Code prompts are run
