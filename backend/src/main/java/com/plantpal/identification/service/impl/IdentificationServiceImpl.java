@@ -518,9 +518,11 @@ public class IdentificationServiceImpl implements IdentificationService {
         .orElse(AiModelPreference.DEEPSEEK);
   }
 
-  /** rawJson is the AI response; providerUsed is the model that actually served the request — may
+  /**
+   * rawJson is the AI response; providerUsed is the model that actually served the request — may
    * differ from the requested {@link AiModelPreference} when a fallback kicks in (e.g. OLLAMA_LLAVA
-   * failing over to GITHUB_GPT4O). */
+   * failing over to GITHUB_GPT4O).
+   */
   private record IdentificationOutcome(String rawJson, String providerUsed) {}
 
   private IdentificationOutcome runIdentification(
@@ -536,7 +538,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       case OLLAMA_LLAVA -> {
         try {
           yield new IdentificationOutcome(
-              ollamaClient.identifyPlant(imageBytes, mediaType), AiModelPreference.OLLAMA_LLAVA.name());
+              ollamaClient.identifyPlant(imageBytes, mediaType),
+              AiModelPreference.OLLAMA_LLAVA.name());
         } catch (PlantPalException e) {
           log.warn(
               "Ollama identification failed ({}), falling back to GitHubModels", e.getMessage());

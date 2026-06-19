@@ -160,10 +160,8 @@ class PlantServiceTest {
           .thenReturn(Optional.of(plant));
       when(plantRepository.save(any(Plant.class))).thenReturn(plant);
 
-      Reminder watering =
-          Reminder.builder().id(1L).plantId(1L).enabled(true).build();
-      Reminder fertilizing =
-          Reminder.builder().id(2L).plantId(1L).enabled(true).build();
+      Reminder watering = Reminder.builder().id(1L).plantId(1L).enabled(true).build();
+      Reminder fertilizing = Reminder.builder().id(2L).plantId(1L).enabled(true).build();
       when(reminderRepository.findByPlantIdAndEnabledTrue(1L))
           .thenReturn(java.util.List.of(watering, fertilizing));
 
