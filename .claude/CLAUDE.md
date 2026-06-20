@@ -789,6 +789,7 @@ open backend/target/site/jacoco/index.html
 | 3 — Manual testing (T3.3) | 🔲 Not started ← NEXT | Needs a real device — push notification delivery, PWA installability, offline reading |
 | 4 — AI Chat | ✅ Complete (basic) | T4.1 — single-turn chat wired to Ollama with garden context |
 | 5 — Launch | 🔲 Not started | |
+| 6 — Identification flow redesign (T6.9) | ✅ Complete | species-match/resolve-species/plant-match/resolve-plant endpoints; speciesId threaded through analyze() for Flow 2; species-confirm-step + plant-select-step components for Flow 1 (Garden FAB); branch: feature/PP-034-identification-species-matching. Rest of Phase 6 (T6.1–T6.8 merged separately, T6.10–T6.14 not started) tracked in TASK_PLAN.md |
 
 ---
 
