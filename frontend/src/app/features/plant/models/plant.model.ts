@@ -44,4 +44,5 @@ export interface PlantResponse {
   healthStatus?: HealthStatus;
   nextWaterDays?: number | null;
   lastScanAt?: string | null;
+  activeTreatmentId?: number | null;
 }

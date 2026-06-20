@@ -1,9 +1,10 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PlantService } from '../../services/plant.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
@@ -29,6 +30,20 @@ import { PlantPhotoTimelineComponent } from '../plant-photo-timeline/plant-photo
 export class PlantDetailComponent implements OnInit, OnDestroy {
   @ViewChild(PlantPhotoTimelineComponent) timeline?: PlantPhotoTimelineComponent;
 
+  // Set via the property-binding form below (not ngAfterViewInit) since the sentinel sits
+  // behind *ngIf="!loading && plant" and isn't available on the first view-init pass.
+  @ViewChild('scrollSentinel') set scrollSentinel(el: ElementRef<HTMLDivElement> | undefined) {
+    if (el && !this.sentinelObserver) {
+      this.sentinelObserver = new IntersectionObserver(
+        ([entry]) => {
+          this.headerCollapsed = !entry.isIntersecting;
+        },
+        { threshold: 0 },
+      );
+      this.sentinelObserver.observe(el.nativeElement);
+    }
+  }
+
   readonly placeholderImage = PLACEHOLDER_IMAGE;
   plant: PlantResponse | null = null;
   loading = true;
@@ -41,6 +56,10 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   selectedRegion: AnnotationRegion | null = null;
   existingCareTypes: CareType[] = [];
 
+  headerCollapsed = false;
+  activeSection: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans' = 'overview';
+
+  private sentinelObserver?: IntersectionObserver;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -51,6 +70,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     private readonly reminderService: ReminderService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
+    private readonly bottomSheet: MatBottomSheet,
   ) {}
 
   ngOnInit(): void {
@@ -99,8 +119,29 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.sentinelObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  selectSection(
+    section: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans',
+    actionsTemplate?: TemplateRef<unknown>,
+  ): void {
+    if (section === 'actions') {
+      // Real list items land in T6.11 — this placeholder sheet just proves the open/close wiring.
+      if (actionsTemplate) {
+        this.bottomSheet.open(actionsTemplate);
+      }
+      return;
+    }
+    if (section === 'treatment') {
+      if (this.plant?.activeTreatmentId) {
+        this.router.navigate(['/treatment-plans', this.plant.activeTreatmentId]);
+      }
+      return;
+    }
+    this.activeSection = section;
   }
 
   onScanSelected(scan: IdentificationResponse): void {

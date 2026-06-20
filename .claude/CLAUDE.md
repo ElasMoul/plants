@@ -789,7 +789,8 @@ open backend/target/site/jacoco/index.html
 | 3 — Manual testing (T3.3) | 🔲 Not started ← NEXT | Needs a real device — push notification delivery, PWA installability, offline reading |
 | 4 — AI Chat | ✅ Complete (basic) | T4.1 — single-turn chat wired to Ollama with garden context |
 | 5 — Launch | 🔲 Not started | |
-| 6 — Identification flow redesign (T6.9) | ✅ Complete | species-match/resolve-species/plant-match/resolve-plant endpoints; speciesId threaded through analyze() for Flow 2; species-confirm-step + plant-select-step components for Flow 1 (Garden FAB); branch: feature/PP-034-identification-species-matching. Rest of Phase 6 (T6.1–T6.8 merged separately, T6.10–T6.14 not started) tracked in TASK_PLAN.md |
+| 6 — Identification flow redesign (T6.9) | ✅ Complete | species-match/resolve-species/plant-match/resolve-plant endpoints; speciesId threaded through analyze() for Flow 2; species-confirm-step + plant-select-step components for Flow 1 (Garden FAB); branch: feature/PP-034-identification-species-matching. |
+| 6 — Plant page: sticky header + icon button bar (T6.10) | ✅ Complete | plant-detail.component rewritten: `.sticky-header` + IntersectionObserver-driven collapse, `mat-tab-group` replaced by an icon-only button bar (`activeSection` switch: overview/careLog/scans inline, actions opens a placeholder MatBottomSheet, treatment navigates to `/treatment-plans/:id`); old "Care Plan" tab folded into the Scans section (no slot for it in the activeSection enum); `PlantResponse.activeTreatmentId` added to the frontend model (backend field already existed); branch: feature/PP-035-plant-page-redesign. T6.11's actions-sheet content and disease/healthy conditional swap still TODO. Rest of Phase 6 (T6.1–T6.8 merged separately, T6.12–T6.14 not started) tracked in TASK_PLAN.md |
 
 ---
 

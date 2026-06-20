@@ -7,186 +7,191 @@
 
   <ng-container *ngIf="!loading && plant">
 
-    <!-- Hero -->
-    <div class="detail-hero">
-      <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
-      <div class="hero-overlay"></div>
+    <!-- Sticky header -->
+    <div class="sticky-header" [class.collapsed]="headerCollapsed">
+      <div class="detail-hero">
+        <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
+        <div class="hero-overlay"></div>
 
-      <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-
-      <div class="hero-actions">
-        <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
-          <mat-icon>edit</mat-icon>
+        <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
+          <mat-icon>arrow_back</mat-icon>
         </button>
-        <button mat-icon-button class="hero-action-btn" (click)="onArchive()" aria-label="Archive plant">
-          <mat-icon>archive</mat-icon>
-        </button>
-      </div>
 
-      <div class="hero-text">
-        <span class="hero-species" *ngIf="plant.commonName || plant.species">
-          {{ plant.commonName || plant.species }}
-        </span>
-        <h1 class="hero-name">{{ plant.nickname }}</h1>
+        <div class="hero-actions">
+          <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button class="hero-action-btn" (click)="onArchive()" aria-label="Archive plant">
+            <mat-icon>archive</mat-icon>
+          </button>
+        </div>
+
+        <div class="hero-text">
+          <span class="hero-species" *ngIf="plant.commonName || plant.species">
+            {{ plant.commonName || plant.species }}
+          </span>
+          <h1 class="hero-name">{{ plant.nickname }}</h1>
+        </div>
       </div>
     </div>
+    <div #scrollSentinel class="scroll-sentinel"></div>
 
-    <!-- Tabs -->
-    <mat-tab-group animationDuration="200ms" class="detail-tabs">
+    <!-- Icon button bar -->
+    <div class="section-button-bar">
+      <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
+              (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
+        <mat-icon>home</mat-icon>
+      </button>
+      <button mat-icon-button [class.active-section-btn]="activeSection === 'careLog'"
+              (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
+        <mat-icon>history</mat-icon>
+      </button>
+      <button mat-icon-button (click)="selectSection('actions', actionsSheet)" matTooltip="More actions" aria-label="More actions">
+        <mat-icon>more_horiz</mat-icon>
+      </button>
+      <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
+              matTooltip="Treatment plan" aria-label="Treatment plan">
+        <mat-icon>healing</mat-icon>
+      </button>
+      <button mat-icon-button [class.active-section-btn]="activeSection === 'scans'"
+              (click)="selectSection('scans')" matTooltip="Scans" aria-label="Scans">
+        <mat-icon>document_scanner</mat-icon>
+      </button>
+    </div>
 
-      <!-- Tab 1: Overview -->
-      <mat-tab label="Overview">
-        <div class="tab-content">
+    <!-- Section content -->
+    <div [ngSwitch]="activeSection" class="section-content">
 
-          <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
-            <span class="attention-badge">ATTENTION NEEDED</span>
-            <p>This plant has reported health issues. Check the Scans tab for details.</p>
+      <!-- Overview -->
+      <div *ngSwitchCase="'overview'" class="tab-content">
+
+        <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
+          <span class="attention-badge">ATTENTION NEEDED</span>
+          <p>This plant has reported health issues. Check the Scans section for details.</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item" *ngIf="plant.species">
+            <span class="info-label">Species</span>
+            <span class="info-value">{{ plant.species }}</span>
           </div>
-
-          <div class="info-grid">
-            <div class="info-item" *ngIf="plant.species">
-              <span class="info-label">Species</span>
-              <span class="info-value">{{ plant.species }}</span>
-            </div>
-            <div class="info-item" *ngIf="plant.commonName">
-              <span class="info-label">Common name</span>
-              <span class="info-value">{{ plant.commonName }}</span>
-            </div>
-            <div class="info-item" *ngIf="plant.location">
-              <span class="info-label">Location</span>
-              <span class="info-value">
-                <mat-icon class="inline-icon">place</mat-icon>
-                {{ plant.location }}
-              </span>
-            </div>
-            <div class="info-item" *ngIf="plant.acquiredAt">
-              <span class="info-label">Acquired</span>
-              <span class="info-value">{{ plant.acquiredAt | date:'longDate' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Added</span>
-              <span class="info-value">{{ plant.createdAt | date:'mediumDate' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Status</span>
-              <mat-chip [class]="'status-' + plant.status.toLowerCase()">
-                {{ plant.status }}
-              </mat-chip>
-            </div>
+          <div class="info-item" *ngIf="plant.commonName">
+            <span class="info-label">Common name</span>
+            <span class="info-value">{{ plant.commonName }}</span>
           </div>
-
-          <mat-divider *ngIf="plant.notes"></mat-divider>
-
-          <div class="notes-section" *ngIf="plant.notes">
-            <h3>Notes</h3>
-            <p>{{ plant.notes }}</p>
+          <div class="info-item" *ngIf="plant.location">
+            <span class="info-label">Location</span>
+            <span class="info-value">
+              <mat-icon class="inline-icon">place</mat-icon>
+              {{ plant.location }}
+            </span>
+          </div>
+          <div class="info-item" *ngIf="plant.acquiredAt">
+            <span class="info-label">Acquired</span>
+            <span class="info-value">{{ plant.acquiredAt | date:'longDate' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Added</span>
+            <span class="info-value">{{ plant.createdAt | date:'mediumDate' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Status</span>
+            <mat-chip [class]="'status-' + plant.status.toLowerCase()">
+              {{ plant.status }}
+            </mat-chip>
           </div>
         </div>
-      </mat-tab>
 
-      <!-- Tab 2: Care History -->
-      <mat-tab label="Care History">
-        <div class="tab-content">
-          <app-care-log [plantId]="plant.id"></app-care-log>
+        <mat-divider *ngIf="plant.notes"></mat-divider>
+
+        <div class="notes-section" *ngIf="plant.notes">
+          <h3>Notes</h3>
+          <p>{{ plant.notes }}</p>
         </div>
-      </mat-tab>
+      </div>
 
-      <!-- Tab 3: Care Plan -->
-      <mat-tab label="Care Plan">
-        <div class="tab-content">
+      <!-- Care History -->
+      <div *ngSwitchCase="'careLog'" class="tab-content">
+        <app-care-log [plantId]="plant.id"></app-care-log>
+      </div>
 
-          <!-- Loading identifications -->
-          <div *ngIf="!carePlanLoaded" class="care-plan-loading">
-            <mat-spinner diameter="32"></mat-spinner>
-          </div>
+      <!-- Scans (also hosts the care plan content previously on its own tab) -->
+      <div *ngSwitchCase="'scans'" class="tab-content">
 
-          <!-- No identification yet — CTA -->
-          <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
-            <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
-            <h3>No care plan yet</h3>
-            <p>Take a photo to get a personalised care plan for this plant.</p>
-            <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
-              <mat-icon>camera_alt</mat-icon>
-              Identify this plant
-            </button>
-          </div>
-
-          <!-- Care plan from latest identification -->
-          <ng-container *ngIf="carePlanLoaded && hasIdentification">
-            <app-care-plan
-              [carePlan]="latestCarePlan"
-              [plantId]="plant.id"
-              [existingCareTypes]="existingCareTypes"
-            ></app-care-plan>
-          </ng-container>
-
+        <div class="scans-header">
+          <h3 class="scans-subheading">Scan history</h3>
+          <button mat-stroked-button type="button" class="btn-pill" (click)="openAddScanDialog()">
+            <mat-icon>add_a_photo</mat-icon>
+            Add scan
+          </button>
         </div>
-      </mat-tab>
+        <app-plant-photo-timeline
+          [plantId]="plant.id"
+          [selectedScanId]="selectedScan?.id ?? null"
+          (scanSelected)="onScanSelected($event)"
+        ></app-plant-photo-timeline>
 
-      <!-- Tab 4: Scans -->
-      <mat-tab label="Scans">
-        <div class="tab-content">
+        <div *ngIf="!carePlanLoaded" class="care-plan-loading">
+          <mat-spinner diameter="32"></mat-spinner>
+        </div>
 
-          <div class="scans-header">
-            <h3 class="scans-subheading">Scan history</h3>
-            <button mat-stroked-button type="button" class="btn-pill" (click)="openAddScanDialog()">
-              <mat-icon>add_a_photo</mat-icon>
-              Add scan
-            </button>
-          </div>
-          <app-plant-photo-timeline
+        <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
+          <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
+          <h3>No scan yet</h3>
+          <p>Identify this plant to see the annotated scan here.</p>
+          <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
+            <mat-icon>camera_alt</mat-icon>
+            Identify this plant
+          </button>
+        </div>
+
+        <ng-container *ngIf="carePlanLoaded && hasIdentification && selectedScan as scan">
+          <mat-divider class="scans-divider"></mat-divider>
+          <h3 class="scans-subheading">{{ scan.createdAt | date:'medium' }}</h3>
+
+          <app-photo-annotator
+            [imageUrl]="scan.photoUrl || placeholderImage"
+            [regions]="scan.annotationRegions"
+            [selectedRegionIndex]="selectedRegionIndex"
+          ></app-photo-annotator>
+
+          <app-annotation-list
+            *ngIf="scan.annotationRegions && scan.annotationRegions.length"
+            [regions]="scan.annotationRegions"
+            [species]="plant.species ?? null"
+            [identificationId]="scan.id"
+            (regionSelected)="onRegionSelected($event)"
+          ></app-annotation-list>
+
+          <app-disease-detail-panel
+            [region]="selectedRegion"
+            [species]="plant.species ?? null"
+            [identificationId]="scan.id"
             [plantId]="plant.id"
-            [selectedScanId]="selectedScan?.id ?? null"
-            (scanSelected)="onScanSelected($event)"
-          ></app-plant-photo-timeline>
+            (carePlanUpdated)="onCarePlanUpdated($event)"
+          ></app-disease-detail-panel>
+        </ng-container>
 
-          <div *ngIf="!carePlanLoaded" class="care-plan-loading">
-            <mat-spinner diameter="32"></mat-spinner>
-          </div>
+        <mat-divider class="scans-divider" *ngIf="carePlanLoaded && hasIdentification"></mat-divider>
 
-          <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
-            <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
-            <h3>No scan yet</h3>
-            <p>Identify this plant to see the annotated scan here.</p>
-            <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
-              <mat-icon>camera_alt</mat-icon>
-              Identify this plant
-            </button>
-          </div>
+        <ng-container *ngIf="carePlanLoaded && hasIdentification">
+          <app-care-plan
+            [carePlan]="latestCarePlan"
+            [plantId]="plant.id"
+            [existingCareTypes]="existingCareTypes"
+          ></app-care-plan>
+        </ng-container>
 
-          <ng-container *ngIf="carePlanLoaded && hasIdentification && selectedScan as scan">
-            <mat-divider class="scans-divider"></mat-divider>
-            <h3 class="scans-subheading">{{ scan.createdAt | date:'medium' }}</h3>
+      </div>
 
-            <app-photo-annotator
-              [imageUrl]="scan.photoUrl || placeholderImage"
-              [regions]="scan.annotationRegions"
-              [selectedRegionIndex]="selectedRegionIndex"
-            ></app-photo-annotator>
-
-            <app-annotation-list
-              *ngIf="scan.annotationRegions && scan.annotationRegions.length"
-              [regions]="scan.annotationRegions"
-              [species]="plant.species ?? null"
-              [identificationId]="scan.id"
-              (regionSelected)="onRegionSelected($event)"
-            ></app-annotation-list>
-
-            <app-disease-detail-panel
-              [region]="selectedRegion"
-              [species]="plant.species ?? null"
-              [identificationId]="scan.id"
-              [plantId]="plant.id"
-              (carePlanUpdated)="onCarePlanUpdated($event)"
-            ></app-disease-detail-panel>
-          </ng-container>
-
-        </div>
-      </mat-tab>
-
-    </mat-tab-group>
+    </div>
   </ng-container>
 
 </div>
+
+<!-- "More actions" bottom sheet — real contents land in T6.11 -->
+<ng-template #actionsSheet>
+  <div class="actions-sheet-placeholder">
+    <p>Plant actions coming soon.</p>
+  </div>
+</ng-template>

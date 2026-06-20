@@ -13,12 +13,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatBottomSheetModule } from '@angular/material/bottom-sheet';
 
 import { PlantRoutingModule } from './plant-routing.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
@@ -60,12 +60,12 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
-    MatTabsModule,
     MatChipsModule,
     MatSnackBarModule,
     MatDividerModule,
     MatTooltipModule,
     MatDialogModule,
+    MatBottomSheetModule,
   ],
   providers: [PlantService, IdentificationService, CareLogService, ReminderService, TreatmentPlanService],
 })

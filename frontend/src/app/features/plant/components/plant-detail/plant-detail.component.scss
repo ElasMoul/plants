@@ -10,6 +10,17 @@
   padding: 80px 0;
 }
 
+// ── Sticky header ────────────────────────────────────────────
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.scroll-sentinel {
+  height: 1px;
+}
+
 // ── Hero ─────────────────────────────────────────────────────
 .detail-hero {
   position: relative;
@@ -17,10 +28,23 @@
   height: 320px;
   overflow: hidden;
   background: var(--color-surface-secondary);
+  transition: height 0.25s ease;
 
   @media (max-width: 600px) {
     height: 260px;
   }
+}
+
+.sticky-header.collapsed .detail-hero {
+  height: 96px;
+
+  @media (max-width: 600px) {
+    height: 84px;
+  }
+}
+
+.sticky-header.collapsed .hero-species {
+  display: none;
 }
 
 .hero-img {
@@ -82,31 +106,38 @@
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.15;
+  transition: font-size 0.25s ease;
 
   @media (max-width: 600px) {
     font-size: 1.6rem;
   }
 }
 
-// ── Tabs ─────────────────────────────────────────────────────
-.detail-tabs {
-  ::ng-deep .mat-mdc-tab-labels {
-    background: var(--color-surface);
-  }
+.sticky-header.collapsed .hero-name {
+  font-size: 1.1rem;
+}
 
-  ::ng-deep .mdc-tab-indicator__content--underline {
-    border-color: var(--color-primary) !important;
-  }
+// ── Icon button bar ──────────────────────────────────────────
+.section-button-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 4px;
+  background: var(--color-surface);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
 
-  ::ng-deep .mdc-tab__text-label {
-    color: var(--color-text-secondary);
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+.active-section-btn {
+  background: var(--color-success) !important;
+  border-radius: 50%;
 
-  ::ng-deep .mdc-tab--active .mdc-tab__text-label {
+  mat-icon {
     color: var(--color-primary) !important;
   }
+}
+
+.section-content {
+  // nothing structural — just a switch host
 }
 
 .tab-content {
@@ -280,4 +311,11 @@ mat-divider {
 
 .scans-divider {
   margin: 24px 0;
+}
+
+// ── Actions bottom sheet placeholder ────────────────────────────
+.actions-sheet-placeholder {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
 }
