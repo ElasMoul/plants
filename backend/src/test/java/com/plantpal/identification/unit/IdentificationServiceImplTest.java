@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
@@ -24,6 +25,10 @@ import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
+import com.plantpal.identification.dto.PlantMatchDto;
+import com.plantpal.identification.dto.ResolvePlantRequest;
+import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
@@ -31,6 +36,7 @@ import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.impl.IdentificationServiceImpl;
 import com.plantpal.plant.entity.Plant;
+import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
@@ -80,6 +86,9 @@ class IdentificationServiceImplTest {
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
   @Mock private org.springframework.cache.CacheManager cacheManager;
   @Mock private org.springframework.cache.Cache plantsCache;
+  @Mock private com.plantpal.species.repository.SpeciesRepository speciesRepository;
+  @Mock private com.plantpal.species.service.SpeciesService speciesService;
+  @Mock private com.plantpal.plant.service.PlantService plantService;
 
   private IdentificationServiceImpl identificationService;
 
@@ -103,7 +112,10 @@ class IdentificationServiceImplTest {
             plantNetClient,
             ollamaClient,
             kafkaTemplate,
-            cacheManager);
+            cacheManager,
+            speciesRepository,
+            speciesService,
+            plantService);
   }
 
   private MockMultipartFile validImage() {
@@ -143,7 +155,7 @@ class IdentificationServiceImplTest {
   /** Submits the identification request and captures the event published to Kafka. */
   private IdentificationRequestedEvent submitAndCaptureEvent(
       List<MultipartFile> images, List<String> organs, Long plantId, Long userId) throws Exception {
-    identificationService.submitIdentification(images, plantId, userId, organs).get();
+    identificationService.submitIdentification(images, plantId, null, userId, organs).get();
     ArgumentCaptor<IdentificationRequestedEvent> captor =
         ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
     verify(kafkaTemplate)
@@ -699,7 +711,7 @@ class IdentificationServiceImplTest {
 
       IdentificationPendingResponse response =
           identificationService
-              .submitIdentification(images, PLANT_ID, USER_ID, List.of("leaf"))
+              .submitIdentification(images, PLANT_ID, null, USER_ID, List.of("leaf"))
               .get();
 
       assertThat(response.getIdentificationId()).isEqualTo(1L);
@@ -731,11 +743,11 @@ class IdentificationServiceImplTest {
       when(identificationRepository.save(any())).thenReturn(pendingEntity);
 
       for (int i = 0; i < 20; i++) {
-        identificationService.submitIdentification(images, null, USER_ID, null);
+        identificationService.submitIdentification(images, null, null, USER_ID, null);
       }
 
       assertThatThrownBy(
-              () -> identificationService.submitIdentification(images, null, USER_ID, null))
+              () -> identificationService.submitIdentification(images, null, null, USER_ID, null))
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
@@ -1314,6 +1326,192 @@ class IdentificationServiceImplTest {
             "beginnerWarnings": ["Avoid overwatering"]
           }
           """;
+    }
+  }
+
+  @Nested
+  @DisplayName("Species/plant resolution (T6.9)")
+  class SpeciesPlantResolution {
+
+    private static final Long IDENTIFICATION_ID = 50L;
+    private static final Long SPECIES_ID = 7L;
+
+    private Identification identificationWithSpecies(String scientificName, Long speciesId) {
+      return Identification.builder()
+          .id(IDENTIFICATION_ID)
+          .userId(USER_ID)
+          .scientificName(scientificName)
+          .commonName("Swiss cheese plant")
+          .speciesId(speciesId)
+          .status(IdentificationStatus.COMPLETED)
+          .build();
+    }
+
+    @Test
+    @DisplayName("species-match: existing scientificName returns matched=true with speciesId")
+    void speciesMatchReturnsMatchedWhenSpeciesExists() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      com.plantpal.species.entity.Species species =
+          com.plantpal.species.entity.Species.builder()
+              .id(SPECIES_ID)
+              .scientificName("Monstera deliciosa")
+              .commonName("Swiss cheese plant")
+              .build();
+      when(speciesRepository.findByScientificName("Monstera deliciosa"))
+          .thenReturn(Optional.of(species));
+
+      SpeciesMatchDto result = identificationService.getSpeciesMatch(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(result.isMatched()).isTrue();
+      assertThat(result.getSpeciesId()).isEqualTo(SPECIES_ID);
+      verify(identificationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("species-match: new scientificName returns matched=false, creates no Species row")
+    void speciesMatchReturnsUnmatchedWhenSpeciesIsNew() {
+      Identification identification = identificationWithSpecies("Ficus lyrata", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      when(speciesRepository.findByScientificName("Ficus lyrata")).thenReturn(Optional.empty());
+
+      SpeciesMatchDto result = identificationService.getSpeciesMatch(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(result.isMatched()).isFalse();
+      assertThat(result.getSpeciesId()).isNull();
+      verify(speciesService, never()).findOrCreate(any(), any());
+    }
+
+    @Test
+    @DisplayName("resolve-species: confirmed=true on existing species attaches speciesId")
+    void resolveSpeciesConfirmedAttachesExistingSpecies() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      com.plantpal.species.entity.Species species =
+          com.plantpal.species.entity.Species.builder()
+              .id(SPECIES_ID)
+              .scientificName("Monstera deliciosa")
+              .commonName("Swiss cheese plant")
+              .build();
+      when(speciesRepository.findByScientificName("Monstera deliciosa"))
+          .thenReturn(Optional.of(species));
+
+      SpeciesMatchDto result =
+          identificationService.resolveSpecies(
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(true), USER_ID);
+
+      assertThat(result.getSpeciesId()).isEqualTo(SPECIES_ID);
+      assertThat(identification.getSpeciesId()).isEqualTo(SPECIES_ID);
+      verify(identificationRepository).save(identification);
+      verify(speciesService, never()).findOrCreate(any(), any());
+    }
+
+    @Test
+    @DisplayName("resolve-species: confirmed=true on new species calls findOrCreate")
+    void resolveSpeciesConfirmedCreatesNewSpecies() {
+      Identification identification = identificationWithSpecies("Ficus lyrata", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      when(speciesRepository.findByScientificName("Ficus lyrata")).thenReturn(Optional.empty());
+      com.plantpal.species.entity.Species newSpecies =
+          com.plantpal.species.entity.Species.builder()
+              .id(99L)
+              .scientificName("Ficus lyrata")
+              .commonName("Fiddle-leaf fig")
+              .build();
+      when(speciesService.findOrCreate("Ficus lyrata", "Swiss cheese plant")).thenReturn(newSpecies);
+
+      SpeciesMatchDto result =
+          identificationService.resolveSpecies(
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(true), USER_ID);
+
+      assertThat(result.getSpeciesId()).isEqualTo(99L);
+      assertThat(identification.getSpeciesId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("resolve-species: confirmed=false leaves speciesId null")
+    void resolveSpeciesRejectedLeavesSpeciesIdNull() {
+      Identification identification = identificationWithSpecies("Ficus lyrata", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+
+      SpeciesMatchDto result =
+          identificationService.resolveSpecies(
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(false), USER_ID);
+
+      assertThat(result.isMatched()).isFalse();
+      assertThat(identification.getSpeciesId()).isNull();
+      verify(identificationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("plant-match: returns only ACTIVE plants of the matched species, ownership-scoped")
+    void plantMatchReturnsOnlyActivePlantsOfSpecies() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", SPECIES_ID);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      Plant plant =
+          Plant.builder().id(100L).userId(USER_ID).nickname("Monty").speciesId(SPECIES_ID).build();
+      when(plantRepository.findAllByUserIdAndSpeciesIdAndStatus(
+              eq(USER_ID), eq(SPECIES_ID), eq(PlantStatus.ACTIVE), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of(plant)));
+
+      PlantMatchDto result = identificationService.getPlantMatch(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(result.getCandidatePlants()).hasSize(1);
+      assertThat(result.getCandidatePlants().get(0).getId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("plant-match: throws when species not yet resolved")
+    void plantMatchThrowsWhenSpeciesNotResolved() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", null);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+
+      assertThatThrownBy(() -> identificationService.getPlantMatch(IDENTIFICATION_ID, USER_ID))
+          .isInstanceOf(com.plantpal.shared.exception.ValidationException.class);
+    }
+
+    @Test
+    @DisplayName("resolve-plant: existing plantId attaches and updates lastScanId")
+    void resolvePlantWithExistingPlantIdAttaches() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", SPECIES_ID);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      Plant plant = Plant.builder().id(100L).userId(USER_ID).nickname("Monty").build();
+      when(plantRepository.findByIdAndUserId(100L, USER_ID)).thenReturn(Optional.of(plant));
+      when(identificationMapper.toResponse(identification))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      identificationService.resolvePlant(
+          IDENTIFICATION_ID, new ResolvePlantRequest(100L), USER_ID);
+
+      assertThat(identification.getPlantId()).isEqualTo(100L);
+      assertThat(plant.getLastScanId()).isEqualTo(IDENTIFICATION_ID);
+      verify(plantRepository).save(plant);
+      verify(plantService, never()).saveFromIdentification(any(), any());
+    }
+
+    @Test
+    @DisplayName("resolve-plant: null plantId creates a new plant via saveFromIdentification")
+    void resolvePlantWithNullPlantIdCreatesNewPlant() {
+      Identification identification = identificationWithSpecies("Monstera deliciosa", SPECIES_ID);
+      when(identificationRepository.findById(IDENTIFICATION_ID))
+          .thenReturn(Optional.of(identification));
+      when(identificationMapper.toResponse(identification))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      identificationService.resolvePlant(IDENTIFICATION_ID, new ResolvePlantRequest(null), USER_ID);
+
+      verify(plantService)
+          .saveFromIdentification(
+              argThat(req -> req.getIdentificationId().equals(IDENTIFICATION_ID)), eq(USER_ID));
+      verify(plantRepository, never()).findByIdAndUserId(any(), any());
     }
   }
 }
