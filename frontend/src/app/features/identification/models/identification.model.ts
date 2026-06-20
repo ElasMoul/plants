@@ -131,12 +131,31 @@ export interface IdentificationResponse {
   annotationRegions: AnnotationRegion[] | null;
   createdAt: string;
   aiModelUsed?: string | null;
+  speciesId: number | null;
 }
 
 export interface AnalyzeEmitPayload {
   images: File[];
   organs: string[];
   plantId?: number;
+  speciesId?: number;
+}
+
+export interface SpeciesMatchDto {
+  matched: boolean;
+  speciesId: number | null;
+  scientificName: string;
+  commonName: string;
+}
+
+export interface PlantSummaryDto {
+  id: number;
+  nickname: string;
+  photoUrl: string | null;
+}
+
+export interface PlantMatchDto {
+  candidatePlants: PlantSummaryDto[];
 }
 
 export interface SaveAsNewEvent {

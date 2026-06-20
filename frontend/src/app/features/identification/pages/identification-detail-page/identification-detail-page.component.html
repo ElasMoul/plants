@@ -42,6 +42,20 @@
     </button>
   </div>
 
+  <!-- species-confirm: Flow 1 only — confirm/create the matched species -->
+  <app-species-confirm-step
+    *ngIf="state === 'species-confirm' && result"
+    [identificationId]="result.id"
+    (resolved)="onSpeciesResolved($event)"
+  ></app-species-confirm-step>
+
+  <!-- plant-select: Flow 1 only — attach to an existing plant or create a new one -->
+  <app-plant-select-step
+    *ngIf="state === 'plant-select' && result"
+    [identificationId]="result.id"
+    (resolved)="onPlantResolved($event)"
+  ></app-plant-select-step>
+
   <!-- ready -->
   <app-identification-preview-section
     *ngIf="state === 'ready' && result"

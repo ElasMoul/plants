@@ -4,11 +4,22 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IdentificationService } from '../../services/identification.service';
-import { IdentificationResponse, SavePreviewEditEvent } from '../../models/identification.model';
+import {
+  IdentificationResponse,
+  SavePreviewEditEvent,
+  SpeciesMatchDto,
+} from '../../models/identification.model';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
-type DetailState = 'loading' | 'pending' | 'ready' | 'failed' | 'not-found';
+type DetailState =
+  | 'loading'
+  | 'pending'
+  | 'species-confirm'
+  | 'plant-select'
+  | 'ready'
+  | 'failed'
+  | 'not-found';
 
 @Component({
   selector: 'app-identification-detail-page',
@@ -42,6 +53,18 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   onSaved(plant: PlantResponse): void {
     this.snackBar.open('Added to your garden!', undefined, { duration: 3000 });
     this.router.navigate(['/plants', plant.id]);
+  }
+
+  onSpeciesResolved(match: SpeciesMatchDto): void {
+    if (this.result) {
+      this.result = { ...this.result, speciesId: match.speciesId };
+    }
+    this.state = 'plant-select';
+  }
+
+  onPlantResolved(identification: IdentificationResponse): void {
+    this.snackBar.open('Added to your garden!', undefined, { duration: 3000 });
+    this.router.navigate(['/plants', identification.plantId]);
   }
 
   onEditBeforeSave(event: SavePreviewEditEvent): void {
@@ -85,7 +108,10 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
       this.router.navigate(['/plants', data.plantId]);
       return;
     }
-    this.state = 'ready';
+    // Flow 2/3 (species/plant page scans) already know their speciesId at submission time —
+    // skip species-confirm entirely and go straight to the existing "add to garden" preview.
+    // Flow 1 (Garden FAB, entry point unknown) has no speciesId yet and needs to confirm it.
+    this.state = data.speciesId != null ? 'ready' : 'species-confirm';
   }
 
   private pollForCompletion(id: number): void {

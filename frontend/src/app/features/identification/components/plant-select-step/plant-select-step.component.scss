@@ -1,0 +1,83 @@
+.step-container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.state-screen {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.step-card {
+  border-radius: var(--radius-card);
+}
+
+.step-title {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.step-subtitle {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--color-surface-secondary);
+  }
+}
+
+.candidate-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.candidate-nickname {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.candidate-arrow {
+  color: var(--color-text-secondary);
+}
+
+.action-row {
+  margin-top: 20px;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}

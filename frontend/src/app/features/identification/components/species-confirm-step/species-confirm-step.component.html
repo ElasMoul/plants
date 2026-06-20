@@ -1,0 +1,39 @@
+<div class="step-container">
+  <div class="state-screen" *ngIf="loading">
+    <mat-progress-spinner diameter="36" mode="indeterminate"></mat-progress-spinner>
+  </div>
+
+  <mat-card class="step-card" *ngIf="!loading && match">
+    <mat-card-content>
+      <ng-container *ngIf="match.matched; else newSpecies">
+        <h2 class="step-title">Is this your plant's species?</h2>
+        <p class="step-scientific-name">{{ match.scientificName }}</p>
+        <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+      </ng-container>
+      <ng-template #newSpecies>
+        <h2 class="step-title">This looks like a new species</h2>
+        <p class="step-scientific-name">{{ match.scientificName }}</p>
+        <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+        <p class="step-subtitle">We haven't seen this one in your garden before — add it?</p>
+      </ng-template>
+
+      <div class="action-row">
+        <button
+          mat-raised-button
+          color="primary"
+          class="btn-pill"
+          [disabled]="submitting"
+          (click)="onConfirm()"
+        >
+          <mat-icon>check</mat-icon>
+          {{ match.matched ? 'Yes' : 'Yes, add it' }}
+        </button>
+
+        <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
+          <mat-icon>refresh</mat-icon>
+          No, re-scan
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -6,9 +6,9 @@ import { PhotoUploadComponent } from '../photo-upload/photo-upload.component';
 export interface IdentificationUploadDialogData {
   plantId?: number;
   plantNickname?: string;
-  // Species-seeded context (Flow 2 entry point, T6.6) — opens the dialog with the right title.
-  // Submission still goes through the existing unlinked-scan path; threading speciesId into the
-  // actual identification request and skipping species-confirmation is T6.9's job, not this one's.
+  // Species-seeded context (Flow 2 entry point, T6.6) — opens the dialog with the right title
+  // and threads speciesId into the analyze request (T6.9), so the species-confirm step is
+  // skipped entirely for this flow.
   speciesId?: number;
   speciesName?: string;
 }
@@ -41,7 +41,7 @@ export class IdentificationUploadDialogComponent {
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
-    this.dialogRef.close(payload);
+    this.dialogRef.close({ ...payload, speciesId: this.data?.speciesId });
   }
 
   cancel(): void {

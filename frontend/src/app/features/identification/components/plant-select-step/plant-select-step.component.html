@@ -1,0 +1,33 @@
+<div class="step-container">
+  <div class="state-screen" *ngIf="loading || (submitting && candidatePlants.length === 0)">
+    <mat-progress-spinner diameter="36" mode="indeterminate"></mat-progress-spinner>
+  </div>
+
+  <mat-card class="step-card" *ngIf="!loading && candidatePlants.length > 0">
+    <mat-card-content>
+      <h2 class="step-title">Which plant is this?</h2>
+      <p class="step-subtitle">You already have plants of this species.</p>
+
+      <div class="candidate-list">
+        <button
+          type="button"
+          class="candidate-row"
+          *ngFor="let plant of candidatePlants"
+          [disabled]="submitting"
+          (click)="onSelectPlant(plant.id)"
+        >
+          <img [src]="plant.photoUrl || placeholderImage" alt="" class="candidate-photo" />
+          <span class="candidate-nickname">{{ plant.nickname }}</span>
+          <mat-icon class="candidate-arrow">chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <div class="action-row">
+        <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onCreateNewPlant()">
+          <mat-icon>add</mat-icon>
+          New plant
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
