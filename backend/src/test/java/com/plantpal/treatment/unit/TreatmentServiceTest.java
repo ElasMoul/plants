@@ -324,4 +324,70 @@ class TreatmentServiceTest {
       verify(treatmentRepository, never()).save(any());
     }
   }
+
+  @Nested
+  @DisplayName("syncFromTreatmentPlanCompletion()")
+  class SyncFromTreatmentPlanCompletion {
+
+    @Test
+    @DisplayName(
+        "should complete the wrapping IN_PROGRESS treatment and clear plant.activeTreatmentId")
+    void shouldCompleteWrappingTreatment() {
+      Treatment inProgress =
+          Treatment.builder()
+              .id(7L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .diseaseName("Powdery mildew")
+              .status(TreatmentStatus.IN_PROGRESS)
+              .treatmentPlanId(500L)
+              .build();
+      when(treatmentRepository.findByTreatmentPlanId(500L)).thenReturn(List.of(inProgress));
+      when(treatmentRepository.save(any(Treatment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      Plant plant = Plant.builder().id(PLANT_ID).userId(USER_ID).activeTreatmentId(7L).build();
+      when(plantRepository.findById(PLANT_ID)).thenReturn(Optional.of(plant));
+
+      treatmentService.syncFromTreatmentPlanCompletion(500L);
+
+      ArgumentCaptor<Treatment> treatmentCaptor = ArgumentCaptor.forClass(Treatment.class);
+      verify(treatmentRepository).save(treatmentCaptor.capture());
+      assertThat(treatmentCaptor.getValue().getStatus()).isEqualTo(TreatmentStatus.COMPLETED);
+      assertThat(treatmentCaptor.getValue().getCompletedAt()).isNotNull();
+
+      ArgumentCaptor<Plant> plantCaptor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(plantCaptor.capture());
+      assertThat(plantCaptor.getValue().getActiveTreatmentId()).isNull();
+    }
+
+    @Test
+    @DisplayName("should no-op when no Treatment wraps this TreatmentPlan")
+    void shouldNoOpWhenNoTreatmentWrapsPlan() {
+      when(treatmentRepository.findByTreatmentPlanId(500L)).thenReturn(List.of());
+
+      treatmentService.syncFromTreatmentPlanCompletion(500L);
+
+      verify(treatmentRepository, never()).save(any());
+      verify(plantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should no-op when the wrapping treatment is not IN_PROGRESS")
+    void shouldNoOpWhenTreatmentNotInProgress() {
+      Treatment alreadyDone =
+          Treatment.builder()
+              .id(7L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .status(TreatmentStatus.COMPLETED)
+              .treatmentPlanId(500L)
+              .build();
+      when(treatmentRepository.findByTreatmentPlanId(500L)).thenReturn(List.of(alreadyDone));
+
+      treatmentService.syncFromTreatmentPlanCompletion(500L);
+
+      verify(treatmentRepository, never()).save(any());
+      verify(plantRepository, never()).findById(any());
+    }
+  }
 }

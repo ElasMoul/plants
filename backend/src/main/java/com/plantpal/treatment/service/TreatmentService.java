@@ -20,4 +20,12 @@ public interface TreatmentService {
   TreatmentResponse getActiveTreatmentForPlant(Long plantId, Long userId);
 
   TreatmentResponse completeTreatment(Long id, Long userId);
+
+  /**
+   * Reacts to a {@code TreatmentPlan} completing (last enabled step done) by flipping the wrapping
+   * {@code Treatment}'s status to COMPLETED, mirroring {@link #completeTreatment}'s effects. No-op
+   * if no Treatment wraps this plan, or if it's not currently IN_PROGRESS — covers plain ROUTINE
+   * TreatmentPlans that aren't wrapped by a Treatment at all.
+   */
+  void syncFromTreatmentPlanCompletion(Long treatmentPlanId);
 }

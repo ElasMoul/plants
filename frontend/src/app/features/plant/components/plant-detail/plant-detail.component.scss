@@ -114,7 +114,12 @@
 }
 
 // ── Icon button bar ──────────────────────────────────────────
+// Sticks directly below the collapsed hero (90px) so it never gets
+// visually trapped behind/under the sticky header while scrolling.
 .section-button-bar {
+  position: sticky;
+  top: 90px;
+  z-index: 9;
   display: flex;
   align-items: center;
   justify-content: space-around;

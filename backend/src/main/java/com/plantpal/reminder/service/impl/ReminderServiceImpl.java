@@ -7,6 +7,7 @@ import com.plantpal.reminder.dto.ReminderResponse;
 import com.plantpal.reminder.entity.CareLog;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.entity.TreatmentPlanStatus;
+import com.plantpal.reminder.event.TreatmentPlanCompletedEvent;
 import com.plantpal.reminder.mapper.ReminderMapper;
 import com.plantpal.reminder.repository.CareLogRepository;
 import com.plantpal.reminder.repository.ReminderRepository;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -37,16 +39,19 @@ public class ReminderServiceImpl implements ReminderService {
   private final PlantRepository plantRepository;
   private final CareLogRepository careLogRepository;
   private final TreatmentPlanRepository treatmentPlanRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   public ReminderServiceImpl(
       ReminderRepository reminderRepository,
       PlantRepository plantRepository,
       CareLogRepository careLogRepository,
-      TreatmentPlanRepository treatmentPlanRepository) {
+      TreatmentPlanRepository treatmentPlanRepository,
+      ApplicationEventPublisher eventPublisher) {
     this.reminderRepository = reminderRepository;
     this.plantRepository = plantRepository;
     this.careLogRepository = careLogRepository;
     this.treatmentPlanRepository = treatmentPlanRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @Override
@@ -157,6 +162,7 @@ public class ReminderServiceImpl implements ReminderService {
                 plan.setStatus(TreatmentPlanStatus.COMPLETED);
                 treatmentPlanRepository.save(plan);
                 log.info("Treatment plan completed: id={}", treatmentPlanId);
+                eventPublisher.publishEvent(new TreatmentPlanCompletedEvent(treatmentPlanId));
               });
     }
   }
