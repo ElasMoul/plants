@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-20 (session 19 — T6.3 backend implementation)
+> Last updated: 2026-06-20 (session 20 — T6.5 frontend Garden species-first restructure)
 
 ## Current Phase
 Phase 0 — Project Setup ✅ COMPLETE
@@ -10,8 +10,8 @@ Phase 3 — ✅ COMPLETE
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
-Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅, T6.4 ✅
-  done; T6.5–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
+Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅, T6.4 ✅,
+  T6.5 ✅ done; T6.6–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -661,15 +661,19 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
   remaining before merge)
 - feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete merged to dev as PR #33 ✅
 - feature/PP-030-treatment-entity — T6.1 + T6.2 completed, merged into feature/PP-031-plant-species-fk's history (Treatment entity work)
-- feature/PP-031-plant-species-fk (current) — T6.3 completed (Plant FK columns, scan flow lastScanId,
-  TreatmentServiceImpl activeTreatmentId wiring, SpeciesServiceImpl.getUserSpecies() real impl)
+- feature/PP-031-plant-species-fk — T6.3 completed, merged to dev as PR #38 ✅
+- feature/PP-029-species-entity — T6.1 + T6.4 completed, merged to dev as PR #39 ✅
+- feature/PP-032-garden-species-first (current) — T6.5 completed (Garden species-first restructure:
+  new SpeciesModule at `/garden`, plant-list route retired in favor of it, all internal `/plants`
+  navigation repointed to `/garden`) — not yet committed, see `git status`
 ## Next Tasks (in order)
-- Commit T6.3 on feature/PP-031-plant-species-fk (migrations 017/019, Plant/Identification entity +
-  DTO fields, TreatmentServiceImpl activeTreatmentId wiring, SpeciesServiceImpl.getUserSpecies()
-  real implementation, new/updated unit tests — see T6.3 entry above), then open a PR / merge to dev
-- T6.4 (Species data enrichment) ✅ done — see entry below. T6.5/T6.9 (frontend Garden restructure +
-  identification species-matching) are next per the Phase 6 dependency table — both now unblocked
-  by T6.3 (and T6.6 also now unblocked by T6.4)
+- Commit T6.5 on feature/PP-032-garden-species-first (new `features/species/` module, app-routing.ts,
+  plant-routing.module.ts, app.component.ts, plant-form/plant-detail/auth navigation fixes — see
+  T6.5 entry above), then re-verify live before starting T6.6 on the same branch (no Docker stack or
+  browser tool was available this session — see the entry's "Not done this session" note)
+- T6.6 (Species detail page) is next per the Phase 6 dependency table — same branch as T6.5, now
+  unblocked (T6.1 + T6.4 both done). T6.9 (identification species-matching) is also unblocked
+  (T6.1 + T6.3 both done) and can run in parallel on its own branch.
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
 - Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
@@ -714,7 +718,7 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 | T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | ✅ |
 | T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | ✅ |
 | T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | ✅ |
-| T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | 🔲 |
+| T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | ✅ |
 | T6.6 | Species detail page | Frontend | `feature/PP-032-garden-species-first` (same) | T6.1, T6.4 | 🔲 |
 | T6.7 | Home page | Frontend | `feature/PP-033-home-page` | T6.3 | 🔲 |
 | T6.8 | Bottom nav 5 items + routing | Frontend | `feature/PP-033-home-page` (same) | T6.7 | 🔲 |
@@ -935,6 +939,61 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
     (identification species-matching) are now fully unblocked — `getUserSpecies()` (T6.3) and
     enrichment (T6.4) are both real. T6.10–T6.12 (Plant/Treatment page redesign) remain the other
     open frontend branch.
+
+- T6.5 Garden species-first restructure ✅ (frontend, branch `feature/PP-032-garden-species-first`,
+  session 2026-06-20)
+  - New `features/species/` lazy module (`SpeciesModule`, `SpeciesRoutingModule`): `'/garden'` route
+    → `SpeciesListComponent`, registered in `app-routing.module.ts` as a new top-level entry
+    (`canActivate: [AuthGuard]`, same pattern as every other lazy feature route).
+  - `models/species.model.ts`: `SpeciesSummaryDto` mirrors the backend DTO field-for-field
+    (speciesId, scientificName, commonName, imageUrl, plantCount, healthSummary). No
+    `SpeciesResponse`/`getSpecies()` added yet — that's T6.6's job, deliberately out of scope here.
+  - `services/species.service.ts`: `getMySpecies(page, size)` → GET `/api/v1/species/mine`
+    (`@Injectable()`, no `providedIn: 'root'` — provided by `SpeciesModule`, same DI pattern as
+    `PlantService`/`IdentificationService`).
+  - `components/species-card/`: photo, scientific name (italic serif `font-heading`, mirrors
+    `plant-card`'s species-name treatment), common name subtitle, plant-count badge, health-summary
+    chip (`--color-success` "All healthy" / `--color-error` "N issue(s)") — reuses `plant-card`'s
+    exact token set (`--radius-card`, `--shadow-card`, etc.), no new design tokens invented.
+    `routerLink="['/garden/species', speciesId]"` already wired to T6.6's planned route even though
+    that page doesn't exist yet (next task on this same branch).
+  - `pages/species-list/`: "My Garden" heading, species-card grid (same responsive breakpoints as
+    `plant-list`'s grid), FAB → existing `IdentificationUploadDialogComponent` (Flow 1 entry point
+    per ARCHITECT.md's decision tree — same dialog every other "add a plant" entry point already
+    uses, not a new one), loading skeleton + empty state copied from `plant-list`'s established
+    pattern, pagination via `mat-paginator`.
+  - **Filter chips — one functional gap, flagged rather than faked:** "All" and "With Issues" filter
+    client-side over the already-fetched page only (no new backend query param, per the brief's
+    explicit instruction not to silently fetch every page just to filter). "Recently scanned" is
+    rendered but disabled with a `matTooltip` explaining why: `SpeciesSummaryDto` has no
+    last-scan-date field to filter on, and inventing one client-side wasn't an option with the data
+    actually available. Flagged here rather than faking a sort order — a future task needs to add a
+    timestamp to `SpeciesSummaryDto` (and decide what it means for a species with multiple plants —
+    most-recent across all of them, presumably) before this chip can do anything.
+  - **Routing restructure required to actually reach `/garden`:** the brief assumed `/garden` was a
+    new path with no prior meaning, but the bottom nav's existing "Garden" link and every "back to
+    the garden" navigation in the app (`login`/`register` post-auth redirect, the auth-routing
+    catch-all, `plant-form`'s cancel/error paths, `plant-detail`'s archive/error paths and hero
+    back-button) all pointed at bare `/plants`, which `PlantListComponent` used to serve. Moving the
+    list to `/garden` without updating these would have silently 404'd (or in the catch-all's case,
+    redirect-looped) every one of those flows. Updated all of them to `/garden`; left every
+    `/plants/:id` (detail), `/plants/new`, and `/plants/:id/edit` reference untouched — those still
+    resolve correctly, `PlantRoutingModule` only lost its bare `''` route.
+  - `plant-routing.module.ts`: removed `{ path: '', component: PlantListComponent }`.
+    `PlantListComponent` stays declared in `PlantModule` (per the brief — not deleted, not yet
+    confirmed dead for the rest of Phase 6) but is no longer reachable by any route.
+  - `app.component.ts`: bottom nav's `navLinks` "Garden" entry now routes to `/garden` instead of
+    `/plants`.
+  - No backend changes — `GET /api/v1/species/mine` (T6.1) already returned everything this task
+    needed.
+  - `ng build` (prod) and `ng lint` both clean. New `features-species-species-module` lazy chunk
+    confirmed in the build output (~13KB per piece, split similarly to the existing
+    `features-plant-plant-module` cross-module-import pattern from T2.10e).
+  - **Not done this session:** no live click-through — no Docker stack or browser automation tool
+    was available in this session, so the "/garden shows 2 plants of the same species as one card
+    with a '2 plants' badge" verification from the task brief is unconfirmed beyond `ng build`/`ng
+    lint`. Re-verify live (`docker-compose up`, log in, visit `/garden`) before treating T6.6 (which
+    builds directly on top of `species-card`'s `routerLink`) as a clean foundation.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty

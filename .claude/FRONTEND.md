@@ -78,7 +78,6 @@ See .claude/STATE.md for completed tasks and active branches.
 | identification/care-plan/ | care-card, care-plan components + CarePlanModule | ✅ T2.7 complete |
 | reminder/ | reminder-list (stub) + routing + module | ❌ Skeleton only |
 | chat/ | chat-home (stub) + routing + module | ❌ Skeleton only |
-| ai-test/ | ai-test component + module | Dev tool |
 
 ### Module sharing pattern — CarePlanModule
 Care plan components live at `features/identification/components/care-plan/` but are declared
