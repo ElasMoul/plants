@@ -74,11 +74,15 @@
 }
 
 .sticky-header.collapsed .detail-hero {
-  height: 90px;
+  height: 80px;
 }
 
 .sticky-header.collapsed .hero-back-link {
   display: none;
+}
+
+.sticky-header.collapsed .hero-text {
+  left: 65px;
 }
 
 .hero-img {

@@ -12,318 +12,44 @@ You are the backend developer on PlantPal.
 
 ## Stack
 Java 21, Spring Boot 3.2, Spring Security 6, Spring Data JPA,
-PostgreSQL 15, Redis 7, Liquibase, JJWT 0.12.5, MapStruct 1.5.5,
-Lombok, Bucket4j 8.7.0, OllamaClient (RestClient),
-DeepSeekClient (RestClient, HTTP/2, OpenAI-compatible, GitHub Models endpoint),
-Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
-springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
+PostgreSQL 15, Redis 7, Kafka (Zookeeper + confluentinc/cp-kafka:7.6.0), Liquibase,
+JJWT 0.12.5, MapStruct 1.5.5, Lombok, Bucket4j 8.7.0, OllamaClient (RestClient),
+DeepSeekClient + GitHubModelsClient (RestClient, HTTP/2, OpenAI-compatible, GitHub
+Models endpoint), Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml),
+Spotless 2.43.0, springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T6.13 (backend) Chat plant-specific context ✅ (branch:
-feature/PP-036-treatment-page, session 2026-06-20)
-`ChatRequest` gained an optional `plantId` (`Long`, nullable). `ChatServiceImpl` now takes 2
-additional constructor params — `IdentificationRepository`, `TreatmentRepository` — to build a
-plant-specific context block, purely additive when `plantId` is absent.
-- `chat()`: when `plantId` present, ownership-checked via `plantRepository.findByIdAndUserId()`
-  (`ResourceNotFoundException` if not owned/found — same pattern as `TreatmentServiceImpl`) BEFORE
-  `buildGardenContext()` runs, not after — matters because `buildGardenContext()` always queries
-  `plantRepository.findAllByUserIdAndStatus()`, and if it ran first a missing-plant test would never
-  reach the ownership check. New `buildPlantContext(plantId, userId)` is prepended to the existing
-  garden-context block (`plantContext + "\n\n" + gardenContext`), never replaces it.
-- Context text: "The user is asking specifically about their plant '{nickname}' ({species or
-  commonName or "unknown species"})." + optionally " Its last scan ({createdAt}) showed health
-  status: {healthStatus}." (via `IdentificationRepository.findLatestPerPlant(List.of(plantId))` —
-  reused as-is, single-element list, no new query) + optionally " It currently has an active
-  treatment in progress for {diseaseName}." (via `plant.getActiveTreatmentId()` →
-  `TreatmentRepository.findById()` → `Treatment.getDiseaseName()`, only if non-null/present).
-- New `TreatmentRepository` import has no existing `findByIdAndUserId`-style ownership method needed
-  here — ownership is already established via the plant fetch, so a plain `findById()` on the
-  treatment is safe (the treatment's plantId is implicitly trusted via `plant.activeTreatmentId`).
-- 2 new unit tests in `ChatServiceImplTest` (nested `ChatWithPlantId`): full context-block assembly
-  (species + health + active treatment all present) and the not-owned → `ResourceNotFoundException`
-  path. Existing 3 `Chat` tests required only a constructor-signature update (2 new `@Mock` fields),
-  no logic changes — when `plantId` is absent, `chat()`'s behavior is byte-for-byte what it was
-  before this task.
-- `mvn compile`/checkstyle clean, full unit suite 180/180 passing.
-Next: T6.13 frontend (chat UI passing `plantId` when opened from a plant page — see FRONTEND.md) and
-T6.14 (final Phase 6 item per TASK_PLAN.md).
+## Current Status
+**Phases 0–4 and 6 are shipped. Phase 5 (Launch prep) is next** — see
+TASK_PLAN.md for the full task breakdown (prod config, performance, security
+hardening, API docs, deploy). Full session-by-session history of how Phases
+0–6 were built lives in STATE.md and git log, not here — this file is a
+durable reference to what exists *now*, not a diary.
 
-## Previous Task — T6.12 Treatment page: backend `identificationId` addition ✅ (branch:
-feature/PP-036-treatment-page, session 2026-06-20)
-> Note: T6.12 is primarily a Frontend task (new `features/treatment/` Angular module) — see
-> FRONTEND.md for the full implementation. This entry covers the one small backend change that
-> task required. T6.5/T6.6 (Garden species-first + species detail) and T6.9/T6.10/T6.11 (identification
-> species-matching, Plant page redesign) all landed in between T6.4 and this session on their own
-> branches — see STATE.md's entries for each if full detail is needed; this file's rotation skips
-> straight to the one backend-touching task in that span since the rest were frontend-only.
-
-`TreatmentResponse` DTO gained `identificationId` (`Long`, mirrors the field that's existed on the
-`Treatment` entity since T6.2 but was never mapped through to the response). Confirmed necessary,
-not assumed: the new Treatment page's header needed to show the scan photo (`identificationId` →
-`IdentificationService.getById()` → `photoUrl` on the frontend), and the task brief explicitly said
-NOT to fall back to the plant's profile photo. Two-line change: add the field to
-`TreatmentResponse.java`, set it in `TreatmentServiceImpl.toResponse()`. Confirmed via
-`TreatmentServiceTest` (no test asserts the DTO's full field set, only specific getters) that this
-was a safe additive change — re-ran the suite, still 7/7 passing, no other tests touch this DTO.
-`mvn compile` clean. No migration needed (`identification_id` column already exists on `treatments`
-since T6.2's migration 018).
-
-## Previous Task — T6.4 Species data enrichment async service ✅ (branch:
-feature/PP-029-species-entity, session 2026-06-20)
-New `SpeciesEnrichmentServiceImpl` (`com.plantpal.species.service.impl`) — implements the
-`SpeciesEnrichmentService` interface T6.1 left as an `Optional` constructor dependency on
-`SpeciesServiceImpl`. No code change needed in `findOrCreate()` — Spring now wires
-`Optional.of(bean)` automatically since a real bean exists.
-- `@Async("aiTaskExecutor") void enrich(Long speciesId)`: missing Species → WARN + clean return.
-  Calls new `DeepSeekClient.generateSpeciesEnrichment(scientificName, commonName)` (new
-  `SPECIES_ENRICHMENT_SYSTEM_PROMPT`, same `response_format: json_object` + `stripThinkTags()`
-  shape as `generateCureAdvice`/`generateCarePlan` — no third AI client class, per the brief).
-  Success: sets description/careOverview/imageUrl, `externalDataSource="AI"` (hardcoded, not
-  trusted from the AI's own echoed `source` field), `externalDataFetchedAt=now`, status stays
-  ACTIVE. ANY failure (AI throws, malformed JSON) — single broad `catch (Exception e)`,
-  deliberately, since this is fire-and-forget and must never propagate — WARN + flip to
-  NEEDS_REVIEW, content fields stay null.
-- ⚠️ **Real bug, not hypothetical, caught writing the success-path test:** the AI JSON schema
-  includes `"source"`, but the parsing holder only declared description/careOverview/imageUrl —
-  a bare `new ObjectMapper()` (what `@Spy` gives you with no Spring context) has
-  `FAIL_ON_UNKNOWN_PROPERTIES=true` by default and rejected the whole response over that one
-  field, silently routing the success test down the NEEDS_REVIEW path instead. Would NOT have
-  failed in production (Spring Boot's auto-configured `ObjectMapper` bean disables that flag) —
-  fixed properly anyway by declaring `source` on the holder rather than leaving prod correctness
-  dependent on an auto-config default the test environment doesn't share.
-- Item 3 of the brief ("confirm, don't assume, no rate-limit bucket sharing") — grepped all of
-  `com.plantpal.species` for Bucket4j usage: none exists. `IdentificationServiceImpl`'s and
-  `TreatmentServiceImpl`'s buckets are private instance fields with no shared/static state. No new
-  bucket added — Species has no per-user key to limit against anyway.
-- New `SpeciesEnrichmentServiceImplTest` (4 tests): success populates all fields + stays ACTIVE;
-  malformed JSON / AI-throws → NEEDS_REVIEW + no exception either way; not-found → clean return,
-  `save()` never called.
-- `mvn clean compile`, full unit suite, checkstyle all pass; spotless:apply run.
-Next: T6.5/T6.6 (Garden species-first + species detail, frontend) and T6.9 (identification
-species-matching) are now fully unblocked.
-
-## Previous Task — T6.2 Treatment entity + migrations + endpoints ✅ (branch:
-feature/PP-030-treatment-entity, session 2026-06-19)
-New `com.plantpal.treatment` package (separate from `com.plantpal.reminder` — see ARCHITECT.md's
-"Two Treatment concepts" disambiguation; this `Treatment` is NOT the existing T3.4 `TreatmentPlan`):
-- `Treatment` entity (DRAFT|IN_PROGRESS|COMPLETED|DISMISSED), no AuditableEntity (same exception as
-  Reminder/TreatmentPlan). Migration `018_create_treatments.sql` registered directly after 016 (017
-  from T6.3 doesn't exist yet — left an XML comment so T6.3 inserts above 018, never renumber it).
-  Partial unique index enforces one active treatment per plant+disease at the DB level.
-- `TreatmentRepository`, `TreatmentResponse`/`CreateTreatmentRequest`, `TreatmentService`/Impl,
-  `TreatmentController` (`POST /treatments`, `POST /{id}/craft-plan`, `GET /{id}`,
-  `GET /plants/{id}/active-treatment`, `PATCH /{id}/complete`).
-- **Wraps, not duplicates, `TreatmentPlan`**: `craftPlan()` generates a TREATMENT-type
-  `ActionPlanDto` via `DeepSeekClient.generateCureAdvice()` (existing method, already returns
-  `{advice, actionPlan}`), then delegates to the existing
-  `TreatmentPlanService.createFromActionPlan(plantId, userId, diseaseName, "PEST", actionPlan)` —
-  `Treatment.treatmentPlanId` just stores the result. No reminder logic duplicated.
-- Added `DeepSeekClient.generateDiseaseDescription(species, diseaseName)` (new prompt, plain text).
-  Fired fire-and-forget from `createTreatment()` via `CompletableFuture.runAsync(...,
-  aiTaskExecutor)` — NOT `@Async`, since this is a same-class call (self-invocation defeats Spring's
-  AOP proxy); `@Async` IS used on `craftPlan()` itself since that's called from the controller, a
-  different bean. Failures degrade to null description, never block the response. New
-  `TREATMENT_AI_RATE_LIMIT = 10/hour` Bucket4j bucket shared by both AI call sites.
-- ⚠️ Deviated from the brief's literal `craftPlan(): TreatmentResponse` (synchronous) signature —
-  used `@Async` + `CompletableFuture<TreatmentResponse>` instead, matching CLAUDE.md's hard rule
-  and `IdentificationServiceImpl.getCureAdvice()`'s established pattern, since `craftPlan()` makes
-  a real 5-15s AI call. `TreatmentController.craftPlan()` mirrors
-  `IdentificationController.getCureAdvice()`'s `.get()`/`ExecutionException` unwrapping exactly.
-- ⚠️ `plant.activeTreatmentId` still doesn't exist (T6.3/migration 017) — `craftPlan()` and
-  `completeTreatment()` each have a `// TODO(T6.3)` at the exact set/clear point, exactly as the
-  brief instructed for this case. No new AskUserQuestion needed — T6.1 already established this gap
-  and got sign-off on the general approach.
-- New `TreatmentServiceTest` (7 tests). Two test-writing gotchas worth knowing for next time: (1)
-  with a synchronous `Runnable::run` test executor, `createTreatment()`'s fire-and-forget save runs
-  inline, so `treatmentRepository.save()` is called twice, not once — assert with `times(2)` +
-  `getAllValues().get(0)`. (2) `@Async` has no effect without a real Spring proxy in a unit test, so
-  `craftPlan()`'s synchronous-throw rejection path surfaces directly, not wrapped in
-  `ExecutionException` — assert `isInstanceOf` directly, no `.get()`/cause-chasing (matches
-  `IdentificationServiceImplTest`'s existing rate-limit test).
-- `mvn clean compile`, full unit suite, checkstyle all pass. Did NOT spin up docker-compose to
-  manually exercise the brief's end-to-end `POST /treatments` → `craft-plan` → `GET
-  /treatment-plans/{id}` check (no confirmed running Postgres/Kafka/Redis/GITHUB_TOKEN this
-  session) — verified at compile/unit-test level only, flagged to the user.
-Next: T6.3 (Plant FK columns) unblocks both this task's `activeTreatmentId` TODOs and T6.1's
-`getUserSpecies()` stub in one migration.
-
-## Previous Task — T6.1 Species entity + migrations + endpoints ✅ (branch:
-feature/PP-029-species-entity, session 2026-06-19)
-New `com.plantpal.species` package — first step of the Phase 6 species/treatment domain restructure
-(see ARCHITECT.md "Phase 6" and STATE.md's T6.1 entry for full design rationale):
-- `Species` entity (extends AuditableEntity) — deliberately NOT user-scoped (no userId field, no
-  per-row ownership check; two users owning the same botanical species share one row).
-  `SpeciesStatus` ACTIVE|NEEDS_REVIEW. Migration `016_create_species.sql`, registered after 015.
-- `SpeciesRepository` (findByScientificName/existsByScientificName), `SpeciesMapper` (MapStruct,
-  toResponse only), `SpeciesResponse`/`SpeciesSummaryDto`, `SpeciesService`/`SpeciesServiceImpl`,
-  `SpeciesController` (`GET /{id}` public read, `GET /mine` paginated).
-- `findOrCreate()` creates on miss + fires `SpeciesEnrichmentService.enrich(id)` through an
-  `Optional<SpeciesEnrichmentService>` constructor param — no implementation exists until T6.4;
-  `Optional.empty()` keeps it a safe no-op until then.
-- ⚠️ **`getUserSpecies()` is a stub** (`Page.empty()` + WARN log) — it needs `Plant.speciesId`,
-  which doesn't exist until T6.3/migration 017. Confirmed via grep before starting (no `speciesId`
-  anywhere in the codebase). Flagged to the user mid-session; chose to keep T6.1/T6.3 migration
-  boundaries exactly as planned rather than pulling `plants.species_id` forward. **T6.3 must
-  replace this stub** — group ACTIVE plants by speciesId, reuse
-  `IdentificationRepository.findLatestPerPlant()` for healthSummary (same pattern as
-  `PlantServiceImpl.enrichWithHealthAndWater()`), exclude null-speciesId plants.
-- Fixed one brief/codebase mismatch: the task's migration SQL used `BIGINT` for
-  `created_by`/`updated_by`; `AuditableEntity` stores these as `String` and every existing
-  migration uses `VARCHAR(255)` — used `VARCHAR(255)` to avoid a Hibernate schema-validation
-  failure at startup.
-- New `SpeciesServiceTest` (5 tests). `mvn clean compile`, full unit suite, checkstyle all pass.
-Next: T6.2 (Treatment entity) or T6.3 (Plant FK columns, unblocks `getUserSpecies`) per the Phase 6
-dependency table in STATE.md.
-
-## Previous Task — T3.7 Fix: actionPlan validation gap + missing prompt constraints ✅ (branch: dev,
-session 2026-06-19)
-Found via a gap audit against a stale planning brief (the brief described a feature already shipped
-in T3.4/T3.5/T3.6 — but auditing it against the real code surfaced two genuine gaps):
-- `ActionPlanValidator.normalize()` was documented as the single choke-point for all AI-sourced
-  action plans, but `IdentificationServiceImpl.processIdentification()` (the primary photo
-  identification path) persisted `result.getCarePlan()` straight from AI JSON with NO per-card
-  `actionPlan` validation. Fixed with a new private `normalizeActionPlans(CarePlanDto)`, called
-  before `setCarePlan()`/persist — just wires the existing validator in, no new logic.
-- None of the 3 system prompts constrained Mermaid syntax (`flowchart LR`/`TD` only, no
-  `subgraph`/click/style, no double quotes in labels) or which `CareCardType`s may carry an
-  `actionPlan`. Added both rules to `GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT` and
-  `DeepSeekClient.CARE_PLAN_SYSTEM_PROMPT`; Mermaid-syntax rule only (not card-type, not
-  applicable) added to `DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT`.
-Full suite 139/139 passing, `mvn compile` clean. See STATE.md "T3.7" and ARCHITECT.md "T3.7 fix"
-entries for full reasoning.
-
-## Previous Task — T3.4 Actionable care plans backend ✅ (branch: feature/PP-028-actionable-care-plans-2,
-merged to dev via PR #33)
-ROUTINE reminders + multi-step TREATMENT plans, generated from AI care cards / cure advice. Highlights:
-- Migration 012_add_treatment_plans.sql: new `treatment_plans` table; `reminders` gains `recurring`
-  (default true), `treatment_plan_id` (FK CASCADE), `treatment_plan_title` (denormalized),
-  `step_order`. Treatment steps are one-time `Reminder` rows, NOT a parallel entity.
-- `CareType` expanded 4→10 values (mirrors CareCardType) — additive, no migration impact.
-- New `TreatmentPlan`/`TreatmentPlanStatus` (ACTIVE|COMPLETED|ABANDONED) entity — same
-  no-AuditableEntity pattern as `Reminder`.
-- **Unified completion logic**: `ReminderService.applyCompletionToReminder(reminder, performedAt)`
-  replaces what used to be two independent "log + reschedule" implementations in
-  `ReminderServiceImpl.completeReminder()` and `CareLogServiceImpl.logCare()`. Recurring →
-  reschedules; one-time → disables, and completes the parent TreatmentPlan if it was the last
-  enabled step (`ReminderRepository.findByTreatmentPlanIdAndEnabledTrue` empty after disabling).
-- New `ActionPlanValidator.normalize()` (identification/util/) — single choke-point every
-  AI-sourced `ActionPlanDto` passes through; never throws, degrades to null on anything malformed.
-  ROUTINE: frequencyDays 1-365 or reject. TREATMENT: non-empty steps, truncate to 10, clamp
-  dueOffsetDays 0-180, **always re-numbers order 1..N from scratch** (ignores AI's order values
-  entirely). Diagram kept only if format=="MERMAID" (case-insensitive) + non-blank + ≤2000 chars.
-- `DeepSeekClient.generateCureAdvice()` now returns JSON (`{advice, actionPlan}`, response_format
-  json_object) instead of plain text — `IdentificationServiceImpl.parseCureAdvice()` falls back to
-  raw-string-as-advice on parse failure, which is exactly what made the pre-existing CureAdvice
-  unit tests (mocking plain text) keep passing unmodified.
-- New `TreatmentPlanService`/`Impl`/`Controller`: `POST /api/v1/treatment-plans`,
-  `GET /api/v1/treatment-plans/{id}`.
-- 39 new/updated unit tests (ActionPlanValidatorTest 21, TreatmentPlanServiceTest 10,
-  ReminderServiceTest +4, CareLogServiceTest updated). Full suite: 132/132 passing, checkstyle clean.
-See STATE.md "T3.4" entry for full notes. Next: T3.5 frontend (separate session — substantial
-uncommitted frontend work already exists on this branch from another session but is NOT verified
-against this backend contract yet); then T3.3 manual/device testing.
-
-## Previous Task — T3.1 Reminder + Care Log module ✅ (branch: feature/PP-011-reminder-module)
-Full CRUD + scheduler + web-push, all against tables that already existed since migration 004/005
-(CareLog, PushSubscription entities just never existed in code until now). Highlights:
-- ReminderService/Impl: createReminder, getUserReminders (bounded 200, batch-fetches plants to
-  avoid N+1), completeReminder (writes CareLog + recalculates nextDueAt), deleteReminder (soft —
-  enabled=false), calculateNextDueAt()
-- CareLogService/Impl: logCare() ties back to a Reminder (not the plant directly) and recalculates
-  its nextDueAt via ReminderService; getPlantCareLogs (paginated, ownership-checked)
-- ReminderScheduler: @Scheduled daily 8am, groups due reminders by user, ONE push per user not one
-  per reminder; Clock injected (same pattern as T2.10b's DashboardServiceImpl)
-- 11 new unit tests; full suite 95/95 passing
-NOTE: completeReminder()/logCare() rescheduling logic described above was superseded by
-applyCompletionToReminder() in T3.4 above — see that entry, not this one, for current behaviour.
-NOTE: `CareLogController` is correctly mapped at `/api/v1/care` (GET `/plant/{plantId}`, POST
-`/done`) — this backend side was always right. The bug was a frontend baseUrl mismatch
-(`care-log.service.ts` called `/api/v1/care-logs`); fixed 2026-06-18, see STATE.md's T3.2 entry.
-
-## Earlier Task — Phase 2 complete (branch: feature/PP-020-garden-dashboard, merged)
-T2.F, T2.10a–d, T2.10e all done — see STATE.md for full notes. Highlights:
-- New com.plantpal.dashboard module: DashboardController/Service/Impl, GET /api/v1/dashboard
-  (healthSummary, overdueReminders, todayReminders, healthTrends). Deliberately not @Cacheable.
-- PlantResponse now actually populates healthStatus + nextWaterDays (was declared, never set).
-- New POST /api/v1/identifications/{id}/care-plan/cards — addCareCard(), appends a PEST-type
-  CareCardDto built from a disease label + cure-advice text; idempotent on the card title.
-- shared/util/ImageUtil.java: resizeAndConvertToJpeg() + readDimensions(), extracted so
-  IdentificationServiceImpl can record sourceImageWidth/sourceImageHeight (migration 011).
-
-## Earlier Task — T4.1 + T2.E ✅ (branch: chatfix, merged)
-T4.1: new com.plantpal.chat module (ChatRequest/ChatResponse/ChatService/ChatController) wired to
-OllamaClient.chat(String) with a garden-context-aware prompt; deleted dead AiTestController.
-T2.E: Redis-backed photo storage with SHA-256 dedup on savePhoto(); FileStorageService.loadPhoto()
-renamed to loadPhotoBytes() and made Redis-first/disk-fallback; new PhotoController serving
-GET /api/v1/photos/{filename}. See STATE.md "T4.1" and "T2.E" entries for full implementation notes.
-
-## Previous Task — T2.C Kafka async identification pipeline ✅ (merged to dev)
-Replaced the blocking `.get()` in IdentificationController.analyze() with a Kafka-backed async
-pipeline: POST /analyze persists PENDING + publishes IdentificationRequestedEvent, returns 202
-immediately; IdentificationConsumer processes it off the HTTP thread; GET /{id} added for polling.
-See STATE.md "T2.C Kafka async identification pipeline" entry for full implementation notes.
-
-## Earlier Task — AddChooseAi (branch: AddChooseAi, merged)
-Add user-level AI model preference stored in DB, exposed via REST, wired into identification pipeline.
-
-### ⚠️ Migration number is 010, NOT 009
-The feature spec says `009_add_user_preferences.sql` — **that number is taken** (`009_add_health_to_identifications.sql` already exists and is applied). Use **`010_add_user_preferences.sql`** and register it after 009 in `db.changelog-master.xml`.
-
-### What to build
-1. `user/entity/AiModelPreference.java` — enum: DEEPSEEK | PLANTNET | OLLAMA_LLAVA
-2. `User` entity — add field: `@Enumerated(EnumType.STRING) @Column(name = "ai_model_preference", nullable = false) AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK`
-3. Migration `010_add_user_preferences.sql`: `ALTER TABLE users ADD COLUMN ai_model_preference VARCHAR(50) DEFAULT 'DEEPSEEK' NOT NULL`
-4. `user/dto/UserPreferencesRequest.java` — `@NotNull AiModelPreference aiModelPreference`
-5. `user/dto/UserPreferencesResponse.java` — `AiModelPreference aiModelPreference`
-6. `UserService` interface — add `getPreferences(Long userId)` and `updatePreferences(Long userId, UserPreferencesRequest)`
-7. `UserServiceImpl` — implement both; `updatePreferences` loads user, sets field, saves, returns response DTO
-8. `UserController` (existing) — add two endpoints using userId from SecurityContext:
-   - `GET  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>`
-   - `PUT  /api/v1/users/me/preferences` → 200 `ApiResponse<UserPreferencesResponse>` (`@Valid` body)
-9. `IdentificationServiceImpl.identify()` — Step 0: load `userRepository.findById(userId)`, switch on `aiModelPreference`:
-   - `DEEPSEEK` → `deepSeekClient.identifyPlant(...)` (existing path)
-   - `PLANTNET` → `plantNetClient.identify(...)` (PlantNetClient is still wired; was just unused)
-   - `OLLAMA_LLAVA` → `ollamaClient.chat(PLANT_IDENTIFICATION_SYSTEM_PROMPT, "Identify this plant.")` ← text only; no image sent to Ollama
-
-No rate limiting on preferences endpoints (plain DB operations, no AI spend).
-
----
-
-## AI Provider Map (current — post T2.A split + T3.4)
+## AI Provider Map (current)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|
 | GitHubModelsClient (identificationModel) | gpt-4o | Plant photo identification + health + care plan incl. actionPlan (single call) | GitHub Models |
 | GitHubModelsClient (annotationModel) | gpt-4o-mini | Polygon annotation regions | GitHub Models |
-| DeepSeekClient (model) | DeepSeek-R1 | Care plan text regeneration + cure advice (now `{advice, actionPlan}` JSON) | GitHub Models |
+| DeepSeekClient (model) | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment | GitHub Models |
 | DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt retry on EOF, falls back to OllamaClient on 429 | GitHub Models |
-| OllamaClient | llava-phi3 | (1) OLLAMA_LLAVA preference for identification (2) Annotation fallback on 429 | localhost:11434 |
-| PlantNetAnnotationClient | — | Non-primary fallback; maps species results to full-image PLANT regions | plantnet.org |
-| PlantNetClient | — | Used only by PlantNetAnnotationClient + PLANTNET preference | plantnet.org |
+| OllamaClient | llava-phi3 | (1) OLLAMA_LLAVA identification preference (2) annotation 429 fallback | localhost:11434 |
+| PlantNetAnnotationClient / PlantNetClient | — | Non-primary fallback; dead-code cleanup candidate (see Open Items) | plantnet.org |
 
-### GitHubModelsClient / DeepSeekClient split (T2.A) — key facts
-- **GitHubModelsClient**: owns `identifyPlant()` + `analyzeRegions()` (vision). Two separate model
-  configs: `${github.models.identification-model:gpt-4o}` / `${github.models.annotation-model:gpt-4o-mini}`.
-  Holds `PLANT_IDENTIFICATION_SYSTEM_PROMPT` + `ANNOTATION_SYSTEM_PROMPT` (both include the T3.4
-  `actionPlan` schema addition per care card now).
-- **DeepSeekClient**: text-only — `generateCarePlan()` (CARE_PLAN_SYSTEM_PROMPT, also has the
-  actionPlan schema addition, kept in sync with GitHubModelsClient's prompt) + `generateCureAdvice()`
-  (CURE_ADVICE_SYSTEM_PROMPT — ✅ T3.4: now requests `{advice, actionPlan}` JSON, response_format
-  json_object, NOT plain text anymore). Uses `${deepseek.model:DeepSeek-R1}`.
-- Both clients: Auth `Authorization: Bearer <GITHUB_TOKEN>`; HTTP/2 via JDK HttpClient (NO forced
-  HTTP_1_1 — Azure endpoint requires HTTP/2); read timeout 5 minutes.
-- `DeepSeekClient.stripThinkTags(String raw)`: **package-private static**, lives on DeepSeekClient
-  even though GitHubModelsClient calls it too — strips `<think>...</think>` (R1) AND markdown
-  ` ```json...``` ` fences (gpt-4o sometimes ignores response_format). Used by GitHubModelsClient,
-  DeepSeekClient, and OllamaClient (which also wraps JSON in fences).
-- Debug log of full raw response before stripping in every vision/text method — log level DEBUG.
+See ARCHITECT.md's "AI Client Architecture" for why the split is vision-client vs.
+text-client rather than one-client-per-feature, and the `stripThinkTags()` /
+HTTP-2 / rate-limit details. Auth for both Azure-backed clients:
+`Authorization: Bearer <GITHUB_TOKEN>` — **rotate this before going to prod**, it
+was shared in chat sessions during development (Phase 5 / T5.3 item).
 
 ## Non-Negotiable Conventions
 - Constructor injection only. Never @Autowired on fields.
 - Member order: logger → static constants → final fields →
   non-final fields → constructor → public methods → private methods
-- All entities extend AuditableEntity (EXCEPT Reminder, CareLog, PushSubscription, TreatmentPlan —
-  these tables have no created_by/updated_by; Reminder/TreatmentPlan use Hibernate's
-  @CreationTimestamp/@UpdateTimestamp instead)
+- All entities extend AuditableEntity EXCEPT Reminder, CareLog, PushSubscription,
+  TreatmentPlan, Treatment (no created_by/updated_by columns; use Hibernate's
+  @CreationTimestamp/@UpdateTimestamp instead). Species DOES extend AuditableEntity
+  but has no per-row ownership check (shared across users) — see ARCHITECT.md.
 - All controllers return ApiResponse<T> — never raw objects
 - All exceptions extend PlantPalException → GlobalExceptionHandler
 - Soft deletes only (status = ARCHIVED)
@@ -332,435 +58,301 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - Bucket4j rate limiting on all AI/external API endpoints
   - Use Bandwidth.builder().capacity(N).refillIntervally(N, Duration.ofHours(1)).build()
   - Bandwidth.simple() is DEPRECATED in 8.7.0 — do NOT use it
-- Async AI calls via @Async("aiTaskExecutor") + CompletableFuture
+- Async AI calls via @Async("aiTaskExecutor") + CompletableFuture for cross-bean
+  calls; same-class fire-and-forget calls use CompletableFuture.runAsync(...,
+  aiTaskExecutor) directly since @Async's proxy has no effect on self-invocation
 - Store rawResponse (full external API JSON) always
 - In unit tests: construct service manually in @BeforeEach when constructor has non-mockable params
+- Cross-package coupling that would create a cycle (e.g. `treatment` needing to
+  notify `reminder`, when `treatment` already depends on `reminder`) goes through a
+  Spring application event (`ApplicationEventPublisher` + `@EventListener`), not a
+  new direct injection — see `TreatmentPlanCompletedEvent` for the precedent.
 
 ## Module Structure & File Inventory
 
 ### shared/ — fully implemented
-- dto/ApiResponse.java          — uniform wrapper; uses MDC correlationId
-- dto/RestPage.java             — Jackson-serialisable Page wrapper
-- audit/AuditableEntity.java    — base entity, Spring Data Auditing
-- exception/PlantPalException.java
-- exception/ResourceNotFoundException.java
-- exception/UnauthorizedException.java
-- exception/ValidationException.java
-- exception/GlobalExceptionHandler.java
-- config/SecurityConfig.java    — JWT filter, CORS, stateless
-- config/AsyncConfig.java       — aiTaskExecutor (core=2, max=5, queue=100)
-- config/JpaConfig.java
-- config/CacheConfig.java       — Redis, implements CachingConfigurer
-                                  ✅ T2.E: + byteRedisTemplate bean (RedisTemplate<String,byte[]>,
-                                  StringRedisSerializer key / RedisSerializer.byteArray() value, NOT
-                                  @Primary). Use RedisSerializer.byteArray() — ByteArrayRedisSerializer
-                                  is package-private in spring-data-redis 3.2.5, won't compile.
-- config/OpenApiConfig.java     — Swagger/springdoc
-- config/StorageConfig.java     — static resource handler for /photos/** (separate from PhotoController)
-- config/KafkaConfig.java       — ✅ T2.C: KafkaTemplate<String,Object> bean (ProducerFactory autoconfigured)
-- controller/PhotoController.java — ✅ T2.E: GET /api/v1/photos/{filename} → raw bytes, Content-Type
-                                  inferred from extension; calls fileStorageService.loadPhotoBytes()
-- filter/CorrelationIdFilter.java — HIGHEST_PRECEDENCE, MDC + response header
-- filter/JwtAuthFilter.java
+- dto/ApiResponse.java, dto/RestPage.java (Jackson-serialisable Page wrapper)
+- audit/AuditableEntity.java — base entity, Spring Data Auditing
+- exception/{PlantPalException, ResourceNotFoundException, UnauthorizedException,
+  ValidationException, GlobalExceptionHandler}.java
+- config/SecurityConfig.java — JWT filter, CORS, stateless
+- config/AsyncConfig.java — aiTaskExecutor (core=2, max=5, queue=100)
+- config/JpaConfig.java, config/OpenApiConfig.java
+- config/CacheConfig.java — Redis, implements CachingConfigurer + errorHandler()
+  (Redis failures degrade to WARN + cache miss, never a 500). Two RedisTemplates:
+  default (Object,Object, for @Cacheable) + byteRedisTemplate (String,byte[] via
+  RedisSerializer.byteArray() — NOT ByteArrayRedisSerializer, package-private in
+  spring-data-redis 3.2.5, won't compile). byteRedisTemplate is NOT @Primary.
+- config/StorageConfig.java — static resource handler for /photos/** (dev)
+- config/KafkaConfig.java — KafkaTemplate<String,Object> bean
+- controller/PhotoController.java — GET /api/v1/photos/{filename} → raw bytes
+- filter/CorrelationIdFilter.java (HIGHEST_PRECEDENCE, MDC + response header), filter/JwtAuthFilter.java
 - util/JwtUtil.java
-- storage/FileStorageService.java (interface) — loadPhotoBytes(String photoUrl) → byte[]
-                                  (renamed from loadPhoto in T2.E — consolidated dedup-aware Redis+disk
-                                  logic into one method instead of adding a second near-duplicate)
-- storage/LocalFileStorageService.java — ✅ T2.E: constructor now also takes
-                                  RedisTemplate<String,byte[]> byteRedisTemplate + StringRedisTemplate
-                                  (Spring Boot auto-configures the latter — no bean needed).
-                                  savePhoto(): SHA-256 dedup via DigestUtils.sha256Hex (commons-codec,
-                                  transitive) — checks "photo:hash:{hash}" before writing to disk;
-                                  on hit returns the existing URL with zero disk I/O. On miss, saves to
-                                  disk as before then writes "photo:{uuid}" (raw bytes) and
-                                  "photo:hash:{hash}" (→ url), both 7-day TTL.
-                                  loadPhotoBytes(): Redis "photo:{uuid}" first, disk fallback, throws
-                                  ResourceNotFoundException if neither has it (auto-404 via
-                                  GlobalExceptionHandler — no try/catch needed in PhotoController)
+- storage/FileStorageService.java (interface) — loadPhotoBytes(String url) → byte[]
+- storage/LocalFileStorageService.java — SHA-256 dedup on savePhoto() via
+  DigestUtils.sha256Hex; Redis-first/disk-fallback on loadPhotoBytes(); see
+  ARCHITECT.md's Redis Photo Storage Pattern for the full read/write sequence
 
 ### user/ — fully implemented
-- entity/User.java, entity/UserStatus.java
-- dto/RegisterRequest.java, LoginRequest.java, AuthResponse.java, UserResponse.java
-- mapper/UserMapper.java
-- repository/UserRepository.java
-- service/UserService.java (interface) + service/impl/UserServiceImpl.java
-- controller/AuthController.java
+entity/{User, UserStatus, AiModelPreference (DEEPSEEK|PLANTNET|OLLAMA_LLAVA|
+GITHUB_GPT4O)}, dto/{RegisterRequest, LoginRequest, AuthResponse, UserResponse,
+UserPreferencesRequest, UserPreferencesResponse}, mapper/UserMapper,
+repository/UserRepository, service/UserService(+Impl), controller/AuthController.
+`GET/PUT /api/v1/users/me/preferences` for AI model preference.
 
-### plant/ — fully implemented (T2.8 complete)
-- entity/Plant.java, entity/PlantStatus.java
-- dto/CreatePlantRequest.java, UpdatePlantRequest.java, PlantResponse.java
-- dto/SaveIdentificationAsPlantRequest.java  — ✅ T2.8; identificationId (required), nickname, location
+### plant/ — fully implemented
+- entity/Plant.java — speciesId, lastScanId, activeTreatmentId (all nullable, T6.3)
+  alongside the legacy free-text `species` column (kept as a fallback display value,
+  not dropped)
+- dto/{CreatePlantRequest, UpdatePlantRequest, PlantResponse, SaveIdentificationAsPlantRequest}
+  — PlantResponse carries speciesId/lastScanId/activeTreatmentId/lastScanAt (T6.3/T6.6)
 - mapper/PlantMapper.java
-- repository/PlantRepository.java  — has existsByIdAndUserId, findByIdAndUserId,
-                                      findByIdAndUserIdAndStatus
-- service/PlantService.java (interface) + service/impl/PlantServiceImpl.java
-  - PlantServiceImpl now takes 5 constructor params: PlantRepository, PlantMapper,
-    IdentificationRepository, ReminderRepository, ObjectMapper
-  - saveFromIdentification(): loads identification (verifies ownership), creates Plant with
-    nickname fallback chain (request → commonName → scientificName → "My Plant"),
-    links identification.plantId, creates reminders from carePlan JSON
-- controller/PlantController.java — POST /api/v1/plants/from-identification → 201
+- repository/PlantRepository.java — findByIdAndUserId, findAllByUserIdAndStatus,
+  findAllByUserIdAndSpeciesIdAndStatus (T6.6), findDistinctSpeciesIdsByUserIdAndStatus
+  + findAllByUserIdAndStatusAndSpeciesIdIn (T6.3, backs SpeciesService.getUserSpecies)
+- service/PlantService(+Impl) — getUserPlants has a speciesId-filtered overload
+  (T6.6, both @Cacheable on the "plants" region, distinct cache key prefixes);
+  shared buildEnrichedPage() private helper avoids duplicating the
+  enrichWithHealthAndWater()/RestPage wrapping between the two overloads.
+  archivePlant() cascades: disables every enabled Reminder for that plant
+  (disableRemindersForPlant) so an archived plant stops generating pushes.
+  saveFromIdentification(): nickname fallback chain (request → commonName →
+  scientificName → "My Plant"), links identification.plantId, creates reminders
+  from carePlan JSON.
+- controller/PlantController.java — GET (list, optional ?speciesId=), POST,
+  GET/PUT/DELETE /{id}, POST /from-identification
 
-### identification/ — fully implemented (T2.9 + T2.9a + T2.9d complete)
-- entity/Identification.java       — care_plan JSONB (String), health_status VARCHAR(30), health_notes TEXT,
-                                     annotation_regions JSONB (String, @JdbcTypeCode(SqlTypes.JSON))
+### identification/ — fully implemented
+- entity/Identification.java — care_plan JSONB, health_status/health_notes,
+  annotation_regions JSONB, source_image_width/height, ai_model_used, speciesId
+  (nullable, T6.3), plantId (nullable — species-level scans have none)
 - entity/IdentificationStatus.java (PENDING/COMPLETED/FAILED)
-- dto/IdentificationResponse.java  — has CarePlanDto carePlan, healthStatus, healthNotes,
-                                     List<AnnotationRegionDto> annotationRegions fields
-- dto/CureAdviceRequest.java       — ✅ T2.9d: @NotBlank regionLabel, nullable species
-- dto/CureAdviceResponse.java      — ✅ T2.9d + T3.4: String advice, ActionPlanDto actionPlan (new)
-- dto/AddCareCardRequest.java      — ✅ T2.10e + T3.4: @NotBlank regionLabel, @NotBlank adviceText,
-                                     ActionPlanDto actionPlan (new, optional — re-validated server-side
-                                     via ActionPlanValidator.normalize() before attaching, never trusted as-is)
-- dto/CareCardDto.java             — ✅ T2.6 + T3.4: +ActionPlanDto actionPlan (nullable)
-- dto/CarePlanDto.java             — ✅ T2.6
-- dto/ActionPlanDto.java           — ✅ T3.4: type ("ROUTINE"|"TREATMENT"), frequencyDays
-                                     (ROUTINE only), List<TreatmentStepDto> steps (TREATMENT only),
-                                     DiagramDto diagram (TREATMENT only, nullable)
-- dto/TreatmentStepDto.java        — ✅ T3.4: order (int), instruction (String), dueOffsetDays (int)
-- dto/DiagramDto.java              — ✅ T3.4: format (only "MERMAID" supported), content (mermaid DSL text)
-- dto/AnnotationRegionDto.java     — ✅ T2.9a: label, type (PLANT/DISEASE/HEALTHY_AREA),
-                                     confidence (HIGH/MEDIUM/LOW),
-                                     List<PolygonPointDto> polygon (nullable — primary shape),
-                                     BoundingBoxDto boundingBox (nullable — legacy fallback for old DB records)
-- dto/PolygonPointDto.java         — ✅ T2.9a: xPct, yPct (int, 0-100)
-                                     @JsonProperty("xPct")/@JsonProperty("yPct") — same Lombok decapitalize fix
-- dto/BoundingBoxDto.java          — ✅ T2.9a fix: xPct, yPct, widthPct, heightPct (all int, 0-100%)
-                                     @JsonProperty("xPct")/@JsonProperty("yPct") — Lombok getXPct()
-                                     → Introspector.decapitalize("XPct") = "XPct"; annotation fixes key to "xPct"
-- dto/DeepSeekPlantResult.java     — ✅ internal DTO for combined vision response:
-                                     species, commonName, confidence, healthStatus, healthNotes, CarePlanDto
-- dto/IdentifyRequest.java
-- dto/IdentificationPendingResponse.java — ✅ T2.C: identificationId, status — returned by POST /analyze (202)
-- dto/plantnet/ (PlantNetResponse, PlantNetResult, PlantNetSpecies, PlantNetTaxon) — kept but unused
-- event/IdentificationRequestedEvent.java — ✅ T2.C: identificationId, userId, photoUrl,
-                                     aiModelPreference (String), organs, requestedAt — published to
-                                     "identification.requested"
-- event/IdentificationCompletedEvent.java — ✅ T2.C: identificationId, status (String), completedAt —
-                                     published to "identification.completed" (COMPLETED or FAILED)
-- config/KafkaTopicConfig.java     — ✅ T2.C: NewTopic beans for both topics (3 partitions/1 replica);
-                                     IDENTIFICATION_REQUESTED_TOPIC / IDENTIFICATION_COMPLETED_TOPIC constants
-- consumer/IdentificationConsumer.java — ✅ T2.C: @KafkaListener(topics="identification.requested",
-                                     groupId="plantpal-identification") → delegates to
-                                     identificationService.processIdentification(event)
-- mapper/IdentificationMapper.java — ignores topResults, carePlan, AND annotationRegions (all set manually in service)
-- repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc(plantId, pageable)
-- util/ActionPlanValidator.java    — ✅ T3.4: static normalize(ActionPlanDto) — never throws, the
-                                     single choke-point every AI-sourced action plan passes through.
-                                     See "Current Task" section above for the exact clamp/reject rules.
-- service/IdentificationService.java (interface) + service/impl/IdentificationServiceImpl.java
-  - Constructor: 14 params — deepSeekClient, visionAnnotationClient, identificationRepository,
-    identificationMapper, plantRepository, reminderRepository, fileStorageService, objectMapper,
-    gitHubModelsClient, userRepository, plantNetClient, ollamaClient, kafkaTemplate, cacheManager
-  - submitIdentification() (sync, fast): validate → savePhoto → persist PENDING → rate-limit check →
-    loadUserPreference → publish IdentificationRequestedEvent → return IdentificationPendingResponse
-  - processIdentification(event) (@Async("aiTaskExecutor"), called by IdentificationConsumer):
-    loads entity by id → FileStorageService.loadPhoto() re-reads bytes from disk (event only carries
-    photoUrl, not raw bytes) → PARALLEL(runIdentification(preference,...), visionAnnotationClient.analyzeRegions) →
-    parseIdentificationResult() → persist COMPLETED + annotationRegions → reminders →
-    publishCompletedEvent(COMPLETED). Catches all exceptions → markFailed() + publishCompletedEvent(FAILED);
-    never propagates (it's the @Async Kafka listener's job method, not an HTTP-facing one).
-  - getIdentification(id, userId): ownership-checked single-entity fetch for the GET /{id} poll endpoint
-  - runIdentification(preference, imageBytes, mediaType, organs) — NO LONGER takes List<MultipartFile>;
-    PLANTNET branch wraps imageBytes in a private ByteArrayMultipartFile adapter (same pattern as
-    PlantNetAnnotationClient) since the Kafka consumer only has raw bytes, not the original upload.
-    Switch on AiModelPreference: PLANTNET → plantNetClient.identify(); OLLAMA_LLAVA → ollamaClient.identifyPlant()
-    with GitHubModels fallback on PlantPalException; DEEPSEEK/GITHUB_GPT4O/default → gitHubModelsClient.identifyPlant()
-  - Parallel vision: CompletableFuture.supplyAsync() for both futures; identificationFuture.join()
-    unwraps CompletionException; annotationFuture silently degrades to empty regions on failure
-  - parseAnnotationRegions(String json): JsonNode API (objectMapper.readTree + convertValue with
-    constructCollectionType) — NOT a private record (Jackson cannot access private nested records).
-  - confidenceToScore(): "HIGH"→0.9, "MEDIUM"→0.6, default→0.3
-  - fallbackCarePlan(): single WATERING card, 7-day frequency
-  - getCureAdvice(id, request, userId): @Async, ownership check, cureAdviceBuckets (10/hour),
-    calls deepSeekClient.generateCureAdvice() → ✅ T3.4: raw response is now JSON
-    (`{advice, actionPlan}`), parsed via parseCureAdvice() into an internal CureAdviceJson holder
-    (private static class — same Lombok-getter/setter style as DeepSeekPlantResult, NOT a record).
-    On JsonProcessingException, falls back to advice=rawString, actionPlan=null (never lets a
-    malformed response fail the call). actionPlan run through ActionPlanValidator.normalize().
-    Throws ResourceNotFoundException if not owned, PlantPalException(429) if rate-limited,
-    PlantPalException(503) if DeepSeek fails.
-  - CURE_ADVICE_RATE_LIMIT = 10; cureAdviceBuckets ConcurrentHashMap<Long, Bucket>
-  - addCareCard(id, req, userId): ✅ T2.10e — NOT @Async (no AI call, pure DB read+write), no rate
-    limit. Ownership-checked like getCureAdvice. parseCarePlan() → defensive-copy careCards into a
-    mutable ArrayList (fallbackCarePlan() returns List.of(...), which is immutable) → skip if a card
-    with that exact title already exists → else append a PEST-type CareCardDto (icon "healing",
-    urgency HIGH) built from req.regionLabel/adviceText + ✅ T3.4:
-    ActionPlanValidator.normalize(req.getActionPlan()) → serializeToJson() → save → return the
-    updated CarePlanDto
-- client/VisionAnnotationClient.java  — ✅ T2.9: interface; analyzeRegions(byte[], String) → JSON String
-- client/DeepSeekAnnotationClient.java— ✅ T2.9a + updated (AddChooseAi session):
-                                         @Primary implementation; injects BOTH DeepSeekClient and OllamaClient.
-                                         2-attempt retry on EOF (Azure HTTP/2 GOAWAY on parallel connections).
-                                         429 detection: catches RestClientResponseException with status 429 → calls
-                                         tryOllamaFallback() immediately (no retry). Ollama success logged at INFO.
-                                         Returns {"regions":[]} only if BOTH DeepSeek (non-429 after retries)
-                                         and Ollama both fail.
-- client/PlantNetAnnotationClient.java— ✅ T2.9: non-primary implementation; calls PlantNetClient.identify(),
-                                         maps top results to full-image PLANT regions (no real bounding boxes);
-                                         inner ByteArrayMultipartFile adapts byte[] for PlantNetClient
-- client/PlantNetClient.java       — HTTP/1.1 forced (ALPN fix). NOT called in main flow; used by PlantNetAnnotationClient.
-- client/OllamaClient.java         — local Ollama llava-phi3 (vision). Active in two paths:
-                                     (1) OLLAMA_LLAVA preference → identifyPlant() as primary identification
-                                     (2) DeepSeekAnnotationClient 429 fallback → analyzeRegions()
-                                     Key implementation details:
-                                     • identifyPlant() + analyzeRegions(): use /api/generate with images[] at
-                                       TOP LEVEL (not nested in /api/chat messages — llava-phi3 requires this)
-                                     • resizeAndConvertToJpeg(byte[]): private method, caps at 1024px, converts
-                                       to JPEG via BufferedImage+Graphics2D. Applied before base64 encoding in BOTH
-                                       vision methods. llava-phi3 returns 400 on high-res photos without this.
-                                       Gracefully returns original bytes if ImageIO cannot decode the image.
-                                     • DeepSeekClient.stripThinkTags() called on all responses — Ollama also wraps
-                                       JSON in ```json...``` fences even when not asked to.
-                                     • IdentificationServiceImpl: if ollamaClient.identifyPlant() throws
-                                       PlantPalException, falls back to deepSeekClient.identifyPlant() with WARN log.
-- client/DeepSeekClient.java       — GitHub Models; HTTP/2; 5-min timeout; gpt-4o (vision)
-                                     Four methods: generateCarePlan(), identifyPlant(), analyzeRegions(),
-                                     generateCureAdvice(species, regionLabel)
-                                     ANNOTATION_SYSTEM_PROMPT: ✅ T2.9a updated to polygon schema
-                                     (8–16 clockwise points, min 4, integers 0-100)
-                                     CURE_ADVICE_SYSTEM_PROMPT: plain text response (no json_object format);
-                                     uses text model (DeepSeek-R1); stripThinkTags() applied
-- controller/IdentificationController.java — POST /{id}/cure-advice → 202 Accepted (T2.9d)
-                                             Unwraps ExecutionException for PlantPalException +
-                                             ResourceNotFoundException from async getCureAdvice()
-                                             ✅ T2.C: POST /analyze now calls submitIdentification(),
-                                             returns 202 + IdentificationPendingResponse immediately
-                                             (no more blocking .get() on the full AI pipeline).
-                                             Added GET /{id} → IdentificationResponse for polling.
+- dto/ — IdentificationResponse (carries CarePlanDto, healthStatus/Notes,
+  annotationRegions, sourceImageWidth/Height, aiModelUsed, speciesId),
+  CureAdviceRequest/Response (advice + actionPlan), AddCareCardRequest,
+  CareCardDto/CarePlanDto (CareCardDto.actionPlan: ActionPlanDto, nullable),
+  ActionPlanDto/TreatmentStepDto/DiagramDto (see ARCHITECT.md's Actionable Care
+  Plans pattern for the exact shape/validation rules), AnnotationRegionDto +
+  PolygonPointDto + BoundingBoxDto (polygon primary, boundingBox legacy fallback),
+  DeepSeekPlantResult (internal combined-vision-response DTO),
+  IdentificationPendingResponse (202 response), SpeciesMatchDto/
+  ResolveSpeciesRequest/PlantMatchDto/ResolvePlantRequest (T6.9)
+- event/{IdentificationRequestedEvent, IdentificationCompletedEvent} — published to
+  Kafka topics identification.requested / identification.completed
+- config/KafkaTopicConfig.java — NewTopic beans, 3 partitions/1 replica each
+- consumer/IdentificationConsumer.java — @KafkaListener, delegates to
+  identificationService.processIdentification(event)
+- mapper/IdentificationMapper.java — ignores topResults/carePlan/annotationRegions
+  (set manually in service)
+- repository/IdentificationRepository.java — findByPlantIdOrderByCreatedAtDesc,
+  findByUserIdOrderByCreatedAtDesc, findLatestPerPlant(plantIds) (batch, avoids N+1)
+- util/ActionPlanValidator.java — static normalize(ActionPlanDto), see ARCHITECT.md
+- service/IdentificationService(+Impl) — large constructor (15+ params: AI clients,
+  repos, FileStorageService, ObjectMapper, KafkaTemplate, CacheManager). Key methods:
+  - submitIdentification() (sync, fast): validate → savePhoto → persist PENDING →
+    rate-limit → loadUserPreference → publish IdentificationRequestedEvent → 202
+  - processIdentification(event) (@Async, called by the Kafka consumer): reloads
+    photo bytes from disk (event only carries the URL) → parallel
+    runIdentification() + analyzeRegions() → persist COMPLETED/FAILED →
+    normalizeActionPlans() on every care card before persist (see ARCHITECT.md's
+    note on verifying "single choke-point" claims) → updates plant.lastScanId when
+    plantId present → publishes IdentificationCompletedEvent. Never propagates
+    exceptions — it's a Kafka listener method.
+  - getCureAdvice(id, request, userId): @Async, separate cureAdviceBuckets
+    (10/hour, independent from the 20/hour identification bucket)
+  - addCareCard(id, req, userId): NOT async (no AI call), idempotent on card title
+  - species-match / resolve-species / plant-match / resolve-plant (T6.9): backend
+    half of the Flow-1 species/plant disambiguation — see ARCHITECT.md's 3-path
+    decision tree for the full flow these implement
+- client/ — VisionAnnotationClient (interface), DeepSeekAnnotationClient (@Primary),
+  PlantNetAnnotationClient (fallback), PlantNetClient (HTTP/1.1 forced — ALPN fix),
+  OllamaClient (local llava-phi3, /api/generate not /api/chat, resizes to 1024px
+  before base64), DeepSeekClient, GitHubModelsClient
+- controller/IdentificationController.java — POST /analyze (202), GET /{id},
+  GET /plant/{plantId}, POST /{id}/cure-advice, POST /{id}/care-plan/cards,
+  GET /{id}/species-match, POST /{id}/resolve-species, GET /{id}/plant-match,
+  POST /{id}/resolve-plant
 
-### reminder/ — fully implemented (T3.1 CRUD/scheduler/push + T3.4 treatment plans complete)
-- entity/CareType.java   — ✅ T3.4: 10 values (WATERING, LIGHT, HUMIDITY, TEMPERATURE, FERTILIZING,
-                            REPOTTING, PRUNING, PEST, SEASONAL, BEGINNER_TIP) — was 4, expanded to
-                            mirror CareCardType; additive, no migration impact on existing rows
-- entity/Reminder.java   — does NOT extend AuditableEntity (table has no created_by/updated_by);
-                            uses @CreationTimestamp/@UpdateTimestamp from Hibernate instead.
-                            ✅ T3.4 additions: boolean recurring (@Builder.Default true), Long
-                            treatmentPlanId (nullable), String treatmentPlanTitle (nullable,
-                            denormalized — avoids a join on every reminder-list fetch),
-                            Integer stepOrder (nullable)
-- entity/CareLog.java    — ✅ T3.1; maps onto the care_logs table (existed since migration 004,
-                            entity just never existed in code before T3.1). NO createdAt field —
-                            the table truly has no such column, only performed_at (learned the hard
-                            way: an earlier draft added @CreationTimestamp created_at and broke
-                            schema-validation on startup — do NOT re-add it)
-- entity/PushSubscription.java — ✅ T3.1; maps onto push_subscriptions table (migration 005)
-- entity/TreatmentPlan.java — ✅ T3.4: id, plantId, userId, title, sourceCareCardType (String,
-                            nullable), diagramFormat, diagramContent, status (TreatmentPlanStatus),
-                            createdAt/updatedAt via @CreationTimestamp/@UpdateTimestamp — same
-                            no-AuditableEntity pattern as Reminder
-- entity/TreatmentPlanStatus.java — ✅ T3.4: ACTIVE | COMPLETED | ABANDONED
-- repository/ReminderRepository.java — findByUserIdAndEnabledTrue(userId) [List, used by dashboard]
-                            + findByUserIdAndEnabledTrue(userId, Pageable) [Page, used by
-                            getUserReminders], findByIdAndUserId, findAllDue(Instant) [scheduler],
-                            findNearestWateringPerPlant(plantIds) [dashboard], ✅ T3.4:
-                            findByTreatmentPlanIdAndEnabledTrue(planId) [completion check — "any
-                            steps left?"], findByTreatmentPlanIdOrderByStepOrder(planId)
-                            [detail view — ALL steps including completed/disabled ones]
-- repository/CareLogRepository.java — ✅ T3.1; findByPlantIdOrderByPerformedAtDesc(plantId, pageable)
-- repository/PushSubscriptionRepository.java — ✅ T3.1; findByUserIdAndEnabledTrue(userId)
-- repository/TreatmentPlanRepository.java — ✅ T3.4: findByIdAndUserId, findByPlantIdAndUserId
-- service/ReminderService.java (interface) + service/impl/ReminderServiceImpl.java
-  - Constructor: 4 params — reminderRepository, plantRepository, careLogRepository,
-    treatmentPlanRepository (the last one added in T3.4)
-  - createReminder, getUserReminders (bounded 200, PageRequest.of(0,200,Sort.by("nextDueAt")),
-    batch-fetches plants via findAllById to avoid N+1), deleteReminder (soft — enabled=false),
-    calculateNextDueAt(lastDone, frequencyDays) = lastDone.plus(frequencyDays, DAYS)
-  - completeReminder(id, userId): writes a CareLog, then ✅ T3.4: delegates the reschedule-or-disable
-    decision to applyCompletionToReminder() (see below) instead of inlining it
-  - ✅ T3.4 applyCompletionToReminder(reminder, performedAt) — the unified completion handler used by
-    BOTH ReminderServiceImpl.completeReminder() and CareLogServiceImpl.logCare(): if
-    reminder.isRecurring() → nextDueAt = calculateNextDueAt(performedAt, frequencyDays), save; else
-    → enabled=false, save, then if treatmentPlanId != null check
-    findByTreatmentPlanIdAndEnabledTrue(planId) — if now empty, load the TreatmentPlan and flip it
-    to COMPLETED. Does NOT persist the CareLog itself (caller's job — notes differ per call site).
-- service/CareLogService.java (interface) + service/impl/CareLogServiceImpl.java
-  - logCare(MarkCareDoneRequest, userId): looks up the Reminder (not the plant directly), writes a
-    CareLog with the reminder's careType + notes, then ✅ T3.4: calls
-    reminderService.applyCompletionToReminder(reminder, performedAt) — does NOT call
-    reminderRepository.save() or reminderService.calculateNextDueAt() itself anymore (that
-    duplicated logic was the bug found while designing T3.4, now eliminated)
-  - getPlantCareLogs(plantId, userId, pageable) — paginated, ownership-checked through the Plant
-- service/WebPushService.java (interface) + service/impl/WebPushServiceImpl.java — ✅ T3.1:
-  nl.martijndwars:web-push, VAPID keys from @Value (app.web-push.public-key/private-key/subject —
-  config + .env.example already existed from T0 scaffolding)
-- service/TreatmentPlanService.java (interface) + service/impl/TreatmentPlanServiceImpl.java — ✅ T3.4
-  - createFromActionPlan(plantId, userId, title, sourceCareCardType, actionPlan): rejects
-    non-TREATMENT or empty-steps plans (ValidationException), ownership-checks the plant via
-    plantRepository.findByIdAndUserId, parses sourceCareCardType into a CareType
-    (ValidationException if null/blank/unrecognised — CareType.valueOf() wrapped in try/catch),
-    creates the TreatmentPlan row, then one Reminder per step (recurring=false, treatmentPlanId,
-    treatmentPlanTitle=title, stepOrder=step.order, nextDueAt=now+dueOffsetDays, frequencyDays=0
-    [unused when recurring=false])
-  - getTreatmentPlan(id, userId): ownership-checked; returns ALL steps via
-    findByTreatmentPlanIdOrderByStepOrder (deliberately not the enabled-only query)
-- scheduler/ReminderScheduler.java — ✅ T3.1: @Scheduled(cron="0 0 8 * * *"),
-  reminderRepository.findAllDue(Instant.now(clock)) grouped by userId, sends ONE push per user
-  ("You have N plants to care for today") not one per reminder; Clock injected via constructor
-  (same pattern as T2.10b's DashboardServiceImpl) for testability
-- controller/ReminderController.java — GET/POST /api/v1/reminders, DELETE /{id}
-- controller/CareLogController.java — POST /api/v1/care/done, GET /api/v1/care/plant/{plantId}
-- controller/NotificationController.java — POST /api/v1/notifications/subscribe
-- controller/TreatmentPlanController.java — ✅ T3.4: POST /api/v1/treatment-plans (201),
-  GET /api/v1/treatment-plans/{id}. Both auto-protected by the existing anyRequest() security rule.
+### reminder/ — fully implemented
+- entity/CareType.java — 10 values (WATERING, LIGHT, HUMIDITY, TEMPERATURE,
+  FERTILIZING, REPOTTING, PRUNING, PEST, SEASONAL, BEGINNER_TIP)
+- entity/Reminder.java — no AuditableEntity; recurring (default true),
+  treatmentPlanId/treatmentPlanTitle/stepOrder, instruction, stepDetail/
+  stepDiagramFormat/stepDiagramContent (all nullable, only set for treatment steps)
+- entity/{CareLog, PushSubscription, TreatmentPlan, TreatmentPlanStatus
+  (ACTIVE|COMPLETED|ABANDONED)}.java
+- event/TreatmentPlanCompletedEvent.java (T6.14) — published by
+  applyCompletionToReminder() when a TreatmentPlan's last step completes;
+  consumed by treatment/event/TreatmentPlanCompletionListener (see below) to sync
+  the wrapping Treatment's status without creating a reminder↔treatment package cycle
+- repository/ReminderRepository.java — findByUserIdAndEnabledTrue (List + Page
+  overloads), findByIdAndUserId, findAllDue(Instant), findNearestWateringPerPlant,
+  findByTreatmentPlanIdAndEnabledTrue (completion check), findByTreatmentPlanIdOrderByStepOrder
+  (full detail view, includes completed steps), findByPlantIdAndEnabledTrue
+  (archive cascade)
+- repository/{CareLogRepository, PushSubscriptionRepository, TreatmentPlanRepository}.java
+- service/ReminderService(+Impl) — createReminder, getUserReminders (bounded 200,
+  batch-fetches plants), deleteReminder (soft), calculateNextDueAt(),
+  **applyCompletionToReminder(reminder, performedAt)** — the single completion
+  choke-point (see ARCHITECT.md), now also publishes TreatmentPlanCompletedEvent
+- service/CareLogService(+Impl) — logCare() delegates to applyCompletionToReminder(),
+  getPlantCareLogs (paginated, ownership-checked)
+- service/WebPushService(+Impl) — nl.martijndwars:web-push, VAPID keys via @Value
+- service/TreatmentPlanService(+Impl) — createFromActionPlan(), getTreatmentPlan()
+  (ALL steps, not just enabled-only)
+- scheduler/ReminderScheduler.java — @Scheduled(cron="0 0 8 * * *"), Clock injected
+  for testability, one push per user grouping all due reminders
+- controller/{ReminderController, CareLogController, NotificationController,
+  TreatmentPlanController}.java
 
-### chat/ — ✅ T4.1: basic single-turn chat wired to Ollama; ✅ T6.13: optional plant-specific context
-- dto/ChatRequest.java  — @NotBlank message, ✅ T6.13: + nullable plantId (Long)
-- dto/ChatResponse.java — reply (no @Setter — mirrors CureAdviceResponse style)
-- service/ChatService.java (interface) + service/impl/ChatServiceImpl.java
-  - Constructor: ✅ T6.13: 4 params now — ollamaClient, plantRepository, identificationRepository,
-    treatmentRepository (last two added for plant-specific context)
-  - chat(request, userId): rate-limit check (chatBuckets, 30/hour, same Bucket4j pattern as
-    IdentificationServiceImpl) → if plantId present: buildPlantContext(plantId, userId) (ownership
-    check FIRST — throws ResourceNotFoundException before buildGardenContext() runs) prepended to
-    buildGardenContext(userId); else buildGardenContext(userId) alone → formats CLAUDE.md's chat
-    system prompt (SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)) + "\n\nUser: " + message into ONE
-    string → ollamaClient.chat(prompt) (single-arg — no separate system-message param)
-  - buildGardenContext(): plantRepository.findAllByUserIdAndStatus(userId, ACTIVE, PageRequest.of(0,50)),
-    "- " + nickname + " (" + commonName/species/"unknown species" + ")" per line, joined with \n;
-    "No plants in the garden yet." if empty
-  - ✅ T6.13 buildPlantContext(plantId, userId): plantRepository.findByIdAndUserId() ownership check →
-    "{nickname} ({species/commonName/"unknown species"})" header + optional last-scan health line
-    (IdentificationRepository.findLatestPerPlant(List.of(plantId)), reused not duplicated) + optional
-    active-treatment line (plant.activeTreatmentId → TreatmentRepository.findById() →
-    Treatment.diseaseName, plain findById since ownership already established via the plant)
-- controller/ChatController.java — POST /api/v1/chat (bare path) → ApiResponse<ChatResponse>;
-  userId via SecurityContextHolder, same pattern as IdentificationController.getCurrentUserId()
+### treatment/ — fully implemented (T6.2, T6.3, T6.14)
+> NOT the same concept as reminder/'s TreatmentPlan — see ARCHITECT.md's "Two
+> Treatment concepts" before touching either package.
+- entity/Treatment.java — no AuditableEntity; plantId, userId, identificationId,
+  diseaseName, diseaseDescription (nullable, async-filled), status
+  (TreatmentStatus), treatmentPlanId (nullable FK), startedAt, completedAt
+- entity/TreatmentStatus.java — DRAFT | IN_PROGRESS | COMPLETED | DISMISSED
+- dto/{TreatmentResponse (incl. identificationId, T6.12), CreateTreatmentRequest}
+- repository/TreatmentRepository.java — findByIdAndUserId, findByPlantIdAndUserId,
+  findByPlantIdAndDiseaseNameAndStatusIn (one-active-per-disease check),
+  findByTreatmentPlanId (completion-sync lookup)
+- service/TreatmentService(+Impl) — createTreatment() (DRAFT, fires async
+  disease-description generation via CompletableFuture.runAsync), craftPlan()
+  (@Async, DRAFT-only, delegates to TreatmentPlanService.createFromActionPlan(),
+  sets activeTreatmentId), getTreatment(), getActiveTreatmentForPlant(),
+  completeTreatment() (manual, IN_PROGRESS-only), syncFromTreatmentPlanCompletion()
+  (T6.14, event-driven — see below). completeTreatment() and the sync method share
+  a private markCompleted(Treatment, Optional<Plant>) helper.
+- event/TreatmentPlanCompletionListener.java (T6.14) — @EventListener consuming
+  reminder/event/TreatmentPlanCompletedEvent, calls syncFromTreatmentPlanCompletion();
+  no-ops if no Treatment wraps that plan, or it's not IN_PROGRESS
+- controller/TreatmentController.java — POST /treatments, POST /{id}/craft-plan,
+  GET /{id}, GET /plants/{id}/active-treatment, PATCH /{id}/complete
 
-### dashboard/ — ✅ T2.10b: read-only aggregation, no new tables
-- dto/DashboardResponse.java   — healthSummary, overdueReminders, todayReminders, healthTrends
-- dto/HealthSummaryDto.java    — totalPlants, healthyCount, issuesCount, unknownCount
-- dto/ReminderSummaryDto.java  — reminderId, plantId, plantNickname, plantPhotoUrl, careType,
-                                  nextDueAt, daysOverdue (0 for today's items)
-- dto/PlantHealthTrendDto.java — plantId, plantNickname, trend (IMPROVING/WORSENING/STABLE,
-                                  computed from the 2 most recent identifications per plant)
-- service/DashboardService.java (interface) + service/impl/DashboardServiceImpl.java
-  - getDashboard(userId): plants bounded at PageRequest.of(0, 200) (not unpaged — personal-garden
-    app, 200 is a generous cap); reuses IdentificationRepository.findLatestPerPlant() (added in
-    T2.10a) for the health summary; ReminderRepository.findByUserIdAndEnabledTrue() (new) partitioned
-    by nextDueAt vs start-of-today/start-of-tomorrow using an injected Clock (shared/config/
-    ClockConfig.java — Clock.systemDefaultZone() bean, for testability)
-  - Deliberately NOT @Cacheable — nothing evicts it yet; a stale dashboard would be misleading
-- controller/DashboardController.java — GET /api/v1/dashboard → ApiResponse<DashboardResponse>
+### species/ — fully implemented (T6.1, T6.4)
+> Shared across users — no ownership check on the Species row itself. See
+> ARCHITECT.md's Domain Model section.
+- entity/Species.java — extends AuditableEntity; scientificName (unique),
+  commonName, description, careOverview, imageUrl, externalDataSource
+  ("AI"|"WIKIPEDIA"|"MANUAL"), externalDataFetchedAt, status
+- entity/SpeciesStatus.java — ACTIVE | NEEDS_REVIEW
+- dto/{SpeciesResponse, SpeciesSummaryDto (speciesId, scientificName, commonName,
+  imageUrl, plantCount, healthSummary)}
+- mapper/SpeciesMapper.java (MapStruct, toResponse only)
+- repository/SpeciesRepository.java — findByScientificName, existsByScientificName
+- service/SpeciesService(+Impl) — findOrCreate() (dedup + fires async enrichment),
+  getSpecies(), getUserSpecies(userId, pageable) — groups the caller's plants by
+  speciesId via PlantRepository's distinct-speciesId queries, healthSummary via
+  the same findLatestPerPlant() batch pattern PlantServiceImpl uses
+- service/SpeciesEnrichmentService(+Impl) — @Async enrich(speciesId), see
+  ARCHITECT.md's enrichment pattern for the full success/failure handling
+- controller/SpeciesController.java — GET /{id} (public read), GET /mine (paginated)
 
-## DB Migrations (in order)
+### chat/ — fully implemented (T4.1, T6.13)
+- dto/ChatRequest.java — @NotBlank message, nullable plantId (T6.13)
+- dto/ChatResponse.java — reply
+- service/ChatService(+Impl) — 4-param constructor (OllamaClient, PlantRepository,
+  IdentificationRepository, TreatmentRepository). chat(): rate-limit (30/hour) →
+  if plantId present, buildPlantContext() (ownership-checked, throws
+  ResourceNotFoundException before buildGardenContext() runs) prepended to
+  buildGardenContext(); else garden context alone → one prompt string →
+  ollamaClient.chat(prompt). buildPlantContext(): nickname/species line + optional
+  last-scan health line (IdentificationRepository.findLatestPerPlant, reused) +
+  optional active-treatment line (plant.activeTreatmentId → TreatmentRepository.findById())
+- controller/ChatController.java — POST /api/v1/chat
+
+### dashboard/ — fully implemented (T2.10b, extended T6.7)
+- dto/DashboardResponse.java — healthSummary, overdueReminders, todayReminders,
+  healthTrends, recentScans (List<RecentScanDto>, T6.7), speciesCount (T6.7)
+- dto/{HealthSummaryDto, ReminderSummaryDto, PlantHealthTrendDto, RecentScanDto}
+- service/DashboardService(+Impl) — getDashboard(userId): plants bounded at 200,
+  reuses findLatestPerPlant() for health summary, Clock-injected day partitioning
+  for overdue/today reminders, last-3 identifications for recentScans,
+  distinct-non-null-speciesId count among ACTIVE plants for speciesCount.
+  Deliberately NOT @Cacheable — nothing evicts it, a stale dashboard would mislead.
+- controller/DashboardController.java — GET /api/v1/dashboard
+  (the frontend's Home page, T6.7, consumes this same endpoint — no second one)
+
+## DB Migrations (in order — canonical list, don't duplicate elsewhere)
+```
 001_create_users.sql
 002_create_plants.sql
 003_create_identifications.sql
 004_create_reminders_and_care_logs.sql
 005_create_push_subscriptions.sql
-006_alter_identifications.sql      ← raw_response TEXT not JSONB
-007_add_annotation_regions.sql     ← ✅ T2.9 — adds annotation_regions JSONB to identifications
-008_add_care_plan.sql              ← ✅ T2.6 — adds care_plan JSONB to identifications
-009_add_health_to_identifications.sql ← ✅ adds health_status VARCHAR(30), health_notes TEXT
-010_add_user_preferences.sql       ← ✅ AddChooseAi — users.ai_model_preference VARCHAR(50)
-011_add_image_dimensions.sql       ← ✅ T2.F — identifications.source_image_width/height INT
-012_add_treatment_plans.sql        ← ✅ T3.4 — new treatment_plans table; reminders gains
-                                      recurring/treatment_plan_id/treatment_plan_title/step_order
+006_alter_identifications.sql            raw_response TEXT not JSONB
+007_add_annotation_regions.sql           annotation_regions JSONB (before 008)
+008_add_care_plan.sql                    care_plan JSONB
+009_add_health_to_identifications.sql    health_status, health_notes
+010_add_user_preferences.sql             users.ai_model_preference
+011_add_image_dimensions.sql             identifications.source_image_width/height
+012_add_treatment_plans.sql              treatment_plans table; reminders gains
+                                          recurring/treatment_plan_id/title/step_order
+013_add_reminder_instruction.sql         reminders.instruction TEXT
+014_add_step_detail.sql                  reminders.step_detail/step_diagram_*
+015_add_ai_model_used.sql                identifications.ai_model_used
+016_create_species.sql                   species table
+017_alter_plants_add_species_fk.sql      plants.species_id/last_scan_id/
+                                          active_treatment_id (no inline FK on the
+                                          last one — treatments doesn't exist until 018)
+018_create_treatments.sql                treatments table
+019_alter_identifications_add_plant_species_fk.sql
+                                          identifications.species_id FK; deferred
+                                          fk_plants_active_treatment constraint from 017
+```
+All 19 applied, in exactly this XML-listed order in db.changelog-master.xml
+(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #020).
 
-Current master XML order: 001→012 inclusive, strictly sequential, never reordered.
-
-## Test Inventory (full suite: 132/132 passing as of T3.4, checkstyle clean)
-unit/UserServiceTest.java
-unit/PlantServiceTest.java                ← +7 SaveFromIdentification tests (nickname fallbacks,
-                                             ownership check, reminder creation); @Mock
-                                             IdentificationRepository, ReminderRepository, @Spy
-                                             ObjectMapper = new ObjectMapper()
-unit/IdentificationServiceImplTest.java   ← nested classes: Identify, CarePlanParsing,
-                                             AnnotationRegions, ReminderCreation, Kafka,
-                                             GetUserIdentifications, CureAdvice, AddCareCard.
-                                             Constructs IdentificationServiceImpl manually
-                                             (14-param constructor — see DashboardServiceTest for the
-                                             sibling pattern using an injected fixed Clock instead of
-                                             Instant.now()). CureAdvice tests mock
-                                             deepSeekClient.generateCureAdvice() returning PLAIN TEXT
-                                             — this is intentional: plain text is invalid JSON, so it
-                                             naturally exercises parseCureAdvice()'s fallback path
-                                             (advice=rawString, actionPlan=null) without needing
-                                             updates after the T3.4 JSON-response change.
-unit/ActionPlanValidatorTest.java         ← ✅ T3.4, 21 tests — the highest-value test in that task;
-                                             every clamp/reject/boundary case for normalize()
-unit/PlantNetClientTest.java
-unit/OllamaClientTest.java
-reminder/unit/ReminderServiceTest.java    ← nested: CreateReminder, GetUserReminders,
-                                             CompleteReminder, DeleteReminder, CalculateNextDueAt,
-                                             ✅ T3.4 ApplyCompletionToReminder (4: recurring
-                                             reschedules, one-time disables, last-step completes the
-                                             plan, non-last-step leaves it ACTIVE)
-reminder/unit/CareLogServiceTest.java     ← ✅ T3.4 updated: logCare() test now verifies delegation
-                                             to reminderService.applyCompletionToReminder() and
-                                             explicitly asserts reminderRepository.save()/
-                                             calculateNextDueAt() are NOT called directly (proves no
-                                             duplicate rescheduling logic remains in this class)
-reminder/unit/TreatmentPlanServiceTest.java ← ✅ T3.4, 10 tests — step count/dueOffsetDays math,
-                                             ROUTINE-plan rejection, ownership checks, diagram
-                                             persistence, sourceCareCardType validation
+## Test Inventory
+Full unit suite: 183/183 passing as of T6.14 (checkstyle clean). Layout:
+```
+unit/{UserServiceTest, PlantServiceTest, IdentificationServiceImplTest,
+      ActionPlanValidatorTest, PlantNetClientTest, OllamaClientTest}.java
+reminder/unit/{ReminderServiceTest, CareLogServiceTest, TreatmentPlanServiceTest}.java
+treatment/unit/TreatmentServiceTest.java
+species/unit/{SpeciesServiceTest, SpeciesEnrichmentServiceImplTest}.java
 dashboard/unit/DashboardServiceTest.java
 chat/unit/ChatServiceImplTest.java
 shared/unit/LocalFileStorageServiceTest.java
-integration/AuthControllerIT.java
-integration/PlantControllerIT.java
+integration/{AuthControllerIT, PlantControllerIT}.java
 AbstractIntegrationTest.java    ← Testcontainers base (PostgreSQL + Redis)
-testdata/PlantTestDataBuilder.java
-testdata/UserTestDataBuilder.java
-MISSING: IdentificationControllerIT.java, TreatmentPlanControllerIT.java
-
-
-## Bug Fixes Applied
-- IdentificationController.analyze(): organs changed @RequestPart → @RequestParam.
-  @RequestPart requires application/json or text/plain; multipart string fields arrive as
-  application/octet-stream which has no converter. @RequestParam handles them correctly.
-
-- RestPage Redis 500: @JsonIgnoreProperties(ignoreUnknown=true) only ignores UNKNOWN fields.
-  "pageable"/"sort" are KNOWN (inherited from PageImpl), so Jackson tried to reconstruct
-  Sort with empty orders → IllegalArgumentException. Fixed by explicitly listing
-  {"pageable","sort","last","first","empty","numberOfElements"} in @JsonIgnoreProperties.
-  CacheConfig now implements CachingConfigurer + overrides errorHandler() with a logging
-  handler so future Redis failures degrade to WARN + cache miss instead of 500.
-  ACTION REQUIRED after deploying: docker exec -it plantpal-redis redis-cli FLUSHDB
-
-- CORS wildcard: setAllowedOrigins("*") + allowCredentials=true rejected by Spring.
-  Fixed by using setAllowedOriginPatterns("*").
+testdata/{PlantTestDataBuilder, UserTestDataBuilder}.java
+```
+`IdentificationServiceImplTest` is the largest file — nested classes per concern
+(Identify, CarePlanParsing, AnnotationRegions, Kafka, CureAdvice, AddCareCard,
+species-matching). Constructed manually in `@BeforeEach` (15+ param constructor).
+**Missing:** IdentificationControllerIT, TreatmentPlanControllerIT,
+TreatmentControllerIT, SpeciesControllerIT — only unit tests exist for these.
 
 ## Known Issues / Open Items
-- JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI
-- ✅ RESOLVED (T4.1): AiTestController deleted entirely (was the "not @Profile(dev) guarded" risk —
-  no longer exists, don't re-add it)
-- ✅ RESOLVED (T2.C): IdentificationController no longer blocks the HTTP thread on the full AI
-  pipeline — POST /analyze persists PENDING + publishes to Kafka and returns 202 immediately;
-  GET /{id} polls for the result once IdentificationConsumer finishes processIdentification().
-- IdentificationControllerIT missing; TreatmentPlanControllerIT also missing (T3.4, no integration
-  test written — only unit tests against mocked repositories)
-- Branch protection on main + dev configured but integration tests not running in CI
-- Spotless (Google Java Format) flags CRLF line endings on new files written by Claude Code
-  on Windows. Fix with: cd backend && mvn spotless:apply
-- PlantNetClient is now called by PlantNetAnnotationClient (T2.9) — no longer completely dead code.
-  However, PlantNetAnnotationClient is NOT @Primary, so DeepSeekAnnotationClient is used by default.
-  PlantNet annotation path is a non-primary fallback; clean up only if vision annotation is fully removed.
-- plantnet/ DTOs (PlantNetResponse, PlantNetResult, etc.) still in use by PlantNetAnnotationClient.
-- OllamaClient (llava-phi3) is active — annotation fallback on 429 AND OLLAMA_LLAVA preference path.
-- GITHUB_TOKEN in .env is a GitHub PAT — keep rotating if accidentally shared in chat.
-  GitHub Models rate limits: 50 requests/day for gpt-4o (vision). 429 on annotation → Ollama fallback.
-  429 on identification → PlantPalException 429 bubbles to user (no automatic fallback at that layer).
-- T3.4 backend work is uncommitted as of end of this session on feature/PP-028-actionable-care-plans-2
-  — commit it before starting anything else, or a `git stash`/branch switch will lose it.
-- T3.5 frontend has substantial uncommitted work on the SAME branch from a separate session
-  (set-reminder-dialog, treatment-plan.model.ts/.service.ts, mermaid-diagram component, modified
-  care-card/disease-detail-panel) that has NOT been verified against the now-complete backend
-  contract — don't assume it's done or correct without checking `ng build`/`ng lint` and the actual
-  request/response shapes against ReminderResponse/TreatmentPlanResponse as implemented here.
+- JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI (Phase 5)
+- Integration tests not running in CI (Testcontainers phase isolation issue)
+- Missing controller-level integration tests — see Test Inventory above
+- **GITHUB_TOKEN must be rotated before prod** — was shared in chat sessions during dev
+- PlantNetClient + plantnet/ DTOs are effectively dead code (only reachable via the
+  non-primary PlantNetAnnotationClient fallback, or the PLANTNET preference) —
+  cleanup candidate, not urgent
+- GitHub Models rate limits: ~50 gpt-4o vision calls/day. 429 on annotation →
+  Ollama fallback; 429 on identification → PlantPalException(429) bubbles to the
+  user, no automatic fallback at that layer
+- Kafka/Zookeeper has no production hosting decision yet — needed before T5.5
+  (managed add-on, or fall back to synchronous identification for v1.0.0)
+- Spotless (Google Java Format) flags CRLF line endings on new files written on
+  Windows — fix with `cd backend && mvn spotless:apply`
 
 ## Key Files
+```
 backend/src/main/java/com/plantpal/shared/dto/ApiResponse.java
 backend/src/main/java/com/plantpal/shared/exception/GlobalExceptionHandler.java
 backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java
-backend/src/main/java/com/plantpal/identification/client/PlantNetClient.java
 backend/src/main/java/com/plantpal/identification/client/DeepSeekClient.java
 backend/src/main/java/com/plantpal/identification/client/GitHubModelsClient.java
 backend/src/main/java/com/plantpal/identification/service/impl/IdentificationServiceImpl.java
 backend/src/main/java/com/plantpal/identification/util/ActionPlanValidator.java
 backend/src/main/java/com/plantpal/reminder/service/impl/ReminderServiceImpl.java
-backend/src/main/java/com/plantpal/reminder/service/impl/TreatmentPlanServiceImpl.java
+backend/src/main/java/com/plantpal/treatment/service/impl/TreatmentServiceImpl.java
+backend/src/main/java/com/plantpal/species/service/impl/SpeciesServiceImpl.java
 backend/src/main/resources/db/changelog/db.changelog-master.xml
 backend/src/main/resources/application-dev.yml
 backend/.env.example
+```

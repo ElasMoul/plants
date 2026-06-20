@@ -10,18 +10,15 @@
 > Scope: Architecture and infrastructure only.
 > To restore: paste contents of ARCHITECT.md as first message.
 
-## BACKEND AGENT
+## BACKEND AGENT  
 > Conversation type: Claude Code
 > Scope: Java/Spring Boot — execution and troubleshooting.
 > To restore: paste contents of BACKEND.md as first message.
 
 ## FRONTEND AGENT
-> Conversation type: Claude Code
+> Conversation type: Claude Code  
 > Scope: Angular — execution and troubleshooting.
 > To restore: paste contents of FRONTEND.md as first message.
-
-> All three agents should also read STATE.md (current phase, next tasks) and
-> TASK_PLAN.md (the task this session is likely working from) once restored.
 
 ---
 
@@ -30,15 +27,6 @@ After each session:
 1. Update STATE.md (completed tasks, active branches, open items)
 2. Update the relevant agent .md if new patterns or decisions were established
 3. Commit: `chore(agents): update agent memory — [what changed]`
-
-### Keeping memory lean
-These files are restore prompts and a live status board, not an archive. When a
-file grows large with content that's now historical (a phase shipped, a decision
-is settled, a bug is fixed and verified), archive the current version into
-`Archive/<FileName>_<N>.md` first, then rewrite the live file to keep only what's
-still load-bearing for future sessions. Durable patterns belong in ARCHITECT.md;
-current status and the open task list belong in STATE.md; implementation detail
-belongs in BACKEND.md/FRONTEND.md's inventories, not as session-by-session prose.
 
 ---
 

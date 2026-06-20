@@ -1,211 +1,73 @@
 # PlantPal — Claude Code Instructions
 
 > This file is read automatically by Claude Code on every session.
-> It defines the full architecture, conventions, and current build state.
-> Update it after every completed phase.
+> It defines the architecture, conventions, and current build state.
+> Keep it lean — it loads every time. Durable patterns belong here or in
+> ARCHITECT.md; full file-level inventories belong in BACKEND.md/FRONTEND.md;
+> session history belongs in STATE.md. Update after every completed phase.
 
 ---
 
 ## Project Overview
 
 **PlantPal** — A web app that helps plant enthusiasts care for their plants.
-Core loop: take a photo → AI identifies the plant and detects health issues
+Core loop: take a photo → AI identifies the species and detects health issues
 → personalised care schedule with reminders → AI assistant for ongoing questions.
+Phase 6 added a species-centric domain on top of this: shared botanical knowledge
+per species, and a per-disease Treatment lifecycle.
 
 **Team:** 2 developers | **Architecture:** Modular monolith (Spring Boot + Angular)
-**AI:** Ollama (local) — model: phi3 | **Target:** Enterprise-grade, horizontally scalable
+**Target:** Enterprise-grade, horizontally scalable
 
 ---
 
 ## Architecture Decision: Modular Monolith
 
 > 💡 **Why this matters for learning:** We deliberately chose a modular monolith over microservices
-> for the MVP. Each module (plant, identification, reminder, chat, user) is fully self-contained
-> with its own layers. If PlantPal ever scales to need microservices, each module can be extracted
-> independently without a full rewrite. This is the "monolith-first" pattern used by Shopify,
-> Stack Overflow, and Basecamp.
+> for the MVP. Each module (plant, identification, reminder, treatment, species, chat, user) is
+> fully self-contained with its own layers. If PlantPal ever scales to need microservices, each
+> module can be extracted independently without a full rewrite. This is the "monolith-first"
+> pattern used by Shopify, Stack Overflow, and Basecamp.
 
 ---
 
 ## Project Structure
-> ⚠️ This section reflects ACTUAL files on disk (verified 2026-06-14).
-> Files listed here exist. Files marked [PLANNED] do not exist yet.
+> High-level map only. For exact file-by-file inventories, see BACKEND.md
+> (backend) and FRONTEND.md (frontend) — don't let this section and those
+> drift into two competing copies of the same list.
 
 ```
 plantpal/
-├── backend/
-│   ├── src/main/java/com/plantpal/
-│   │   ├── PlantPalApplication.java
-│   │   │
-│   │   ├── plant/                                    # ✅ Fully implemented
-│   │   │   ├── controller/PlantController.java
-│   │   │   ├── service/PlantService.java
-│   │   │   ├── service/impl/PlantServiceImpl.java
-│   │   │   ├── repository/PlantRepository.java
-│   │   │   ├── entity/Plant.java
-│   │   │   ├── entity/PlantStatus.java
-│   │   │   ├── dto/CreatePlantRequest.java
-│   │   │   ├── dto/UpdatePlantRequest.java
-│   │   │   ├── dto/PlantResponse.java
-│   │   │   └── mapper/PlantMapper.java
-│   │   │
-│   │   ├── identification/                           # ✅ T2.9 complete
-│   │   │   ├── controller/IdentificationController.java
-│   │   │   ├── controller/AiTestController.java      # ⚠️ Not @Profile("dev") guarded
-│   │   │   ├── service/IdentificationService.java
-│   │   │   ├── service/impl/IdentificationServiceImpl.java
-│   │   │   ├── client/VisionAnnotationClient.java    # ✅ T2.9 — interface
-│   │   │   ├── client/DeepSeekAnnotationClient.java  # ✅ T2.9 — @Primary implementation
-│   │   │   ├── client/PlantNetAnnotationClient.java  # ✅ T2.9 — non-primary implementation
-│   │   │   ├── client/PlantNetClient.java            # HTTP/1.1 forced (ALPN fix)
-│   │   │   ├── client/OllamaClient.java              # phi3, local Ollama
-│   │   │   ├── client/DeepSeekClient.java            # ✅ T2.6 + T2.9 (analyzeRegions added)
-│   │   │   ├── repository/IdentificationRepository.java
-│   │   │   ├── entity/Identification.java
-│   │   │   ├── entity/IdentificationStatus.java
-│   │   │   ├── dto/IdentificationResponse.java
-│   │   │   ├── dto/IdentifyRequest.java
-│   │   │   ├── dto/CareCardDto.java                  # ✅ T2.6
-│   │   │   ├── dto/CarePlanDto.java                  # ✅ T2.6
-│   │   │   ├── dto/AnnotationRegionDto.java           # ✅ T2.9
-│   │   │   ├── dto/BoundingBoxDto.java               # ✅ T2.9
-│   │   │   ├── dto/plantnet/PlantNetResponse.java
-│   │   │   ├── dto/plantnet/PlantNetResult.java
-│   │   │   ├── dto/plantnet/PlantNetSpecies.java
-│   │   │   ├── dto/plantnet/PlantNetTaxon.java
-│   │   │   └── mapper/IdentificationMapper.java
-│   │   │
-│   │   ├── reminder/                                 # ⚠️ Partial (T2.6 bootstrap only)
-│   │   │   ├── entity/CareType.java                  # ✅ T2.6 — enum: WATERING/FERTILIZING/REPOTTING/PRUNING
-│   │   │   ├── entity/Reminder.java                  # ✅ T2.6 — no AuditableEntity (table has no audit cols)
-│   │   │   ├── repository/ReminderRepository.java    # ✅ T2.6 — minimal JpaRepository
-│   │   │   └── [service, controller, scheduler planned in T3.1]
-│   │   │
-│   │   ├── chat/                                     # ❌ NOT STARTED
-│   │   │   └── [all files planned in T4.1]
-│   │   │
-│   │   ├── user/                                     # ✅ Fully implemented
-│   │   │   ├── controller/AuthController.java
-│   │   │   ├── service/UserService.java
-│   │   │   ├── service/impl/UserServiceImpl.java
-│   │   │   ├── repository/UserRepository.java
-│   │   │   ├── entity/User.java
-│   │   │   ├── entity/UserStatus.java
-│   │   │   ├── dto/RegisterRequest.java
-│   │   │   ├── dto/LoginRequest.java
-│   │   │   ├── dto/AuthResponse.java
-│   │   │   ├── dto/UserResponse.java
-│   │   │   └── mapper/UserMapper.java
-│   │   │
-│   │   └── shared/                                   # ✅ Fully implemented
-│   │       ├── audit/AuditableEntity.java
-│   │       ├── config/SecurityConfig.java
-│   │       ├── config/AsyncConfig.java               # aiTaskExecutor (core=2, max=5)
-│   │       ├── config/CacheConfig.java               # Redis, implements CachingConfigurer
-│   │       ├── config/JpaConfig.java
-│   │       ├── config/OpenApiConfig.java
-│   │       ├── config/StorageConfig.java             # Serves /photos/** (dev)
-│   │       ├── dto/ApiResponse.java
-│   │       ├── dto/RestPage.java                     # Jackson-serialisable Page wrapper
-│   │       ├── exception/PlantPalException.java
-│   │       ├── exception/ResourceNotFoundException.java
-│   │       ├── exception/UnauthorizedException.java
-│   │       ├── exception/ValidationException.java
-│   │       ├── exception/GlobalExceptionHandler.java
-│   │       ├── filter/CorrelationIdFilter.java
-│   │       ├── filter/JwtAuthFilter.java
-│   │       ├── storage/FileStorageService.java       # Interface
-│   │       ├── storage/LocalFileStorageService.java  # @Profile("!prod")
-│   │       └── util/JwtUtil.java
-│   │
-│   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   ├── application-dev.yml
-│   │   ├── application-test.yml
-│   │   └── db/changelog/
-│   │       ├── db.changelog-master.xml
-│   │       └── migrations/
-│   │           ├── 001_create_users.sql
-│   │           ├── 002_create_plants.sql
-│   │           ├── 003_create_identifications.sql
-│   │           ├── 004_create_reminders_and_care_logs.sql
-│   │           ├── 005_create_push_subscriptions.sql
-│   │           ├── 006_alter_identifications.sql     # raw_response TEXT not JSONB
-│   │           ├── 007_add_annotation_regions.sql    # ✅ T2.9 — annotation_regions JSONB (inserted BEFORE 008)
-│   │           ├── 008_add_care_plan.sql             # ✅ T2.6 — care_plan JSONB on identifications
-│   │           └── 009_add_performance_indexes.sql   # [PLANNED — T5.2]
-│   │
-│   └── src/test/java/com/plantpal/
-│       ├── AbstractIntegrationTest.java              # Testcontainers base (PG + Redis)
-│       ├── testdata/PlantTestDataBuilder.java
-│       ├── testdata/UserTestDataBuilder.java
-│       ├── plant/unit/PlantServiceTest.java
-│       ├── plant/integration/PlantControllerIT.java
-│       ├── identification/unit/IdentificationServiceImplTest.java
-│       ├── identification/unit/OllamaClientTest.java
-│       ├── identification/unit/PlantNetClientTest.java
-│       ├── identification/integration/IdentificationControllerIT.java  # [MISSING]
-│       ├── user/unit/UserServiceTest.java
-│       └── user/integration/AuthControllerIT.java
+├── backend/src/main/java/com/plantpal/
+│   ├── PlantPalApplication.java
+│   ├── plant/            Plant CRUD (entity, DTOs, service, controller, Redis cache)
+│   ├── identification/   AI identification pipeline (Kafka async), visual annotation,
+│   │                     care plans, actionable action-plans, species/plant matching
+│   ├── reminder/         Reminders, care logs, web push, TreatmentPlan (generic
+│   │                     multi-step action plan backed by Reminder rows)
+│   ├── treatment/        Treatment entity — per-disease lifecycle, wraps TreatmentPlan
+│   ├── species/          Species entity — shared botanical knowledge across users
+│   ├── chat/             AI chat assistant (optional plant-specific context)
+│   ├── dashboard/        Home page aggregate endpoint
+│   ├── user/             Auth, JWT, user preferences (incl. AI model choice)
+│   └── shared/           Security, caching, storage, exceptions, correlation IDs
+│
+│   db/changelog/migrations/   19 Liquibase migrations applied (001–019) — see
+│                               BACKEND.md for the full annotated list
 │
 ├── frontend/src/app/
-│   ├── app.module.ts
-│   ├── app-routing.module.ts
-│   ├── app.component.{ts,html,scss}
-│   │
-│   ├── core/                                         # ✅ Fully implemented
-│   │   ├── core.module.ts
-│   │   ├── guards/auth.guard.ts
-│   │   ├── interceptors/jwt.interceptor.ts
-│   │   ├── models/api-response.model.ts
-│   │   ├── models/user.model.ts
-│   │   └── services/auth.service.ts
-│   │
-│   ├── shared/shared.module.ts
-│   │
+│   ├── core/              auth service, JWT interceptor, guard
+│   ├── shared/            mermaid-diagram, model-selector, image-lightbox,
+│   │                      treatment-step-list, step-detail-dialog
 │   └── features/
-│       ├── auth/                                     # ✅ login + register
-│       │   ├── login/login.component.{ts,html,scss}
-│       │   ├── register/register.component.{ts,html,scss}
-│       │   ├── auth-routing.module.ts
-│       │   └── auth.module.ts
-│       │
-│       ├── plant/                                    # ✅ Full CRUD
-│       │   ├── components/plant-card/
-│       │   ├── components/plant-detail/
-│       │   ├── components/plant-form/
-│       │   ├── components/plant-list/
-│       │   ├── models/plant.model.ts
-│       │   ├── services/plant.service.ts
-│       │   ├── plant-routing.module.ts
-│       │   └── plant.module.ts
-│       │
-│       ├── identification/                           # ✅ Implemented (PR #5 merged)
-│       │   ├── components/identification-result/
-│       │   ├── components/photo-upload/
-│       │   ├── components/photo-annotator/           # [PLANNED — T2.9 frontend; backend ready]
-│       │   ├── components/preview-card/              # [PLANNED — T2.8]
-│       │   ├── components/care-plan/                 # ✅ T2.7 — care-card + care-plan components + CarePlanModule
-│       │   ├── identification-home/
-│       │   ├── pages/identification-page/
-│       │   ├── models/identification.model.ts
-│       │   ├── services/identification.service.ts
-│       │   ├── identification-routing.module.ts
-│       │   └── identification.module.ts
-│       │
-│       ├── reminder/                                 # ❌ Stub only
-│       │   └── reminder-list/ (stub)
-│       │
-│       ├── chat/                                     # ❌ Stub only
-│       │   └── chat-home/ (stub)
-│       │
-│       └── ai-test/                                  # Dev tool — should be removed before prod
+│       ├── auth/ plant/ identification/ reminder/ treatment/ species/
+│       └── dashboard/ (Home + Garden Dashboard) / chat/
+│   Bottom nav (5 items): Home | Garden | Identify | Reminders | Chat
 │
-├── docker-compose.yml
+├── docker-compose.yml       PostgreSQL 15 + Redis 7 + Kafka + Zookeeper
 ├── .github/workflows/{ci.yml,deploy.yml}
-└── .claude/                                          # Agent memory
-    ├── AGENTS.md, ARCHITECT.md, BACKEND.md
-    ├── FRONTEND.md, STATE.md, TASK_PLAN.md, CLAUDE.md
+└── .claude/                 Agent memory — AGENTS, ARCHITECT, BACKEND, FRONTEND,
+                              STATE, TASK_PLAN, CLAUDE.md (this file)
 ```
 
 ---
@@ -224,19 +86,24 @@ private List<Plant> userPlants;
 
 // Constants: SCREAMING_SNAKE_CASE
 static final int MAX_PHOTO_SIZE_MB = 10;
-static final int DEFAULT_WATERING_DAYS = 7;
 static final String BEARER_PREFIX = "Bearer ";
 
 // Enums: PascalCase type, SCREAMING value
-enum PlantStatus  { ACTIVE, ARCHIVED }
-enum CareType     { WATERING, FERTILIZING, REPOTTING, PRUNING }
-enum HealthStatus { HEALTHY, ISSUES_DETECTED, UNKNOWN }
-enum Confidence   { HIGH, MEDIUM, LOW }
+enum PlantStatus     { ACTIVE, ARCHIVED }
+enum CareType        { WATERING, LIGHT, HUMIDITY, TEMPERATURE, FERTILIZING,
+                        REPOTTING, PRUNING, PEST, SEASONAL, BEGINNER_TIP }
+enum HealthStatus    { HEALTHY, ISSUES_DETECTED, UNKNOWN }
+enum Confidence      { HIGH, MEDIUM, LOW }
+enum TreatmentStatus { DRAFT, IN_PROGRESS, COMPLETED, DISMISSED }    // Treatment entity
+enum TreatmentPlanStatus { ACTIVE, COMPLETED, ABANDONED }            // TreatmentPlan entity
+                                                                       // ⚠️ two different enums
+                                                                       // for two different
+                                                                       // entities — see
+                                                                       // ARCHITECT.md
 
 // DB tables + columns: snake_case
 @Table(name = "plants")
 @Column(name = "common_name")
-@Column(name = "acquired_at")
 ```
 
 ### Mandatory class member order (Java)
@@ -284,169 +151,52 @@ public interface PlantService {
 
 ## Enterprise Patterns (apply consistently)
 
-### 1. Uniform API Response
-```java
-// Every endpoint returns ApiResponse<T> — never raw objects
-@PostMapping
-public ResponseEntity<ApiResponse<PlantResponse>> createPlant(...) {
-    PlantResponse plant = plantService.createPlant(request, getUserId());
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(ApiResponse.success(plant, "Plant created successfully"));
-}
-```
+1. **Uniform API Response** — every endpoint returns `ApiResponse<T>`, never a raw object.
+2. **Pagination on all list endpoints** — never return an unbounded list; always `Pageable`.
+3. **Soft deletes everywhere** — never hard-delete; set `status = ARCHIVED`.
+4. **Audit fields via `AuditableEntity`** (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
+   `@LastModifiedBy`, free via Spring Data Auditing) on every entity **except** Reminder,
+   CareLog, PushSubscription, TreatmentPlan, Treatment (no audit columns on those tables —
+   use `@CreationTimestamp`/`@UpdateTimestamp` instead). Species extends `AuditableEntity` but
+   is the one entity with no per-row *ownership* — don't conflate the two ideas.
+5. **Async AI calls** — `@Async("aiTaskExecutor")` + `CompletableFuture`, never block the HTTP
+   thread on a 5–15s external call. Cross-bean calls use `@Async`; same-class fire-and-forget
+   calls use `CompletableFuture.runAsync(..., aiTaskExecutor)` directly (Spring's `@Async` proxy
+   has no effect on self-invocation).
+6. **Rate limiting on AI endpoints** — Bucket4j, `Bandwidth.builder()` (not the deprecated
+   `Bandwidth.simple()`).
+7. **Correlation ID on every request** — `CorrelationIdFilter` adds `X-Correlation-ID`; logged
+   via MDC.
 
-### 2. Pagination on all list endpoints
-```java
-// Never return unbounded lists — always use Pageable
-Page<PlantResponse> getUserPlants(Long userId, Pageable pageable);
-
-// Controller:
-@GetMapping
-public ResponseEntity<ApiResponse<Page<PlantResponse>>> getUserPlants(
-    @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-```
-
-### 3. Soft deletes everywhere
-```java
-// Never hard-delete — set status = ARCHIVED
-// Users can recover data, you can audit history
-plantRepository.archivePlant(id);  // UPDATE plants SET status='ARCHIVED' WHERE id=?
-```
-
-### 4. Audit fields on every entity (via AuditableEntity)
-```java
-// Every entity extends this
-@MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
-public abstract class AuditableEntity {
-    @CreatedDate   private Instant createdAt;
-    @LastModifiedDate private Instant updatedAt;
-    @CreatedBy     private Long createdBy;  // userId from SecurityContext
-    @LastModifiedBy private Long updatedBy;
-}
-```
-> 💡 **Why:** Audit trails are free with Spring Data Auditing. Critical for debugging,
-> support requests, and GDPR compliance if you ever open to the public.
-
-### 5. Async AI calls
-```java
-// Claude API can take 5-15 seconds. Never block the HTTP thread.
-// Return the job ID immediately, let the client poll or use SSE.
-@Async("aiTaskExecutor")
-public CompletableFuture<IdentificationResult> analyzePhotoAsync(byte[] image) { ... }
-```
-> 💡 **Why:** Under load, synchronous AI calls would exhaust your HTTP thread pool.
-> Async processing is the enterprise pattern for slow external services.
-
-### 6. Rate limiting on AI endpoints
-```java
-// Use Bucket4j to limit Claude API calls per user
-// Prevents abuse and controls your Anthropic bill
-@RateLimiter(name = "ai-identification", fallbackMethod = "rateLimitFallback")
-public IdentificationResponse analyzePhoto(...) { ... }
-```
-
-### 7. Correlation ID on every request
-```java
-// CorrelationIdFilter adds X-Correlation-ID to every request/response
-// Invaluable for tracing issues across logs
-MDC.put("correlationId", UUID.randomUUID().toString());
-```
+See ARCHITECT.md for the deeper architectural patterns built on top of these (Kafka async
+identification, Redis photo storage, the Species/Treatment domain model, etc.) — this section is
+the baseline conventions, not the full picture.
 
 ---
 
 ## Database Schema
 
+19 Liquibase migrations applied (`001`–`019`), executed in the order listed in
+`db.changelog-master.xml` (NOT filename order — verify the XML, not just the filenames, before
+assuming sequence). Full annotated migration list: BACKEND.md. Full schema: read the migration
+files directly (`backend/src/main/resources/db/changelog/migrations/`) — don't trust a
+hand-copied schema dump in this doc to stay in sync; only the migrations themselves are ground
+truth. Every entity follows the same audit-column shape (see Enterprise Pattern #4):
+
 ```sql
--- All entities extend AuditableEntity fields:
--- created_at, updated_at, created_by, updated_by
-
--- 001_users.sql
-CREATE TABLE users (
-    id              BIGSERIAL PRIMARY KEY,
-    email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
-    first_name      VARCHAR(100) NOT NULL,
-    last_name       VARCHAR(100) NOT NULL,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_by      BIGINT,
-    updated_by      BIGINT
-);
-
--- 002_plants.sql
+-- The baseline shape AuditableEntity maps onto, e.g. plants:
 CREATE TABLE plants (
     id              BIGSERIAL PRIMARY KEY,
     user_id         BIGINT      NOT NULL REFERENCES users(id),
     nickname        VARCHAR(255) NOT NULL,
-    species         VARCHAR(255),            -- AI-identified
-    common_name     VARCHAR(255),
-    photo_url       TEXT,
-    location        VARCHAR(100),            -- "living room", "balcony"
-    notes           TEXT,
+    species_id      BIGINT REFERENCES species(id),         -- added migration 017
+    last_scan_id    BIGINT REFERENCES identifications(id), -- added migration 017
+    active_treatment_id BIGINT REFERENCES treatments(id),  -- added migration 017/019
     status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    acquired_at     DATE,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_by      BIGINT,
-    updated_by      BIGINT
-);
-CREATE INDEX idx_plants_user_id ON plants(user_id);
-CREATE INDEX idx_plants_user_status ON plants(user_id, status);
-
--- 003_identifications.sql
-CREATE TABLE identifications (
-    id              BIGSERIAL PRIMARY KEY,
-    plant_id        BIGINT REFERENCES plants(id) ON DELETE CASCADE,
-    user_id         BIGINT NOT NULL REFERENCES users(id),
-    photo_url       TEXT NOT NULL,
-    raw_response    JSONB,                   -- full Claude response stored for debugging
-    species         VARCHAR(255),
-    common_name     VARCHAR(255),
-    confidence      VARCHAR(20),             -- HIGH, MEDIUM, LOW
-    health_status   VARCHAR(30),             -- HEALTHY, ISSUES_DETECTED, UNKNOWN
-    health_notes    TEXT,
-    care_tips       JSONB,                   -- structured care advice
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by      BIGINT
-);
-CREATE INDEX idx_identifications_plant_id ON identifications(plant_id);
-
--- 004_reminders.sql
-CREATE TABLE reminders (
-    id                  BIGSERIAL PRIMARY KEY,
-    plant_id            BIGINT NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
-    user_id             BIGINT NOT NULL REFERENCES users(id),
-    care_type           VARCHAR(30) NOT NULL,
-    frequency_days      INT  NOT NULL,
-    next_due_at         TIMESTAMPTZ NOT NULL,
-    enabled             BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_reminders_due ON reminders(next_due_at, enabled) WHERE enabled = TRUE;
-
--- 005_care_logs.sql
-CREATE TABLE care_logs (
-    id          BIGSERIAL PRIMARY KEY,
-    plant_id    BIGINT NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
-    user_id     BIGINT NOT NULL REFERENCES users(id),
-    care_type   VARCHAR(30) NOT NULL,
-    notes       TEXT,
-    performed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_care_logs_plant_id ON care_logs(plant_id, performed_at DESC);
-
--- 006_push_subscriptions.sql
-CREATE TABLE push_subscriptions (
-    id          BIGSERIAL PRIMARY KEY,
-    user_id     BIGINT NOT NULL REFERENCES users(id),
-    endpoint    TEXT NOT NULL,
-    key_p256dh  TEXT NOT NULL,
-    key_auth    TEXT NOT NULL,
-    enabled     BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_by      VARCHAR(255),
+    updated_by      VARCHAR(255)
 );
 ```
 
@@ -456,123 +206,72 @@ CREATE TABLE push_subscriptions (
 
 ```xml
 <!-- Spring Boot 3.2.x -->
-spring-boot-starter-web
-spring-boot-starter-security
-spring-boot-starter-data-jpa
-spring-boot-starter-validation
-spring-boot-starter-actuator
-spring-boot-starter-data-redis    <!-- Caching layer -->
-spring-boot-starter-aop           <!-- For rate limiting AOP -->
+spring-boot-starter-web, -security, -data-jpa, -validation, -actuator,
+-data-redis, -aop
 
 <!-- Database -->
-postgresql
-liquibase-core
+postgresql, liquibase-core
+
+<!-- Messaging -->
+spring-kafka
 
 <!-- Auth -->
-jjwt-api + jjwt-impl + jjwt-jackson  (0.12.x)
-
-<!-- AI — Ollama via Spring RestClient (no extra dependency needed) -->
-<!-- base-url and model configured in application-*.yml via ollama.* properties -->
+jjwt-api + jjwt-impl + jjwt-jackson (0.12.x)
 
 <!-- Rate Limiting -->
-<dependency>
-    <groupId>com.bucket4j</groupId>
-    <artifactId>bucket4j-core</artifactId>
-    <version>8.7.0</version>
-</dependency>
+com.bucket4j:bucket4j-core:8.7.0
 
 <!-- Mapping + Boilerplate -->
-mapstruct (1.5.x)
-lombok
+mapstruct (1.5.x), lombok
 
 <!-- Web Push -->
-<dependency>
-    <groupId>nl.martijndwars</groupId>
-    <artifactId>web-push</artifactId>
-    <version>5.1.1</version>
-</dependency>
+nl.martijndwars:web-push:5.1.1
 
 <!-- API Documentation -->
 springdoc-openapi-starter-webmvc-ui (2.x)
 
 <!-- Tests -->
-spring-boot-starter-test
-mockito-core
-assertj-core
+spring-boot-starter-test, mockito-core, assertj-core,
 testcontainers (postgresql + redis)
 
 <!-- Code Quality (build plugins) -->
-checkstyle-plugin
-spotless-plugin (Google Java Format)
-jacoco-plugin  <!-- Code coverage — fail build if < 80% -->
+checkstyle-plugin, spotless-plugin (Google Java Format), jacoco-plugin
 ```
 
-> 💡 **Redis note:** Even if you start with a single instance, wiring Redis early means
-> your cache is shared across multiple instances the moment you scale horizontally.
-> In-memory caching breaks horizontal scaling.
+> 💡 **Redis note:** Wiring Redis early means the cache is shared across instances the moment
+> you scale horizontally — in-memory caching breaks that.
 
 ---
 
 ## AI Integration
 
 ### Provider Map
-| Provider | Model | Purpose | When |
-|---|---|---|---|
-| GitHub Models (Azure) | gpt-4o | Photo identification + health + care plan (single vision call) | Dev + Prod |
-| GitHub Models (Azure) | DeepSeek-R1 | Care plan text regeneration (standalone) | Dev + Prod |
-| PlantNetClient | — | Dead code — no longer called in main flow | Deprecated |
-| OllamaClient | phi3 | Dev testing only | Dev only |
+| Provider | Model | Purpose |
+|---|---|---|
+| GitHubModelsClient | gpt-4o | Photo identification + health + care plan (single vision call) |
+| GitHubModelsClient | gpt-4o-mini | Visual annotation (polygon regions) |
+| DeepSeekClient | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment (all text-only) |
+| OllamaClient | llava-phi3 | Local dev identification + annotation fallback only |
 
-> **Endpoint:** `https://models.inference.ai.azure.com/chat/completions`
-> **Auth:** GitHub PAT via `${DEEPSEEK_API_KEY}` (Bearer token)
-> **Config:** `deepseek.vision-model=gpt-4o` (identification), `deepseek.model=DeepSeek-R1` (care plans)
-> **HTTP/2 required** — Azure endpoint; 5-minute read timeout set on JdkClientHttpRequestFactory.
-> **DeepSeek-R1 quirk:** wraps output in `<think>...</think>` before JSON — `stripThinkTags()` in DeepSeekClient handles this.
+> **Endpoint:** `https://models.inference.ai.azure.com/chat/completions` (GitHub Models)
+> **Auth:** GitHub PAT via `${GITHUB_TOKEN}` (Bearer) — **rotate before prod**, shared in dev chats.
+> **HTTP/2 required** for both Azure-backed clients; 5-minute read timeout.
+> **DeepSeek-R1 quirk:** wraps output in `<think>...</think>` before JSON —
+> `DeepSeekClient.stripThinkTags()` (package-private static, also used by GitHubModelsClient and
+> OllamaClient) handles this plus stray ` ```json...``` ` fences.
 
-### Ollama — dev testing only
-> ⚠️ OllamaClient (phi3) has no role in the current identification flow.
-> Kept for ad-hoc dev testing via AiTestController (which needs a @Profile("dev") guard).
+Full client-split rationale and the Kafka async pipeline built around these calls: ARCHITECT.md.
 
-### OllamaClient pattern
-
-```java
-@Component
-public class OllamaClient {
-
-    private static final String DEFAULT_MODEL = "phi3";
-
-    private final RestClient restClient;
-    private final String model;
-
-    public OllamaClient(
-            @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
-            @Value("${ollama.model:phi3}") String model) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
-        this.model = model;
-    }
-
-    // Returns raw response string — parsing is the caller's responsibility
-    public String chat(String systemPrompt, String userMessage) { ... }
-}
-```
-
-### Plant identification system prompt
-```
-You are an expert botanist and plant pathologist.
-Analyze the described plant and return ONLY a valid JSON object
-(no markdown, no preamble, no trailing text):
+### Plant identification — response shape (paraphrased; see GitHubModelsClient for the literal prompt)
+```json
 {
   "species": "scientific name or null",
-  "common_name": "common name",
+  "common_name": "...",
   "confidence": "HIGH | MEDIUM | LOW",
   "health_status": "HEALTHY | ISSUES_DETECTED | UNKNOWN",
-  "health_notes": "brief description of any visible issues, or null",
-  "care_tips": {
-    "watering_frequency_days": <integer>,
-    "sunlight": "FULL_SUN | PARTIAL_SHADE | SHADE",
-    "fertilizing_frequency_days": <integer>,
-    "common_issues": ["issue1", "issue2"]
-  }
+  "health_notes": "...",
+  "care_tips": { "watering_frequency_days": 7, "sunlight": "...", "...": "..." },
+  "care_plan": { "careCards": [ { "actionPlan": { "...": "see ARCHITECT.md" } } ] }
 }
 ```
 
@@ -582,6 +281,8 @@ You are PlantPal, a friendly and knowledgeable plant care assistant.
 
 The user's garden:
 {garden_context}
+
+{optional plant-specific context block — see ARCHITECT.md's Domain Model section}
 
 Guidelines:
 - Be warm, practical, and specific to the user's actual plants when relevant.
@@ -605,21 +306,26 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
   jpa:
     hibernate.ddl-auto: validate      # Liquibase owns the schema
-    show-sql: false                    # Use query logging instead
   liquibase:
     contexts: dev
 
+github:
+  base-url: ${GITHUB_BASE_URL:https://models.inference.ai.azure.com}
+  token: ${GITHUB_TOKEN}                       # GitHub PAT with models:read scope
+  models:
+    identification-model: ${GITHUB_IDENTIFICATION_MODEL:gpt-4o}
+    annotation-model: ${GITHUB_ANNOTATION_MODEL:gpt-4o-mini}
+
 deepseek:
-  base-url: ${DEEPSEEK_BASE_URL:https://models.inference.ai.azure.com}
-  api-key: ${DEEPSEEK_API_KEY}            # GitHub PAT with models:read scope
-  model: ${DEEPSEEK_MODEL:DeepSeek-R1}   # text model for care plan generation
-  vision-model: ${DEEPSEEK_VISION_MODEL:gpt-4o}  # vision model for identification
+  model: ${DEEPSEEK_MODEL:DeepSeek-R1}
 
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:phi3}
+  model: ${OLLAMA_MODEL:llava-phi3}
 
 app:
   jwt:
@@ -641,21 +347,16 @@ app:
 
 ## Testing Strategy
 
-### Three layers — all required
-
 ```
 unit/          → Pure logic, no Spring context. Mockito. Fast (<1s per test).
 integration/   → Full Spring context + real PostgreSQL via Testcontainers.
-               → Tests the full stack from HTTP request to DB response.
 testdata/      → Builder pattern for all test fixtures. No magic strings in tests.
 ```
 
-### Unit test template
 ```java
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlantService - Unit Tests")
 class PlantServiceTest {
-
     @Mock private PlantRepository plantRepository;
     @Mock private PlantMapper plantMapper;
     @InjectMocks private PlantServiceImpl plantService;
@@ -663,19 +364,15 @@ class PlantServiceTest {
     @Nested
     @DisplayName("createPlant()")
     class CreatePlant {
-
         @Test
         @DisplayName("should create plant successfully when request is valid")
         void shouldCreatePlantSuccessfully() {
-            // Given
             var request = PlantTestDataBuilder.aCreatePlantRequest().build();
             var plant = PlantTestDataBuilder.aPlant().build();
             when(plantRepository.save(any())).thenReturn(plant);
 
-            // When
             var result = plantService.createPlant(request, 1L);
 
-            // Then
             assertThat(result).isNotNull();
             verify(plantRepository).save(any(Plant.class));
         }
@@ -683,26 +380,9 @@ class PlantServiceTest {
 }
 ```
 
-### JaCoCo coverage gate
-```xml
-<!-- Fail the build if coverage drops below 80% -->
-<configuration>
-    <rules>
-        <rule>
-            <element>BUNDLE</element>
-            <limits>
-                <limit>
-                    <counter>LINE</counter>
-                    <value>COVEREDRATIO</value>
-                    <minimum>0.80</minimum>
-                </limit>
-            </limits>
-        </rule>
-    </rules>
-</configuration>
-```
-> 💡 **Why 80%:** 100% is a vanity metric. 80% forces you to test critical paths
-> while not wasting time on trivial getters. This is the industry standard threshold.
+**JaCoCo coverage gate:** currently 10% (temporary), target 80% — restore in Phase 5 with proper
+exclusions. 100% is a vanity metric; 80% forces testing of critical paths without wasting time on
+trivial getters.
 
 ---
 
@@ -710,7 +390,7 @@ class PlantServiceTest {
 
 ```bash
 # Branches
-main          → production, always stable, never commit directly
+main / master → production, never commit directly
 dev           → integration branch, base for all features
 feature/PP-{num}-{short-description}
 bugfix/PP-{num}-{short-description}
@@ -727,7 +407,7 @@ refactor(reminder): extract due-date calculation to helper
 perf(plant): add missing index on plants.user_id
 
 # Module scopes
-plant | identification | reminder | chat | user | auth | shared | config | ci | infra
+plant | identification | reminder | treatment | species | chat | user | auth | shared | config | ci | infra
 ```
 
 ---
@@ -735,12 +415,12 @@ plant | identification | reminder | chat | user | auth | shared | config | ci | 
 ## Running the Project
 
 ```bash
-# Start local infrastructure (PostgreSQL + Redis)
+# Start local infrastructure (PostgreSQL + Redis + Kafka + Zookeeper)
 docker-compose up -d
 
 # Backend
 cd backend
-cp .env.example .env        # fill in ANTHROPIC_API_KEY, JWT_SECRET, VAPID keys
+cp .env.example .env        # fill in GITHUB_TOKEN, JWT_SECRET, VAPID keys
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 # → http://localhost:8080
 # → http://localhost:8080/swagger-ui.html
@@ -766,34 +446,18 @@ open backend/target/site/jacoco/index.html
 
 ## Current Build Status
 
-> **Update after each completed phase.**
+> Full session-by-session history: STATE.md. Full task prompts (completed ones
+> compacted to one-liners, Phase 5 still in full detail): TASK_PLAN.md.
 
-| Phase | Status | Notes |
-|---|---|---|
-| 0 — Project Setup | ✅ Complete | pom.xml, shared infra, all 5 module skeletons, YAML configs |
-| 1 — DB Migrations | ✅ Complete | 6 Liquibase SQL files (006 alters identifications), Ollama phi3 |
-| 1 — Auth + User module | ✅ Complete | JWT, Spring Security 6, UserService, AuthController |
-| 1 — Plant CRUD | ✅ Complete | Entity, DTOs, MapStruct mapper, service, controller, Redis cache |
-| 1 — Unit + Integration Tests | ✅ Complete | UserService & PlantService unit tests; Auth & Plant controller ITs |
-| 2 — PlantNet identification backend | ✅ Complete (superseded) | PlantNetClient exists but no longer called; replaced by DeepSeek vision |
-| 2 — Identification Angular frontend | ✅ Complete | Photo upload, result display (PR #5 merged) |
-| 2 — DeepSeek care plan backend (T2.6) | ✅ Complete | DeepSeekClient, CareCardDto/CarePlanDto, parallel async, reminder bootstrap, migration 008 |
-| 2 — Dynamic care plan frontend (T2.7) | ✅ Complete | CarePlanModule, care-card + care-plan components, wired in identification-result + plant-detail |
-| 2 — One-click save flow (T2.8) | ✅ Complete | SaveIdentificationAsPlantRequest, POST /api/v1/plants/from-identification, auto-reminders; preview-card save form live on frontend |
-| 2 — DeepSeek vision identification | ✅ Complete | PlantNet replaced by gpt-4o (GitHub Models); single vision call returns species+health+carePlan; DeepSeekPlantResult DTO; migration 009 adds health_status/health_notes; 10 unit tests passing; branch: feature/PP-deepseek-identification |
-| 2 — Visual annotation (T2.9) | ✅ Complete | VisionAnnotationClient interface; DeepSeekAnnotationClient (@Primary) + PlantNetAnnotationClient; polygon overlay frontend (PhotoAnnotatorComponent); cure-advice + add-to-care-plan wired up |
-| 2 — GitHubModelsClient split + Kafka async + Redis photos (T2.A–T2.E) | ✅ Complete | See STATE.md for full detail |
-| 2 — Garden dashboard (T2.10) | ✅ Complete | GET /api/v1/dashboard, plant health/water data fix, photo timeline, /dashboard landing page |
-| 2 — Manual testing (T2.11) | ✅ Complete | Covered ad-hoc via live Playwright + manual verification during T2.10 session |
-| 3 — Reminder + Care Log module (T3.1, T3.2) | ✅ Complete | Full CRUD, scheduler, web-push, Angular frontend, PWA prompt banner |
-| 3 — Manual testing (T3.3) | 🔲 Not started ← NEXT | Needs a real device — push notification delivery, PWA installability, offline reading |
-| 4 — AI Chat | ✅ Complete (basic) | T4.1 — single-turn chat wired to Ollama with garden context |
-| 5 — Launch | 🔲 Not started | |
-| 6 — Identification flow redesign (T6.9) | ✅ Complete | species-match/resolve-species/plant-match/resolve-plant endpoints; speciesId threaded through analyze() for Flow 2; species-confirm-step + plant-select-step components for Flow 1 (Garden FAB); branch: feature/PP-034-identification-species-matching. |
-| 6 — Plant page: sticky header + icon button bar (T6.10) | ✅ Complete | plant-detail.component rewritten: `.sticky-header` + IntersectionObserver-driven collapse, `mat-tab-group` replaced by an icon-only button bar; old "Care Plan" tab folded into the Scans section (no slot for it in the activeSection enum); `PlantResponse.activeTreatmentId` added to the frontend model (backend field already existed); branch: feature/PP-035-plant-page-redesign. |
-| 6 — Plant page: scans section + treatment CTA (T6.11) | ✅ Complete | New `features/plant/services/treatment.service.ts` + `models/treatment.model.ts` wrapping T6.2's 5 `/treatments` + `/plants/{id}/active-treatment` endpoints (distinct from the older `TreatmentPlanService`/`/treatment-plans` — see ARCHITECT.md's "Two Treatment concepts"). Scans section: "History" button opens `PlantScanHistorySheetComponent` (vertical list, reuses `IdentificationService.getPlantIdentifications`), a fixed `New Scan` FAB reuses `openAddScanDialog()`. When the selected scan's selected region is `type==='DISEASE'`: shows a coral "Start Treatment Plan" button (calls `createTreatment()` → `craftPlan()` → navigates to `/treatment/:id`, T6.12's not-yet-built route) or a "Treatment in Progress" chip if `getActiveTreatment(plantId)` already matches that diseaseName — note the backend only tracks one active treatment per plant (most recent), not per-disease, so the chip/button choice is a diseaseName-equality check against that single value. New `PlantActionsSheetComponent` (4 rows: update photo [flagged as a gap, no upload mechanism existed], archive [native `confirm()`, no app-wide confirm-dialog component exists yet], scan, ask-in-chat) replaces T6.10's placeholder sheet — `plant-detail`'s "actions" button now opens it via `MatBottomSheet`. Also fixed a T6.10 bug: the icon bar's "treatment" button and the new CTA both now correctly navigate to `/treatment/:id` (the new Treatment entity's own page, T6.12) instead of `/treatment-plans/:id` (the unrelated older TreatmentPlan route) — T6.10 had wired the wrong one. Rest of Phase 6 (T6.1–T6.9 done, T6.12–T6.14 not started) tracked in TASK_PLAN.md |
-| 6 — Treatment page (T6.12) | ✅ Complete | New lazy `features/treatment/` module mounted at `/treatment/:id` (`TreatmentDetailComponent`) — mirrors `plant-detail`'s sticky-header + IntersectionObserver-collapse + icon-button-bar pattern (2 buttons: overview/plan). Backend: `TreatmentResponse` DTO gained `identificationId` (already stored on the `Treatment` entity, just wasn't exposed) so the header can show the scan photo via `IdentificationService.getById()` instead of the plant's profile photo. Extracted a new **shared** `TreatmentStepListComponent` (`shared/components/treatment-step-list/`, exported by `SharedModule`) wrapping the diagram/step-list/mark-done UI previously hard-coded in `treatment-plan-detail.component` — both that page and the new Treatment page's "plan" section now render a `TreatmentPlanResponse`'s steps through it; `StepDetailDialogComponent` moved from `reminder/components/` to `shared/components/` alongside it since both lazy modules need to open it via `MatDialog`. "Overview" section: status chip (DRAFT/IN_PROGRESS/COMPLETED/DISMISSED — distinct enum from `TreatmentPlanStatus`, so its own chip CSS), `diseaseDescription` with a pending spinner state while the async AI generation is still running, "Craft Treatment Plan" button (DRAFT only) → `craftPlan()` → auto-switches to "plan". "Plan" section: at the time T6.12 landed, the backend had no automatic sync between a `TreatmentPlan` completing and its owning `Treatment`'s status, so `onPlanStepCompleted()` reloads the plan after every step and calls `treatmentService.completeTreatment(id)` itself once `plan.status === 'COMPLETED'` — T6.14 has since added the backend sync, making this frontend call redundant but harmless (idempotent in practice; the backend usually wins the race). No manual "mark treatment complete" button exists (none existed on `treatment-plan-detail` to reuse, per ARCHITECT.md's gap-flagging convention) — completion is automatic. Branch: `feature/PP-036-treatment-page`. |
-| 6 — Reminders: wire treatment plan steps (T6.14) | ✅ Complete | Closes the completion-sync gap flagged in T6.12: completing a `TreatmentPlan`'s last step (`ReminderServiceImpl.applyCompletionToReminder()`, the existing "last enabled step" branch) now also flips the wrapping `Treatment`'s status to COMPLETED automatically — no explicit `PATCH /treatments/{id}/complete` call needed from the frontend anymore. Implemented via a Spring application event (new `com.plantpal.reminder.event.TreatmentPlanCompletedEvent` + `ApplicationEventPublisher`) rather than direct injection — `com.plantpal.treatment` already depends on `com.plantpal.reminder` (`TreatmentPlanService`), so injecting `TreatmentService` into `ReminderServiceImpl` would have created a package cycle. New `com.plantpal.treatment.event.TreatmentPlanCompletionListener` (`@EventListener`) consumes the event and calls `TreatmentService.syncFromTreatmentPlanCompletion(treatmentPlanId)` (new interface method) — looks up the `Treatment` via the existing `TreatmentRepository.findByTreatmentPlanId`, no-ops if none found or not IN_PROGRESS (covers plain ROUTINE TreatmentPlans with no wrapping Treatment). `completeTreatment()` and the new sync method now share a `markCompleted(Treatment, Optional<Plant>)` private helper to avoid duplicating the status-flip + `plant.activeTreatmentId`-clearing logic. Branch: `feature/PP-030-treatment-entity` (same branch as T6.2, per the task plan). |
+| Phase | Status |
+|---|---|
+| 0 — Project Setup | ✅ Complete |
+| 1 — Auth + Plant Management | ✅ Complete |
+| 2 — AI Plant Identification | ✅ Complete |
+| 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual on-device push/PWA testing — never done, needs a real phone) |
+| 4 — AI Chat | ✅ Complete (basic, single-turn + plant-context) — streaming/history polish not started |
+| 5 — Launch Preparation | 🔲 **Not started — current focus** |
+| 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 
 ---
 
@@ -803,10 +467,12 @@ open backend/target/site/jacoco/index.html
 - **No `null` returns** from services — throw `ResourceNotFoundException` or return `Optional`
 - **No unbounded list queries** — always use `Pageable`
 - **No direct DB writes from controllers** — always through the service layer
-- **No Ollama/AI calls from controllers** — always through service → client
+- **No AI calls from controllers** — always through service → client
 - **No hard deletes** — set `status = ARCHIVED`
 - **No `ddl-auto: create-drop` or `update`** outside test profile — Liquibase owns the schema
 - **No secrets in code or YAML** — always `${ENV_VAR}` references
 - **No method longer than 50 lines** — decompose
 - **No `@Data` on JPA entities** — use `@Getter @Setter @Builder` separately
   (Hibernate's lazy loading breaks with Lombok `@Data`)
+- **No new direct cross-package injection that creates a cycle** — go through a Spring
+  application event instead (see ARCHITECT.md's Treatment/Reminder completion-sync example)
