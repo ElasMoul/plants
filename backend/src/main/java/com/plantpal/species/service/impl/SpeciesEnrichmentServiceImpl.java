@@ -73,12 +73,12 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   }
 
   /**
-   * Wire shape returned by {@link DeepSeekClient#generateSpeciesEnrichment}. {@code source} is
-   * part of the AI response schema but deliberately unused — {@link #enrich} always hardcodes
-   * {@link #AI_SOURCE} on success rather than trusting the model's echoed value; the field is
-   * still declared so deserialization doesn't depend on the caller's {@link ObjectMapper} having
-   * {@code FAIL_ON_UNKNOWN_PROPERTIES} disabled (Spring Boot's auto-configured bean disables it,
-   * but a bare {@code new ObjectMapper()} — e.g. in a unit test — does not).
+   * Wire shape returned by {@link DeepSeekClient#generateSpeciesEnrichment}. {@code source} is part
+   * of the AI response schema but deliberately unused — {@link #enrich} always hardcodes {@link
+   * #AI_SOURCE} on success rather than trusting the model's echoed value; the field is still
+   * declared so deserialization doesn't depend on the caller's {@link ObjectMapper} having {@code
+   * FAIL_ON_UNKNOWN_PROPERTIES} disabled (Spring Boot's auto-configured bean disables it, but a
+   * bare {@code new ObjectMapper()} — e.g. in a unit test — does not).
    */
   private static final class SpeciesEnrichmentJson {
     private String description;
