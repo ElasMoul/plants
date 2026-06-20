@@ -313,9 +313,38 @@ mat-divider {
   margin: 24px 0;
 }
 
-// ── Actions bottom sheet placeholder ────────────────────────────
-.actions-sheet-placeholder {
-  padding: 24px 20px;
-  text-align: center;
-  color: var(--color-text-secondary);
+.scans-content {
+  position: relative;
+  min-height: 200px;
+}
+
+.new-scan-fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  background: var(--color-primary) !important;
+  color: #fff !important;
+
+  @media (max-width: 768px) {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+// ── Treatment CTA ────────────────────────────────────────────
+.treatment-cta {
+  margin: 16px 0;
+}
+
+.start-treatment-btn {
+  background: var(--color-error) !important;
+  color: #fff !important;
+  border-radius: var(--radius-chip) !important;
+}
+
+.treatment-progress-chip {
+  cursor: pointer;
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  font-weight: 600;
 }

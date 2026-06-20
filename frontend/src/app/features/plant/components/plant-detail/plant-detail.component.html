@@ -46,7 +46,7 @@
               (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
         <mat-icon>history</mat-icon>
       </button>
-      <button mat-icon-button (click)="selectSection('actions', actionsSheet)" matTooltip="More actions" aria-label="More actions">
+      <button mat-icon-button (click)="selectSection('actions')" matTooltip="More actions" aria-label="More actions">
         <mat-icon>more_horiz</mat-icon>
       </button>
       <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
@@ -116,13 +116,13 @@
       </div>
 
       <!-- Scans (also hosts the care plan content previously on its own tab) -->
-      <div *ngSwitchCase="'scans'" class="tab-content">
+      <div *ngSwitchCase="'scans'" class="tab-content scans-content">
 
         <div class="scans-header">
           <h3 class="scans-subheading">Scan history</h3>
-          <button mat-stroked-button type="button" class="btn-pill" (click)="openAddScanDialog()">
-            <mat-icon>add_a_photo</mat-icon>
-            Add scan
+          <button mat-stroked-button type="button" class="btn-pill" (click)="openScanHistorySheet()">
+            <mat-icon>history</mat-icon>
+            History
           </button>
         </div>
         <app-plant-photo-timeline
@@ -163,6 +163,27 @@
             (regionSelected)="onRegionSelected($event)"
           ></app-annotation-list>
 
+          <div class="treatment-cta" *ngIf="selectedRegion?.type === 'DISEASE' && !checkingActiveTreatment">
+            <button
+              *ngIf="!activeTreatmentForDisease"
+              mat-raised-button
+              type="button"
+              class="start-treatment-btn"
+              [disabled]="startingTreatment"
+              (click)="startTreatment()"
+            >
+              <mat-icon>healing</mat-icon>
+              {{ startingTreatment ? 'Starting…' : 'Start Treatment Plan' }}
+            </button>
+            <mat-chip
+              *ngIf="activeTreatmentForDisease"
+              class="treatment-progress-chip"
+              (click)="goToTreatment(activeTreatmentForDisease)"
+            >
+              Treatment in Progress
+            </mat-chip>
+          </div>
+
           <app-disease-detail-panel
             [region]="selectedRegion"
             [species]="plant.species ?? null"
@@ -182,16 +203,13 @@
           ></app-care-plan>
         </ng-container>
 
+        <button mat-fab class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
+          <mat-icon>camera_alt</mat-icon>
+        </button>
+
       </div>
 
     </div>
   </ng-container>
 
 </div>
-
-<!-- "More actions" bottom sheet — real contents land in T6.11 -->
-<ng-template #actionsSheet>
-  <div class="actions-sheet-placeholder">
-    <p>Plant actions coming soon.</p>
-  </div>
-</ng-template>

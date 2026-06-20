@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -7,9 +7,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PlantService } from '../../services/plant.service';
+import { TreatmentService } from '../../services/treatment.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { ReminderService } from '../../../reminder/services/reminder.service';
 import { PlantResponse } from '../../models/plant.model';
+import { TreatmentResponse } from '../../models/treatment.model';
 import {
   AnalyzeEmitPayload,
   AnnotationRegion,
@@ -20,6 +22,8 @@ import { IdentificationUploadDialogComponent } from '../../../identification/com
 import { CareType } from '../../../reminder/models/reminder.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 import { PlantPhotoTimelineComponent } from '../plant-photo-timeline/plant-photo-timeline.component';
+import { PlantActionsSheetComponent, PlantAction } from '../plant-actions-sheet/plant-actions-sheet.component';
+import { PlantScanHistorySheetComponent } from '../plant-scan-history-sheet/plant-scan-history-sheet.component';
 
 
 @Component({
@@ -59,6 +63,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   headerCollapsed = false;
   activeSection: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans' = 'overview';
 
+  // Treatment CTA state for the currently-selected DISEASE region in the Scans section.
+  activeTreatmentForDisease: TreatmentResponse | null = null;
+  checkingActiveTreatment = false;
+  startingTreatment = false;
+
   private sentinelObserver?: IntersectionObserver;
   private readonly destroy$ = new Subject<void>();
 
@@ -66,6 +75,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly plantService: PlantService,
+    private readonly treatmentService: TreatmentService,
     private readonly identificationService: IdentificationService,
     private readonly reminderService: ReminderService,
     private readonly snackBar: MatSnackBar,
@@ -124,30 +134,108 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  selectSection(
-    section: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans',
-    actionsTemplate?: TemplateRef<unknown>,
-  ): void {
+  selectSection(section: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans'): void {
     if (section === 'actions') {
-      // Real list items land in T6.11 — this placeholder sheet just proves the open/close wiring.
-      if (actionsTemplate) {
-        this.bottomSheet.open(actionsTemplate);
-      }
+      this.openActionsSheet();
       return;
     }
     if (section === 'treatment') {
-      if (this.plant?.activeTreatmentId) {
-        this.router.navigate(['/treatment-plans', this.plant.activeTreatmentId]);
-      }
+      this.goToActiveTreatment();
       return;
     }
     this.activeSection = section;
+  }
+
+  openScanHistorySheet(): void {
+    if (!this.plant) return;
+    const ref = this.bottomSheet.open(PlantScanHistorySheetComponent, {
+      data: { plantId: this.plant.id },
+    });
+    ref.afterDismissed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((scan?: IdentificationResponse) => {
+        if (scan) {
+          this.onScanSelected(scan);
+        }
+      });
+  }
+
+  startTreatment(): void {
+    const plant = this.plant;
+    const region = this.selectedRegion;
+    const scan = this.selectedScan;
+    if (!plant || !region || !scan || this.startingTreatment) return;
+
+    this.startingTreatment = true;
+    this.treatmentService.createTreatment(plant.id, scan.id, region.label)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: created => {
+          this.treatmentService.craftPlan(created.data.id)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: crafted => {
+                this.startingTreatment = false;
+                this.router.navigate(['/treatment', crafted.data.id]);
+              },
+              error: () => {
+                this.startingTreatment = false;
+                this.snackBar.open('Treatment started, but the plan could not be crafted yet.', 'Dismiss', { duration: 5000 });
+              },
+            });
+        },
+        error: () => {
+          this.startingTreatment = false;
+          this.snackBar.open('Could not start a treatment plan.', 'Dismiss', { duration: 4000 });
+        },
+      });
+  }
+
+  goToActiveTreatment(): void {
+    if (this.plant?.activeTreatmentId) {
+      this.router.navigate(['/treatment', this.plant.activeTreatmentId]);
+    }
+  }
+
+  goToTreatment(treatment: TreatmentResponse): void {
+    this.router.navigate(['/treatment', treatment.id]);
+  }
+
+  private openActionsSheet(): void {
+    if (!this.plant) return;
+    const ref = this.bottomSheet.open(PlantActionsSheetComponent, {
+      data: { nickname: this.plant.nickname },
+    });
+    ref.afterDismissed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((action?: PlantAction) => this.handlePlantAction(action));
+  }
+
+  private handlePlantAction(action?: PlantAction): void {
+    if (!action || !this.plant) return;
+    switch (action) {
+      case 'updatePhoto':
+        this.snackBar.open('Updating the plant photo isn\'t available yet.', 'Dismiss', { duration: 4000 });
+        break;
+      case 'archive':
+        if (window.confirm('Are you sure you want to archive this plant?')) {
+          this.onArchive();
+        }
+        break;
+      case 'scan':
+        this.openAddScanDialog();
+        break;
+      case 'chat':
+        this.router.navigate(['/chat'], { queryParams: { plantId: this.plant.id } });
+        break;
+    }
   }
 
   onScanSelected(scan: IdentificationResponse): void {
     this.selectedScan = scan;
     this.selectedRegionIndex = null;
     this.selectedRegion = null;
+    this.activeTreatmentForDisease = null;
   }
 
   onRegionSelected(index: number | null): void {
@@ -155,6 +243,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     this.selectedRegion = index !== null && this.selectedScan?.annotationRegions
       ? (this.selectedScan.annotationRegions[index] ?? null)
       : null;
+
+    this.activeTreatmentForDisease = null;
+    if (this.selectedRegion?.type === 'DISEASE' && this.plant) {
+      this.checkActiveTreatment(this.selectedRegion.label);
+    }
   }
 
   onCarePlanUpdated(plan: CarePlanDto): void {
@@ -195,6 +288,28 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         this.snackBar.open('Could not archive plant.', 'Dismiss', { duration: 4000 });
       },
     });
+  }
+
+  // The backend only tracks one active treatment per plant (most recent), not one per disease —
+  // so "is there an active treatment for THIS disease" means: the plant's active treatment
+  // exists AND its diseaseName matches the selected region's label.
+  private checkActiveTreatment(diseaseName: string): void {
+    const plantId = this.plant?.id;
+    if (!plantId) return;
+
+    this.checkingActiveTreatment = true;
+    this.treatmentService.getActiveTreatment(plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.checkingActiveTreatment = false;
+          this.activeTreatmentForDisease = res.data.diseaseName === diseaseName ? res.data : null;
+        },
+        error: () => {
+          this.checkingActiveTreatment = false;
+          this.activeTreatmentForDisease = null;
+        },
+      });
   }
 
   private submitAddScan(payload: AnalyzeEmitPayload): void {

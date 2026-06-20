@@ -1,0 +1,24 @@
+<div class="history-sheet">
+  <h3 class="history-title">Scan history</h3>
+
+  <div *ngIf="loading" class="history-loading">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+
+  <p *ngIf="!loading && scans.length === 0" class="history-empty">No scans yet.</p>
+
+  <div *ngIf="!loading && scans.length" class="history-list">
+    <button
+      type="button"
+      class="history-row"
+      *ngFor="let scan of scans"
+      (click)="select(scan)"
+    >
+      <img [src]="scan.photoUrl || placeholderImage" [alt]="scan.commonName || scan.scientificName" class="history-thumb" />
+      <div class="history-meta">
+        <span class="history-name">{{ scan.commonName || scan.scientificName }}</span>
+        <span class="history-date">{{ scan.createdAt | date:'medium' }}</span>
+      </div>
+    </button>
+  </div>
+</div>

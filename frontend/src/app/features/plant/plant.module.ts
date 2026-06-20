@@ -24,6 +24,7 @@ import { PlantRoutingModule } from './plant-routing.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
 import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
+import { TreatmentService } from './services/treatment.service';
 import { IdentificationService } from '../identification/services/identification.service';
 import { CareLogService } from '../reminder/services/care-log.service';
 import { ReminderService } from '../reminder/services/reminder.service';
@@ -33,6 +34,8 @@ import { PlantCardComponent } from './components/plant-card/plant-card.component
 import { PlantFormComponent } from './components/plant-form/plant-form.component';
 import { PlantDetailComponent } from './components/plant-detail/plant-detail.component';
 import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/plant-photo-timeline.component';
+import { PlantActionsSheetComponent } from './components/plant-actions-sheet/plant-actions-sheet.component';
+import { PlantScanHistorySheetComponent } from './components/plant-scan-history-sheet/plant-scan-history-sheet.component';
 
 @NgModule({
   declarations: [
@@ -41,6 +44,8 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     PlantFormComponent,
     PlantDetailComponent,
     PlantPhotoTimelineComponent,
+    PlantActionsSheetComponent,
+    PlantScanHistorySheetComponent,
   ],
   imports: [
     CommonModule,
@@ -67,6 +72,6 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
     MatDialogModule,
     MatBottomSheetModule,
   ],
-  providers: [PlantService, IdentificationService, CareLogService, ReminderService, TreatmentPlanService],
+  providers: [PlantService, TreatmentService, IdentificationService, CareLogService, ReminderService, TreatmentPlanService],
 })
 export class PlantModule {}
