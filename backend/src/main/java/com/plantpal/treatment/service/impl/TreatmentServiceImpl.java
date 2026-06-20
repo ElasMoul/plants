@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -164,22 +165,45 @@ public class TreatmentServiceImpl implements TreatmentService {
     if (treatment.getStatus() != TreatmentStatus.IN_PROGRESS) {
       throw new ValidationException("Only an IN_PROGRESS treatment can be completed");
     }
+    Optional<Plant> plant = plantRepository.findByIdAndUserId(treatment.getPlantId(), userId);
+    treatment = markCompleted(treatment, plant);
+    log.info("Treatment completed: id={}, userId={}", id, userId);
+
+    return toResponse(treatment);
+  }
+
+  @Override
+  @Transactional
+  public void syncFromTreatmentPlanCompletion(Long treatmentPlanId) {
+    for (Treatment treatment : treatmentRepository.findByTreatmentPlanId(treatmentPlanId)) {
+      if (treatment.getStatus() != TreatmentStatus.IN_PROGRESS) {
+        continue;
+      }
+      Optional<Plant> plant = plantRepository.findById(treatment.getPlantId());
+      markCompleted(treatment, plant);
+      log.info(
+          "Treatment auto-completed via TreatmentPlan sync: treatmentId={}, treatmentPlanId={}",
+          treatment.getId(),
+          treatmentPlanId);
+    }
+  }
+
+  /** Shared by {@link #completeTreatment} and {@link #syncFromTreatmentPlanCompletion}. */
+  private Treatment markCompleted(Treatment treatment, Optional<Plant> plant) {
     treatment.setStatus(TreatmentStatus.COMPLETED);
     treatment.setCompletedAt(Instant.now());
     treatment = treatmentRepository.save(treatment);
-    log.info("Treatment completed: id={}, userId={}", id, userId);
 
     Long completedTreatmentId = treatment.getId();
-    plantRepository
-        .findByIdAndUserId(treatment.getPlantId(), userId)
-        .filter(plant -> completedTreatmentId.equals(plant.getActiveTreatmentId()))
+    plant
+        .filter(p -> completedTreatmentId.equals(p.getActiveTreatmentId()))
         .ifPresent(
-            plant -> {
-              plant.setActiveTreatmentId(null);
-              plantRepository.save(plant);
+            p -> {
+              p.setActiveTreatmentId(null);
+              plantRepository.save(p);
             });
 
-    return toResponse(treatment);
+    return treatment;
   }
 
   private Treatment findOwnedTreatment(Long id, Long userId) {

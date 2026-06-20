@@ -16,6 +16,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.entity.TreatmentPlan;
 import com.plantpal.reminder.entity.TreatmentPlanStatus;
+import com.plantpal.reminder.event.TreatmentPlanCompletedEvent;
 import com.plantpal.reminder.repository.CareLogRepository;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.repository.TreatmentPlanRepository;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +48,7 @@ class ReminderServiceTest {
   @Mock private PlantRepository plantRepository;
   @Mock private CareLogRepository careLogRepository;
   @Mock private TreatmentPlanRepository treatmentPlanRepository;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   private ReminderServiceImpl reminderService;
 
@@ -56,7 +59,11 @@ class ReminderServiceTest {
   void setUp() {
     reminderService =
         new ReminderServiceImpl(
-            reminderRepository, plantRepository, careLogRepository, treatmentPlanRepository);
+            reminderRepository,
+            plantRepository,
+            careLogRepository,
+            treatmentPlanRepository,
+            eventPublisher);
   }
 
   private Plant plant() {
@@ -330,6 +337,11 @@ class ReminderServiceTest {
       ArgumentCaptor<TreatmentPlan> planCaptor = ArgumentCaptor.forClass(TreatmentPlan.class);
       verify(treatmentPlanRepository).save(planCaptor.capture());
       assertThat(planCaptor.getValue().getStatus()).isEqualTo(TreatmentPlanStatus.COMPLETED);
+
+      ArgumentCaptor<TreatmentPlanCompletedEvent> eventCaptor =
+          ArgumentCaptor.forClass(TreatmentPlanCompletedEvent.class);
+      verify(eventPublisher).publishEvent(eventCaptor.capture());
+      assertThat(eventCaptor.getValue().getTreatmentPlanId()).isEqualTo(50L);
     }
 
     @Test
@@ -357,6 +369,7 @@ class ReminderServiceTest {
       assertThat(step.isEnabled()).isFalse();
       verify(treatmentPlanRepository, never()).findById(any());
       verify(treatmentPlanRepository, never()).save(any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
   }
 }
