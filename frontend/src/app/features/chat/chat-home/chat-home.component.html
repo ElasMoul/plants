@@ -14,6 +14,15 @@
     </div>
   </div>
 
+  <!-- Plant context chip -->
+  <div class="context-chip" *ngIf="contextPlantNickname">
+    <mat-icon>eco</mat-icon>
+    <span>Chatting about {{ contextPlantNickname }}</span>
+    <button type="button" class="context-chip-dismiss" (click)="clearContext()" aria-label="Clear plant context">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
   <!-- Messages -->
   <div class="chat-messages">
     <div *ngFor="let message of messages" class="message-row" [class.row-user]="message.sender === 'user'">
