@@ -63,7 +63,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.snackBar.open('Plant not found.', 'Dismiss', { duration: 4000 });
-        this.router.navigate(['/plants']);
+        this.router.navigate(['/garden']);
       },
     });
 
@@ -148,7 +148,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     this.plantService.archivePlant(this.plant.id).subscribe({
       next: () => {
         this.snackBar.open('Plant archived.', undefined, { duration: 3000 });
-        this.router.navigate(['/plants']);
+        this.router.navigate(['/garden']);
       },
       error: () => {
         this.snackBar.open('Could not archive plant.', 'Dismiss', { duration: 4000 });

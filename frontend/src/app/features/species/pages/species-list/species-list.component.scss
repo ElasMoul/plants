@@ -1,0 +1,191 @@
+.list-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+
+  @media (max-width: 600px) {
+    padding: 20px 12px 80px;
+  }
+}
+
+// ── Header ─────────────────────────────────────────────────────
+.list-header {
+  margin-bottom: 12px;
+}
+
+.garden-title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  line-height: 1.2;
+
+  @media (max-width: 600px) {
+    font-size: 1.6rem;
+  }
+}
+
+.garden-subtitle {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+// ── Filter chips ───────────────────────────────────────────────
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  border: 1px solid var(--color-surface-secondary);
+  background: var(--color-surface);
+  border-radius: var(--radius-chip);
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &--active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+  }
+
+  &--disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+// ── Species grid ───────────────────────────────────────────────
+.species-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+// ── Skeleton ───────────────────────────────────────────────────
+.skeleton-card {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ede8e1 25%, #e4ddd5 50%, #ede8e1 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-photo {
+  height: 180px;
+  border-radius: 0;
+}
+
+.skeleton-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-line {
+  height: 12px;
+
+  &.wide   { width: 65%; }
+  &.medium { width: 45%; }
+  &.narrow { width: 30%; }
+}
+
+// ── Empty state ────────────────────────────────────────────────
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 16px;
+  text-align: center;
+  gap: 12px;
+}
+
+.empty-icon-wrap {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.empty-icon {
+  font-size: 44px;
+  width: 44px;
+  height: 44px;
+  color: var(--color-primary-light);
+}
+
+.empty-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.empty-sub {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.empty-btn {
+  margin-top: 8px;
+  border-radius: var(--radius-chip) !important;
+  padding: 0 24px !important;
+}
+
+// ── FAB ────────────────────────────────────────────────────────
+.add-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 50;
+  background-color: var(--color-primary) !important;
+
+  @media (min-width: 769px) {
+    bottom: 24px;
+  }
+}
+
+// ── Paginator ─────────────────────────────────────────────────
+mat-paginator {
+  background: transparent;
+  margin-top: 8px;
+}

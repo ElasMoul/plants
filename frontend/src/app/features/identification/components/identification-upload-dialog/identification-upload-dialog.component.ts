@@ -6,6 +6,11 @@ import { PhotoUploadComponent } from '../photo-upload/photo-upload.component';
 export interface IdentificationUploadDialogData {
   plantId?: number;
   plantNickname?: string;
+  // Species-seeded context (Flow 2 entry point, T6.6) — opens the dialog with the right title.
+  // Submission still goes through the existing unlinked-scan path; threading speciesId into the
+  // actual identification request and skipping species-confirmation is T6.9's job, not this one's.
+  speciesId?: number;
+  speciesName?: string;
 }
 
 @Component({
@@ -22,9 +27,13 @@ export class IdentificationUploadDialogComponent {
   ) {}
 
   get title(): string {
-    return this.data?.plantNickname
-      ? `Add a scan for ${this.data.plantNickname}`
-      : 'Identify a Plant';
+    if (this.data?.plantNickname) {
+      return `Add a scan for ${this.data.plantNickname}`;
+    }
+    if (this.data?.speciesName) {
+      return `Add a plant of ${this.data.speciesName}`;
+    }
+    return 'Identify a Plant';
   }
 
   startIdentification(): void {

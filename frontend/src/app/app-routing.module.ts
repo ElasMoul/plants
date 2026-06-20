@@ -18,6 +18,11 @@ const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'garden',
+    loadChildren: () => import('./features/species/species.module').then(m => m.SpeciesModule),
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'plants',
     loadChildren: () => import('./features/plant/plant.module').then(m => m.PlantModule),
     canActivate: [AuthGuard],

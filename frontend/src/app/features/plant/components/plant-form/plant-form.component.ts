@@ -80,7 +80,7 @@ export class PlantFormComponent implements OnInit {
       },
       error: () => {
         this.snackBar.open('Could not load plant data.', 'Dismiss', { duration: 4000 });
-        this.router.navigate(['/plants']);
+        this.router.navigate(['/garden']);
       },
     });
   }
@@ -134,7 +134,7 @@ export class PlantFormComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate([this.isEdit ? ['/plants', this.editId] : ['/plants']]);
+    this.router.navigate([this.isEdit ? ['/plants', this.editId] : ['/garden']]);
   }
 
   private toDateString(date: Date): string {

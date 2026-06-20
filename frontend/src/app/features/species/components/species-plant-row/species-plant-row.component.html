@@ -1,0 +1,23 @@
+<div class="plant-row" [routerLink]="['/plants', plant.id]">
+  <img
+    [src]="plant.photoUrl || placeholderImage"
+    [alt]="plant.nickname"
+    class="row-photo"
+  />
+
+  <div class="row-body">
+    <span class="row-nickname">{{ plant.nickname }}</span>
+    <span class="row-scan-date" *ngIf="plant.lastScanAt">
+      Last scan: {{ plant.lastScanAt | date:'mediumDate' }}
+    </span>
+    <span class="row-scan-date" *ngIf="!plant.lastScanAt">Never scanned</span>
+  </div>
+
+  <span
+    *ngIf="plant.healthStatus"
+    class="health-badge"
+    [ngClass]="healthBadgeClass(plant.healthStatus)"
+  >
+    {{ plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus }}
+  </span>
+</div>

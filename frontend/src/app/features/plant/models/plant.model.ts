@@ -43,4 +43,5 @@ export interface PlantResponse {
   updatedAt: string;
   healthStatus?: HealthStatus;
   nextWaterDays?: number | null;
+  lastScanAt?: string | null;
 }

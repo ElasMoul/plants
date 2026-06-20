@@ -11,11 +11,18 @@ export class PlantService {
 
   constructor(private readonly http: HttpClient) {}
 
-  getPlants(page = 0, size = 20): Observable<ApiResponse<PageResponse<PlantResponse>>> {
-    const params = new HttpParams()
+  getPlants(
+    page = 0,
+    size = 20,
+    speciesId?: number,
+  ): Observable<ApiResponse<PageResponse<PlantResponse>>> {
+    let params = new HttpParams()
       .set('page', page)
       .set('size', size)
       .set('sort', 'createdAt,desc');
+    if (speciesId != null) {
+      params = params.set('speciesId', speciesId);
+    }
     return this.http.get<ApiResponse<PageResponse<PlantResponse>>>(this.baseUrl, { params });
   }
 

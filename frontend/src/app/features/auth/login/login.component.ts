@@ -31,7 +31,7 @@ export class LoginComponent {
     this.loading = true;
 
     this.authService.login(this.form.getRawValue()).subscribe({
-      next: () => this.router.navigate(['/plants']),
+      next: () => this.router.navigate(['/garden']),
       error: err => {
         this.loading = false;
         const msg = err.error?.message ?? 'Login failed. Please try again.';

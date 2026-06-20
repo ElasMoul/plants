@@ -218,8 +218,8 @@ class PlantServiceTest {
 
     @Test
     @DisplayName(
-        "should populate healthStatus from latest identification and nextWaterDays from nearest"
-            + " watering reminder")
+        "should populate healthStatus/lastScanAt from latest identification and nextWaterDays"
+            + " from nearest watering reminder")
     void shouldEnrichWithHealthAndWater() {
       // Given
       Pageable pageable = PageRequest.of(0, 20);
@@ -233,6 +233,9 @@ class PlantServiceTest {
 
       Identification latest =
           Identification.builder().id(5L).plantId(1L).healthStatus("HEALTHY").build();
+      java.time.Instant scannedAt =
+          java.time.Instant.now().minus(2, java.time.temporal.ChronoUnit.DAYS);
+      latest.setCreatedAt(scannedAt);
       when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
           .thenReturn(java.util.List.of(latest));
 
@@ -260,6 +263,7 @@ class PlantServiceTest {
       PlantResponse enriched = result.getContent().get(0);
       assertThat(enriched.getHealthStatus()).isEqualTo("HEALTHY");
       assertThat(enriched.getNextWaterDays()).isEqualTo(3);
+      assertThat(enriched.getLastScanAt()).isEqualTo(scannedAt);
     }
 
     @Test
@@ -285,6 +289,7 @@ class PlantServiceTest {
       // Then
       PlantResponse enriched = result.getContent().get(0);
       assertThat(enriched.getHealthStatus()).isNull();
+      assertThat(enriched.getLastScanAt()).isNull();
       assertThat(enriched.getNextWaterDays()).isNull();
     }
 
@@ -357,6 +362,53 @@ class PlantServiceTest {
 
       // Then
       assertThat(result.getContent().get(0).getNextWaterDays()).isEqualTo(-2);
+    }
+  }
+
+  @Nested
+  @DisplayName("getUserPlants(speciesId)")
+  class GetUserPlantsBySpecies {
+
+    @Test
+    @DisplayName("should return only ACTIVE plants of the given species")
+    void shouldReturnPlantsFilteredBySpecies() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      var plant = aPlant().withId(1L).withUserId(1L).build();
+      Page<Plant> plantPage = new PageImpl<>(java.util.List.of(plant));
+      var response = PlantResponse.builder().id(1L).speciesId(50L).build();
+
+      when(plantRepository.findAllByUserIdAndSpeciesIdAndStatus(
+              1L, 50L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(plantPage);
+      when(plantMapper.toResponse(plant)).thenReturn(response);
+      when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+      when(reminderRepository.findNearestWateringPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, 50L, pageable);
+
+      // Then
+      assertThat(result.getContent()).hasSize(1);
+      assertThat(result.getContent().get(0).getSpeciesId()).isEqualTo(50L);
+    }
+
+    @Test
+    @DisplayName("should return an empty page when the user has no plants of that species")
+    void shouldReturnEmptyPageWhenNoPlantsOfSpecies() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findAllByUserIdAndSpeciesIdAndStatus(
+              1L, 50L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(Page.empty());
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, 50L, pageable);
+
+      // Then
+      assertThat(result.getContent()).isEmpty();
     }
   }
 

@@ -113,10 +113,32 @@ public class PlantServiceImpl implements PlantService {
       key = "'u:' + #userId + ':p:' + #pageable.pageNumber + ':s:' + #pageable.pageSize")
   public Page<PlantResponse> getUserPlants(Long userId, Pageable pageable) {
     log.info("Fetching plants for userId={}, page={}", userId, pageable.getPageNumber());
-    Page<PlantResponse> page =
-        plantRepository
-            .findAllByUserIdAndStatus(userId, PlantStatus.ACTIVE, pageable)
-            .map(plantMapper::toResponse);
+    Page<Plant> plants =
+        plantRepository.findAllByUserIdAndStatus(userId, PlantStatus.ACTIVE, pageable);
+    return buildEnrichedPage(plants, pageable);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  @Cacheable(
+      value = PLANTS_CACHE,
+      key =
+          "'u:' + #userId + ':sp:' + #speciesId + ':p:' + #pageable.pageNumber + ':s:'"
+              + " + #pageable.pageSize")
+  public Page<PlantResponse> getUserPlants(Long userId, Long speciesId, Pageable pageable) {
+    log.info(
+        "Fetching plants for userId={}, speciesId={}, page={}",
+        userId,
+        speciesId,
+        pageable.getPageNumber());
+    Page<Plant> plants =
+        plantRepository.findAllByUserIdAndSpeciesIdAndStatus(
+            userId, speciesId, PlantStatus.ACTIVE, pageable);
+    return buildEnrichedPage(plants, pageable);
+  }
+
+  private Page<PlantResponse> buildEnrichedPage(Page<Plant> plants, Pageable pageable) {
+    Page<PlantResponse> page = plants.map(plantMapper::toResponse);
     List<Long> plantIds = page.getContent().stream().map(PlantResponse::getId).toList();
     List<PlantResponse> enriched = enrichWithHealthAndWater(page.getContent(), plantIds);
     return new RestPage<>(new PageImpl<>(enriched, pageable, page.getTotalElements()));
@@ -137,9 +159,15 @@ public class PlantServiceImpl implements PlantService {
       return responses;
     }
 
+    List<Identification> latestPerPlant = identificationRepository.findLatestPerPlant(plantIds);
+
     Map<Long, String> healthByPlantId =
-        identificationRepository.findLatestPerPlant(plantIds).stream()
+        latestPerPlant.stream()
             .collect(Collectors.toMap(Identification::getPlantId, Identification::getHealthStatus));
+
+    Map<Long, Instant> lastScanAtByPlantId =
+        latestPerPlant.stream()
+            .collect(Collectors.toMap(Identification::getPlantId, Identification::getCreatedAt));
 
     Map<Long, Integer> nextWaterDaysByPlantId =
         reminderRepository.findNearestWateringPerPlant(plantIds).stream()
@@ -154,6 +182,7 @@ public class PlantServiceImpl implements PlantService {
                 response.toBuilder()
                     .healthStatus(healthByPlantId.get(response.getId()))
                     .nextWaterDays(nextWaterDaysByPlantId.get(response.getId()))
+                    .lastScanAt(lastScanAtByPlantId.get(response.getId()))
                     .build())
         .toList();
   }

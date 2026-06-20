@@ -1,0 +1,27 @@
+<div class="species-card" [routerLink]="['/garden/species', species.speciesId]">
+
+  <!-- Photo -->
+  <div class="species-photo">
+    <img
+      [src]="species.imageUrl || placeholderImage"
+      [alt]="species.scientificName"
+      class="photo-img"
+    />
+  </div>
+
+  <!-- Card body -->
+  <div class="card-body">
+    <h3 class="species-name">{{ species.scientificName }}</h3>
+    <p class="species-common-name">{{ species.commonName || 'Common name unknown' }}</p>
+
+    <div class="card-meta">
+      <span class="plant-count-badge">
+        {{ species.plantCount }} plant{{ species.plantCount !== 1 ? 's' : '' }}
+      </span>
+      <span class="health-chip" [class.health-chip--issues]="hasIssues">
+        {{ species.healthSummary }}
+      </span>
+    </div>
+  </div>
+
+</div>
