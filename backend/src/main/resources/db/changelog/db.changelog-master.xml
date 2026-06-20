@@ -59,10 +59,13 @@
     <include file="db/changelog/migrations/016_create_species.sql"
              relativeToChangelogFile="false"/>
 
-    <!-- 017 (plants.species_id/last_scan_id/active_treatment_id, T6.3) not yet built —
-         018 registered directly after 016; T6.3 will insert 017 in its correct numeric
-         position above this entry when it lands. Do not renumber 018 to fill the gap. -->
+    <include file="db/changelog/migrations/017_alter_plants_add_species_fk.sql"
+             relativeToChangelogFile="false"/>
+
     <include file="db/changelog/migrations/018_create_treatments.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/019_alter_identifications_add_plant_species_fk.sql"
              relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

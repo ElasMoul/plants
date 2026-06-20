@@ -988,6 +988,82 @@ class IdentificationServiceImplTest {
       verify(cacheManager, never()).getCache(any());
       verify(plantsCache, never()).clear();
     }
+
+    @Test
+    @DisplayName(
+        "processIdentification COMPLETED with non-null plantId: updates plant.lastScanId to the"
+            + " new identification's id")
+    void shouldUpdatePlantLastScanIdWhenLinkedToPlant() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .plantId(PLANT_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(plantRepository.existsByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(true);
+
+      Plant plant = Plant.builder().id(PLANT_ID).userId(USER_ID).build();
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.of(plant));
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getLastScanId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName(
+        "processIdentification with null plantId (species-level scan): no plant lookup, no"
+            + " exception")
+    void shouldSkipPlantLookupWhenPlantIdNull() throws Exception {
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .plantId(null)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      assertThatCode(() -> identificationService.processIdentification(event))
+          .doesNotThrowAnyException();
+
+      verify(plantRepository, never()).findByIdAndUserId(any(), any());
+      verify(plantRepository, never()).save(any());
+    }
   }
 
   @Nested

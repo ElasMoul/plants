@@ -39,4 +39,10 @@ public class PlantResponse {
 
   /** Days until the nearest enabled WATERING reminder is due; negative = overdue; null = none. */
   private Integer nextWaterDays;
+
+  private Long speciesId;
+
+  private Long lastScanId;
+
+  private Long activeTreatmentId;
 }

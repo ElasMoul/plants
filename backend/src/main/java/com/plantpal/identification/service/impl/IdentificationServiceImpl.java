@@ -242,7 +242,8 @@ public class IdentificationServiceImpl implements IdentificationService {
 
       // Update linked plant and auto-create reminders
       if (plantId != null && plantRepository.existsByIdAndUserId(plantId, userId)) {
-        updatePlantSpecies(plantId, userId, result.getSpecies(), result.getCommonName());
+        updatePlantSpecies(
+            plantId, userId, result.getSpecies(), result.getCommonName(), identification.getId());
         createRemindersFromCarePlan(carePlan, plantId, userId);
       }
 
@@ -584,13 +585,14 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   private void updatePlantSpecies(
-      Long plantId, Long userId, String scientificName, String commonName) {
+      Long plantId, Long userId, String scientificName, String commonName, Long scanId) {
     plantRepository
         .findByIdAndUserId(plantId, userId)
         .ifPresent(
             plant -> {
               plant.setSpecies(scientificName);
               plant.setCommonName(commonName);
+              plant.setLastScanId(scanId);
               plantRepository.save(plant);
               log.info("Updated plant species: plantId={}, species={}", plantId, scientificName);
             });

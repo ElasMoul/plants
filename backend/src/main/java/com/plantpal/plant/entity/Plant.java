@@ -56,4 +56,13 @@ public class Plant extends AuditableEntity {
 
   @Column(name = "acquired_at")
   private LocalDate acquiredAt;
+
+  @Column(name = "species_id")
+  private Long speciesId;
+
+  @Column(name = "last_scan_id")
+  private Long lastScanId;
+
+  @Column(name = "active_treatment_id")
+  private Long activeTreatmentId;
 }

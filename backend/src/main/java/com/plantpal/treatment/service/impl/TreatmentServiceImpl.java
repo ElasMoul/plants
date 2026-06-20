@@ -135,8 +135,8 @@ public class TreatmentServiceImpl implements TreatmentService {
         treatment.getId(),
         plan.getId());
 
-    // TODO(T6.3): plant.activeTreatmentId does not exist yet (migration 017 adds it to Plant).
-    // Once it lands, set plant.setActiveTreatmentId(treatment.getId()) and save here.
+    plant.setActiveTreatmentId(treatment.getId());
+    plantRepository.save(plant);
 
     return CompletableFuture.completedFuture(toResponse(treatment));
   }
@@ -169,7 +169,15 @@ public class TreatmentServiceImpl implements TreatmentService {
     treatment = treatmentRepository.save(treatment);
     log.info("Treatment completed: id={}, userId={}", id, userId);
 
-    // TODO(T6.3): clear plant.activeTreatmentId once the column exists — see craftPlan() above.
+    Long completedTreatmentId = treatment.getId();
+    plantRepository
+        .findByIdAndUserId(treatment.getPlantId(), userId)
+        .filter(plant -> completedTreatmentId.equals(plant.getActiveTreatmentId()))
+        .ifPresent(
+            plant -> {
+              plant.setActiveTreatmentId(null);
+              plantRepository.save(plant);
+            });
 
     return toResponse(treatment);
   }

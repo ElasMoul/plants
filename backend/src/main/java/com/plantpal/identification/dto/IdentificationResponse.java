@@ -33,4 +33,5 @@ public class IdentificationResponse {
   private Integer sourceImageWidth;
   private Integer sourceImageHeight;
   private String aiModelUsed;
+  private Long speciesId;
 }

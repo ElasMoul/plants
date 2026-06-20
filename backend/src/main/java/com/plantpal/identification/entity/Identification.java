@@ -77,4 +77,7 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "ai_model_used", length = 30)
   private String aiModelUsed;
+
+  @Column(name = "species_id")
+  private Long speciesId;
 }

@@ -289,6 +289,39 @@ class PlantServiceTest {
     }
 
     @Test
+    @DisplayName("should populate speciesId, lastScanId, and activeTreatmentId when present")
+    void shouldIncludeSpeciesAndTreatmentFkFields() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      var plant = aPlant().withId(1L).withUserId(1L).build();
+      Page<Plant> plantPage = new PageImpl<>(java.util.List.of(plant));
+      var response =
+          PlantResponse.builder()
+              .id(1L)
+              .speciesId(50L)
+              .lastScanId(7L)
+              .activeTreatmentId(3L)
+              .build();
+
+      when(plantRepository.findAllByUserIdAndStatus(1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(plantPage);
+      when(plantMapper.toResponse(plant)).thenReturn(response);
+      when(identificationRepository.findLatestPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+      when(reminderRepository.findNearestWateringPerPlant(java.util.List.of(1L)))
+          .thenReturn(java.util.List.of());
+
+      // When
+      Page<PlantResponse> result = plantService.getUserPlants(1L, pageable);
+
+      // Then
+      PlantResponse enriched = result.getContent().get(0);
+      assertThat(enriched.getSpeciesId()).isEqualTo(50L);
+      assertThat(enriched.getLastScanId()).isEqualTo(7L);
+      assertThat(enriched.getActiveTreatmentId()).isEqualTo(3L);
+    }
+
+    @Test
     @DisplayName("should return a negative nextWaterDays when the watering reminder is overdue")
     void shouldReturnNegativeNextWaterDaysWhenOverdue() {
       // Given
