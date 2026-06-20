@@ -218,6 +218,10 @@ class TreatmentServiceTest {
       verify(treatmentRepository).save(captor.capture());
       assertThat(captor.getValue().getStatus()).isEqualTo(TreatmentStatus.IN_PROGRESS);
       assertThat(captor.getValue().getStartedAt()).isNotNull();
+
+      ArgumentCaptor<Plant> plantCaptor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(plantCaptor.capture());
+      assertThat(plantCaptor.getValue().getActiveTreatmentId()).isEqualTo(7L);
     }
 
     @Test
@@ -253,11 +257,58 @@ class TreatmentServiceTest {
               .build();
       when(treatmentRepository.findByIdAndUserId(7L, USER_ID)).thenReturn(Optional.of(inProgress));
       when(treatmentRepository.save(any(Treatment.class))).thenAnswer(inv -> inv.getArgument(0));
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.empty());
 
       TreatmentResponse result = treatmentService.completeTreatment(7L, USER_ID);
 
       assertThat(result.getStatus()).isEqualTo(TreatmentStatus.COMPLETED);
       assertThat(result.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("should clear plant.activeTreatmentId when it points at the completed treatment")
+    void shouldClearActiveTreatmentIdOnPlant() {
+      Treatment inProgress =
+          Treatment.builder()
+              .id(7L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .diseaseName("Powdery mildew")
+              .status(TreatmentStatus.IN_PROGRESS)
+              .build();
+      when(treatmentRepository.findByIdAndUserId(7L, USER_ID)).thenReturn(Optional.of(inProgress));
+      when(treatmentRepository.save(any(Treatment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      Plant plant = Plant.builder().id(PLANT_ID).userId(USER_ID).activeTreatmentId(7L).build();
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.of(plant));
+
+      treatmentService.completeTreatment(7L, USER_ID);
+
+      ArgumentCaptor<Plant> plantCaptor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(plantCaptor.capture());
+      assertThat(plantCaptor.getValue().getActiveTreatmentId()).isNull();
+    }
+
+    @Test
+    @DisplayName("should NOT touch plant.activeTreatmentId when it points at a different treatment")
+    void shouldNotClearActiveTreatmentIdWhenItBelongsToAnotherTreatment() {
+      Treatment inProgress =
+          Treatment.builder()
+              .id(7L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .diseaseName("Powdery mildew")
+              .status(TreatmentStatus.IN_PROGRESS)
+              .build();
+      when(treatmentRepository.findByIdAndUserId(7L, USER_ID)).thenReturn(Optional.of(inProgress));
+      when(treatmentRepository.save(any(Treatment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      Plant plant = Plant.builder().id(PLANT_ID).userId(USER_ID).activeTreatmentId(999L).build();
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.of(plant));
+
+      treatmentService.completeTreatment(7L, USER_ID);
+
+      verify(plantRepository, never()).save(any(Plant.class));
     }
 
     @Test

@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-19 (session 18 — Architect planning session)
+> Last updated: 2026-06-20 (session 19 — T6.3 backend implementation)
 
 ## Current Phase
 Phase 0 — Project Setup ✅ COMPLETE
@@ -10,8 +10,8 @@ Phase 3 — ✅ COMPLETE
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
-Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅ done; T6.3–T6.14
-  below not started yet — full task prompts in TASK_PLAN.md)
+Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅ done;
+  T6.4–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -660,8 +660,15 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 - feature/PP-011-reminder-module — T3.1 + T3.2 complete, commit d9b82c1 ✅ (T3.3 manual testing
   remaining before merge)
 - feature/PP-028-actionable-care-plans-2 (current) — T3.4 + T3.5 + T3.4b + T3.6 all complete merged to dev as PR #33 ✅
-- feature/PP-030-treatment-entity (current) — T6.1 + T6.2 completed , next T6.3
+- feature/PP-030-treatment-entity — T6.1 + T6.2 completed, merged into feature/PP-031-plant-species-fk's history (Treatment entity work)
+- feature/PP-031-plant-species-fk (current) — T6.3 completed (Plant FK columns, scan flow lastScanId,
+  TreatmentServiceImpl activeTreatmentId wiring, SpeciesServiceImpl.getUserSpecies() real impl)
 ## Next Tasks (in order)
+- Commit T6.3 on feature/PP-031-plant-species-fk (migrations 017/019, Plant/Identification entity +
+  DTO fields, TreatmentServiceImpl activeTreatmentId wiring, SpeciesServiceImpl.getUserSpecies()
+  real implementation, new/updated unit tests — see T6.3 entry above), then open a PR / merge to dev
+- T6.4 (Species data enrichment) and T6.5/T6.9 (frontend Garden restructure + identification
+  species-matching) are next per the Phase 6 dependency table — both now unblocked by T6.3
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
 - Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
@@ -704,7 +711,7 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 |---|---|---|---|---|---|
 | T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | ✅ |
 | T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | ✅ |
-| T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | 🔲 |
+| T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | ✅ |
 | T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | 🔲 |
 | T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | 🔲 |
 | T6.6 | Species detail page | Frontend | `feature/PP-032-garden-species-first` (same) | T6.1, T6.4 | 🔲 |
@@ -823,6 +830,63 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
     end-to-end check — wiring is verified at the compile/unit-test level only; flagged to the user.
   - **Next:** T6.3 (Plant FK columns) is the natural next step — it unblocks both this task's two
     `activeTreatmentId` TODOs and T6.1's `getUserSpecies()` stub in one migration.
+
+- T6.3 Plant entity updates + scan flow changes ✅ (backend, branch `feature/PP-031-plant-species-fk`,
+  session 2026-06-19/20)
+  - **Migration ordering bug caught before it shipped:** the task brief's literal SQL for 017 put
+    `active_treatment_id BIGINT REFERENCES treatments(id)` inline, but the brief also mandated the
+    changelog order `016 → 017 → 018 → 019` — meaning 017 runs BEFORE 018 creates the `treatments`
+    table, so that inline FK would have failed against a fresh database (`relation "treatments"
+    does not exist`). Resolved by adding `active_treatment_id` as a plain `BIGINT` (no inline FK)
+    in 017, then adding `ALTER TABLE plants ADD CONSTRAINT fk_plants_active_treatment FOREIGN KEY
+    ... REFERENCES treatments(id)` at the end of 019 (which runs after 018). Did NOT touch the
+    already-shipped 018 file. Also caught mid-fix: Postgres has no `ADD CONSTRAINT IF NOT EXISTS`
+    syntax (unlike `ADD COLUMN IF NOT EXISTS`) — used plain `ADD CONSTRAINT` instead, safe because
+    each Liquibase changeset only ever runs once. **Verified for real**, not just compiled: ran the
+    full 001→019 sequence with the `liquibase/liquibase:4.27` Docker image against a scratch
+    database on the project's own `plantpal-postgres` container (`plantpal_migration_test`, dropped
+    after) — all 20 changesets applied cleanly, confirmed via `\d plants`/`\d identifications` that
+    every FK (`fk_plants_active_treatment`, `plants_species_id_fkey`, `plants_last_scan_id_fkey`,
+    `identifications_species_id_fkey`) landed correctly.
+  - Confirmed (not assumed) `identifications.plant_id` was already nullable since migration 003 —
+    no `DROP NOT NULL` needed in 019, only the brief's `ADD COLUMN species_id` line.
+  - `Plant`/`PlantResponse`/`Identification`/`IdentificationResponse`: added the new fields
+    (`speciesId`/`lastScanId`/`activeTreatmentId` on Plant; `speciesId` on Identification) with
+    field names matching exactly what `PlantMapper`/`IdentificationMapper` already auto-map by
+    name — no new `@Mapping` annotations needed, verified rather than assumed.
+  - `IdentificationServiceImpl.processIdentification()`: extended the existing
+    `updatePlantSpecies()` private method (already loads+saves the Plant once per completed scan)
+    to also set `lastScanId = identification.getId()`, instead of adding a second load/save round
+    trip. Species-level scans (`plantId == null`) skip this entirely, unchanged.
+  - **Also resolved two `TODO(T6.3)` markers left by T6.2**, since the column they were blocked on
+    now exists and leaving them stale would have been misleading: `TreatmentServiceImpl.craftPlan()`
+    now sets `plant.setActiveTreatmentId(treatment.getId())`; `completeTreatment()` now clears it,
+    but ONLY when `plant.getActiveTreatmentId()` still equals the completed treatment's id (guards
+    against clobbering a newer treatment that may have since become active on the same plant).
+  - **Also resolved `SpeciesServiceImpl.getUserSpecies()`'s stub** (T6.1's explicitly-flagged
+    follow-up — STATE.md said "T6.3 must wire this up for real"), beyond T6.3's literal 9-item
+    prompt: new `PlantRepository.findDistinctSpeciesIdsByUserIdAndStatus()` (paginated distinct
+    speciesId per user) + `findAllByUserIdAndStatusAndSpeciesIdIn()` (batch fetch), grouped by
+    speciesId, `healthSummary` computed via the same `IdentificationRepository.findLatestPerPlant()`
+    batch pattern as `PlantServiceImpl.enrichWithHealthAndWater()` ("All healthy" vs "N issue(s)").
+    Plants with `speciesId IS NULL` (legacy, pre-Phase-6) are naturally excluded since the
+    distinct-speciesId query filters `speciesId IS NOT NULL`. `SpeciesController.getMySpecies()`
+    needed zero changes — it already called `getUserSpecies(userId, pageable)` correctly against
+    the interface; only the implementation behind the stub changed.
+  - New unit tests: `PlantServiceTest` (PlantResponse carries speciesId/lastScanId/
+    activeTreatmentId through `enrichWithHealthAndWater()`'s `toBuilder()`), 2 new
+    `IdentificationServiceImplTest` cases (lastScanId set when plantId present; plant lookup
+    skipped entirely when plantId null), 2 new `TreatmentServiceTest` cases
+    (activeTreatmentId set on craftPlan, cleared on completeTreatment only when it still points at
+    that treatment), 2 new `SpeciesServiceTest` cases replacing the old stub test (grouping +
+    plantCount + "All healthy", grouping + "N issue(s)" health summary).
+  - Full backend suite: **161/161 passing** (157 + 4 new net, after replacing 1 stub test with 4
+    real ones). `mvn clean compile`, `checkstyle:check`, `spotless:check` all clean
+    (`spotless:apply` run once to fix line-wrap on the new code).
+  - **Next:** T6.4 (Species data enrichment) and T6.5/T6.9 (frontend Garden restructure +
+    identification species-matching) are now unblocked — both `plants.species_id` and
+    `getUserSpecies()` are real. T6.10/T6.11/T6.12 (Plant page redesign, Treatment page) can also
+    now rely on `PlantResponse.activeTreatmentId` being live data, not always-null.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
@@ -1015,16 +1079,18 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
                                        Cross-check db.changelog-master.xml as the source of truth if
                                        this list ever looks stale again.
 016_create_species.sql                ✅ T6.1 — new species table
-017_alter_plants_add_species_fk.sql   🔲 T6.3 — plants.species_id/last_scan_id/active_treatment_id FK,
-                                       drops plants.species (String) (Phase 6, planned) — NOTE:
-                                       018 already shipped ahead of this one (see below); when 017
-                                       lands it inserts ABOVE 018 in db.changelog-master.xml, in its
-                                       correct numeric position — Liquibase applies by listed XML
-                                       order, not filename, so this is safe.
-018_create_treatments.sql             ✅ T6.2 — new treatments table; registered directly after 016
-                                       since 017 (T6.3) didn't exist yet when this shipped
-019_alter_identifications_add_plant_species_fk.sql 🔲 T6.3 — identifications.plant_id nullable
-                                       (species-level scans), identifications.species_id FK (Phase 6, planned)
+017_alter_plants_add_species_fk.sql   ✅ T6.3 — plants.species_id/last_scan_id/active_treatment_id
+                                       (all nullable BIGINT); active_treatment_id has NO inline FK
+                                       (treatments doesn't exist until 018, which runs after this
+                                       one — see 019 below for the deferred constraint). Legacy
+                                       plants.species (String) deliberately NOT dropped — kept as a
+                                       fallback display value until speciesId backfill is complete.
+                                       Registered ABOVE 018 in db.changelog-master.xml (016→017→018→019).
+018_create_treatments.sql             ✅ T6.2 — new treatments table
+019_alter_identifications_add_plant_species_fk.sql ✅ T6.3 — identifications.species_id FK (plant_id
+                                       was already nullable since 003, confirmed — no DROP NOT NULL
+                                       needed). Also adds the deferred fk_plants_active_treatment
+                                       FK constraint from 017, now that treatments exists.
 
 ⚠️ No structural migration needed for T2.9a polygon switch — annotation_regions is already JSONB,
 which stores any JSON shape. Switching from boundingBox to polygon is a pure code change.

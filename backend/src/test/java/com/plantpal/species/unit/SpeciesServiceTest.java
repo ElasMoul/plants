@@ -7,6 +7,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.repository.IdentificationRepository;
+import com.plantpal.plant.entity.Plant;
+import com.plantpal.plant.entity.PlantStatus;
+import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
@@ -16,6 +21,7 @@ import com.plantpal.species.mapper.SpeciesMapper;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.impl.SpeciesServiceImpl;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +32,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -36,6 +43,8 @@ class SpeciesServiceTest {
   @Mock private SpeciesRepository speciesRepository;
   @Mock private SpeciesMapper speciesMapper;
   @Mock private SpeciesEnrichmentService speciesEnrichmentService;
+  @Mock private PlantRepository plantRepository;
+  @Mock private IdentificationRepository identificationRepository;
 
   // Optional<SpeciesEnrichmentService> constructor param isn't @InjectMocks-friendly —
   // construct manually, same pattern as other services with non-mockable constructor params.
@@ -45,7 +54,11 @@ class SpeciesServiceTest {
   void setUp() {
     speciesService =
         new SpeciesServiceImpl(
-            speciesRepository, speciesMapper, Optional.of(speciesEnrichmentService));
+            speciesRepository,
+            speciesMapper,
+            Optional.of(speciesEnrichmentService),
+            plantRepository,
+            identificationRepository);
   }
 
   @Nested
@@ -141,12 +154,13 @@ class SpeciesServiceTest {
   class GetUserSpecies {
 
     @Test
-    @DisplayName(
-        "should return an empty page — stubbed pending T6.3 (plants.species_id does not exist"
-            + " yet); full grouping/plantCount/healthSummary coverage lands with that migration")
-    void shouldReturnEmptyPageUntilSpeciesIdExistsOnPlant() {
+    @DisplayName("should return an empty page when the user has no plants with a speciesId")
+    void shouldReturnEmptyPageWhenNoSpeciesIds() {
       // Given
       Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(Page.empty(pageable));
 
       // When
       Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
@@ -154,6 +168,78 @@ class SpeciesServiceTest {
       // Then
       assertThat(result.getTotalElements()).isZero();
       assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    @DisplayName(
+        "should group plants by speciesId, computing plantCount and an 'All healthy' summary")
+    void shouldGroupPlantsBySpeciesWithAllHealthy() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      Plant plantB = Plant.builder().id(11L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA, plantB));
+
+      when(identificationRepository.findLatestPerPlant(List.of(10L, 11L)))
+          .thenReturn(
+              List.of(
+                  Identification.builder().plantId(10L).healthStatus("HEALTHY").build(),
+                  Identification.builder().plantId(11L).healthStatus("HEALTHY").build()));
+
+      Species species =
+          Species.builder()
+              .id(50L)
+              .scientificName("Monstera deliciosa")
+              .commonName("Swiss Cheese Plant")
+              .imageUrl("https://example.com/monstera.jpg")
+              .build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getTotalElements()).isEqualTo(1);
+      SpeciesSummaryDto summary = result.getContent().get(0);
+      assertThat(summary.getSpeciesId()).isEqualTo(50L);
+      assertThat(summary.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(summary.getPlantCount()).isEqualTo(2);
+      assertThat(summary.getHealthSummary()).isEqualTo("All healthy");
+    }
+
+    @Test
+    @DisplayName("should report issue count in the healthSummary when a plant has ISSUES_DETECTED")
+    void shouldReportIssueCountInHealthSummary() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA));
+
+      when(identificationRepository.findLatestPerPlant(List.of(10L)))
+          .thenReturn(
+              List.of(
+                  Identification.builder().plantId(10L).healthStatus("ISSUES_DETECTED").build()));
+
+      Species species = Species.builder().id(50L).scientificName("Ficus lyrata").build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getHealthSummary()).isEqualTo("1 issue(s)");
     }
   }
 }
