@@ -14,6 +14,7 @@ const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
 })
 export class AppComponent implements OnInit {
   readonly navLinks = [
+    { label: 'Home',       route: '/home',      icon: 'home' },
     { label: 'Garden',     route: '/garden',    icon: 'local_florist' },
     { label: 'Identify',   route: '/identify',  icon: 'document_scanner' },
     { label: 'Reminders',  route: '/reminders', icon: 'notifications' },
