@@ -21,6 +21,8 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { ModelSelectorComponent } from './components/model-selector/model-selector.component';
 import { MermaidDiagramComponent } from './components/mermaid-diagram/mermaid-diagram.component';
 import { ImageLightboxComponent } from './components/image-lightbox/image-lightbox.component';
+import { StepDetailDialogComponent } from './components/step-detail-dialog/step-detail-dialog.component';
+import { TreatmentStepListComponent } from './components/treatment-step-list/treatment-step-list.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -40,7 +42,13 @@ const MATERIAL_MODULES = [
 ];
 
 @NgModule({
-  declarations: [ModelSelectorComponent, MermaidDiagramComponent, ImageLightboxComponent],
+  declarations: [
+    ModelSelectorComponent,
+    MermaidDiagramComponent,
+    ImageLightboxComponent,
+    StepDetailDialogComponent,
+    TreatmentStepListComponent,
+  ],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
     CommonModule,
@@ -51,6 +59,7 @@ const MATERIAL_MODULES = [
     ModelSelectorComponent,
     MermaidDiagramComponent,
     ImageLightboxComponent,
+    TreatmentStepListComponent,
   ],
 })
 export class SharedModule {}

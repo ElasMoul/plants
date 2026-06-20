@@ -32,6 +32,8 @@ features/
   plant/      — plant list, form, detail (+ photo timeline, care log, care plan) ✅
   identification/ — photo upload, results, care plan + actionable cards, disease detail ✅
   reminder/   — list, calendar, create dialog, care log, treatment plans ✅
+  treatment/  — disease-level Treatment entity's own page (/treatment/:id) ✅ (T6.12 — distinct
+                from reminder/'s TreatmentPlan, see ARCHITECT.md's "Two Treatment concepts")
   dashboard/  — garden health landing page (/dashboard) ✅
   chat/       — basic single-turn chat, wired to backend ✅ (Phase 4 polish not started)
 layout/       — shell, navbar
@@ -360,7 +362,91 @@ same pass and are correct (`/api/v1/reminders`, `/api/v1/notifications`).
   page is reachable from three unrelated places (care-card snackbar, disease-panel snackbar,
   reminder-list chip) with no single correct "back" destination.
 
+### T6.12 — Treatment page ✅ (Complete 2026-06-20, branch: feature/PP-036-treatment-page)
+**Files added:**
+- `features/treatment/` — new lazy module: `treatment.module.ts`, `treatment-routing.module.ts`
+  (single route `:id` → `TreatmentDetailComponent`, mounted at app-level `'treatment'` prefix in
+  `app-routing.module.ts`), `pages/treatment-detail/treatment-detail.component.{ts,html,scss}`.
+  Module provides `TreatmentService`/`PlantService`/`IdentificationService`/`ReminderService`/
+  `TreatmentPlanService` — same "every consuming lazy module re-provides the `@Injectable()`
+  services it needs" convention already established by `plant.module.ts`/`reminder.module.ts`
+  (none of these services are `providedIn: 'root'`).
+- `shared/components/treatment-step-list/` — new `TreatmentStepListComponent`, declared + exported
+  by `SharedModule`. `@Input() steps: ReminderResponse[]`, `@Input() diagramContent: string | null`,
+  `@Output() stepCompleted` (emits after a successful mark-done; parent owns reloading). Injects
+  `ReminderService` + `MatDialog` directly (opens the moved `StepDetailDialogComponent` itself).
+  Extracted from `treatment-plan-detail.component`'s previously-inline diagram/step-list/mark-done
+  UI — both that page and the new Treatment page's "plan" section now render through this one
+  component instead of two copies.
+- `shared/components/step-detail-dialog/` — `StepDetailDialogComponent` MOVED here from
+  `reminder/components/step-detail-dialog/` (file deleted at the old path). Needed by
+  `TreatmentStepListComponent`, which lives in `SharedModule` — a component opened via
+  `MatDialog.open()` must be declared in an NgModule the caller has loaded, and `ReminderModule` +
+  the new `TreatmentModule` are two independent lazy modules, so it couldn't stay
+  reminder-module-private once a second module needed it.
+
+**Files changed:**
+- `reminder/pages/treatment-plan-detail/treatment-plan-detail.component.ts` — stripped down to just
+  `loadPlan()` (now public, called from the template's `(stepCompleted)` binding) + `goBack()`/
+  `goToReminders()`; removed `markStepDone`/`dueLabel`/`stepInstruction`/`hasStepDetail`/
+  `openStepDetail`/`markingDoneId` and the `MatDialog`/`ReminderService` constructor params
+  entirely — all now live inside `TreatmentStepListComponent`.
+- `treatment-plan-detail.component.html` — replaced the inline progress-line/diagram-section/
+  step-list markup with `<app-treatment-step-list [steps] [diagramContent] (stepCompleted)>`.
+- `treatment-plan-detail.component.scss` — removed the now-duplicated progress-line/diagram-
+  section/step-list CSS rules (moved into `treatment-step-list.component.scss`); kept one small
+  `::ng-deep` override for the progress-line's left margin (cosmetic difference from the shared
+  component's own default — header has a back-button+title row this page wants the progress line
+  indented under, the new Treatment page's header doesn't).
+- `reminder/reminder.module.ts` — removed `StepDetailDialogComponent` from `declarations` (moved to
+  `SharedModule`).
+- `shared/shared.module.ts` — `+StepDetailDialogComponent`, `+TreatmentStepListComponent`
+  (declarations); `+TreatmentStepListComponent` (exports — `StepDetailDialogComponent` is
+  dialog-only, never used via template tag, so not exported).
+- `app-routing.module.ts` — new lazy `'treatment'` entry (`canActivate: [AuthGuard]`, same pattern
+  as every other feature route), positioned after `'identify'` and before the `ReminderModule`'s
+  `path: ''` mount.
+- `features/plant/models/treatment.model.ts` — `TreatmentResponse` gained
+  `identificationId: number | null` (mirrors the backend DTO addition this task also required).
+
+**Architecture notes:**
+- `TreatmentDetailComponent` copies T6.10's sticky-header + `IntersectionObserver`-collapse +
+  icon-button-bar structure verbatim (same `@ViewChild('scrollSentinel') set scrollSentinel`
+  pattern as `plant-detail.component.ts`) — 2 buttons (overview/plan) instead of `plant-detail`'s
+  4-5, no second sticky-header mechanism invented. See ARCHITECT.md's pattern note.
+- Header photo is the **scan** photo (`IdentificationService.getById(treatment.identificationId)`
+  → `photoUrl`), NOT the plant's profile photo — required the backend `identificationId` DTO
+  addition (see BACKEND.md's T6.12 entry) since `TreatmentResponse` didn't expose it before this
+  task even though the `Treatment` entity has carried it since T6.2.
+- Status chip uses its own CSS classes (`.status-draft`/`.status-in_progress`/`.status-completed`/
+  `.status-dismissed`) — `TreatmentStatus` (DRAFT|IN_PROGRESS|COMPLETED|DISMISSED) is a different
+  enum from `TreatmentPlanStatus` (ACTIVE|COMPLETED|ABANDONED), so `treatment-plan-detail`'s
+  existing `.status-active`/`.status-completed`/`.status-abandoned` classes don't apply directly.
+- `diseaseDescription == null` renders a pending-spinner state ("Generating a description for this
+  disease…"), not an error — same philosophy as T6.6's species-description null-as-pending state,
+  since T6.2's disease-description generation is fire-and-forget async and may not have finished.
+- "Craft Treatment Plan" (DRAFT only) calls `craftPlan()` then auto-switches `activeSection` to
+  `'plan'` on success — no manual click-over required, mirrors T6.11's "auto-navigate after the
+  async action succeeds" pattern.
+- **No manual "mark treatment complete" button** — none existed on `treatment-plan-detail` to
+  reuse (confirmed by reading the file: only a per-step "Mark done"), so one wasn't invented here
+  either. Instead `onPlanStepCompleted()` reloads the `TreatmentPlan` after every step the shared
+  component completes, and calls `treatmentService.completeTreatment(id)` itself once
+  `plan.status === 'COMPLETED'` — a frontend workaround for the backend auto-sync ARCHITECT.md
+  flags as still-T6.14's-job, not a substitute for it. See ARCHITECT.md's "Treatment lifecycle"
+  section for the caveat this leaves (only fires while the user is on this exact page/tab).
+- `ng build` (dev config) succeeds; new `features-treatment-treatment-module` lazy chunk (~71KB)
+  confirmed in the build output. **Not done this session:** no live click-through (no Docker stack
+  or browser tool available) — re-verify the DRAFT→craft→step-list flow and the
+  completion-flips-the-chip flow live before trusting this end-to-end.
+
 ### Next tasks (in order)
+- T6.14 (backend) should wire the real `TreatmentPlan`-completion → `Treatment.status` sync that
+  T6.12's `onPlanStepCompleted()` currently fakes from the frontend (only fires while the user is on
+  the Treatment page's "plan" tab — see T6.12 notes above and ARCHITECT.md).
+- Re-verify T6.12 live (Docker stack): DRAFT treatment → "Craft Treatment Plan" → step list renders
+  → completing all steps flips the status chip to Completed and clears T6.11's "Treatment in
+  Progress" chip on the Plant page.
 - T3.3 — Manual testing on a real device (push notification delivery, PWA installability, offline
   reading) — needs a human with a phone, not something to automate
 - Phase 4 polish (chat streaming/history) — basic T4.1 chat already works

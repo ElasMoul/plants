@@ -252,6 +252,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     return TreatmentResponse.builder()
         .id(treatment.getId())
         .plantId(treatment.getPlantId())
+        .identificationId(treatment.getIdentificationId())
         .diseaseName(treatment.getDiseaseName())
         .diseaseDescription(treatment.getDiseaseDescription())
         .status(treatment.getStatus())

@@ -1,0 +1,108 @@
+<div class="detail-container">
+
+  <!-- Loading -->
+  <div *ngIf="state === 'loading'" class="loading-state">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <!-- Error -->
+  <div class="state-screen" *ngIf="state === 'error'">
+    <mat-icon class="state-icon error-icon">report_problem</mat-icon>
+    <h2 class="state-title">Treatment not found</h2>
+    <p class="state-subtitle">It may have been removed, or you don't have access to it.</p>
+    <button mat-stroked-button type="button" class="btn-pill" routerLink="/garden">
+      <mat-icon>arrow_back</mat-icon>
+      Back to garden
+    </button>
+  </div>
+
+  <ng-container *ngIf="state === 'ready' && treatment">
+
+    <!-- Sticky header -->
+    <div class="sticky-header" [class.collapsed]="headerCollapsed">
+      <div class="detail-hero">
+        <img [src]="scanPhotoUrl || placeholderImage" [alt]="treatment.diseaseName" class="hero-img" />
+        <div class="hero-overlay"></div>
+
+        <button mat-icon-button class="hero-back" (click)="goToPlant()" aria-label="Back to plant">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+
+        <div class="hero-text">
+          <a class="hero-back-link" (click)="goToPlant()" *ngIf="plant">Back to {{ plant.nickname }}</a>
+          <h1 class="hero-name">{{ treatment.diseaseName }}</h1>
+        </div>
+      </div>
+    </div>
+    <div #scrollSentinel class="scroll-sentinel"></div>
+
+    <!-- Icon button bar -->
+    <div class="section-button-bar">
+      <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
+              (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
+        <mat-icon>home</mat-icon>
+      </button>
+      <button mat-icon-button [class.active-section-btn]="activeSection === 'plan'"
+              (click)="selectSection('plan')" matTooltip="Treatment plan" aria-label="Treatment plan">
+        <mat-icon>assignment</mat-icon>
+      </button>
+    </div>
+
+    <!-- Section content -->
+    <div [ngSwitch]="activeSection" class="section-content">
+
+      <!-- Overview -->
+      <div *ngSwitchCase="'overview'" class="tab-content">
+
+        <span class="status-chip" [ngClass]="'status-' + treatment.status.toLowerCase()">
+          {{ treatment.status | titlecase }}
+        </span>
+
+        <div class="description-block">
+          <p *ngIf="treatment.diseaseDescription">{{ treatment.diseaseDescription }}</p>
+          <p class="description-pending" *ngIf="!treatment.diseaseDescription">
+            <mat-spinner diameter="16"></mat-spinner>
+            Generating a description for this disease&hellip;
+          </p>
+        </div>
+
+        <button
+          *ngIf="treatment.status === 'DRAFT'"
+          mat-raised-button
+          color="warn"
+          type="button"
+          class="btn-pill"
+          [disabled]="craftingPlan"
+          (click)="craftPlan()"
+        >
+          <mat-icon>healing</mat-icon>
+          {{ craftingPlan ? 'Crafting plan…' : 'Craft Treatment Plan' }}
+        </button>
+      </div>
+
+      <!-- Plan -->
+      <div *ngSwitchCase="'plan'" class="tab-content">
+
+        <div *ngIf="planLoading" class="plan-loading">
+          <mat-spinner diameter="32"></mat-spinner>
+        </div>
+
+        <div *ngIf="!planLoading && !plan" class="placeholder-tab">
+          <mat-icon class="placeholder-icon">assignment</mat-icon>
+          <h3>No plan yet</h3>
+          <p>Craft a treatment plan from the Overview section first.</p>
+        </div>
+
+        <app-treatment-step-list
+          *ngIf="!planLoading && plan"
+          [steps]="plan.steps"
+          [diagramContent]="plan.diagramContent"
+          (stepCompleted)="onPlanStepCompleted()"
+        ></app-treatment-step-list>
+
+      </div>
+
+    </div>
+  </ng-container>
+
+</div>
