@@ -36,11 +36,13 @@
 }
 
 .sticky-header.collapsed .detail-hero {
-  height: 90px;
+  transition: height 0.25s ease;
+  height: 80px;
 }
 
-.sticky-header.collapsed .hero-species {
-  display: none;
+.sticky-header.collapsed .hero-text {
+  transition: all 0.25s ease;
+  left: 65px;
 }
 
 .hero-img {
@@ -118,14 +120,26 @@
 // visually trapped behind/under the sticky header while scrolling.
 .section-button-bar {
   position: sticky;
-  top: 90px;
+  top: 80px;
   z-index: 9;
   display: flex;
   align-items: center;
-  justify-content: space-around;
   padding: 8px 4px;
   background: var(--color-surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+// The section tabs share the available space; "more actions" is pushed
+// out to the far right, separate from the tab group.
+.section-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex: 1;
+}
+
+.more-actions-btn {
+  margin-left: auto;
 }
 
 .active-section-btn {

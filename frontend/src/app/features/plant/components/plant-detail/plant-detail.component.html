@@ -21,9 +21,6 @@
           <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
             <mat-icon>edit</mat-icon>
           </button>
-          <button mat-icon-button class="hero-action-btn" (click)="onArchive()" aria-label="Archive plant">
-            <mat-icon>archive</mat-icon>
-          </button>
         </div>
 
         <div class="hero-text">
@@ -38,24 +35,26 @@
 
     <!-- Icon button bar -->
     <div class="section-button-bar">
-      <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
-              (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
-        <mat-icon>home</mat-icon>
-      </button>
-      <button mat-icon-button [class.active-section-btn]="activeSection === 'careLog'"
-              (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
-        <mat-icon>history</mat-icon>
-      </button>
-      <button mat-icon-button (click)="selectSection('actions')" matTooltip="More actions" aria-label="More actions">
+      <div class="section-tabs">
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
+                (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
+          <mat-icon>home</mat-icon>
+        </button>
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'careLog'"
+                (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
+          <mat-icon>history</mat-icon>
+        </button>
+        <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
+                matTooltip="Treatment plan" aria-label="Treatment plan">
+          <mat-icon>healing</mat-icon>
+        </button>
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'scans'"
+                (click)="selectSection('scans')" matTooltip="Scans" aria-label="Scans">
+          <mat-icon>document_scanner</mat-icon>
+        </button>
+      </div>
+      <button mat-icon-button class="more-actions-btn" (click)="selectSection('actions')" matTooltip="More actions" aria-label="More actions">
         <mat-icon>more_horiz</mat-icon>
-      </button>
-      <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
-              matTooltip="Treatment plan" aria-label="Treatment plan">
-        <mat-icon>healing</mat-icon>
-      </button>
-      <button mat-icon-button [class.active-section-btn]="activeSection === 'scans'"
-              (click)="selectSection('scans')" matTooltip="Scans" aria-label="Scans">
-        <mat-icon>document_scanner</mat-icon>
       </button>
     </div>
 

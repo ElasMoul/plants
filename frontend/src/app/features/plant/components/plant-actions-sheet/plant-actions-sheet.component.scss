@@ -28,3 +28,11 @@
     flex-shrink: 0;
   }
 }
+
+.action-row-danger {
+  color: var(--color-error);
+
+  mat-icon {
+    color: var(--color-error);
+  }
+}
