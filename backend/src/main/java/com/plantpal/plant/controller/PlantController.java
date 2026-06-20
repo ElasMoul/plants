@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -55,10 +56,14 @@ public class PlantController {
   })
   @GetMapping
   public ResponseEntity<ApiResponse<Page<PlantResponse>>> getUserPlants(
+      @RequestParam(required = false) Long speciesId,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     Long userId = getCurrentUserId();
-    Page<PlantResponse> plants = plantService.getUserPlants(userId, pageable);
+    Page<PlantResponse> plants =
+        speciesId != null
+            ? plantService.getUserPlants(userId, speciesId, pageable)
+            : plantService.getUserPlants(userId, pageable);
     return ResponseEntity.ok(ApiResponse.success(plants));
   }
 

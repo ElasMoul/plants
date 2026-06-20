@@ -1,0 +1,77 @@
+:host {
+  display: block;
+}
+
+.plant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.row-photo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-surface-secondary);
+}
+
+.row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row-nickname {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-scan-date {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+// Same badge token set as plant-card/species-card — colors come from healthBadgeClass(), not
+// re-derived here.
+.health-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+
+  &.badge-healthy {
+    background: var(--color-success);
+  }
+
+  &.badge-issues {
+    background: var(--color-error);
+  }
+
+  &.badge-unknown {
+    background: rgba(0, 0, 0, 0.45);
+  }
+}

@@ -13,11 +13,7 @@
     <span
       *ngIf="plant.healthStatus"
       class="health-badge"
-      [ngClass]="{
-        'badge-healthy':        plant.healthStatus === 'HEALTHY',
-        'badge-issues':         plant.healthStatus === 'ISSUES_DETECTED',
-        'badge-unknown':        plant.healthStatus === 'UNKNOWN'
-      }"
+      [ngClass]="healthBadgeClass(plant.healthStatus)"
     >
       {{ plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus }}
     </span>

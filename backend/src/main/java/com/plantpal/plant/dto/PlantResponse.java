@@ -40,6 +40,9 @@ public class PlantResponse {
   /** Days until the nearest enabled WATERING reminder is due; negative = overdue; null = none. */
   private Integer nextWaterDays;
 
+  /** {@code createdAt} of the plant's latest identification, or null if never scanned. */
+  private Instant lastScanAt;
+
   private Long speciesId;
 
   private Long lastScanId;

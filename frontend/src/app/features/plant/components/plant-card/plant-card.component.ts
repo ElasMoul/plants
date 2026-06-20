@@ -3,6 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { PlantResponse } from '../../models/plant.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 import { ImageLightboxComponent } from '../../../../shared/components/image-lightbox/image-lightbox.component';
+import { healthBadgeClass } from '../../../../shared/utils/health-badge.util';
 
 @Component({
   selector: 'app-plant-card',
@@ -14,6 +15,7 @@ export class PlantCardComponent {
   @Output() archive = new EventEmitter<number>();
 
   readonly placeholderImage = PLACEHOLDER_IMAGE;
+  readonly healthBadgeClass = healthBadgeClass;
 
   constructor(private readonly dialog: MatDialog) {}
 
