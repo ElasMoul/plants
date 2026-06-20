@@ -19,7 +19,47 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T6.2 Treatment entity + migrations + endpoints ✅ (branch:
+## Current Task — T6.4 Species data enrichment async service ✅ (branch:
+feature/PP-029-species-entity, session 2026-06-20)
+> Note: T6.3 (Plant FK columns — `plants.species_id`/`last_scan_id`/`active_treatment_id`,
+> migrations 017/019, real `getUserSpecies()` implementation) landed in between T6.2 and T6.4 on
+> branch `feature/PP-031-plant-species-fk`, merged via PR #38 before this session started. See
+> STATE.md's "T6.3" entry for full detail — this file's rotation skipped straight from T6.2 to T6.4
+> since T6.3 wasn't run through this restore-prompt file.
+
+New `SpeciesEnrichmentServiceImpl` (`com.plantpal.species.service.impl`) — implements the
+`SpeciesEnrichmentService` interface T6.1 left as an `Optional` constructor dependency on
+`SpeciesServiceImpl`. No code change needed in `findOrCreate()` — Spring now wires
+`Optional.of(bean)` automatically since a real bean exists.
+- `@Async("aiTaskExecutor") void enrich(Long speciesId)`: missing Species → WARN + clean return.
+  Calls new `DeepSeekClient.generateSpeciesEnrichment(scientificName, commonName)` (new
+  `SPECIES_ENRICHMENT_SYSTEM_PROMPT`, same `response_format: json_object` + `stripThinkTags()`
+  shape as `generateCureAdvice`/`generateCarePlan` — no third AI client class, per the brief).
+  Success: sets description/careOverview/imageUrl, `externalDataSource="AI"` (hardcoded, not
+  trusted from the AI's own echoed `source` field), `externalDataFetchedAt=now`, status stays
+  ACTIVE. ANY failure (AI throws, malformed JSON) — single broad `catch (Exception e)`,
+  deliberately, since this is fire-and-forget and must never propagate — WARN + flip to
+  NEEDS_REVIEW, content fields stay null.
+- ⚠️ **Real bug, not hypothetical, caught writing the success-path test:** the AI JSON schema
+  includes `"source"`, but the parsing holder only declared description/careOverview/imageUrl —
+  a bare `new ObjectMapper()` (what `@Spy` gives you with no Spring context) has
+  `FAIL_ON_UNKNOWN_PROPERTIES=true` by default and rejected the whole response over that one
+  field, silently routing the success test down the NEEDS_REVIEW path instead. Would NOT have
+  failed in production (Spring Boot's auto-configured `ObjectMapper` bean disables that flag) —
+  fixed properly anyway by declaring `source` on the holder rather than leaving prod correctness
+  dependent on an auto-config default the test environment doesn't share.
+- Item 3 of the brief ("confirm, don't assume, no rate-limit bucket sharing") — grepped all of
+  `com.plantpal.species` for Bucket4j usage: none exists. `IdentificationServiceImpl`'s and
+  `TreatmentServiceImpl`'s buckets are private instance fields with no shared/static state. No new
+  bucket added — Species has no per-user key to limit against anyway.
+- New `SpeciesEnrichmentServiceImplTest` (4 tests): success populates all fields + stays ACTIVE;
+  malformed JSON / AI-throws → NEEDS_REVIEW + no exception either way; not-found → clean return,
+  `save()` never called.
+- `mvn clean compile`, full unit suite, checkstyle all pass; spotless:apply run.
+Next: T6.5/T6.6 (Garden species-first + species detail, frontend) and T6.9 (identification
+species-matching) are now fully unblocked.
+
+## Previous Task — T6.2 Treatment entity + migrations + endpoints ✅ (branch:
 feature/PP-030-treatment-entity, session 2026-06-19)
 New `com.plantpal.treatment` package (separate from `com.plantpal.reminder` — see ARCHITECT.md's
 "Two Treatment concepts" disambiguation; this `Treatment` is NOT the existing T3.4 `TreatmentPlan`):

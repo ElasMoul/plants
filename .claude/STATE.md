@@ -10,8 +10,8 @@ Phase 3 — ✅ COMPLETE
 Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history polish not started
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
-Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅ done;
-  T6.4–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
+Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅, T6.4 ✅
+  done; T6.5–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -667,8 +667,9 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 - Commit T6.3 on feature/PP-031-plant-species-fk (migrations 017/019, Plant/Identification entity +
   DTO fields, TreatmentServiceImpl activeTreatmentId wiring, SpeciesServiceImpl.getUserSpecies()
   real implementation, new/updated unit tests — see T6.3 entry above), then open a PR / merge to dev
-- T6.4 (Species data enrichment) and T6.5/T6.9 (frontend Garden restructure + identification
-  species-matching) are next per the Phase 6 dependency table — both now unblocked by T6.3
+- T6.4 (Species data enrichment) ✅ done — see entry below. T6.5/T6.9 (frontend Garden restructure +
+  identification species-matching) are next per the Phase 6 dependency table — both now unblocked
+  by T6.3 (and T6.6 also now unblocked by T6.4)
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
 - Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
@@ -712,7 +713,7 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 | T6.1 | Species entity + migrations + endpoints | Backend | `feature/PP-029-species-entity` | — | ✅ |
 | T6.2 | Treatment entity + migrations + endpoints | Backend | `feature/PP-030-treatment-entity` | T6.1 | ✅ |
 | T6.3 | Plant entity updates + scan flow changes | Backend | `feature/PP-031-plant-species-fk` | T6.1, T6.2 | ✅ |
-| T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | 🔲 |
+| T6.4 | Species data enrichment async service | Backend | `feature/PP-029-species-entity` (same) | T6.1 | ✅ |
 | T6.5 | Garden species-first restructure | Frontend | `feature/PP-032-garden-species-first` | T6.1, T6.3 | 🔲 |
 | T6.6 | Species detail page | Frontend | `feature/PP-032-garden-species-first` (same) | T6.1, T6.4 | 🔲 |
 | T6.7 | Home page | Frontend | `feature/PP-033-home-page` | T6.3 | 🔲 |
@@ -887,6 +888,53 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
     identification species-matching) are now unblocked — both `plants.species_id` and
     `getUserSpecies()` are real. T6.10/T6.11/T6.12 (Plant page redesign, Treatment page) can also
     now rely on `PlantResponse.activeTreatmentId` being live data, not always-null.
+
+- T6.4 Species data enrichment async service ✅ (backend, branch `feature/PP-029-species-entity`,
+  session 2026-06-20)
+  - New `SpeciesEnrichmentServiceImpl` (`com.plantpal.species.service.impl`) — the real
+    implementation of the `SpeciesEnrichmentService` interface T6.1 left as an `Optional`
+    constructor dependency (no code change needed in `SpeciesServiceImpl.findOrCreate()`; Spring
+    now wires `Optional.of(bean)` automatically since a bean exists).
+  - `@Async("aiTaskExecutor") void enrich(Long speciesId)`: loads the `Species` row (missing →
+    WARN log + clean return, no exception), calls the new
+    `DeepSeekClient.generateSpeciesEnrichment(scientificName, commonName)` (new
+    `SPECIES_ENRICHMENT_SYSTEM_PROMPT`, same `response_format: json_object` + `stripThinkTags()`
+    shape as `generateCureAdvice`/`generateCarePlan` — no third AI client class added, per the
+    brief), parses the JSON via a private `SpeciesEnrichmentJson` holder (same
+    Lombok-getter/setter-by-hand style as `IdentificationServiceImpl.CureAdviceJson`). On success:
+    sets `description`/`careOverview`/`imageUrl`, `externalDataSource="AI"` (hardcoded, not trusted
+    from the AI's echoed `source` field), `externalDataFetchedAt=now`, status stays ACTIVE. On
+    ANY failure (AI throws, malformed JSON) — caught as a single broad `catch (Exception e)`,
+    deliberately, since this is fire-and-forget and must never propagate — logs WARN and flips
+    status to `NEEDS_REVIEW`, leaving the three content fields null.
+  - ⚠️ **Real bug caught while writing the success-path test, not a hypothetical:** the AI prompt's
+    JSON schema includes a `"source"` field (per the brief), but the holder class only declared
+    `description`/`careOverview`/`imageUrl` — Jackson's default `FAIL_ON_UNKNOWN_PROPERTIES` (true
+    for a bare `new ObjectMapper()`, which is what `@Spy private ObjectMapper = new ObjectMapper()`
+    gives you in a unit test with no Spring context) rejected the whole response over the one
+    unmapped field, silently routing every success-path test down the NEEDS_REVIEW catch block
+    instead. **This would NOT have failed in production** (Spring Boot's auto-configured
+    `ObjectMapper` bean disables `FAIL_ON_UNKNOWN_PROPERTIES` by default) — but fixed it properly
+    anyway by declaring `source` on the holder (unused, Jackson populates it via reflection) rather
+    than leaving production's correctness dependent on an auto-config default the test environment
+    doesn't share. Documented with a javadoc note on the field so the next person doesn't delete it
+    as "unused."
+  - **Item 3 of the brief — verified, not assumed:** grepped the entire `com.plantpal.species`
+    package for any Bucket4j usage — none exists. `IdentificationServiceImpl`'s
+    `deepSeekBuckets`/`cureAdviceBuckets` and `TreatmentServiceImpl`'s `aiBuckets` are all private
+    instance fields scoped to those specific classes, with no static/shared state `enrich()` could
+    accidentally consume from. No new rate-limit bucket added (Species has no per-user key to limit
+    against anyway — confirmed this is a non-issue rather than skipping the check).
+  - New `SpeciesEnrichmentServiceImplTest` (4 tests, unit/mocked): successful response populates
+    all fields + stays ACTIVE; malformed JSON → NEEDS_REVIEW + null fields, no exception; AI client
+    throws → NEEDS_REVIEW, no exception propagated; species not found → clean return, `save()`
+    never called.
+  - `mvn clean compile`, full unit suite (`-Dtest='!*IT'`), and `checkstyle:check` all pass;
+    `spotless:apply` run (reformatted only).
+  - **Next:** T6.5/T6.6 (Garden species-first + species detail page, frontend) and T6.9
+    (identification species-matching) are now fully unblocked — `getUserSpecies()` (T6.3) and
+    enrichment (T6.4) are both real. T6.10–T6.12 (Plant/Treatment page redesign) remain the other
+    open frontend branch.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty
