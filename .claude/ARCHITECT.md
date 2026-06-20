@@ -369,6 +369,13 @@ DRAFT ──(user dismisses without starting)──► DISMISSED
   pattern as T3.8's archive-cascade fix, but scoped to this treatment's reminders only).
 
 ### Species data enrichment — async pattern (T6.4)
+> ✅ Implemented 2026-06-20 — `SpeciesEnrichmentServiceImpl` matches this design as planned, with
+> two minor as-built notes: (1) used `DeepSeekClient` only, not `GitHubModelsClient` (text-only
+> call, no vision needed, consistent with how `generateCureAdvice`/`generateCarePlan` already pick
+> DeepSeekClient for text); (2) the AI's echoed `source` field is parsed but never trusted —
+> `externalDataSource="AI"` is always hardcoded on the success path instead. See STATE.md's "T6.4"
+> entry for the full implementation notes, including a real Jackson unknown-property bug caught
+> while testing.
 Mirrors the existing async-AI patterns already in the codebase (T2.6 parallel care-plan
 generation, T2.9 parallel annotation) rather than inventing a new one:
 ```
@@ -390,7 +397,8 @@ Species created (new scientificName, Flow 1 cache miss)
 - No new rate-limit bucket needed if reusing `DeepSeekClient`/`GitHubModelsClient` — but DO
   confirm enrichment calls don't silently consume the same per-user identification rate-limit
   bucket (T6.4's prompt should make this an explicit constructor/config decision, not an
-  accident).
+  accident). ✅ Confirmed via grep, not assumed — `com.plantpal.species` has zero Bucket4j usage;
+  no new bucket added.
 - Frontend implication: the Species detail page (T6.6) must handle `description == null` as a
   normal, expected loading/pending state (e.g. "Gathering info about this species…" rather than
   an error), since enrichment is fire-and-forget and may not have completed by the time the user
