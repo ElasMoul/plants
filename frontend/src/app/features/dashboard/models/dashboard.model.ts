@@ -35,9 +35,20 @@ export interface PlantHealthTrendDto {
   trend: HealthTrend;
 }
 
+export interface RecentScanDto {
+  identificationId: number;
+  plantId: number | null;
+  plantNickname: string | null;
+  photoUrl: string | null;
+  healthStatus: string | null;
+  createdAt: string;
+}
+
 export interface DashboardResponse {
   healthSummary: HealthSummaryDto;
   overdueReminders: ReminderSummaryDto[];
   todayReminders: ReminderSummaryDto[];
   healthTrends: PlantHealthTrendDto[];
+  recentScans: RecentScanDto[];
+  speciesCount: number;
 }

@@ -6,16 +6,24 @@ const routes: Routes = [
   // Exact empty path redirect
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'home',
     pathMatch: 'full',
   },
   // Guarded feature routes — declared BEFORE the auth catch-all
   // so the prefix '' route below never steals them
   {
-    path: 'dashboard',
+    path: 'home',
     loadChildren: () =>
       import('./features/dashboard/dashboard.module').then(m => m.DashboardModule),
     canActivate: [AuthGuard],
+  },
+  // Legacy '/dashboard' URL — DashboardModule is now mounted at 'home' (Home is '', the older
+  // health-trends Garden Dashboard from T2.10 moved to 'home/overview'). Redirect keeps existing
+  // bookmarks/links working; GardenDashboardComponent itself is unchanged and not deleted.
+  {
+    path: 'dashboard',
+    redirectTo: 'home/overview',
+    pathMatch: 'full',
   },
   {
     path: 'garden',

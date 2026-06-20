@@ -3,6 +3,7 @@ package com.plantpal.dashboard.service.impl;
 import com.plantpal.dashboard.dto.DashboardResponse;
 import com.plantpal.dashboard.dto.HealthSummaryDto;
 import com.plantpal.dashboard.dto.PlantHealthTrendDto;
+import com.plantpal.dashboard.dto.RecentScanDto;
 import com.plantpal.dashboard.dto.ReminderSummaryDto;
 import com.plantpal.dashboard.service.DashboardService;
 import com.plantpal.identification.entity.Identification;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardServiceImpl implements DashboardService {
 
   private static final int MAX_ACTIVE_PLANTS = 200;
+  private static final int RECENT_SCANS_LIMIT = 3;
   private static final String HEALTHY = "HEALTHY";
   private static final String ISSUES_DETECTED = "ISSUES_DETECTED";
 
@@ -58,12 +61,17 @@ public class DashboardServiceImpl implements DashboardService {
                 userId, PlantStatus.ACTIVE, PageRequest.of(0, MAX_ACTIVE_PLANTS))
             .getContent();
 
+    List<RecentScanDto> recentScans = buildRecentScans(userId);
+    int speciesCount = countDistinctSpecies(userId);
+
     if (plants.isEmpty()) {
       return DashboardResponse.builder()
           .healthSummary(HealthSummaryDto.builder().build())
           .overdueReminders(List.of())
           .todayReminders(List.of())
           .healthTrends(List.of())
+          .recentScans(recentScans)
+          .speciesCount(speciesCount)
           .build();
     }
 
@@ -80,6 +88,8 @@ public class DashboardServiceImpl implements DashboardService {
         .overdueReminders(buckets.overdue())
         .todayReminders(buckets.today())
         .healthTrends(healthTrends)
+        .recentScans(recentScans)
+        .speciesCount(speciesCount)
         .build();
   }
 
@@ -184,6 +194,52 @@ public class DashboardServiceImpl implements DashboardService {
       return "WORSENING";
     }
     return "STABLE";
+  }
+
+  private List<RecentScanDto> buildRecentScans(Long userId) {
+    List<Identification> recent =
+        identificationRepository
+            .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, RECENT_SCANS_LIMIT))
+            .getContent();
+    if (recent.isEmpty()) {
+      return List.of();
+    }
+
+    List<Long> plantIds =
+        recent.stream()
+            .map(Identification::getPlantId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    Map<Long, String> nicknameByPlantId =
+        plantIds.isEmpty()
+            ? Map.of()
+            : plantRepository.findAllById(plantIds).stream()
+                .collect(Collectors.toMap(Plant::getId, Plant::getNickname));
+
+    return recent.stream()
+        .map(
+            identification ->
+                RecentScanDto.builder()
+                    .identificationId(identification.getId())
+                    .plantId(identification.getPlantId())
+                    .plantNickname(
+                        identification.getPlantId() != null
+                            ? nicknameByPlantId.get(identification.getPlantId())
+                            : null)
+                    .photoUrl(identification.getPhotoUrl())
+                    .healthStatus(identification.getHealthStatus())
+                    .createdAt(identification.getCreatedAt())
+                    .build())
+        .toList();
+  }
+
+  private int countDistinctSpecies(Long userId) {
+    return (int)
+        plantRepository
+            .findDistinctSpeciesIdsByUserIdAndStatus(
+                userId, PlantStatus.ACTIVE, PageRequest.of(0, 1))
+            .getTotalElements();
   }
 
   private record ReminderBuckets(
