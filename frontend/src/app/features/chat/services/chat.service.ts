@@ -11,8 +11,8 @@ export class ChatService {
 
   constructor(private readonly http: HttpClient) {}
 
-  sendMessage(message: string): Observable<ApiResponse<ChatResponse>> {
-    const request: ChatRequest = { message };
+  sendMessage(message: string, plantId?: number): Observable<ApiResponse<ChatResponse>> {
+    const request: ChatRequest = plantId != null ? { message, plantId } : { message };
     return this.http.post<ApiResponse<ChatResponse>>(this.baseUrl, request);
   }
 }

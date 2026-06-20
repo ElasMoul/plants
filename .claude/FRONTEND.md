@@ -35,7 +35,8 @@ features/
   treatment/  — disease-level Treatment entity's own page (/treatment/:id) ✅ (T6.12 — distinct
                 from reminder/'s TreatmentPlan, see ARCHITECT.md's "Two Treatment concepts")
   dashboard/  — garden health landing page (/dashboard) ✅
-  chat/       — basic single-turn chat, wired to backend ✅ (Phase 4 polish not started)
+  chat/       — single-turn chat, wired to backend, plant-context injection ✅ (T6.13; Phase 4
+                streaming/history polish not started)
 layout/       — shell, navbar
 (ai-test/ removed in T4.1 — was a dev-only scratch page)
 
@@ -440,6 +441,38 @@ same pass and are correct (`/api/v1/reminders`, `/api/v1/notifications`).
   or browser tool available) — re-verify the DRAFT→craft→step-list flow and the
   completion-flips-the-chip flow live before trusting this end-to-end.
 
+### T6.13 — Chat: plant context injection (frontend half) ✅ (Complete 2026-06-20,
+branch: feature/PP-036-treatment-page — same branch as T6.12, not the originally-planned
+feature/PP-037-chat-plant-context)
+
+**Backend already done going in:** read `backend/src/main/java/com/plantpal/chat/` before starting
+— `ChatRequest.plantId` and `ChatServiceImpl.buildPlantContext()` were already live, so this session
+was purely the frontend wiring (sending `plantId` + surfacing it in the UI).
+
+**Files changed:**
+- `chat/models/chat.model.ts` — `ChatRequest` gained optional `plantId?: number`
+- `chat/services/chat.service.ts` — `sendMessage(message, plantId?)`; only includes `plantId` in
+  the POST body when defined
+- `chat/chat-home/chat-home.component.ts` — now `OnInit` (was `OnDestroy`-only): reads `plantId`
+  from `ActivatedRoute.queryParams` (the param T6.11's "Ask Me About {nickname}" navigation already
+  sets), stores it as `contextPlantId`, threads it through every `sendMessage()` call for the rest
+  of the session (not just the first message), fetches the nickname via the existing
+  `PlantService.getPlant(plantId)` for the header chip. New `clearContext()` clears both state
+  fields without leaving the page.
+- `chat-home.component.html`/`.scss` — new dismissible `.context-chip` ("Chatting about
+  {nickname}") between the header and the message list
+- `chat.module.ts` — `+PlantService` in providers (it's `@Injectable()` with no `providedIn` — same
+  "every consuming lazy module re-provides it" convention as `plant.module.ts`/`reminder.module.ts`)
+
+**Architecture notes:**
+- Chip nickname-fetch failure is swallowed silently — `plantId` still threads into `sendMessage()`,
+  only the chip doesn't render. Same "degrade gracefully" pattern as T2.9's annotation regions.
+- No routing changes — `queryParams` work on the existing `/chat` route as-is.
+- `npx tsc --noEmit` and `ng build` (dev config) both clean — `features-chat-chat-module` chunk
+  built with no errors. **Not done this session:** no live click-through (no Docker stack or
+  browser tool available) — re-verify the plant-page → "Ask Me About X" → chip-appears →
+  reply-uses-garden-context flow live before trusting it end-to-end.
+
 ### Next tasks (in order)
 - T6.14 (backend) should wire the real `TreatmentPlan`-completion → `Treatment.status` sync that
   T6.12's `onPlanStepCompleted()` currently fakes from the frontend (only fires while the user is on
@@ -447,6 +480,9 @@ same pass and are correct (`/api/v1/reminders`, `/api/v1/notifications`).
 - Re-verify T6.12 live (Docker stack): DRAFT treatment → "Craft Treatment Plan" → step list renders
   → completing all steps flips the status chip to Completed and clears T6.11's "Treatment in
   Progress" chip on the Plant page.
+- Re-verify T6.13 live (Docker stack): plant page "Ask Me About X" → chat opens with the context
+  chip showing → replies use the plant's garden context.
+- T6.7/T6.8 (Home page + 5-item bottom nav) — remaining unstarted Phase 6 frontend tasks.
 - T3.3 — Manual testing on a real device (push notification delivery, PWA installability, offline
   reading) — needs a human with a phone, not something to automate
 - Phase 4 polish (chat streaming/history) — basic T4.1 chat already works

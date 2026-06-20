@@ -11,11 +11,18 @@ import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.impl.ChatServiceImpl;
 import com.plantpal.identification.client.OllamaClient;
+import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.ResourceNotFoundException;
+import com.plantpal.treatment.entity.Treatment;
+import com.plantpal.treatment.repository.TreatmentRepository;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +41,8 @@ class ChatServiceImplTest {
 
   @Mock private OllamaClient ollamaClient;
   @Mock private PlantRepository plantRepository;
+  @Mock private IdentificationRepository identificationRepository;
+  @Mock private TreatmentRepository treatmentRepository;
 
   private ChatServiceImpl chatService;
 
@@ -41,11 +50,17 @@ class ChatServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    chatService = new ChatServiceImpl(ollamaClient, plantRepository);
+    chatService =
+        new ChatServiceImpl(
+            ollamaClient, plantRepository, identificationRepository, treatmentRepository);
   }
 
   private ChatRequest request(String message) {
     return ChatRequest.builder().message(message).build();
+  }
+
+  private ChatRequest request(String message, Long plantId) {
+    return ChatRequest.builder().message(message).plantId(plantId).build();
   }
 
   @Nested
@@ -110,6 +125,58 @@ class ChatServiceImplTest {
       assertThatThrownBy(() -> chatService.chat(request("one too many"), USER_ID))
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
+    }
+  }
+
+  @Nested
+  @DisplayName("chat() with plantId")
+  class ChatWithPlantId {
+
+    private static final Long PLANT_ID = 5L;
+
+    @Test
+    @DisplayName("should prepend plant-specific context when plantId is owned by the user")
+    void shouldIncludePlantSpecificContext() {
+      Plant monstera =
+          Plant.builder()
+              .id(PLANT_ID)
+              .userId(USER_ID)
+              .nickname("Monty")
+              .species("Monstera deliciosa")
+              .activeTreatmentId(9L)
+              .build();
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.of(monstera));
+      Identification scan = Identification.builder().healthStatus("ISSUES_DETECTED").build();
+      scan.setCreatedAt(Instant.parse("2026-06-15T10:00:00Z"));
+      when(identificationRepository.findLatestPerPlant(List.of(PLANT_ID)))
+          .thenReturn(List.of(scan));
+      Treatment treatment = Treatment.builder().id(9L).diseaseName("Root Rot").build();
+      when(treatmentRepository.findById(9L)).thenReturn(Optional.of(treatment));
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(ollamaClient.chat(any())).thenReturn("Here's what's going on with Monty.");
+
+      ChatResponse response = chatService.chat(request("How is Monty doing?", PLANT_ID), USER_ID);
+
+      assertThat(response.getReply()).isEqualTo("Here's what's going on with Monty.");
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chat(promptCaptor.capture());
+      String prompt = promptCaptor.getValue();
+      assertThat(prompt)
+          .contains("The user is asking specifically about their plant 'Monty'")
+          .contains("Monstera deliciosa")
+          .contains("showed health status: ISSUES_DETECTED")
+          .contains("active treatment in progress for Root Rot");
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when the plant is not owned by the user")
+    void shouldThrowWhenPlantNotOwned() {
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(() -> chatService.chat(request("How is Monty doing?", PLANT_ID), USER_ID))
+          .isInstanceOf(ResourceNotFoundException.class);
     }
   }
 }

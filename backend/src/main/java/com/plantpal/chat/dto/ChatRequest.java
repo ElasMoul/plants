@@ -15,4 +15,6 @@ import lombok.Setter;
 public class ChatRequest {
 
   @NotBlank private String message;
+
+  private Long plantId;
 }

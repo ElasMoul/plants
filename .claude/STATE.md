@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-20 (session 22 — T6.12 Treatment page)
+> Last updated: 2026-06-20 (session 23 — T6.13 Chat plant context, frontend)
 
 ## Current Phase
 Phase 0 — Project Setup ✅ COMPLETE
@@ -11,8 +11,8 @@ Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history poli
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
 Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅, T6.4 ✅,
-  T6.5 ✅, T6.6 ✅, T6.9 ✅, T6.10 ✅, T6.11 ✅, T6.12 ✅ done; T6.7/T6.8/T6.13/T6.14 below not started
-  yet — full task prompts in TASK_PLAN.md)
+  T6.5 ✅, T6.6 ✅, T6.9 ✅, T6.10 ✅, T6.11 ✅, T6.12 ✅, T6.13 ✅ done; T6.7/T6.8/T6.14 below not
+  started yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -670,24 +670,28 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
   this session, check `git log`/`git status` before assuming
 - feature/PP-034-identification-species-matching — T6.9 completed (see entry above)
 - feature/PP-035-plant-page-redesign — T6.10 + T6.11 completed (see entries above)
-- feature/PP-036-treatment-page (current) — T6.12 completed: new `features/treatment/` module,
-  `TreatmentResponse.identificationId` backend addition, shared `TreatmentStepListComponent` +
-  relocated `StepDetailDialogComponent` — see T6.12 entry above. Not yet committed/merged this
-  session; check `git status` before assuming.
+- feature/PP-036-treatment-page (current) — T6.12 + T6.13 (both halves now) completed: new
+  `features/treatment/` module, `TreatmentResponse.identificationId` backend addition, shared
+  `TreatmentStepListComponent` + relocated `StepDetailDialogComponent` (T6.12), plus chat
+  plant-context wiring (`chat.model.ts`/`chat.service.ts`/`chat-home.component.*`/`chat.module.ts`
+  frontend, `ChatRequest.java`/`ChatServiceImpl.java`/`ChatServiceImplTest.java` backend, T6.13) —
+  see all three entries above. Not yet committed/merged this session; check `git status` before
+  assuming.
 ## Next Tasks (in order)
-- Commit T6.12 on feature/PP-036-treatment-page (new `features/treatment/` module +
+- Commit T6.12 + T6.13 on feature/PP-036-treatment-page (new `features/treatment/` module +
   `treatment-routing.module.ts`, `shared/components/treatment-step-list/`, relocated
   `shared/components/step-detail-dialog/`, `treatment-plan-detail.component.{ts,html,scss}` diff,
   `treatment.model.ts`/`TreatmentResponse.java`/`TreatmentServiceImpl.java` identificationId
-  addition, `app-routing.module.ts` new lazy route) — see T6.12 entry above for the full file list
-  — then re-verify live (Docker stack) before treating it as fully done end-to-end (no live
-  click-through was possible this session).
+  addition, `app-routing.module.ts` new lazy route, T6.13's chat module changes on both frontend
+  AND backend — `ChatRequest.java`/`ChatServiceImpl.java`/`ChatServiceImplTest.java`) — see T6.12/T6.13
+  entries above for the full file lists — then re-verify both live (Docker stack) before treating
+  either as fully done end-to-end (no live click-through was possible this session for either task).
 - T6.14 (Reminders: wire treatment plan steps) — should now also cover wiring the REAL backend-side
   `TreatmentPlan`-completion → `Treatment.status` sync that T6.12's frontend `onPlanStepCompleted()`
   currently does as a workaround (only fires while the user is actually on the Treatment page's
   "plan" tab). See T6.12's STATE.md entry above and ARCHITECT.md's "Treatment lifecycle" section.
-- T6.13 (Chat: plant context injection) is the only other unstarted Phase 6 frontend+backend task;
-  T6.7/T6.8 (Home page + 5-item bottom nav) remain unstarted and unblocked (T6.3 done).
+- T6.7/T6.8 (Home page + 5-item bottom nav) remain the only unstarted Phase 6 tasks, unblocked
+  (T6.3 done).
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
 - Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
@@ -740,7 +744,7 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 | T6.10 | Plant page: sticky header + icon button bar | Frontend | `feature/PP-035-plant-page-redesign` | T6.3 | ✅ |
 | T6.11 | Plant page: scans tab + treatment CTA | Frontend | `feature/PP-035-plant-page-redesign` (same) | T6.2, T6.10 | ✅ |
 | T6.12 | Treatment page | Frontend | `feature/PP-036-treatment-page` | T6.2 | ✅ |
-| T6.13 | Chat: plant context injection | Frontend + Backend | `feature/PP-037-chat-plant-context` | T6.3 | 🔲 |
+| T6.13 | Chat: plant context injection | Frontend + Backend | `feature/PP-036-treatment-page` (both halves landed here — see correction note in the T6.13 frontend entry below; backend was NOT already in place, built in a later same-day session) | T6.3 | ✅ |
 | T6.14 | Reminders: wire treatment plan steps | Backend | `feature/PP-030-treatment-entity` (same) | T6.2 | 🔲 |
 
 - T6.1 Species entity + migrations + endpoints ✅ (backend, branch `feature/PP-029-species-entity`,
@@ -1193,6 +1197,64 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
     renders; completing all steps flips the chip to Completed and clears T6.11's "Treatment in
     Progress" chip) are confirmed by reading the wired logic only, not an actual run. Re-verify live
     before treating this as fully done end-to-end.
+
+- T6.13 Chat: plant context injection ✅ (frontend half, branch `feature/PP-036-treatment-page` —
+  same branch as T6.12, not the originally-planned `feature/PP-037-chat-plant-context`, session
+  2026-06-20)
+  - ⚠️ **Correction (2026-06-20, later same day):** this entry originally claimed "backend half was
+    already live going into this session." That was wrong — a follow-up backend session confirmed
+    `ChatRequest.plantId` and `ChatServiceImpl.buildPlantContext()` did NOT exist yet at that point
+    and built them from scratch (see the new T6.13-backend entry below for the real implementation).
+    Leaving the rest of this entry as-is since the frontend work it describes is accurate; only the
+    "backend already existed" claim was false — apparent confusion with a different/planned task, not
+    verified against the actual file contents at the time.
+  - `chat/models/chat.model.ts`: `ChatRequest` gained optional `plantId?: number`.
+  - `chat/services/chat.service.ts`: `sendMessage(message, plantId?)` — only includes `plantId` in
+    the POST body when defined.
+  - `chat/chat-home/chat-home.component.ts`: now implements `OnInit` (was `OnDestroy`-only) —
+    reads `plantId` from `ActivatedRoute.queryParams` (the param T6.11's "Ask Me About {nickname}"
+    navigation already sets via `router.navigate(['/chat'], { queryParams: { plantId } })`), stores
+    it as `contextPlantId` and threads it through every `sendMessage()` call for the rest of the
+    session (not just the first message), fetches the nickname via the existing
+    `PlantService.getPlant(plantId)` for display. New `clearContext()` clears both
+    `contextPlantId`/`contextPlantNickname` to drop the context without leaving the page.
+  - `chat-home.component.html`/`.scss`: new dismissible `.context-chip` ("Chatting about
+    {nickname}") between the header and the message list, `*ngIf="contextPlantNickname"`.
+  - `chat.module.ts`: `+PlantService` in providers — it's `@Injectable()` with no `providedIn`, so
+    every consuming lazy module re-provides it (same convention as `plant.module.ts`/
+    `reminder.module.ts`/`treatment.module.ts`).
+  - Chip nickname-fetch failure is swallowed silently — `plantId` stays threaded into
+    `sendMessage()` regardless, only the chip doesn't render. Matches the established
+    "degrade gracefully, never block the core flow" pattern (e.g. T2.9's annotation regions).
+  - No routing changes — `queryParams` work on the existing `/chat` route.
+  - Verified: `npx tsc --noEmit` clean, `ng build` (dev config) succeeds (`features-chat-chat-module`
+    chunk built with no errors). **Not done this session:** no live click-through (no Docker stack
+    or browser tool available) — re-verify the plant-page → "Ask Me About X" → chip-appears →
+    reply-uses-garden-context flow live before treating this as fully done end-to-end.
+
+- T6.13 Chat: plant context injection ✅ (backend half — the actual implementation; the entry above
+  incorrectly assumed this already existed, branch `feature/PP-036-treatment-page`, session
+  2026-06-20)
+  - `ChatRequest.java`: added nullable `plantId` (Long) — purely additive, no validation annotation.
+  - `ChatServiceImpl`: constructor grew from 2 to 4 params — added `IdentificationRepository` and
+    `TreatmentRepository`. New `buildPlantContext(plantId, userId)`: ownership-checked via
+    `plantRepository.findByIdAndUserId()` (`ResourceNotFoundException` if not owned/found, same
+    pattern as `TreatmentServiceImpl`), runs BEFORE `buildGardenContext()` in `chat()` — deliberate
+    ordering, since `buildGardenContext()` unconditionally calls
+    `plantRepository.findAllByUserIdAndStatus()` and running it first would mask a not-owned `plantId`
+    behind an unrelated NPE in a unit test with that repository unmocked. Context block: "The user is
+    asking specifically about their plant '{nickname}' ({species/commonName/"unknown species"})." +
+    optional " Its last scan ({createdAt}) showed health status: {healthStatus}." (via
+    `IdentificationRepository.findLatestPerPlant(List.of(plantId))`, reused as-is — no new query) +
+    optional " It currently has an active treatment in progress for {diseaseName}." (via
+    `plant.activeTreatmentId` → `TreatmentRepository.findById()` → `Treatment.diseaseName`; plain
+    `findById()` is safe here since ownership is already established through the plant). When
+    `plantId` is absent, `chat()`'s behavior is byte-for-byte unchanged from before this task.
+  - 2 new unit tests in `ChatServiceImplTest` (nested `ChatWithPlantId`): full context assembly
+    (species + health + active treatment all present) and not-owned → `ResourceNotFoundException`.
+    Existing 3 `Chat` tests needed only a constructor-signature update (2 new `@Mock` fields).
+  - Verified: `mvn compile` clean, checkstyle clean, full unit suite 180/180 passing (was 178 before
+    this task's 2 new tests).
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty

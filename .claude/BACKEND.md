@@ -19,7 +19,36 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T6.12 Treatment page: backend `identificationId` addition ✅ (branch:
+## Current Task — T6.13 (backend) Chat plant-specific context ✅ (branch:
+feature/PP-036-treatment-page, session 2026-06-20)
+`ChatRequest` gained an optional `plantId` (`Long`, nullable). `ChatServiceImpl` now takes 2
+additional constructor params — `IdentificationRepository`, `TreatmentRepository` — to build a
+plant-specific context block, purely additive when `plantId` is absent.
+- `chat()`: when `plantId` present, ownership-checked via `plantRepository.findByIdAndUserId()`
+  (`ResourceNotFoundException` if not owned/found — same pattern as `TreatmentServiceImpl`) BEFORE
+  `buildGardenContext()` runs, not after — matters because `buildGardenContext()` always queries
+  `plantRepository.findAllByUserIdAndStatus()`, and if it ran first a missing-plant test would never
+  reach the ownership check. New `buildPlantContext(plantId, userId)` is prepended to the existing
+  garden-context block (`plantContext + "\n\n" + gardenContext`), never replaces it.
+- Context text: "The user is asking specifically about their plant '{nickname}' ({species or
+  commonName or "unknown species"})." + optionally " Its last scan ({createdAt}) showed health
+  status: {healthStatus}." (via `IdentificationRepository.findLatestPerPlant(List.of(plantId))` —
+  reused as-is, single-element list, no new query) + optionally " It currently has an active
+  treatment in progress for {diseaseName}." (via `plant.getActiveTreatmentId()` →
+  `TreatmentRepository.findById()` → `Treatment.getDiseaseName()`, only if non-null/present).
+- New `TreatmentRepository` import has no existing `findByIdAndUserId`-style ownership method needed
+  here — ownership is already established via the plant fetch, so a plain `findById()` on the
+  treatment is safe (the treatment's plantId is implicitly trusted via `plant.activeTreatmentId`).
+- 2 new unit tests in `ChatServiceImplTest` (nested `ChatWithPlantId`): full context-block assembly
+  (species + health + active treatment all present) and the not-owned → `ResourceNotFoundException`
+  path. Existing 3 `Chat` tests required only a constructor-signature update (2 new `@Mock` fields),
+  no logic changes — when `plantId` is absent, `chat()`'s behavior is byte-for-byte what it was
+  before this task.
+- `mvn compile`/checkstyle clean, full unit suite 180/180 passing.
+Next: T6.13 frontend (chat UI passing `plantId` when opened from a plant page — see FRONTEND.md) and
+T6.14 (final Phase 6 item per TASK_PLAN.md).
+
+## Previous Task — T6.12 Treatment page: backend `identificationId` addition ✅ (branch:
 feature/PP-036-treatment-page, session 2026-06-20)
 > Note: T6.12 is primarily a Frontend task (new `features/treatment/` Angular module) — see
 > FRONTEND.md for the full implementation. This entry covers the one small backend change that
@@ -575,17 +604,26 @@ No rate limiting on preferences endpoints (plain DB operations, no AI spend).
 - controller/TreatmentPlanController.java — ✅ T3.4: POST /api/v1/treatment-plans (201),
   GET /api/v1/treatment-plans/{id}. Both auto-protected by the existing anyRequest() security rule.
 
-### chat/ — ✅ T4.1: basic single-turn chat wired to Ollama
-- dto/ChatRequest.java  — @NotBlank message
+### chat/ — ✅ T4.1: basic single-turn chat wired to Ollama; ✅ T6.13: optional plant-specific context
+- dto/ChatRequest.java  — @NotBlank message, ✅ T6.13: + nullable plantId (Long)
 - dto/ChatResponse.java — reply (no @Setter — mirrors CureAdviceResponse style)
 - service/ChatService.java (interface) + service/impl/ChatServiceImpl.java
+  - Constructor: ✅ T6.13: 4 params now — ollamaClient, plantRepository, identificationRepository,
+    treatmentRepository (last two added for plant-specific context)
   - chat(request, userId): rate-limit check (chatBuckets, 30/hour, same Bucket4j pattern as
-    IdentificationServiceImpl) → buildGardenContext(userId) → formats CLAUDE.md's chat system prompt
-    (SYSTEM_PROMPT_TEMPLATE.formatted(gardenContext)) + "\n\nUser: " + message into ONE string →
-    ollamaClient.chat(prompt) (single-arg — no separate system-message param on OllamaClient.chat())
+    IdentificationServiceImpl) → if plantId present: buildPlantContext(plantId, userId) (ownership
+    check FIRST — throws ResourceNotFoundException before buildGardenContext() runs) prepended to
+    buildGardenContext(userId); else buildGardenContext(userId) alone → formats CLAUDE.md's chat
+    system prompt (SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)) + "\n\nUser: " + message into ONE
+    string → ollamaClient.chat(prompt) (single-arg — no separate system-message param)
   - buildGardenContext(): plantRepository.findAllByUserIdAndStatus(userId, ACTIVE, PageRequest.of(0,50)),
     "- " + nickname + " (" + commonName/species/"unknown species" + ")" per line, joined with \n;
     "No plants in the garden yet." if empty
+  - ✅ T6.13 buildPlantContext(plantId, userId): plantRepository.findByIdAndUserId() ownership check →
+    "{nickname} ({species/commonName/"unknown species"})" header + optional last-scan health line
+    (IdentificationRepository.findLatestPerPlant(List.of(plantId)), reused not duplicated) + optional
+    active-treatment line (plant.activeTreatmentId → TreatmentRepository.findById() →
+    Treatment.diseaseName, plain findById since ownership already established via the plant)
 - controller/ChatController.java — POST /api/v1/chat (bare path) → ApiResponse<ChatResponse>;
   userId via SecurityContextHolder, same pattern as IdentificationController.getCurrentUserId()
 

@@ -1,8 +1,10 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ChatService } from '../services/chat.service';
+import { PlantService } from '../../plant/services/plant.service';
 
 interface ChatMessage {
   id: number;
@@ -15,7 +17,7 @@ interface ChatMessage {
   templateUrl: './chat-home.component.html',
   styleUrls: ['./chat-home.component.scss'],
 })
-export class ChatHomeComponent implements OnDestroy {
+export class ChatHomeComponent implements OnInit, OnDestroy {
   readonly quickChips: string[] = [
     'Why are my leaves yellow?',
     'How often should I water?',
@@ -33,14 +35,49 @@ export class ChatHomeComponent implements OnDestroy {
   draft = '';
   sending = false;
 
+  contextPlantId: number | null = null;
+  contextPlantNickname: string | null = null;
+
   private nextId = 2;
   private readonly destroy$ = new Subject<void>();
 
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly plantService: PlantService,
+    private readonly route: ActivatedRoute,
+  ) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const plantId = Number(params['plantId']);
+      if (params['plantId'] && !Number.isNaN(plantId)) {
+        this.setContextPlant(plantId);
+      }
+    });
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  clearContext(): void {
+    this.contextPlantId = null;
+    this.contextPlantNickname = null;
+  }
+
+  private setContextPlant(plantId: number): void {
+    this.contextPlantId = plantId;
+    this.plantService.getPlant(plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.contextPlantNickname = res.data.nickname;
+        },
+        error: () => {
+          // Plant lookup failed — keep the plantId threaded into requests, just skip the chip.
+        },
+      });
   }
 
   sendMessage(): void {
@@ -51,7 +88,7 @@ export class ChatHomeComponent implements OnDestroy {
     this.draft = '';
     this.sending = true;
 
-    this.chatService.sendMessage(text)
+    this.chatService.sendMessage(text, this.contextPlantId ?? undefined)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
