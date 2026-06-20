@@ -47,6 +47,7 @@
       class="reminder-card"
       *ngFor="let reminder of displayedReminders"
       [class.overdue]="isOverdue(reminder)"
+      [class.done]="isDone(reminder)"
       (click)="goToPlant(reminder.plantId)"
     >
       <img
@@ -84,9 +85,10 @@
       <button
         type="button"
         class="check-toggle"
-        [disabled]="completingId === reminder.id"
+        [class.done]="isDone(reminder)"
+        [disabled]="completingId === reminder.id || isDone(reminder)"
         (click)="completeReminder(reminder, $event)"
-        aria-label="Mark as done"
+        [attr.aria-label]="isDone(reminder) ? 'Done' : 'Mark as done'"
       >
         <mat-icon>check</mat-icon>
       </button>

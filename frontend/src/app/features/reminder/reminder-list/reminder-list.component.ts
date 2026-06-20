@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
@@ -24,6 +25,12 @@ export class ReminderListComponent implements OnInit, OnDestroy {
   loading = true;
   completingId: number | null = null;
   daySelection: DaySelection | null = null;
+
+  // Checked synchronously at the top of completeReminder() — immune to the render-tick delay
+  // the [disabled] template binding alone has, which a fast double-click/double-tap can beat.
+  // Ids stay in this set permanently once a one-time reminder is done (button becomes "Done");
+  // for recurring reminders the id is removed again once the new schedule loads.
+  private readonly inFlightOrDoneIds = new Set<number>();
 
   private readonly destroy$ = new Subject<void>();
 
@@ -72,15 +79,33 @@ export class ReminderListComponent implements OnInit, OnDestroy {
       });
   }
 
+  isDone(reminder: ReminderResponse): boolean {
+    return !reminder.recurring && this.inFlightOrDoneIds.has(reminder.id);
+  }
+
   completeReminder(reminder: ReminderResponse, event: Event): void {
     event.stopPropagation();
+    if (this.inFlightOrDoneIds.has(reminder.id)) return;
+    this.inFlightOrDoneIds.add(reminder.id);
     this.completingId = reminder.id;
+
     this.reminderService.markCareDone(reminder.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => this.loadReminders(),
-        error: () => {
+        next: () => {
+          if (reminder.recurring) {
+            this.inFlightOrDoneIds.delete(reminder.id);
+          }
+          this.loadReminders();
+        },
+        error: (err: HttpErrorResponse) => {
           this.completingId = null;
+          if (err.status === 400) {
+            // Already completed (race with another tab/component) — treat as done, not an error.
+            this.loadReminders();
+            return;
+          }
+          this.inFlightOrDoneIds.delete(reminder.id);
           this.snackBar.open('Could not update reminder.', 'Dismiss', { duration: 4000 });
         },
       });
