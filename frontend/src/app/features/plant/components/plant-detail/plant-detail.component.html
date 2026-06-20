@@ -116,7 +116,7 @@
       </div>
 
       <!-- Scans (also hosts the care plan content previously on its own tab) -->
-      <div *ngSwitchCase="'scans'" class="tab-content scans-content">
+      <div *ngSwitchCase="'scans'" class="tab-content">
 
         <div class="scans-header">
           <h3 class="scans-subheading">Scan history</h3>
@@ -167,8 +167,9 @@
             <button
               *ngIf="!activeTreatmentForDisease"
               mat-raised-button
+              color="warn"
               type="button"
-              class="start-treatment-btn"
+              class="btn-pill"
               [disabled]="startingTreatment"
               (click)="startTreatment()"
             >
@@ -203,7 +204,7 @@
           ></app-care-plan>
         </ng-container>
 
-        <button mat-fab class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
+        <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
           <mat-icon>camera_alt</mat-icon>
         </button>
 
