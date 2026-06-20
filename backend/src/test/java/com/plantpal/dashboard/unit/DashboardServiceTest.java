@@ -76,6 +76,15 @@ class DashboardServiceTest {
     }
   }
 
+  private void stubNoRecentActivity() {
+    when(identificationRepository.findByUserIdOrderByCreatedAtDesc(
+            eq(USER_ID), any(Pageable.class)))
+        .thenReturn(Page.empty());
+    when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+            eq(USER_ID), eq(PlantStatus.ACTIVE), any(Pageable.class)))
+        .thenReturn(Page.empty());
+  }
+
   @Nested
   @DisplayName("getDashboard() — health summary")
   class HealthSummary {
@@ -108,6 +117,7 @@ class DashboardServiceTest {
 
       when(reminderRepository.findByUserIdAndEnabledTrue(USER_ID)).thenReturn(List.of());
       stubNoTrendHistory(plants);
+      stubNoRecentActivity();
 
       DashboardResponse response = dashboardService.getDashboard(USER_ID);
 
@@ -134,6 +144,7 @@ class DashboardServiceTest {
           .thenReturn(new PageImpl<>(plants));
       when(identificationRepository.findLatestPerPlant(any())).thenReturn(List.of());
       stubNoTrendHistory(plants);
+      stubNoRecentActivity();
 
       Reminder overdueReminder =
           Reminder.builder()
@@ -192,6 +203,7 @@ class DashboardServiceTest {
           .thenReturn(new PageImpl<>(plants));
       when(identificationRepository.findLatestPerPlant(any())).thenReturn(List.of());
       stubNoTrendHistory(plants);
+      stubNoRecentActivity();
 
       Reminder archivedPlantReminder =
           Reminder.builder()
@@ -231,6 +243,7 @@ class DashboardServiceTest {
           .thenReturn(new PageImpl<>(plants));
       when(identificationRepository.findLatestPerPlant(any())).thenReturn(List.of());
       when(reminderRepository.findByUserIdAndEnabledTrue(USER_ID)).thenReturn(List.of());
+      stubNoRecentActivity();
 
       when(identificationRepository.findByPlantIdOrderByCreatedAtDesc(eq(1L), any(Pageable.class)))
           .thenReturn(
@@ -304,6 +317,7 @@ class DashboardServiceTest {
     void shouldReturnZeroedDashboardWhenNoPlants() {
       when(plantRepository.findAllByUserIdAndStatus(eq(USER_ID), eq(PlantStatus.ACTIVE), any()))
           .thenReturn(Page.empty());
+      stubNoRecentActivity();
 
       DashboardResponse response = dashboardService.getDashboard(USER_ID);
 
@@ -314,9 +328,89 @@ class DashboardServiceTest {
       assertThat(response.getOverdueReminders()).isNotNull().isEmpty();
       assertThat(response.getTodayReminders()).isNotNull().isEmpty();
       assertThat(response.getHealthTrends()).isNotNull().isEmpty();
+      assertThat(response.getRecentScans()).isNotNull().isEmpty();
+      assertThat(response.getSpeciesCount()).isZero();
 
       verify(identificationRepository, never()).findLatestPerPlant(any());
       verify(reminderRepository, never()).findByUserIdAndEnabledTrue(anyLong());
+    }
+  }
+
+  @Nested
+  @DisplayName("getDashboard() — recent scans + species count")
+  class RecentScansAndSpeciesCount {
+
+    @Test
+    @DisplayName(
+        "should return the 3 most recent scans newest-first, with plant nicknames"
+            + " resolved and null for species-level (plantId-less) scans")
+    void shouldPopulateRecentScans() {
+      Plant plant = plant(1L, "Monstera");
+      List<Plant> plants = List.of(plant);
+
+      when(plantRepository.findAllByUserIdAndStatus(eq(USER_ID), eq(PlantStatus.ACTIVE), any()))
+          .thenReturn(new PageImpl<>(plants));
+      when(identificationRepository.findLatestPerPlant(any())).thenReturn(List.of());
+      when(reminderRepository.findByUserIdAndEnabledTrue(USER_ID)).thenReturn(List.of());
+      stubNoTrendHistory(plants);
+
+      Identification newest =
+          Identification.builder()
+              .id(30L)
+              .plantId(1L)
+              .photoUrl("/photos/30.jpg")
+              .healthStatus("HEALTHY")
+              .build();
+      newest.setCreatedAt(Instant.parse("2026-06-20T10:00:00Z"));
+      Identification speciesLevelScan =
+          Identification.builder()
+              .id(29L)
+              .plantId(null)
+              .photoUrl("/photos/29.jpg")
+              .healthStatus("UNKNOWN")
+              .build();
+      speciesLevelScan.setCreatedAt(Instant.parse("2026-06-19T10:00:00Z"));
+      when(identificationRepository.findByUserIdOrderByCreatedAtDesc(
+              eq(USER_ID), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of(newest, speciesLevelScan)));
+      when(plantRepository.findAllById(List.of(1L))).thenReturn(plants);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(Pageable.class)))
+          .thenReturn(Page.empty());
+
+      DashboardResponse response = dashboardService.getDashboard(USER_ID);
+
+      assertThat(response.getRecentScans()).hasSize(2);
+      assertThat(response.getRecentScans().get(0).getIdentificationId()).isEqualTo(30L);
+      assertThat(response.getRecentScans().get(0).getPlantNickname()).isEqualTo("Monstera");
+      assertThat(response.getRecentScans().get(1).getIdentificationId()).isEqualTo(29L);
+      assertThat(response.getRecentScans().get(1).getPlantId()).isNull();
+      assertThat(response.getRecentScans().get(1).getPlantNickname()).isNull();
+    }
+
+    @Test
+    @DisplayName(
+        "should count each distinct species once even when the user owns multiple"
+            + " plants of it")
+    void shouldCountDistinctSpeciesOnce() {
+      Plant plant = plant(1L, "Monstera");
+      List<Plant> plants = List.of(plant);
+
+      when(plantRepository.findAllByUserIdAndStatus(eq(USER_ID), eq(PlantStatus.ACTIVE), any()))
+          .thenReturn(new PageImpl<>(plants));
+      when(identificationRepository.findLatestPerPlant(any())).thenReturn(List.of());
+      when(reminderRepository.findByUserIdAndEnabledTrue(USER_ID)).thenReturn(List.of());
+      stubNoTrendHistory(plants);
+      when(identificationRepository.findByUserIdOrderByCreatedAtDesc(
+              eq(USER_ID), any(Pageable.class)))
+          .thenReturn(Page.empty());
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of(7L), Pageable.ofSize(1), 1));
+
+      DashboardResponse response = dashboardService.getDashboard(USER_ID);
+
+      assertThat(response.getSpeciesCount()).isEqualTo(1);
     }
   }
 }

@@ -18,4 +18,6 @@ public class DashboardResponse {
   private List<ReminderSummaryDto> overdueReminders;
   private List<ReminderSummaryDto> todayReminders;
   private List<PlantHealthTrendDto> healthTrends;
+  private List<RecentScanDto> recentScans;
+  private int speciesCount;
 }
