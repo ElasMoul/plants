@@ -1422,7 +1422,8 @@ class IdentificationServiceImplTest {
               .scientificName("Ficus lyrata")
               .commonName("Fiddle-leaf fig")
               .build();
-      when(speciesService.findOrCreate("Ficus lyrata", "Swiss cheese plant")).thenReturn(newSpecies);
+      when(speciesService.findOrCreate("Ficus lyrata", "Swiss cheese plant"))
+          .thenReturn(newSpecies);
 
       SpeciesMatchDto result =
           identificationService.resolveSpecies(
@@ -1488,8 +1489,7 @@ class IdentificationServiceImplTest {
       when(identificationMapper.toResponse(identification))
           .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
 
-      identificationService.resolvePlant(
-          IDENTIFICATION_ID, new ResolvePlantRequest(100L), USER_ID);
+      identificationService.resolvePlant(IDENTIFICATION_ID, new ResolvePlantRequest(100L), USER_ID);
 
       assertThat(identification.getPlantId()).isEqualTo(100L);
       assertThat(plant.getLastScanId()).isEqualTo(IDENTIFICATION_ID);

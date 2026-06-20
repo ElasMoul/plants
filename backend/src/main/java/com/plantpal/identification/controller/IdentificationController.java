@@ -73,7 +73,9 @@ public class IdentificationController {
 
     try {
       IdentificationPendingResponse response =
-          identificationService.submitIdentification(images, plantId, speciesId, userId, organs).get();
+          identificationService
+              .submitIdentification(images, plantId, speciesId, userId, organs)
+              .get();
       return ResponseEntity.status(HttpStatus.ACCEPTED)
           .body(ApiResponse.success(response, "Analysis started — poll for result"));
 
