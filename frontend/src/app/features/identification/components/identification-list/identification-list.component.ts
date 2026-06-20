@@ -107,6 +107,7 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
       photoUrl: '',
       carePlan: null,
       annotationRegions: null,
+      speciesId: null,
       createdAt: new Date().toISOString(),
     };
   }

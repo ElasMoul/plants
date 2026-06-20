@@ -18,6 +18,11 @@ import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.DeepSeekPlantResult;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
+import com.plantpal.identification.dto.PlantMatchDto;
+import com.plantpal.identification.dto.PlantSummaryDto;
+import com.plantpal.identification.dto.ResolvePlantRequest;
+import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
@@ -28,7 +33,11 @@ import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.identification.util.ActionPlanValidator;
+import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
+import com.plantpal.plant.entity.Plant;
+import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
+import com.plantpal.plant.service.PlantService;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
@@ -37,6 +46,9 @@ import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
 import com.plantpal.shared.util.ImageUtil;
+import com.plantpal.species.entity.Species;
+import com.plantpal.species.repository.SpeciesRepository;
+import com.plantpal.species.service.SpeciesService;
 import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
@@ -63,6 +75,7 @@ import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -93,6 +106,9 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final OllamaClient ollamaClient;
   private final KafkaTemplate<String, Object> kafkaTemplate;
   private final CacheManager cacheManager;
+  private final SpeciesRepository speciesRepository;
+  private final SpeciesService speciesService;
+  private final PlantService plantService;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -111,7 +127,10 @@ public class IdentificationServiceImpl implements IdentificationService {
       PlantNetClient plantNetClient,
       OllamaClient ollamaClient,
       KafkaTemplate<String, Object> kafkaTemplate,
-      CacheManager cacheManager) {
+      CacheManager cacheManager,
+      SpeciesRepository speciesRepository,
+      SpeciesService speciesService,
+      PlantService plantService) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -126,11 +145,14 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.ollamaClient = ollamaClient;
     this.kafkaTemplate = kafkaTemplate;
     this.cacheManager = cacheManager;
+    this.speciesRepository = speciesRepository;
+    this.speciesService = speciesService;
+    this.plantService = plantService;
   }
 
   @Override
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
-      List<MultipartFile> images, Long plantId, Long userId, List<String> organs) {
+      List<MultipartFile> images, Long plantId, Long speciesId, Long userId, List<String> organs) {
 
     validateImages(images);
 
@@ -141,10 +163,13 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     // Step 2: Persist with PENDING status (no AI call yet)
+    // speciesId is only ever passed by Flow 2 (scan from a Species page) — Flow 1 (Garden FAB)
+    // leaves it null and resolves species after the AI result comes back (see resolveSpecies()).
     Identification identification =
         Identification.builder()
             .userId(userId)
             .plantId(plantId)
+            .speciesId(speciesId)
             .photoUrl(photoUrls.get(0))
             .status(IdentificationStatus.PENDING)
             .build();
@@ -359,6 +384,130 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     return plan;
+  }
+
+  @Override
+  public SpeciesMatchDto getSpeciesMatch(Long id, Long userId) {
+    Identification identification = findOwnedIdentification(id, userId);
+    return buildSpeciesMatch(identification.getScientificName(), identification.getCommonName());
+  }
+
+  @Override
+  @Transactional
+  public SpeciesMatchDto resolveSpecies(Long id, ResolveSpeciesRequest req, Long userId) {
+    Identification identification = findOwnedIdentification(id, userId);
+
+    if (!req.isConfirmed()) {
+      // User rejected the match (or the "new species" suggestion) — leave speciesId unset.
+      // Re-scan / manual search is a frontend concern; no search endpoint exists yet.
+      return SpeciesMatchDto.builder()
+          .matched(false)
+          .speciesId(null)
+          .scientificName(identification.getScientificName())
+          .commonName(identification.getCommonName())
+          .build();
+    }
+
+    Species species =
+        speciesRepository
+            .findByScientificName(identification.getScientificName())
+            .orElseGet(
+                () ->
+                    speciesService.findOrCreate(
+                        identification.getScientificName(), identification.getCommonName()));
+
+    identification.setSpeciesId(species.getId());
+    identificationRepository.save(identification);
+
+    return SpeciesMatchDto.builder()
+        .matched(true)
+        .speciesId(species.getId())
+        .scientificName(species.getScientificName())
+        .commonName(species.getCommonName())
+        .build();
+  }
+
+  @Override
+  public PlantMatchDto getPlantMatch(Long id, Long userId) {
+    Identification identification = findOwnedIdentification(id, userId);
+    if (identification.getSpeciesId() == null) {
+      throw new ValidationException("Species must be resolved before matching plants");
+    }
+
+    List<Plant> plants =
+        plantRepository
+            .findAllByUserIdAndSpeciesIdAndStatus(
+                userId, identification.getSpeciesId(), PlantStatus.ACTIVE, Pageable.unpaged())
+            .getContent();
+
+    List<PlantSummaryDto> candidates =
+        plants.stream()
+            .map(
+                plant ->
+                    PlantSummaryDto.builder()
+                        .id(plant.getId())
+                        .nickname(plant.getNickname())
+                        .photoUrl(plant.getPhotoUrl())
+                        .build())
+            .toList();
+
+    return PlantMatchDto.builder().candidatePlants(candidates).build();
+  }
+
+  @Override
+  @Transactional
+  public IdentificationResponse resolvePlant(Long id, ResolvePlantRequest req, Long userId) {
+    Identification identification = findOwnedIdentification(id, userId);
+
+    if (req.getPlantId() != null) {
+      Plant plant =
+          plantRepository
+              .findByIdAndUserId(req.getPlantId(), userId)
+              .orElseThrow(() -> new ResourceNotFoundException("Plant not found"));
+      identification.setPlantId(plant.getId());
+      identificationRepository.save(identification);
+      plant.setLastScanId(identification.getId());
+      plantRepository.save(plant);
+    } else {
+      // Reuse the existing nickname-fallback creation flow from T2.8 rather than duplicating it.
+      SaveIdentificationAsPlantRequest saveRequest = new SaveIdentificationAsPlantRequest();
+      saveRequest.setIdentificationId(id);
+      plantService.saveFromIdentification(saveRequest, userId);
+    }
+
+    return getIdentification(id, userId);
+  }
+
+  private SpeciesMatchDto buildSpeciesMatch(String scientificName, String commonName) {
+    return speciesRepository
+        .findByScientificName(scientificName)
+        .map(
+            species ->
+                SpeciesMatchDto.builder()
+                    .matched(true)
+                    .speciesId(species.getId())
+                    .scientificName(species.getScientificName())
+                    .commonName(species.getCommonName())
+                    .build())
+        .orElseGet(
+            () ->
+                SpeciesMatchDto.builder()
+                    .matched(false)
+                    .speciesId(null)
+                    .scientificName(scientificName)
+                    .commonName(commonName)
+                    .build());
+  }
+
+  private Identification findOwnedIdentification(Long id, Long userId) {
+    Identification identification =
+        identificationRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Identification not found"));
+    if (!identification.getUserId().equals(userId)) {
+      throw new ResourceNotFoundException("Identification not found");
+    }
+    return identification;
   }
 
   private DeepSeekPlantResult parseIdentificationResult(String raw) {

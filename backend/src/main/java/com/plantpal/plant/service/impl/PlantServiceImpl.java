@@ -206,6 +206,7 @@ public class PlantServiceImpl implements PlantService {
             .nickname(nickname)
             .species(identification.getScientificName())
             .commonName(identification.getCommonName())
+            .speciesId(identification.getSpeciesId())
             .photoUrl(identification.getPhotoUrl())
             .location(request.getLocation())
             .status(PlantStatus.ACTIVE)

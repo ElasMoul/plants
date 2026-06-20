@@ -100,7 +100,7 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
 
   private submitIdentification(payload: AnalyzeEmitPayload): void {
     this.identificationService
-      .analyze(payload.images, payload.organs, payload.plantId)
+      .analyze(payload.images, payload.organs, payload.plantId, payload.speciesId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {

@@ -6,6 +6,10 @@ import com.plantpal.identification.dto.CureAdviceRequest;
 import com.plantpal.identification.dto.CureAdviceResponse;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
+import com.plantpal.identification.dto.PlantMatchDto;
+import com.plantpal.identification.dto.ResolvePlantRequest;
+import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.shared.exception.PlantPalException;
@@ -56,18 +60,22 @@ public class IdentificationController {
   public ResponseEntity<ApiResponse<IdentificationPendingResponse>> analyze(
       @RequestPart("images") List<MultipartFile> images,
       @RequestParam(value = "organs", required = false) List<String> organs,
-      @RequestParam(required = false) Long plantId) {
+      @RequestParam(required = false) Long plantId,
+      @RequestParam(required = false) Long speciesId) {
 
     Long userId = getCurrentUserId();
     log.info(
-        "Identification requested: userId={}, images={}, plantId={}",
+        "Identification requested: userId={}, images={}, plantId={}, speciesId={}",
         userId,
         images.size(),
-        plantId);
+        plantId,
+        speciesId);
 
     try {
       IdentificationPendingResponse response =
-          identificationService.submitIdentification(images, plantId, userId, organs).get();
+          identificationService
+              .submitIdentification(images, plantId, speciesId, userId, organs)
+              .get();
       return ResponseEntity.status(HttpStatus.ACCEPTED)
           .body(ApiResponse.success(response, "Analysis started — poll for result"));
 
@@ -142,6 +150,42 @@ public class IdentificationController {
     log.info("Add care card requested: userId={}, identificationId={}", userId, id);
     CarePlanDto response = identificationService.addCareCard(id, req, userId);
     return ResponseEntity.ok(ApiResponse.success(response, "Added to care plan"));
+  }
+
+  @Operation(summary = "Check whether the identified species already exists in the catalog")
+  @GetMapping("/{id}/species-match")
+  public ResponseEntity<ApiResponse<SpeciesMatchDto>> getSpeciesMatch(@PathVariable Long id) {
+    Long userId = getCurrentUserId();
+    SpeciesMatchDto response = identificationService.getSpeciesMatch(id, userId);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @Operation(summary = "Confirm or reject the matched/suggested species for an identification")
+  @PostMapping("/{id}/resolve-species")
+  public ResponseEntity<ApiResponse<SpeciesMatchDto>> resolveSpecies(
+      @PathVariable Long id, @RequestBody @Valid ResolveSpeciesRequest req) {
+    Long userId = getCurrentUserId();
+    log.info("Resolve species requested: userId={}, identificationId={}", userId, id);
+    SpeciesMatchDto response = identificationService.resolveSpecies(id, req, userId);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @Operation(summary = "List the user's existing plants of the identification's matched species")
+  @GetMapping("/{id}/plant-match")
+  public ResponseEntity<ApiResponse<PlantMatchDto>> getPlantMatch(@PathVariable Long id) {
+    Long userId = getCurrentUserId();
+    PlantMatchDto response = identificationService.getPlantMatch(id, userId);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @Operation(summary = "Attach an identification to an existing plant, or create a new one")
+  @PostMapping("/{id}/resolve-plant")
+  public ResponseEntity<ApiResponse<IdentificationResponse>> resolvePlant(
+      @PathVariable Long id, @RequestBody @Valid ResolvePlantRequest req) {
+    Long userId = getCurrentUserId();
+    log.info("Resolve plant requested: userId={}, identificationId={}", userId, id);
+    IdentificationResponse response = identificationService.resolvePlant(id, req, userId);
+    return ResponseEntity.ok(ApiResponse.success(response, "Plant linked"));
   }
 
   private Long getCurrentUserId() {

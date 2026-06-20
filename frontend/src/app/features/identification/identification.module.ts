@@ -13,6 +13,8 @@ import { IdentificationListComponent } from './components/identification-list/id
 import { IdentificationUploadDialogComponent } from './components/identification-upload-dialog/identification-upload-dialog.component';
 import { IdentificationPageComponent } from './pages/identification-page/identification-page.component';
 import { IdentificationDetailPageComponent } from './pages/identification-detail-page/identification-detail-page.component';
+import { SpeciesConfirmStepComponent } from './components/species-confirm-step/species-confirm-step.component';
+import { PlantSelectStepComponent } from './components/plant-select-step/plant-select-step.component';
 import { IdentificationService } from './services/identification.service';
 import { PlantService } from '../plant/services/plant.service';
 import { ReminderService } from '../reminder/services/reminder.service';
@@ -28,6 +30,8 @@ import { TreatmentPlanService } from '../reminder/services/treatment-plan.servic
     IdentificationUploadDialogComponent,
     IdentificationPageComponent,
     IdentificationDetailPageComponent,
+    SpeciesConfirmStepComponent,
+    PlantSelectStepComponent,
   ],
   imports: [
     SharedModule,

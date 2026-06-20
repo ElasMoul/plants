@@ -9,6 +9,8 @@ import {
   CarePlanDto,
   IdentificationPendingResponse,
   IdentificationResponse,
+  PlantMatchDto,
+  SpeciesMatchDto,
 } from '../models/identification.model';
 
 const POLL_INTERVAL_MS = 3000;
@@ -24,6 +26,7 @@ export class IdentificationService {
     images: File[],
     organs: string[],
     plantId?: number,
+    speciesId?: number,
   ): Observable<ApiResponse<IdentificationPendingResponse>> {
     const form = new FormData();
     // Append each image and organ as separate multipart parts (not arrays)
@@ -31,6 +34,9 @@ export class IdentificationService {
     organs.forEach(organ => form.append('organs', organ));
     if (plantId != null) {
       form.append('plantId', String(plantId));
+    }
+    if (speciesId != null) {
+      form.append('speciesId', String(speciesId));
     }
     return this.http.post<ApiResponse<IdentificationPendingResponse>>(
       `${this.baseUrl}/analyze`,
@@ -108,5 +114,31 @@ export class IdentificationService {
       `${this.baseUrl}/plant/${plantId}`,
       { params },
     );
+  }
+
+  getSpeciesMatch(id: number): Observable<SpeciesMatchDto> {
+    return this.http.get<ApiResponse<SpeciesMatchDto>>(
+      `${this.baseUrl}/${id}/species-match`,
+    ).pipe(map(res => res.data));
+  }
+
+  resolveSpecies(id: number, confirmed: boolean): Observable<SpeciesMatchDto> {
+    return this.http.post<ApiResponse<SpeciesMatchDto>>(
+      `${this.baseUrl}/${id}/resolve-species`,
+      { confirmed },
+    ).pipe(map(res => res.data));
+  }
+
+  getPlantMatch(id: number): Observable<PlantMatchDto> {
+    return this.http.get<ApiResponse<PlantMatchDto>>(
+      `${this.baseUrl}/${id}/plant-match`,
+    ).pipe(map(res => res.data));
+  }
+
+  resolvePlant(id: number, plantId: number | null): Observable<IdentificationResponse> {
+    return this.http.post<ApiResponse<IdentificationResponse>>(
+      `${this.baseUrl}/${id}/resolve-plant`,
+      { plantId },
+    ).pipe(map(res => res.data));
   }
 }
