@@ -19,14 +19,28 @@ Testcontainers, JaCoCo 0.8.12, Checkstyle (google_checks.xml), Spotless 2.43.0,
 springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (for web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
-## Current Task — T6.4 Species data enrichment async service ✅ (branch:
-feature/PP-029-species-entity, session 2026-06-20)
-> Note: T6.3 (Plant FK columns — `plants.species_id`/`last_scan_id`/`active_treatment_id`,
-> migrations 017/019, real `getUserSpecies()` implementation) landed in between T6.2 and T6.4 on
-> branch `feature/PP-031-plant-species-fk`, merged via PR #38 before this session started. See
-> STATE.md's "T6.3" entry for full detail — this file's rotation skipped straight from T6.2 to T6.4
-> since T6.3 wasn't run through this restore-prompt file.
+## Current Task — T6.12 Treatment page: backend `identificationId` addition ✅ (branch:
+feature/PP-036-treatment-page, session 2026-06-20)
+> Note: T6.12 is primarily a Frontend task (new `features/treatment/` Angular module) — see
+> FRONTEND.md for the full implementation. This entry covers the one small backend change that
+> task required. T6.5/T6.6 (Garden species-first + species detail) and T6.9/T6.10/T6.11 (identification
+> species-matching, Plant page redesign) all landed in between T6.4 and this session on their own
+> branches — see STATE.md's entries for each if full detail is needed; this file's rotation skips
+> straight to the one backend-touching task in that span since the rest were frontend-only.
 
+`TreatmentResponse` DTO gained `identificationId` (`Long`, mirrors the field that's existed on the
+`Treatment` entity since T6.2 but was never mapped through to the response). Confirmed necessary,
+not assumed: the new Treatment page's header needed to show the scan photo (`identificationId` →
+`IdentificationService.getById()` → `photoUrl` on the frontend), and the task brief explicitly said
+NOT to fall back to the plant's profile photo. Two-line change: add the field to
+`TreatmentResponse.java`, set it in `TreatmentServiceImpl.toResponse()`. Confirmed via
+`TreatmentServiceTest` (no test asserts the DTO's full field set, only specific getters) that this
+was a safe additive change — re-ran the suite, still 7/7 passing, no other tests touch this DTO.
+`mvn compile` clean. No migration needed (`identification_id` column already exists on `treatments`
+since T6.2's migration 018).
+
+## Previous Task — T6.4 Species data enrichment async service ✅ (branch:
+feature/PP-029-species-entity, session 2026-06-20)
 New `SpeciesEnrichmentServiceImpl` (`com.plantpal.species.service.impl`) — implements the
 `SpeciesEnrichmentService` interface T6.1 left as an `Optional` constructor dependency on
 `SpeciesServiceImpl`. No code change needed in `findOrCreate()` — Spring now wires

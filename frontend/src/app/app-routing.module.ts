@@ -41,6 +41,13 @@ const routes: Routes = [
       import('./features/identification/identification.module').then(m => m.IdentificationModule),
     canActivate: [AuthGuard],
   },
+  // The disease-level Treatment entity's own page (T6.12) — distinct from
+  // '/treatment-plans/:id' (ReminderModule, the underlying generic TreatmentPlan page).
+  {
+    path: 'treatment',
+    loadChildren: () => import('./features/treatment/treatment.module').then(m => m.TreatmentModule),
+    canActivate: [AuthGuard],
+  },
   // ReminderModule is mounted at the root ('') rather than under a 'reminders' prefix —
   // its own routing module defines both 'reminders' and 'treatment-plans/:id' as siblings,
   // so treatment plans get a clean top-level URL instead of /reminders/treatment-plans/:id.

@@ -1,6 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { parseDetailAsList, ParsedDetail } from '../../../../shared/utils/detail-list.util';
+import { parseDetailAsList, ParsedDetail } from '../../utils/detail-list.util';
 
 export interface StepDetailDialogData {
   instruction: string;

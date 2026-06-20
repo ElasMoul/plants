@@ -15,6 +15,7 @@ public class TreatmentResponse {
 
   private Long id;
   private Long plantId;
+  private Long identificationId;
   private String diseaseName;
   private String diseaseDescription;
   private TreatmentStatus status;

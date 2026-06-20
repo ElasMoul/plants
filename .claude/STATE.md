@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-20 (session 21 — T6.6 species detail page)
+> Last updated: 2026-06-20 (session 22 — T6.12 Treatment page)
 
 ## Current Phase
 Phase 0 — Project Setup ✅ COMPLETE
@@ -11,7 +11,8 @@ Phase 4 — AI Chat ✅ Complete (basic, single-turn) — streaming/history poli
 Phase 5 — Launch prep 🔲 Not started (already fully defined as T5.1–T5.8 in TASK_PLAN.md —
   performance/caching, security hardening, API docs, deployment, beta testing, release)
 Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T6.2 ✅, T6.3 ✅, T6.4 ✅,
-  T6.5 ✅, T6.6 ✅ done; T6.7–T6.14 below not started yet — full task prompts in TASK_PLAN.md)
+  T6.5 ✅, T6.6 ✅, T6.9 ✅, T6.10 ✅, T6.11 ✅, T6.12 ✅ done; T6.7/T6.8/T6.13/T6.14 below not started
+  yet — full task prompts in TASK_PLAN.md)
 
 > ⚠️ **Renumbering note (2026-06-19):** the user requested this session's new work be filed as
 > "Phase 2 / T3.1–T3.14" with migrations 012–015. That collides with work that's already shipped:
@@ -663,22 +664,30 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 - feature/PP-030-treatment-entity — T6.1 + T6.2 completed, merged into feature/PP-031-plant-species-fk's history (Treatment entity work)
 - feature/PP-031-plant-species-fk — T6.3 completed, merged to dev as PR #38 ✅
 - feature/PP-029-species-entity — T6.1 + T6.4 completed, merged to dev as PR #39 ✅
-- feature/PP-032-garden-species-first (current) — T6.5 + T6.6 completed (Garden species-first
+- feature/PP-032-garden-species-first — T6.5 + T6.6 completed (Garden species-first
   restructure + species detail page at `/garden/species/:id`, plus a small backend addition:
-  `GET /api/v1/plants?speciesId=` filter + `PlantResponse.lastScanAt`) — not yet committed, see
-  `git status`
+  `GET /api/v1/plants?speciesId=` filter + `PlantResponse.lastScanAt`) — committed status unverified
+  this session, check `git log`/`git status` before assuming
+- feature/PP-034-identification-species-matching — T6.9 completed (see entry above)
+- feature/PP-035-plant-page-redesign — T6.10 + T6.11 completed (see entries above)
+- feature/PP-036-treatment-page (current) — T6.12 completed: new `features/treatment/` module,
+  `TreatmentResponse.identificationId` backend addition, shared `TreatmentStepListComponent` +
+  relocated `StepDetailDialogComponent` — see T6.12 entry above. Not yet committed/merged this
+  session; check `git status` before assuming.
 ## Next Tasks (in order)
-- Commit T6.5 + T6.6 on feature/PP-032-garden-species-first (new `features/species/` module incl.
-  `species-detail`/`species-plant-row`, app-routing.ts, plant-routing.module.ts, app.component.ts,
-  plant-form/plant-detail/auth navigation fixes, `shared/utils/health-badge.util.ts`, backend
-  `PlantController`/`PlantRepository`/`PlantServiceImpl`/`PlantResponse` speciesId-filter +
-  lastScanAt changes — see T6.5/T6.6 entries above), then re-verify both pages live before starting
-  the next task (no Docker stack or browser tool was available either session — see each entry's
-  "Not done this session" note)
-- T6.7/T6.8 (Home page + 5-item bottom nav) is next per the Phase 6 dependency table, now unblocked
-  (T6.3 done). T6.9 (identification species-matching) is also unblocked (T6.1 + T6.3 both done) and
-  can run in parallel on its own branch — it's what finally wires `speciesId` into the identification
-  submit request, closing the gap T6.6 deliberately left open in `IdentificationUploadDialogData`.
+- Commit T6.12 on feature/PP-036-treatment-page (new `features/treatment/` module +
+  `treatment-routing.module.ts`, `shared/components/treatment-step-list/`, relocated
+  `shared/components/step-detail-dialog/`, `treatment-plan-detail.component.{ts,html,scss}` diff,
+  `treatment.model.ts`/`TreatmentResponse.java`/`TreatmentServiceImpl.java` identificationId
+  addition, `app-routing.module.ts` new lazy route) — see T6.12 entry above for the full file list
+  — then re-verify live (Docker stack) before treating it as fully done end-to-end (no live
+  click-through was possible this session).
+- T6.14 (Reminders: wire treatment plan steps) — should now also cover wiring the REAL backend-side
+  `TreatmentPlan`-completion → `Treatment.status` sync that T6.12's frontend `onPlanStepCompleted()`
+  currently does as a workaround (only fires while the user is actually on the Treatment page's
+  "plan" tab). See T6.12's STATE.md entry above and ARCHITECT.md's "Treatment lifecycle" section.
+- T6.13 (Chat: plant context injection) is the only other unstarted Phase 6 frontend+backend task;
+  T6.7/T6.8 (Home page + 5-item bottom nav) remain unstarted and unblocked (T6.3 done).
 - Commit T3.4 + T3.5 + T3.4b + T3.6 on feature/PP-028-actionable-care-plans-2 (currently
   uncommitted — see `git status` for the full file list), then open a PR / merge to dev
 - Re-verify live (Docker stack): treatment-plan-detail shows real instruction text per step
@@ -727,10 +736,10 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
 | T6.6 | Species detail page | Frontend | `feature/PP-032-garden-species-first` (same) | T6.1, T6.4 | ✅ |
 | T6.7 | Home page | Frontend | `feature/PP-033-home-page` | T6.3 | 🔲 |
 | T6.8 | Bottom nav 5 items + routing | Frontend | `feature/PP-033-home-page` (same) | T6.7 | 🔲 |
-| T6.9 | Identification flow redesign — species matching | Frontend + Backend | `feature/PP-034-identification-species-matching` | T6.1, T6.3 | 🔲 |
-| T6.10 | Plant page: sticky header + icon button bar | Frontend | `feature/PP-035-plant-page-redesign` | T6.3 | 🔲 |
-| T6.11 | Plant page: scans tab + treatment CTA | Frontend | `feature/PP-035-plant-page-redesign` (same) | T6.2, T6.10 | 🔲 |
-| T6.12 | Treatment page | Frontend | `feature/PP-036-treatment-page` | T6.2 | 🔲 |
+| T6.9 | Identification flow redesign — species matching | Frontend + Backend | `feature/PP-034-identification-species-matching` | T6.1, T6.3 | ✅ |
+| T6.10 | Plant page: sticky header + icon button bar | Frontend | `feature/PP-035-plant-page-redesign` | T6.3 | ✅ |
+| T6.11 | Plant page: scans tab + treatment CTA | Frontend | `feature/PP-035-plant-page-redesign` (same) | T6.2, T6.10 | ✅ |
+| T6.12 | Treatment page | Frontend | `feature/PP-036-treatment-page` | T6.2 | ✅ |
 | T6.13 | Chat: plant context injection | Frontend + Backend | `feature/PP-037-chat-plant-context` | T6.3 | 🔲 |
 | T6.14 | Reminders: wire treatment plan steps | Backend | `feature/PP-030-treatment-entity` (same) | T6.2 | 🔲 |
 
@@ -1087,6 +1096,103 @@ Phase 6 — Species & Treatment Domain Restructure 🟡 IN PROGRESS (T6.1 ✅, T
     confirmed by reading the template logic and by the backend's own passing unit tests, not by an
     actual click-through. Both T6.5 and T6.6 need a real login + `/garden` + `/garden/species/:id`
     pass before the next task builds further on top of them.
+
+- T6.9 Identification flow redesign — species matching ✅ (frontend + backend, branch
+  `feature/PP-034-identification-species-matching`, session 2026-06-20 — implemented in a session
+  not run through this STATE.md rotation at the time; backfilled here from CLAUDE.md's build-status
+  table now that T6.12 needs this row accurate)
+  - Backend: `species-match`/`resolve-species`/`plant-match`/`resolve-plant` endpoints;
+    `speciesId` threaded through `analyze()` for Flow 2 (species detail page "add plant of this
+    species", T6.6's deferred wiring finally closed).
+  - Frontend: `species-confirm-step` + `plant-select-step` components implement Flow 1's
+    decision tree (ARCHITECT.md's 3-path identification flow) for the Garden FAB entry point.
+  - **Not independently re-verified this session** — carried forward as a fact from CLAUDE.md, not
+    re-tested; if anything about Flow 1/2 looks off, check the actual T6.9 PR/commit, not just this
+    summary line.
+
+- T6.10 Plant page: sticky header + icon button bar ✅ (frontend, branch
+  `feature/PP-035-plant-page-redesign`, session 2026-06-20 — same backfill caveat as T6.9 above)
+  - `plant-detail.component` rewritten: `.sticky-header` + `IntersectionObserver`-driven collapse
+    (the pattern ARCHITECT.md documents under "Angular pattern: sticky-on-scroll header + icon
+    button bar"), `mat-tab-group` replaced by an icon-only `mat-icon-button` row + `*ngSwitch` on
+    `activeSection`. The old "Care Plan" tab folded into the Scans section (no slot for it in the
+    new `activeSection` enum).
+  - `PlantResponse.activeTreatmentId` added to the frontend model (backend field already existed
+    since T6.3) — gates the icon bar's conditional "treatment" button.
+
+- T6.11 Plant page: scans section + treatment CTA ✅ (frontend, branch
+  `feature/PP-035-plant-page-redesign` same branch as T6.10, session 2026-06-20 — same backfill
+  caveat)
+  - New `features/plant/services/treatment.service.ts` + `models/treatment.model.ts` wrapping
+    T6.2's 5 `/treatments` + `/plants/{id}/active-treatment` endpoints — distinct from the older
+    `TreatmentPlanService`/`/treatment-plans` (see ARCHITECT.md's "Two Treatment concepts").
+  - Scans section: "History" button opens `PlantScanHistorySheetComponent`; fixed "New Scan" FAB
+    reuses `openAddScanDialog()`. Selected scan's `type==='DISEASE'` region → coral "Start
+    Treatment Plan" button (`createTreatment()` → `craftPlan()` → navigates to `/treatment/:id`,
+    T6.12's then-not-yet-built route) or a "Treatment in Progress" chip if
+    `getActiveTreatment(plantId)` already matches that diseaseName (the backend tracks only one
+    active treatment per plant, not per-disease — the chip/button choice is a diseaseName-equality
+    check against that single value).
+  - New `PlantActionsSheetComponent` (update photo [flagged gap, no upload mechanism], archive
+    [native `confirm()`], scan, ask-in-chat) replaces T6.10's placeholder sheet.
+  - Fixed a T6.10 bug in the same session: the icon bar's "treatment" button and the new CTA both
+    now navigate to `/treatment/:id` (this Treatment entity's own page, T6.12) instead of
+    `/treatment-plans/:id` (the unrelated older TreatmentPlan route) — T6.10 had wired the wrong one.
+
+- T6.12 Treatment page ✅ (frontend + small backend addition, branch
+  `feature/PP-036-treatment-page`, session 2026-06-20)
+  - New lazy `features/treatment/` module (`treatment.module.ts`, `treatment-routing.module.ts`)
+    mounted at `/treatment/:id` in `app-routing.module.ts`, `TreatmentDetailComponent` —
+    reuses T6.10's sticky-header + `IntersectionObserver`-collapse + icon-button-bar pattern
+    verbatim (2 buttons: overview/plan) rather than inventing a second sticky-header mechanism, per
+    ARCHITECT.md's explicit instruction that T6.10 sets the precedent for this page.
+  - **Backend addition, confirmed necessary not assumed:** `TreatmentResponse` DTO had no
+    `identificationId`, even though `Treatment.identificationId` has existed on the entity since
+    T6.2 — just never mapped through. Without it, the Treatment page's header had no way to show
+    the scan photo (the brief explicitly says "scan photo, NOT the plant's profile photo") short of
+    falling back to the plant photo, which the brief disallowed. Added `identificationId` to the
+    DTO + `TreatmentServiceImpl.toResponse()`; frontend fetches the photo via
+    `IdentificationService.getById(treatment.identificationId)`. Confirmed via
+    `TreatmentServiceTest` that no test asserts the DTO's full field set, so this was a safe
+    additive change — full suite still passes (`TreatmentServiceTest` re-run, no other tests touch
+    this DTO).
+  - **Extracted a new shared `TreatmentStepListComponent`** (`shared/components/treatment-step-list/`,
+    declared + exported by `SharedModule`) — wraps the diagram/step-list/mark-done UI that was
+    previously hard-coded inline in `treatment-plan-detail.component` (T3.5/T3.6). Both that
+    existing page AND the new Treatment page's "plan" section now render a `TreatmentPlanResponse`'s
+    steps through this one component, per the task brief's explicit suggestion to extract rather
+    than copy-paste once the overlap was confirmed to be as large as it looked.
+    `StepDetailDialogComponent` (T3.6) moved from `reminder/components/` to `shared/components/`
+    alongside it, since both `ReminderModule` and the new `TreatmentModule` are separate lazy
+    modules that each need to open it via `MatDialog` — a dialog component opened by `MatDialog.open()`
+    must be declared in an NgModule that's actually loaded by the caller, so it couldn't stay
+    reminder-module-private once a second lazy module needed it too.
+  - Treatment page "Overview" section: status chip (DRAFT/IN_PROGRESS/COMPLETED/DISMISSED — a
+    distinct enum from `TreatmentPlanStatus`, so its own chip CSS, not a reuse of
+    `treatment-plan-detail`'s `.status-active`/`.status-completed`/`.status-abandoned` classes),
+    `diseaseDescription` rendered with a pending-spinner state while T6.2's async AI generation may
+    still be running (same "null is a normal loading state, not an error" philosophy as T6.6's
+    species description), "Craft Treatment Plan" button (DRAFT only) → `craftPlan()` → auto-switches
+    `activeSection` to `'plan'` on success, no manual click-over required.
+  - "Plan" section: renders via `<app-treatment-step-list>`. **No manual "mark treatment complete"
+    button exists** — ARCHITECT.md's "Treatment lifecycle" section had flagged that the backend
+    doesn't auto-sync `TreatmentPlan` completion to `Treatment.status` (left as T6.14's job), and no
+    such button existed on `treatment-plan-detail` to reuse (confirmed by reading the file — only a
+    per-step "Mark done"). Implemented the sync from the frontend instead:
+    `onPlanStepCompleted()` reloads the plan after every step-completion event from the shared
+    component, and if `plan.status === 'COMPLETED'` and the `Treatment` isn't already `COMPLETED`,
+    calls `treatmentService.completeTreatment(id)` itself. This is a frontend workaround, not the
+    backend auto-sync ARCHITECT.md described — **T6.14 should still wire the real backend-side sync**
+    (`TreatmentRepository.findByTreatmentPlanId()` already exists for the lookup, per ARCHITECT.md)
+    so completion isn't dependent on the user staying on the Treatment page's "plan" tab when the
+    last step is marked done elsewhere (e.g. from `/reminders` or `/treatment-plans/:id` directly).
+  - Verified: `ng build` (dev config) succeeds — new `features-treatment-treatment-module` lazy
+    chunk (~71KB) present in the output; `mvn compile` clean; `TreatmentServiceTest` (backend) still
+    7/7 passing after the DTO change. **Not done this session:** no live click-through (no Docker
+    stack / browser tool available) — the brief's two live-verify checks (DRAFT → craft → step list
+    renders; completing all steps flips the chip to Completed and clears T6.11's "Treatment in
+    Progress" chip) are confirmed by reading the wired logic only, not an actual run. Re-verify live
+    before treating this as fully done end-to-end.
 
 - T2.D3 Identification UX polish + navbar fix ✅ (frontend, session 2026-06-17)
   - `identification-page`: now shows the inline upload form only when the list is empty

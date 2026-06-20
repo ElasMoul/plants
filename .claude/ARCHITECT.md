@@ -217,6 +217,22 @@ Serving: GET /api/v1/photos/{filename} → PhotoController → loadPhotoBytes
   the most likely explanation for why diagrams were flagged in STATE.md as "never confirmed
   against a live AI response."
 
+### Shared `TreatmentStepListComponent` extraction (T6.12)
+`treatment-plan-detail.component` (T3.5/T3.6) originally hard-coded its diagram/step-list/
+mark-done/step-detail-dialog UI inline. T6.12's new Treatment page needed the exact same UI for its
+"plan" section (both render a `TreatmentPlanResponse`'s `steps`), so rather than copy-paste a
+second copy, that block was extracted into `shared/components/treatment-step-list/`
+(`TreatmentStepListComponent`, declared + exported by `SharedModule`) — `@Input() steps`/
+`@Input() diagramContent`, `@Output() stepCompleted` (parent owns reloading the plan; the component
+doesn't reach into a parent's state). `StepDetailDialogComponent` (T3.6, previously
+`reminder/components/`) moved alongside it into `shared/components/` for the same reason a dialog
+component must be declared in an NgModule the caller has actually loaded — `ReminderModule` and the
+new `TreatmentModule` are two independent lazy modules, so a reminder-module-private dialog
+component can't be opened via `MatDialog.open()` from the treatment module. **Pattern for next
+time:** when a second lazy module needs a component/dialog only one other lazy module currently
+owns, move it to `SharedModule` rather than re-declaring/duplicating it — this is the same
+"two consumers justifies extraction" judgment call T6.6 made for `health-badge.util.ts`.
+
 ## Phase 6 — Species & Treatment Domain Restructure (planned 2026-06-19)
 > Filed as Phase 6 / T6.1–T6.14 / migrations 016–019 — NOT the Phase 2/T3.x/012–015 numbers the
 > brief originally suggested, which collide with already-shipped work. See STATE.md's "Phase 6"
@@ -362,8 +378,18 @@ DRAFT ──(user dismisses without starting)──► DISMISSED
   `applyCompletionToReminder()` flipping the underlying `TreatmentPlan` to COMPLETED when its last
   step is done. Wiring that automatic sync (`TreatmentRepository.findByTreatmentPlanId()` already
   exists for this lookup) is **T6.14's job** ("Reminders: wire treatment plan steps"), not done in
-  T6.2. Also still TODO either way: `plant.activeTreatmentId = null` on completion — blocked on
-  T6.3's `plants.active_treatment_id` column (see T6.2's STATE.md entry for the exact TODO markers).
+  T6.2. `plant.activeTreatmentId = null` on completion IS now wired (T6.3, once the column existed
+  — `TreatmentServiceImpl.completeTreatment()` clears it, guarded to only do so when it still points
+  at the treatment being completed).
+  - ✅ **T6.12 stop-gap (2026-06-20):** since T6.14's real backend sync still doesn't exist, the new
+    Treatment page (`TreatmentDetailComponent.onPlanStepCompleted()`) reloads the `TreatmentPlan`
+    after every step the shared `TreatmentStepListComponent` marks done, and calls
+    `treatmentService.completeTreatment(id)` itself once `plan.status === 'COMPLETED'`. This is a
+    **frontend workaround, not a substitute for T6.14** — it only fires while the user is actually
+    on the Treatment page's "plan" tab when the last step completes; marking the last step done from
+    `/reminders` or `/treatment-plans/:id` directly does NOT flip `Treatment.status`. T6.14 should
+    still implement the real backend-side sync so this doesn't depend on which page the user happens
+    to be looking at.
 - `DISMISSED` is a manual user action at any point before COMPLETED — no AI/reminder side effects
   to unwind beyond disabling any reminders already created (same `disableRemindersForPlant`-style
   pattern as T3.8's archive-cascade fix, but scoped to this treatment's reminders only).
@@ -404,10 +430,18 @@ Species created (new scientificName, Flow 1 cache miss)
   an error), since enrichment is fire-and-forget and may not have completed by the time the user
   navigates there.
 
-### Angular pattern: sticky-on-scroll header + icon button bar (T6.10)
+### Angular pattern: sticky-on-scroll header + icon button bar (T6.10, reused by T6.12)
 New pattern for this codebase — neither `mat-tab-group` nor any existing sticky-header component
 exists yet, so T6.10 establishes the precedent other "detail" pages (Treatment page, T6.12) will
 copy.
+> ✅ T6.12 (2026-06-20) confirms the precedent held: `TreatmentDetailComponent` copies T6.10's
+> exact `.sticky-header` + `IntersectionObserver` scroll-sentinel + icon-button-bar structure
+> verbatim (2 buttons instead of `plant-detail`'s 4/5 — overview/plan only), no second mechanism
+> invented. Still no shared `StickyHeaderComponent` extracted — both pages duplicate the CSS/
+> IntersectionObserver wiring rather than sharing a base component. Worth revisiting if a third
+> "detail" page needs this pattern: at that point the duplication is probably worth extracting,
+> the same judgment call T6.12 made for the step-list UI below (two copies tolerated, three
+> consolidated).
 - **Sticky collapse:** use plain CSS `position: sticky; top: 0;` on the header block
   (photo+name+species), NOT Angular CDK Overlay — CDK Overlay is for floating panels/dialogs, not
   scroll-driven layout, and would be solving this with the wrong tool. Pair with an
