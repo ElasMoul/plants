@@ -1,5 +1,6 @@
 package com.plantpal.chat.service.impl;
 
+import com.plantpal.chat.dto.ChatMessageDto;
 import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.ChatService;
@@ -33,6 +34,9 @@ public class ChatServiceImpl implements ChatService {
 
   private static final int CHAT_RATE_LIMIT = 30;
   private static final int GARDEN_CONTEXT_PAGE_SIZE = 50;
+  // Bounds an ever-growing client-side history array from blowing up the prompt -- never trust
+  // unbounded client input, same convention as ActionPlanValidator's step-list truncation.
+  private static final int MAX_HISTORY_MESSAGES = 10;
 
   private static final String SYSTEM_PROMPT_TEMPLATE =
       """
@@ -72,16 +76,47 @@ public class ChatServiceImpl implements ChatService {
       throw new PlantPalException("Chat rate limit reached — try again later", 429);
     }
 
+    String prompt = buildPrompt(request, userId);
+    log.info("Chat request: userId={}", userId);
+    String reply = ollamaClient.chat(prompt);
+    return ChatResponse.builder().reply(reply).build();
+  }
+
+  /**
+   * Shared by the synchronous {@link #chat} and the streaming path -- same context, same prompt.
+   */
+  private String buildPrompt(ChatRequest request, Long userId) {
     String contextBlock =
         request.getPlantId() != null
             ? buildPlantContext(request.getPlantId(), userId) + "\n\n" + buildGardenContext(userId)
             : buildGardenContext(userId);
-    String prompt =
-        SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock) + "\n\nUser: " + request.getMessage();
+    String historyBlock = buildHistoryBlock(request.getHistory());
+    return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)
+        + historyBlock
+        + "\n\nUser: "
+        + request.getMessage();
+  }
 
-    log.info("Chat request: userId={}", userId);
-    String reply = ollamaClient.chat(prompt);
-    return ChatResponse.builder().reply(reply).build();
+  private String buildHistoryBlock(List<ChatMessageDto> history) {
+    if (history == null || history.isEmpty()) {
+      return "";
+    }
+    List<ChatMessageDto> recent =
+        history.size() > MAX_HISTORY_MESSAGES
+            ? history.subList(history.size() - MAX_HISTORY_MESSAGES, history.size())
+            : history;
+    String turns =
+        recent.stream()
+            .map(m -> capitalize(m.getRole()) + ": " + m.getContent())
+            .collect(Collectors.joining("\n"));
+    return "\n\nPrevious conversation:\n" + turns;
+  }
+
+  private String capitalize(String role) {
+    if (role == null || role.isBlank()) {
+      return role;
+    }
+    return Character.toUpperCase(role.charAt(0)) + role.substring(1);
   }
 
   private String buildGardenContext(Long userId) {
