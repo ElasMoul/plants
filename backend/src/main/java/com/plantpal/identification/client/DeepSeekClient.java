@@ -134,9 +134,25 @@ public class DeepSeekClient {
         "description": "<2-4 sentences: what the plant is, its origin, notable characteristics>",
         "careOverview": "<1-2 sentence summary of its general care needs>",
         "imageUrl": "<a representative public photo URL for this species, or null if unsure>",
+        "careCards": [
+          {
+            "type": "<one of: WATERING, LIGHT, HUMIDITY, TEMPERATURE, FERTILIZING, REPOTTING, PRUNING, BEGINNER_TIP>",
+            "title": "<short card title>",
+            "icon": "<a single Material Symbols icon name, e.g. water_drop>",
+            "summary": "<one sentence, shown collapsed>",
+            "detail": "<2-4 sentences of fuller guidance, shown expanded>",
+            "urgency": "<LOW | MEDIUM | HIGH>",
+            "seasonalVariation": "<one sentence on how this changes by season, or null>"
+          }
+        ],
         "source": "AI"
       }
-      If you are not confident about a field, return null for that field rather than guessing.
+      careCards is general care guidance for the SPECIES as a whole (not tied to any one plant's
+      health or a specific issue) -- 3 to 6 cards covering the topics most relevant to this
+      species. Never include a PEST or SEASONAL card here, and never include an "actionPlan" field
+      on any card -- those require a specific plant's reminders, which don't exist at the species
+      level. If you are not confident about a field, return null for that field rather than
+      guessing; if you have nothing reliable to say, return an empty careCards array.
       """;
 
   private final RestClient restClient;

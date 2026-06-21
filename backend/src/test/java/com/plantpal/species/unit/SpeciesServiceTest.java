@@ -7,6 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +49,7 @@ class SpeciesServiceTest {
   @Mock private SpeciesEnrichmentService speciesEnrichmentService;
   @Mock private PlantRepository plantRepository;
   @Mock private IdentificationRepository identificationRepository;
+  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   // Optional<SpeciesEnrichmentService> constructor param isn't @InjectMocks-friendly —
   // construct manually, same pattern as other services with non-mockable constructor params.
@@ -59,7 +63,8 @@ class SpeciesServiceTest {
             speciesMapper,
             Optional.of(speciesEnrichmentService),
             plantRepository,
-            identificationRepository);
+            identificationRepository,
+            objectMapper);
   }
 
   @Nested
@@ -156,6 +161,54 @@ class SpeciesServiceTest {
 
       // Then
       assertThat(result.getId()).isEqualTo(1L);
+      assertThat(result.getCareCards()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("should parse stored careCards JSON into the response")
+    void shouldParseCareCardsWhenPresent() {
+      // Given
+      Species species =
+          Species.builder()
+              .id(1L)
+              .scientificName("Monstera deliciosa")
+              .careCards(
+                  """
+                  [{"type":"WATERING","title":"Watering","icon":"water_drop",\
+                  "summary":"Water weekly","urgency":"MEDIUM"}]
+                  """)
+              .build();
+      when(speciesRepository.findById(1L)).thenReturn(Optional.of(species));
+      when(speciesMapper.toResponse(species)).thenReturn(SpeciesResponse.builder().id(1L).build());
+
+      // When
+      SpeciesResponse result = speciesService.getSpecies(1L);
+
+      // Then
+      assertThat(result.getCareCards()).hasSize(1);
+      CareCardDto card = result.getCareCards().get(0);
+      assertThat(card.getType()).isEqualTo("WATERING");
+      assertThat(card.getTitle()).isEqualTo("Watering");
+    }
+
+    @Test
+    @DisplayName("should degrade to an empty list on malformed careCards JSON, not throw")
+    void shouldDegradeGracefullyOnMalformedCareCards() {
+      // Given
+      Species species =
+          Species.builder()
+              .id(1L)
+              .scientificName("Monstera deliciosa")
+              .careCards("not valid json {{{")
+              .build();
+      when(speciesRepository.findById(1L)).thenReturn(Optional.of(species));
+      when(speciesMapper.toResponse(species)).thenReturn(SpeciesResponse.builder().id(1L).build());
+
+      // When
+      SpeciesResponse result = speciesService.getSpecies(1L);
+
+      // Then
+      assertThat(result.getCareCards()).isEmpty();
     }
 
     @Test

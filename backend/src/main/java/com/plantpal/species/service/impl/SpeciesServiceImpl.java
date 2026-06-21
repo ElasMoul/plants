@@ -1,5 +1,7 @@
 package com.plantpal.species.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
@@ -39,18 +41,21 @@ public class SpeciesServiceImpl implements SpeciesService {
   private final Optional<SpeciesEnrichmentService> speciesEnrichmentService;
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
+  private final ObjectMapper objectMapper;
 
   public SpeciesServiceImpl(
       SpeciesRepository speciesRepository,
       SpeciesMapper speciesMapper,
       Optional<SpeciesEnrichmentService> speciesEnrichmentService,
       PlantRepository plantRepository,
-      IdentificationRepository identificationRepository) {
+      IdentificationRepository identificationRepository,
+      ObjectMapper objectMapper) {
     this.speciesRepository = speciesRepository;
     this.speciesMapper = speciesMapper;
     this.speciesEnrichmentService = speciesEnrichmentService;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -69,7 +74,26 @@ public class SpeciesServiceImpl implements SpeciesService {
         speciesRepository
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Species", id));
-    return speciesMapper.toResponse(species);
+    return speciesMapper.toResponse(species).toBuilder()
+        .careCards(parseCareCards(species.getCareCards()))
+        .build();
+  }
+
+  // Never throws — same defensive-parse philosophy as IdentificationServiceImpl.parseCarePlan().
+  // Null input (enrichment hasn't run / produced no cards) and malformed JSON both degrade to an
+  // empty list rather than failing the whole species response.
+  private List<CareCardDto> parseCareCards(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+    try {
+      return objectMapper.readValue(
+          raw,
+          objectMapper.getTypeFactory().constructCollectionType(List.class, CareCardDto.class));
+    } catch (Exception e) {
+      log.warn("Malformed species care cards JSON: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   @Override
