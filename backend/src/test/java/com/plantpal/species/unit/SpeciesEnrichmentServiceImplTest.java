@@ -9,11 +9,13 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.entity.SpeciesStatus;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.impl.SpeciesEnrichmentServiceImpl;
+import com.plantpal.user.entity.AiModelPreference;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +35,7 @@ class SpeciesEnrichmentServiceImplTest {
 
   @Mock private SpeciesRepository speciesRepository;
   @Mock private DeepSeekClient deepSeekClient;
+  @Mock private OllamaClient ollamaClient;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   private SpeciesEnrichmentServiceImpl enrichmentService;
@@ -49,7 +52,8 @@ class SpeciesEnrichmentServiceImplTest {
   @BeforeEach
   void setUp() {
     enrichmentService =
-        new SpeciesEnrichmentServiceImpl(speciesRepository, deepSeekClient, objectMapper);
+        new SpeciesEnrichmentServiceImpl(
+            speciesRepository, deepSeekClient, ollamaClient, objectMapper);
   }
 
   @Nested
@@ -69,7 +73,8 @@ class SpeciesEnrichmentServiceImplTest {
               """);
       when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
 
-      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID)).doesNotThrowAnyException();
+      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID, AiModelPreference.DEEPSEEK))
+          .doesNotThrowAnyException();
 
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
       verify(speciesRepository).save(captor.capture());
@@ -89,7 +94,8 @@ class SpeciesEnrichmentServiceImplTest {
       when(deepSeekClient.generateSpeciesEnrichment(any(), any())).thenReturn("not valid json {{{");
       when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
 
-      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID)).doesNotThrowAnyException();
+      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID, AiModelPreference.DEEPSEEK))
+          .doesNotThrowAnyException();
 
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
       verify(speciesRepository).save(captor.capture());
@@ -108,7 +114,8 @@ class SpeciesEnrichmentServiceImplTest {
           .thenThrow(new PlantPalException("Species enrichment unavailable", 503));
       when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
 
-      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID)).doesNotThrowAnyException();
+      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID, AiModelPreference.DEEPSEEK))
+          .doesNotThrowAnyException();
 
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
       verify(speciesRepository).save(captor.capture());
@@ -120,10 +127,35 @@ class SpeciesEnrichmentServiceImplTest {
     void shouldReturnCleanlyWhenSpeciesNotFound() {
       when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.empty());
 
-      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID)).doesNotThrowAnyException();
+      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID, AiModelPreference.DEEPSEEK))
+          .doesNotThrowAnyException();
 
       verify(speciesRepository, never()).save(any());
       verify(deepSeekClient, never()).generateSpeciesEnrichment(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "should route through OllamaClient, not DeepSeekClient, for the OLLAMA_LLAVA preference")
+    void shouldRouteThroughOllamaForOllamaPreference() {
+      when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
+      when(ollamaClient.generateSpeciesEnrichment("Monstera deliciosa", "Swiss Cheese Plant"))
+          .thenReturn(
+              """
+              {"description":"A climbing tropical plant.",\
+              "careOverview":"Bright indirect light, water weekly.",\
+              "imageUrl":"https://example.com/monstera.jpg","source":"AI"}
+              """);
+      when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      assertThatCode(() -> enrichmentService.enrich(SPECIES_ID, AiModelPreference.OLLAMA_LLAVA))
+          .doesNotThrowAnyException();
+
+      verify(deepSeekClient, never()).generateSpeciesEnrichment(any(), any());
+      ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
+      verify(speciesRepository).save(captor.capture());
+      assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
+      assertThat(captor.getValue().getDescription()).isEqualTo("A climbing tropical plant.");
     }
   }
 }

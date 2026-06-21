@@ -44,6 +44,7 @@ import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
@@ -1381,7 +1382,7 @@ class IdentificationServiceImplTest {
 
       assertThat(result.isMatched()).isFalse();
       assertThat(result.getSpeciesId()).isNull();
-      verify(speciesService, never()).findOrCreate(any(), any());
+      verify(speciesService, never()).findOrCreate(any(), any(), any());
     }
 
     @Test
@@ -1406,7 +1407,7 @@ class IdentificationServiceImplTest {
       assertThat(result.getSpeciesId()).isEqualTo(SPECIES_ID);
       assertThat(identification.getSpeciesId()).isEqualTo(SPECIES_ID);
       verify(identificationRepository).save(identification);
-      verify(speciesService, never()).findOrCreate(any(), any());
+      verify(speciesService, never()).findOrCreate(any(), any(), any());
     }
 
     @Test
@@ -1422,7 +1423,8 @@ class IdentificationServiceImplTest {
               .scientificName("Ficus lyrata")
               .commonName("Fiddle-leaf fig")
               .build();
-      when(speciesService.findOrCreate("Ficus lyrata", "Swiss cheese plant"))
+      when(speciesService.findOrCreate(
+              "Ficus lyrata", "Swiss cheese plant", AiModelPreference.DEEPSEEK))
           .thenReturn(newSpecies);
 
       SpeciesMatchDto result =

@@ -68,6 +68,21 @@ public class OllamaClient {
     }
   }
 
+  /**
+   * Local-model equivalent of {@link DeepSeekClient#generateSpeciesEnrichment}, used when the
+   * triggering user's AiModelPreference is OLLAMA_LLAVA. Reuses DeepSeekClient's prompt constant
+   * (same package, package-private) rather than duplicating it — the JSON schema this returns must
+   * stay identical between providers since SpeciesEnrichmentServiceImpl parses both the same way.
+   */
+  public String generateSpeciesEnrichment(String scientificName, String commonName) {
+    String userMessage =
+        "Scientific name: "
+            + scientificName
+            + (commonName != null ? "\nCommon name: " + commonName : "");
+    String prompt = DeepSeekClient.SPECIES_ENRICHMENT_SYSTEM_PROMPT + "\n\n" + userMessage;
+    return DeepSeekClient.stripThinkTags(chat(prompt));
+  }
+
   public String identifyPlant(byte[] imageBytes, String mediaType) {
     String base64 =
         Base64.getEncoder()

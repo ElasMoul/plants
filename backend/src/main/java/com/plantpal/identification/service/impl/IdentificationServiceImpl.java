@@ -414,7 +414,9 @@ public class IdentificationServiceImpl implements IdentificationService {
             .orElseGet(
                 () ->
                     speciesService.findOrCreate(
-                        identification.getScientificName(), identification.getCommonName()));
+                        identification.getScientificName(),
+                        identification.getCommonName(),
+                        loadUserPreference(userId)));
 
     identification.setSpeciesId(species.getId());
     identificationRepository.save(identification);

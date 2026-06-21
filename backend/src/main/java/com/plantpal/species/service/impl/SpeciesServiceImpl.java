@@ -14,6 +14,7 @@ import com.plantpal.species.mapper.SpeciesMapper;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.SpeciesService;
+import com.plantpal.user.entity.AiModelPreference;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -54,10 +55,11 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional
-  public Species findOrCreate(String scientificName, String commonName) {
+  public Species findOrCreate(
+      String scientificName, String commonName, AiModelPreference preference) {
     return speciesRepository
         .findByScientificName(scientificName)
-        .orElseGet(() -> createSpecies(scientificName, commonName));
+        .orElseGet(() -> createSpecies(scientificName, commonName, preference));
   }
 
   @Override
@@ -131,7 +133,8 @@ public class SpeciesServiceImpl implements SpeciesService {
         .build();
   }
 
-  private Species createSpecies(String scientificName, String commonName) {
+  private Species createSpecies(
+      String scientificName, String commonName, AiModelPreference preference) {
     Species species =
         speciesRepository.save(
             Species.builder()
@@ -142,7 +145,7 @@ public class SpeciesServiceImpl implements SpeciesService {
     log.info("Species created: id={}, scientificName={}", species.getId(), scientificName);
 
     Long speciesId = species.getId();
-    speciesEnrichmentService.ifPresent(service -> service.enrich(speciesId));
+    speciesEnrichmentService.ifPresent(service -> service.enrich(speciesId, preference));
 
     return species;
   }

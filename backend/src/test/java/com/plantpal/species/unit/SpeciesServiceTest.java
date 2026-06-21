@@ -21,6 +21,7 @@ import com.plantpal.species.mapper.SpeciesMapper;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.impl.SpeciesServiceImpl;
+import com.plantpal.user.entity.AiModelPreference;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,12 +80,14 @@ class SpeciesServiceTest {
           .thenReturn(Optional.of(existing));
 
       // When
-      Species result = speciesService.findOrCreate("Monstera deliciosa", "Swiss Cheese Plant");
+      Species result =
+          speciesService.findOrCreate(
+              "Monstera deliciosa", "Swiss Cheese Plant", AiModelPreference.DEEPSEEK);
 
       // Then
       assertThat(result.getId()).isEqualTo(1L);
       verify(speciesRepository, never()).save(any(Species.class));
-      verify(speciesEnrichmentService, never()).enrich(any());
+      verify(speciesEnrichmentService, never()).enrich(any(), any());
     }
 
     @Test
@@ -101,7 +104,9 @@ class SpeciesServiceTest {
       when(speciesRepository.save(any(Species.class))).thenReturn(saved);
 
       // When
-      Species result = speciesService.findOrCreate("Ficus lyrata", "Fiddle Leaf Fig");
+      Species result =
+          speciesService.findOrCreate(
+              "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.DEEPSEEK);
 
       // Then
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
@@ -111,9 +116,25 @@ class SpeciesServiceTest {
       assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
 
       // Enrichment fired — only the call is verified, not its (T6.4) result.
-      verify(speciesEnrichmentService).enrich(7L);
+      verify(speciesEnrichmentService).enrich(7L, AiModelPreference.DEEPSEEK);
 
       assertThat(result.getId()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("should forward the triggering user's AI model preference to enrichment")
+    void shouldForwardAiModelPreferenceToEnrichment() {
+      // Given
+      when(speciesRepository.findByScientificName("Ficus lyrata")).thenReturn(Optional.empty());
+      Species saved = Species.builder().id(7L).scientificName("Ficus lyrata").build();
+      when(speciesRepository.save(any(Species.class))).thenReturn(saved);
+
+      // When
+      speciesService.findOrCreate(
+          "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.OLLAMA_LLAVA);
+
+      // Then
+      verify(speciesEnrichmentService).enrich(7L, AiModelPreference.OLLAMA_LLAVA);
     }
   }
 
