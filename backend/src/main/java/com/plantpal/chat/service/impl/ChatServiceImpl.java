@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,17 @@ public class ChatServiceImpl implements ChatService {
     log.info("Chat request: userId={}", userId);
     String reply = ollamaClient.chat(prompt);
     return ChatResponse.builder().reply(reply).build();
+  }
+
+  @Override
+  public void chatStream(ChatRequest request, Long userId, Consumer<String> onToken) {
+    if (!consumeRateLimit(userId)) {
+      throw new PlantPalException("Chat rate limit reached — try again later", 429);
+    }
+
+    String prompt = buildPrompt(request, userId);
+    log.info("Chat stream request: userId={}", userId);
+    ollamaClient.chatStream(prompt, onToken);
   }
 
   /**

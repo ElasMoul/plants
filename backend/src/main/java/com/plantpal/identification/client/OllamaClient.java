@@ -1,10 +1,17 @@
 package com.plantpal.identification.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.util.ImageUtil;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,12 +30,15 @@ public class OllamaClient {
 
   private final RestClient restClient;
   private final String model;
+  private final ObjectMapper objectMapper;
 
   public OllamaClient(
       @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
-      @Value("${ollama.model:llava-phi3}") String model) {
+      @Value("${ollama.model:llava-phi3}") String model,
+      ObjectMapper objectMapper) {
     this.model = model;
     this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -64,6 +74,56 @@ public class OllamaClient {
 
     } catch (RestClientException ex) {
       log.error("Failed to reach Ollama at configured base-url [model={}]", model, ex);
+      throw new PlantPalException("AI service unavailable — ensure Ollama is running locally", 503);
+    }
+  }
+
+  /**
+   * Streams a single-turn prompt to Ollama, invoking {@code onToken} once per content chunk as it
+   * arrives (Ollama's NDJSON streaming format — one JSON object per line, {@code done:true} on the
+   * final line). Runs synchronously on the calling thread — the caller (ChatServiceImpl /
+   * ChatController) is responsible for running this off the HTTP request thread.
+   *
+   * @throws PlantPalException if Ollama is unreachable or the stream can't be read
+   */
+  public void chatStream(String userPrompt, Consumer<String> onToken) {
+    log.debug("Streaming prompt to Ollama [model={}]: {}", model, userPrompt);
+
+    OllamaChatRequest request =
+        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), true);
+
+    try {
+      restClient
+          .post()
+          .uri("/api/chat")
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(request)
+          .exchange(
+              (req, resp) -> {
+                readStreamedTokens(resp.getBody(), onToken);
+                return null;
+              });
+      log.debug("Ollama stream completed [model={}]", model);
+    } catch (RestClientException ex) {
+      log.error("Failed to stream from Ollama at configured base-url [model={}]", model, ex);
+      throw new PlantPalException("AI service unavailable — ensure Ollama is running locally", 503);
+    }
+  }
+
+  private void readStreamedTokens(InputStream body, Consumer<String> onToken) {
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line.isBlank()) {
+          continue;
+        }
+        OllamaChatResponse chunk = objectMapper.readValue(line, OllamaChatResponse.class);
+        if (chunk.message() != null && chunk.message().content() != null) {
+          onToken.accept(chunk.message().content());
+        }
+      }
+    } catch (IOException e) {
       throw new PlantPalException("AI service unavailable — ensure Ollama is running locally", 503);
     }
   }

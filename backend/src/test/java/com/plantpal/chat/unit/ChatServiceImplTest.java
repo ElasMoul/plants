@@ -248,4 +248,44 @@ class ChatServiceImplTest {
       assertThat(promptCaptor.getValue()).doesNotContain("Previous conversation:");
     }
   }
+
+  @Nested
+  @DisplayName("chatStream()")
+  class ChatStream {
+
+    @Test
+    @DisplayName("should delegate to ollamaClient.chatStream() with the same prompt as chat()")
+    void shouldDelegateToOllamaClientStream() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+
+      List<String> tokens = new java.util.ArrayList<>();
+      chatService.chatStream(request("How often should I water?"), USER_ID, tokens::add);
+
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chatStream(promptCaptor.capture(), any());
+      assertThat(promptCaptor.getValue()).contains("How often should I water?");
+    }
+
+    @Test
+    @DisplayName("should check the rate limit before any streaming starts")
+    void shouldCheckRateLimitBeforeStreaming() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+
+      for (int i = 0; i < 30; i++) {
+        chatService.chatStream(request("msg " + i), USER_ID, token -> {});
+      }
+
+      assertThatThrownBy(
+              () -> chatService.chatStream(request("one too many"), USER_ID, token -> {}))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+
+      // 30 legitimate calls went through; the 31st was rejected before reaching ollamaClient.
+      verify(ollamaClient, org.mockito.Mockito.times(30)).chatStream(any(), any());
+    }
+  }
 }
