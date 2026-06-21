@@ -1,6 +1,10 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
+import {
+  HttpDownloadProgressEvent,
+  HttpErrorResponse,
+  HttpEventType,
+} from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ChatService } from '../services/chat.service';
@@ -93,18 +97,54 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     this.draft = '';
     this.sending = true;
 
-    this.chatService.sendMessage(text, this.contextPlantId ?? undefined, history)
+    const aiMessageId = this.nextId++;
+    this.messages.push({ id: aiMessageId, sender: 'ai', text: '' });
+
+    // Tracks how much of HttpDownloadProgressEvent.partialText (cumulative from the start of the
+    // response) has already been processed, so each progress tick only parses the NEW bytes.
+    let consumedLength = 0;
+    // A `data: ` line can arrive split across two progress ticks -- buffer until a full line.
+    let lineBuffer = '';
+
+    this.chatService.sendMessageStream(text, this.contextPlantId ?? undefined, history)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: res => {
-          this.messages.push({ id: this.nextId++, sender: 'ai', text: res.data.reply });
-          this.sending = false;
+        next: event => {
+          if (event.type === HttpEventType.DownloadProgress) {
+            const progress = event as HttpDownloadProgressEvent;
+            const partialText = progress.partialText ?? '';
+            lineBuffer += partialText.slice(consumedLength);
+            consumedLength = partialText.length;
+
+            const lines = lineBuffer.split('\n');
+            lineBuffer = lines.pop() ?? ''; // last element may be an incomplete line — keep it
+
+            for (const line of lines) {
+              if (!line.startsWith('data:')) continue;
+              const token = line.slice(5).replace(/^ /, '');
+              this.appendToAiMessage(aiMessageId, token);
+            }
+          } else if (event.type === HttpEventType.Response) {
+            this.sending = false;
+            const msg = this.messages.find(m => m.id === aiMessageId);
+            if (msg && !msg.text) {
+              msg.text = "Sorry, I didn't get a reply. Please try again.";
+            }
+          }
         },
         error: (err: HttpErrorResponse) => {
-          this.messages.push({ id: this.nextId++, sender: 'ai', text: this.mapError(err) });
           this.sending = false;
+          const msg = this.messages.find(m => m.id === aiMessageId);
+          if (msg) {
+            msg.text = this.mapError(err);
+          }
         },
       });
+  }
+
+  private appendToAiMessage(id: number, token: string): void {
+    const msg = this.messages.find(m => m.id === id);
+    if (msg) msg.text += token;
   }
 
   // Excludes the canned greeting and the not-yet-pushed current-turn message -- this is called
