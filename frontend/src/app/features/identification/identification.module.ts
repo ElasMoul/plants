@@ -6,7 +6,6 @@ import { SharedModule } from '../../shared/shared.module';
 import { IdentificationRoutingModule } from './identification-routing.module';
 import { CarePlanModule } from './components/care-plan/care-plan.module';
 import { PhotoUploadComponent } from './components/photo-upload/photo-upload.component';
-import { IdentificationResultComponent } from './components/identification-result/identification-result.component';
 import { PreviewCardComponent } from './components/preview-card/preview-card.component';
 import { IdentificationPreviewSectionComponent } from './components/identification-preview-section/identification-preview-section.component';
 import { IdentificationListComponent } from './components/identification-list/identification-list.component';
@@ -24,7 +23,6 @@ import { TreatmentService } from '../plant/services/treatment.service';
 @NgModule({
   declarations: [
     PhotoUploadComponent,
-    IdentificationResultComponent,
     PreviewCardComponent,
     IdentificationPreviewSectionComponent,
     IdentificationListComponent,
