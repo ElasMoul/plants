@@ -40,6 +40,12 @@ export class TreatmentService {
     );
   }
 
+  getActiveTreatments(plantId: number): Observable<ApiResponse<TreatmentResponse[]>> {
+    return this.http.get<ApiResponse<TreatmentResponse[]>>(
+      `${this.baseUrl}/plants/${plantId}/active-treatments`,
+    );
+  }
+
   completeTreatment(id: number): Observable<ApiResponse<TreatmentResponse>> {
     return this.http.patch<ApiResponse<TreatmentResponse>>(
       `${this.baseUrl}/treatments/${id}/complete`,

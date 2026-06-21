@@ -11,14 +11,22 @@
         <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
       </ng-container>
       <ng-template #newSpecies>
-        <h2 class="step-title">This looks like a new species</h2>
-        <p class="step-scientific-name">{{ match.scientificName }}</p>
-        <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
-        <p class="step-subtitle">We haven't seen this one in your garden before — add it?</p>
+        <ng-container *ngIf="match.scientificName; else unknownSpecies">
+          <h2 class="step-title">This looks like a new species</h2>
+          <p class="step-scientific-name">{{ match.scientificName }}</p>
+          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+          <p class="step-subtitle">We haven't seen this one in your garden before — add it?</p>
+        </ng-container>
+        <ng-template #unknownSpecies>
+          <h2 class="step-title">We couldn't identify a species</h2>
+          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+          <p class="step-subtitle">Try a clearer photo so we can pin down the species.</p>
+        </ng-template>
       </ng-template>
 
       <div class="action-row">
         <button
+          *ngIf="match.matched || match.scientificName"
           mat-raised-button
           color="primary"
           class="btn-pill"
@@ -31,7 +39,7 @@
 
         <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
           <mat-icon>refresh</mat-icon>
-          No, re-scan
+          {{ match.matched || match.scientificName ? 'No, re-scan' : 'Re-scan' }}
         </button>
       </div>
     </mat-card-content>

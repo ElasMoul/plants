@@ -155,6 +155,23 @@ public class DeepSeekClient {
       guessing; if you have nothing reliable to say, return an empty careCards array.
       """;
 
+  static final String DUPLICATE_CARE_CARDS_SYSTEM_PROMPT =
+      """
+      You review a plant's list of "care cards" — each one a detected disease/pest issue that was
+      added to the plant's care plan from a separate scan. Find duplicates: multiple cards that
+      describe the SAME underlying problem, even if worded differently (e.g. "Leaf yellowing" and
+      "Chlorosis on leaves" are likely the same issue; "Spider mites" and "Powdery mildew" are NOT
+      the same issue — different problems stay separate).
+
+      Each card has a "ref" (its id), "title", and "detail". Return ONLY valid JSON (no markdown,
+      no preamble):
+      {
+        "duplicateGroups": [["ref1", "ref2"], ...]
+      }
+      Only include groups of 2 or more refs that genuinely describe the same problem. If there are
+      no duplicates, return {"duplicateGroups": []}.
+      """;
+
   private final RestClient restClient;
   private final String model;
 
@@ -405,6 +422,61 @@ public class DeepSeekClient {
     } catch (RestClientException e) {
       log.error("Failed to reach DeepSeek API", e);
       throw new PlantPalException("Care plan service unavailable", 503);
+    }
+  }
+
+  public String detectDuplicateCareCards(String cardsJson) {
+    String userMessage = "Care cards:\n" + cardsJson;
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            model,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", DUPLICATE_CARE_CARDS_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userMessage)),
+            "temperature",
+            0.1,
+            "response_format",
+            Map.of("type", "json_object"));
+
+    long start = System.currentTimeMillis();
+    try {
+      DeepSeekApiResponse response =
+          restClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(DeepSeekApiResponse.class);
+
+      if (response == null
+          || response.choices() == null
+          || response.choices().isEmpty()
+          || response.choices().get(0).message() == null) {
+        throw new PlantPalException("Empty response from duplicate care card check", 503);
+      }
+
+      String raw = response.choices().get(0).message().content();
+      log.debug("DeepSeek duplicate care card check raw response: {}", raw);
+      log.info(
+          "DeepSeek duplicate care card check completed in {}ms",
+          System.currentTimeMillis() - start);
+      return stripThinkTags(raw);
+
+    } catch (RestClientResponseException e) {
+      log.error(
+          "DeepSeek duplicate care card check error status={}, body={}",
+          e.getStatusCode().value(),
+          e.getResponseBodyAsString());
+      throw new PlantPalException("Duplicate care card check unavailable", 503);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach DeepSeek duplicate care card check API", e);
+      throw new PlantPalException("Duplicate care card check unavailable", 503);
     }
   }
 

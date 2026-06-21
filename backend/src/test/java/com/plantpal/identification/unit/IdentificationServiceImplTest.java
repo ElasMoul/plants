@@ -90,6 +90,7 @@ class IdentificationServiceImplTest {
   @Mock private com.plantpal.species.repository.SpeciesRepository speciesRepository;
   @Mock private com.plantpal.species.service.SpeciesService speciesService;
   @Mock private com.plantpal.plant.service.PlantService plantService;
+  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   private IdentificationServiceImpl identificationService;
 
@@ -116,7 +117,9 @@ class IdentificationServiceImplTest {
             cacheManager,
             speciesRepository,
             speciesService,
-            plantService);
+            plantService,
+            eventPublisher,
+            Runnable::run);
   }
 
   private MockMultipartFile validImage() {

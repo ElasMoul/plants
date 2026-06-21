@@ -27,6 +27,7 @@ import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.event.DuplicateCareCardRemovedEvent;
 import com.plantpal.identification.event.IdentificationCompletedEvent;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
@@ -65,10 +66,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -109,6 +113,8 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final SpeciesRepository speciesRepository;
   private final SpeciesService speciesService;
   private final PlantService plantService;
+  private final ApplicationEventPublisher eventPublisher;
+  private final Executor aiTaskExecutor;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -130,7 +136,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       CacheManager cacheManager,
       SpeciesRepository speciesRepository,
       SpeciesService speciesService,
-      PlantService plantService) {
+      PlantService plantService,
+      ApplicationEventPublisher eventPublisher,
+      @Qualifier("aiTaskExecutor") Executor aiTaskExecutor) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -148,6 +156,8 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.speciesRepository = speciesRepository;
     this.speciesService = speciesService;
     this.plantService = plantService;
+    this.eventPublisher = eventPublisher;
+    this.aiTaskExecutor = aiTaskExecutor;
   }
 
   @Override
@@ -379,11 +389,129 @@ public class IdentificationServiceImpl implements IdentificationService {
           id,
           userId,
           req.getRegionLabel());
+      fireDuplicateCareCardCheck(identification.getPlantId(), userId);
     } else {
       plan.setCareCards(careCards);
     }
 
     return plan;
+  }
+
+  /**
+   * Fires a background check across every Identification belonging to this plant for PEST care
+   * cards that describe the same disease/pest as one just added — each scan creates its own
+   * Identification row with its own care_plan JSONB, so the in-row dedup check in {@link
+   * #addCareCard} never sees cards added from a previous scan. Same-class self-invocation, so this
+   * uses the raw executor directly rather than {@code @Async} (the Spring proxy has no effect on
+   * self-invocation).
+   */
+  private void fireDuplicateCareCardCheck(Long plantId, Long userId) {
+    if (plantId == null) return;
+    CompletableFuture.runAsync(() -> verifyNoDuplicateCareCards(plantId, userId), aiTaskExecutor);
+  }
+
+  private record CareCardRef(Long identificationId, CareCardDto card) {}
+
+  private void verifyNoDuplicateCareCards(Long plantId, Long userId) {
+    try {
+      List<Identification> identifications =
+          identificationRepository
+              .findByPlantIdOrderByCreatedAtDesc(plantId, Pageable.unpaged())
+              .getContent();
+
+      // Newest-first (matches the query order) so the first ref encountered per duplicate group
+      // is always the one to keep.
+      List<CareCardRef> refs = new ArrayList<>();
+      for (Identification ident : identifications) {
+        CarePlanDto plan = parseCarePlan(ident.getCarePlan());
+        if (plan.getCareCards() == null) continue;
+        for (CareCardDto card : plan.getCareCards()) {
+          if ("PEST".equals(card.getType())) {
+            refs.add(new CareCardRef(ident.getId(), card));
+          }
+        }
+      }
+      if (refs.size() < 2) return;
+
+      List<Map<String, String>> summaries = new ArrayList<>();
+      for (int i = 0; i < refs.size(); i++) {
+        CareCardDto card = refs.get(i).card();
+        summaries.add(
+            Map.of(
+                "ref",
+                String.valueOf(i),
+                "title",
+                card.getTitle() != null ? card.getTitle() : "",
+                "detail",
+                card.getDetail() != null ? card.getDetail() : ""));
+      }
+
+      String raw = deepSeekClient.detectDuplicateCareCards(serializeToJson(summaries));
+      List<List<Integer>> groups = parseDuplicateGroups(raw);
+
+      for (List<Integer> group : groups) {
+        if (group.size() < 2) continue;
+        int keepIndex = group.stream().min(Integer::compareTo).orElseThrow();
+        String diseaseName = refs.get(keepIndex).card().getTitle();
+        for (int idx : group) {
+          if (idx == keepIndex) continue;
+          removeCareCard(refs.get(idx));
+          eventPublisher.publishEvent(new DuplicateCareCardRemovedEvent(plantId, diseaseName));
+        }
+      }
+    } catch (PlantPalException e) {
+      log.warn(
+          "Duplicate care card check failed, leaving cards as-is: plantId={}, error={}",
+          plantId,
+          e.getMessage());
+    }
+  }
+
+  private void removeCareCard(CareCardRef ref) {
+    identificationRepository
+        .findById(ref.identificationId())
+        .ifPresent(
+            ident -> {
+              CarePlanDto plan = parseCarePlan(ident.getCarePlan());
+              List<CareCardDto> cards = new ArrayList<>(plan.getCareCards());
+              boolean removed =
+                  cards.removeIf(
+                      c ->
+                          "PEST".equals(c.getType())
+                              && ref.card().getTitle() != null
+                              && ref.card().getTitle().equals(c.getTitle()));
+              if (!removed) return;
+              plan.setCareCards(cards);
+              ident.setCarePlan(serializeToJson(plan));
+              identificationRepository.save(ident);
+              log.info(
+                  "Removed duplicate care card: identificationId={}, title={}",
+                  ident.getId(),
+                  ref.card().getTitle());
+            });
+  }
+
+  private List<List<Integer>> parseDuplicateGroups(String raw) {
+    try {
+      DuplicateGroupsJson parsed = objectMapper.readValue(raw, DuplicateGroupsJson.class);
+      if (parsed.getDuplicateGroups() == null) return List.of();
+      List<List<Integer>> result = new ArrayList<>();
+      for (List<String> group : parsed.getDuplicateGroups()) {
+        List<Integer> indices = new ArrayList<>();
+        for (String ref : group) {
+          try {
+            indices.add(Integer.parseInt(ref.trim()));
+          } catch (NumberFormatException ignored) {
+            // Malformed ref from the AI — skip it rather than fail the whole group.
+          }
+        }
+        result.add(indices);
+      }
+      return result;
+    } catch (JsonProcessingException e) {
+      log.warn("Malformed duplicate care card groups JSON: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   @Override
@@ -406,6 +534,13 @@ public class IdentificationServiceImpl implements IdentificationService {
           .scientificName(identification.getScientificName())
           .commonName(identification.getCommonName())
           .build();
+    }
+
+    if (identification.getScientificName() == null
+        || identification.getScientificName().isBlank()) {
+      throw new ValidationException(
+          "Cannot save this species — the AI couldn't determine a scientific name for this scan."
+              + " Please re-scan.");
     }
 
     Species species =
@@ -852,6 +987,19 @@ public class IdentificationServiceImpl implements IdentificationService {
 
     public void setActionPlan(ActionPlanDto actionPlan) {
       this.actionPlan = actionPlan;
+    }
+  }
+
+  /** Wire shape returned by {@link DeepSeekClient#detectDuplicateCareCards}. */
+  private static final class DuplicateGroupsJson {
+    private List<List<String>> duplicateGroups;
+
+    public List<List<String>> getDuplicateGroups() {
+      return duplicateGroups;
+    }
+
+    public void setDuplicateGroups(List<List<String>> duplicateGroups) {
+      this.duplicateGroups = duplicateGroups;
     }
   }
 

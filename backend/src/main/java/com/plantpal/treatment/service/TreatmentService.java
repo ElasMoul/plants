@@ -2,6 +2,7 @@ package com.plantpal.treatment.service;
 
 import com.plantpal.treatment.dto.CreateTreatmentRequest;
 import com.plantpal.treatment.dto.TreatmentResponse;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface TreatmentService {
@@ -19,7 +20,23 @@ public interface TreatmentService {
 
   TreatmentResponse getActiveTreatmentForPlant(Long plantId, Long userId);
 
+  /**
+   * Returns every DRAFT/IN_PROGRESS treatment for the plant, newest first — unlike {@link
+   * #getActiveTreatmentForPlant}, which only surfaces the single most recently created one. A plant
+   * can have several diseases under treatment at once, even though {@code Plant.activeTreatmentId}
+   * only ever points at one of them.
+   */
+  List<TreatmentResponse> getActiveTreatmentsForPlant(Long plantId, Long userId);
+
   TreatmentResponse completeTreatment(Long id, Long userId);
+
+  /**
+   * Dismisses (status -&gt; DISMISSED) any DRAFT/IN_PROGRESS treatment for this plant+disease.
+   * Unlike the other mutating methods here, this isn't owner-scoped by a request-bound userId — the
+   * caller is the background duplicate-care-card listener, not a controller, and a plant only ever
+   * has one owner anyway.
+   */
+  void dismissActiveTreatmentForDisease(Long plantId, String diseaseName);
 
   /**
    * Reacts to a {@code TreatmentPlan} completing (last enabled step done) by flipping the wrapping
