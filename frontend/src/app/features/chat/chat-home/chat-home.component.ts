@@ -5,12 +5,16 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ChatService } from '../services/chat.service';
 import { PlantService } from '../../plant/services/plant.service';
+import { ChatMessageDto } from '../models/chat.model';
 
 interface ChatMessage {
   id: number;
   sender: 'user' | 'ai';
   text: string;
 }
+
+// The canned opening greeting isn't a real conversation turn — excluded from history sent to the AI.
+const GREETING_ID = 1;
 
 @Component({
   selector: 'app-chat-home',
@@ -84,11 +88,12 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     const text = this.draft.trim();
     if (!text || this.sending) return;
 
+    const history = this.buildHistory();
     this.messages.push({ id: this.nextId++, sender: 'user', text });
     this.draft = '';
     this.sending = true;
 
-    this.chatService.sendMessage(text, this.contextPlantId ?? undefined)
+    this.chatService.sendMessage(text, this.contextPlantId ?? undefined, history)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
@@ -100,6 +105,14 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
           this.sending = false;
         },
       });
+  }
+
+  // Excludes the canned greeting and the not-yet-pushed current-turn message -- this is called
+  // before that message is pushed, so "all messages so far" is exactly the prior turns.
+  private buildHistory(): ChatMessageDto[] {
+    return this.messages
+      .filter(m => m.id !== GREETING_ID)
+      .map(m => ({ role: m.sender === 'ai' ? 'assistant' : 'user', content: m.text }));
   }
 
   useQuickChip(chip: string): void {
