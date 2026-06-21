@@ -107,6 +107,19 @@
           <h3>Notes</h3>
           <p>{{ plant.notes }}</p>
         </div>
+
+        <!-- Care cards — moved here from Scans (T6.x); disease-specific scan content (photo
+             annotator, region list, disease detail panel, treatment CTA) stays in Scans. -->
+        <mat-divider *ngIf="carePlanLoaded && hasIdentification"></mat-divider>
+
+        <ng-container *ngIf="carePlanLoaded && hasIdentification">
+          <app-care-plan
+            [carePlan]="latestCarePlan"
+            [plantId]="plant.id"
+            [identificationId]="latestIdentificationId"
+            [existingCareTypes]="existingCareTypes"
+          ></app-care-plan>
+        </ng-container>
       </div>
 
       <!-- Care History -->
@@ -191,16 +204,6 @@
             [plantId]="plant.id"
             (carePlanUpdated)="onCarePlanUpdated($event)"
           ></app-disease-detail-panel>
-        </ng-container>
-
-        <mat-divider class="scans-divider" *ngIf="carePlanLoaded && hasIdentification"></mat-divider>
-
-        <ng-container *ngIf="carePlanLoaded && hasIdentification">
-          <app-care-plan
-            [carePlan]="latestCarePlan"
-            [plantId]="plant.id"
-            [existingCareTypes]="existingCareTypes"
-          ></app-care-plan>
         </ng-container>
 
         <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
