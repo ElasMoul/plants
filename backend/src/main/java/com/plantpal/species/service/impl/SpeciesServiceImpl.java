@@ -1,5 +1,7 @@
 package com.plantpal.species.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
@@ -14,6 +16,9 @@ import com.plantpal.species.mapper.SpeciesMapper;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.SpeciesService;
+import com.plantpal.user.entity.AiModelPreference;
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,26 +43,30 @@ public class SpeciesServiceImpl implements SpeciesService {
   private final Optional<SpeciesEnrichmentService> speciesEnrichmentService;
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
+  private final ObjectMapper objectMapper;
 
   public SpeciesServiceImpl(
       SpeciesRepository speciesRepository,
       SpeciesMapper speciesMapper,
       Optional<SpeciesEnrichmentService> speciesEnrichmentService,
       PlantRepository plantRepository,
-      IdentificationRepository identificationRepository) {
+      IdentificationRepository identificationRepository,
+      ObjectMapper objectMapper) {
     this.speciesRepository = speciesRepository;
     this.speciesMapper = speciesMapper;
     this.speciesEnrichmentService = speciesEnrichmentService;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
+    this.objectMapper = objectMapper;
   }
 
   @Override
   @Transactional
-  public Species findOrCreate(String scientificName, String commonName) {
+  public Species findOrCreate(
+      String scientificName, String commonName, AiModelPreference preference) {
     return speciesRepository
         .findByScientificName(scientificName)
-        .orElseGet(() -> createSpecies(scientificName, commonName));
+        .orElseGet(() -> createSpecies(scientificName, commonName, preference));
   }
 
   @Override
@@ -67,7 +76,26 @@ public class SpeciesServiceImpl implements SpeciesService {
         speciesRepository
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Species", id));
-    return speciesMapper.toResponse(species);
+    return speciesMapper.toResponse(species).toBuilder()
+        .careCards(parseCareCards(species.getCareCards()))
+        .build();
+  }
+
+  // Never throws — same defensive-parse philosophy as IdentificationServiceImpl.parseCarePlan().
+  // Null input (enrichment hasn't run / produced no cards) and malformed JSON both degrade to an
+  // empty list rather than failing the whole species response.
+  private List<CareCardDto> parseCareCards(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+    try {
+      return objectMapper.readValue(
+          raw,
+          objectMapper.getTypeFactory().constructCollectionType(List.class, CareCardDto.class));
+    } catch (Exception e) {
+      log.warn("Malformed species care cards JSON: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   @Override
@@ -88,9 +116,17 @@ public class SpeciesServiceImpl implements SpeciesService {
         plants.stream().collect(Collectors.groupingBy(Plant::getSpeciesId));
 
     List<Long> plantIds = plants.stream().map(Plant::getId).toList();
+    // Single batch fetch backs both maps below — avoids a second query just for lastScanAt.
+    List<Identification> latestPerPlant = identificationRepository.findLatestPerPlant(plantIds);
     Map<Long, String> healthByPlantId =
-        identificationRepository.findLatestPerPlant(plantIds).stream()
+        latestPerPlant.stream()
             .collect(Collectors.toMap(Identification::getPlantId, Identification::getHealthStatus));
+    // Collectors.toMap throws NPE on a null value, so filter first — createdAt is always set on
+    // a real persisted row, but defend against it anyway rather than trust that invariant here.
+    Map<Long, Instant> lastScanAtByPlantId =
+        latestPerPlant.stream()
+            .filter(i -> i.getCreatedAt() != null)
+            .collect(Collectors.toMap(Identification::getPlantId, Identification::getCreatedAt));
 
     Map<Long, Species> speciesById =
         speciesRepository.findAllById(speciesIds).stream()
@@ -103,7 +139,8 @@ public class SpeciesServiceImpl implements SpeciesService {
                     toSummary(
                         speciesById.get(speciesId),
                         plantsBySpeciesId.getOrDefault(speciesId, List.of()),
-                        healthByPlantId))
+                        healthByPlantId,
+                        lastScanAtByPlantId))
             .filter(Objects::nonNull)
             .toList();
 
@@ -111,7 +148,10 @@ public class SpeciesServiceImpl implements SpeciesService {
   }
 
   private SpeciesSummaryDto toSummary(
-      Species species, List<Plant> plants, Map<Long, String> healthByPlantId) {
+      Species species,
+      List<Plant> plants,
+      Map<Long, String> healthByPlantId,
+      Map<Long, Instant> lastScanAtByPlantId) {
     if (species == null) {
       return null;
     }
@@ -121,6 +161,12 @@ public class SpeciesServiceImpl implements SpeciesService {
             .filter(ISSUES_DETECTED::equals)
             .count();
     String healthSummary = issueCount == 0 ? "All healthy" : issueCount + " issue(s)";
+    Instant lastScanAt =
+        plants.stream()
+            .map(plant -> lastScanAtByPlantId.get(plant.getId()))
+            .filter(Objects::nonNull)
+            .max(Comparator.naturalOrder())
+            .orElse(null);
     return SpeciesSummaryDto.builder()
         .speciesId(species.getId())
         .scientificName(species.getScientificName())
@@ -128,10 +174,12 @@ public class SpeciesServiceImpl implements SpeciesService {
         .imageUrl(species.getImageUrl())
         .plantCount(plants.size())
         .healthSummary(healthSummary)
+        .lastScanAt(lastScanAt)
         .build();
   }
 
-  private Species createSpecies(String scientificName, String commonName) {
+  private Species createSpecies(
+      String scientificName, String commonName, AiModelPreference preference) {
     Species species =
         speciesRepository.save(
             Species.builder()
@@ -142,7 +190,7 @@ public class SpeciesServiceImpl implements SpeciesService {
     log.info("Species created: id={}, scientificName={}", species.getId(), scientificName);
 
     Long speciesId = species.getId();
-    speciesEnrichmentService.ifPresent(service -> service.enrich(speciesId));
+    speciesEnrichmentService.ifPresent(service -> service.enrich(speciesId, preference));
 
     return species;
   }

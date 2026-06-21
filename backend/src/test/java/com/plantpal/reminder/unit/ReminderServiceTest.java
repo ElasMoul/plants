@@ -22,6 +22,7 @@ import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.impl.ReminderServiceImpl;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import com.plantpal.shared.exception.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -309,6 +310,26 @@ class ReminderServiceTest {
       assertThat(reminder.isEnabled()).isFalse();
       verify(reminderRepository).save(reminder);
       verify(treatmentPlanRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("should reject re-completing an already-disabled one-time reminder")
+    void shouldRejectReCompletingDisabledOneTimeReminder() {
+      Reminder reminder =
+          Reminder.builder()
+              .id(1L)
+              .plantId(PLANT_ID)
+              .userId(USER_ID)
+              .careType(CareType.PEST)
+              .enabled(false)
+              .recurring(false)
+              .build();
+
+      assertThatThrownBy(() -> reminderService.applyCompletionToReminder(reminder, Instant.now()))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("already been completed");
+
+      verify(reminderRepository, never()).save(any());
     }
 
     @Test

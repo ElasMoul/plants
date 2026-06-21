@@ -3,9 +3,12 @@ package com.plantpal.identification.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.shared.exception.PlantPalException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -28,7 +31,7 @@ class OllamaClientTest {
   void setUp() throws IOException {
     server = new MockWebServer();
     server.start();
-    ollamaClient = new OllamaClient(server.url("/").toString(), MODEL);
+    ollamaClient = new OllamaClient(server.url("/").toString(), MODEL, new ObjectMapper());
   }
 
   @AfterEach
@@ -160,6 +163,71 @@ class OllamaClientTest {
 
       // When / Then
       assertThatThrownBy(() -> ollamaClient.chat("prompt"))
+          .isInstanceOf(PlantPalException.class)
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(503);
+    }
+  }
+
+  // ── chatStream() ──────────────────────────────────────────────────────────
+
+  @Nested
+  @DisplayName("chatStream()")
+  class ChatStream {
+
+    @Test
+    @DisplayName("should invoke the callback once per streamed chunk, in order")
+    void shouldInvokeCallbackPerChunk() {
+      // Given — Ollama's NDJSON streaming format: one JSON object per line
+      String body =
+          """
+          {"message":{"role":"assistant","content":"A "},"done":false}
+          {"message":{"role":"assistant","content":"Monstera "},"done":false}
+          {"message":{"role":"assistant","content":"deliciosa."},"done":false}
+          {"message":{"role":"assistant","content":""},"done":true}
+          """;
+      server.enqueue(
+          new MockResponse()
+              .setResponseCode(200)
+              .addHeader("Content-Type", "application/x-ndjson")
+              .setBody(body));
+
+      // When
+      List<String> tokens = new ArrayList<>();
+      ollamaClient.chatStream("Identify this plant", tokens::add);
+
+      // Then
+      assertThat(tokens).containsExactly("A ", "Monstera ", "deliciosa.", "");
+      assertThat(String.join("", tokens)).isEqualTo("A Monstera deliciosa.");
+    }
+
+    @Test
+    @DisplayName("should send stream:true in the request body")
+    void shouldRequestStreamingMode() throws InterruptedException {
+      // Given
+      server.enqueue(
+          new MockResponse()
+              .setResponseCode(200)
+              .addHeader("Content-Type", "application/x-ndjson")
+              .setBody(
+                  "{\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},\"done\":true}\n"));
+
+      // When
+      ollamaClient.chatStream("prompt", token -> {});
+
+      // Then
+      RecordedRequest request = server.takeRequest();
+      assertThat(request.getBody().readUtf8()).contains("\"stream\":true");
+    }
+
+    @Test
+    @DisplayName("should throw PlantPalException(503) when Ollama is unreachable")
+    void shouldThrow503WhenUnreachable() throws IOException {
+      // Given
+      server.shutdown();
+
+      // When / Then
+      assertThatThrownBy(() -> ollamaClient.chatStream("prompt", token -> {}))
           .isInstanceOf(PlantPalException.class)
           .extracting(e -> ((PlantPalException) e).getErrorCode())
           .isEqualTo(503);

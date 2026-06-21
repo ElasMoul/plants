@@ -2,11 +2,15 @@ package com.plantpal.species.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
+import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.entity.SpeciesStatus;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
+import com.plantpal.user.entity.AiModelPreference;
 import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -27,21 +31,24 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
   private final SpeciesRepository speciesRepository;
   private final DeepSeekClient deepSeekClient;
+  private final OllamaClient ollamaClient;
   private final ObjectMapper objectMapper;
 
   public SpeciesEnrichmentServiceImpl(
       SpeciesRepository speciesRepository,
       DeepSeekClient deepSeekClient,
+      OllamaClient ollamaClient,
       ObjectMapper objectMapper) {
     this.speciesRepository = speciesRepository;
     this.deepSeekClient = deepSeekClient;
+    this.ollamaClient = ollamaClient;
     this.objectMapper = objectMapper;
   }
 
   @Override
   @Async("aiTaskExecutor")
   @Transactional
-  public void enrich(Long speciesId) {
+  public void enrich(Long speciesId, AiModelPreference preference) {
     Species species = speciesRepository.findById(speciesId).orElse(null);
     if (species == null) {
       log.warn("Species not found for enrichment, skipping: id={}", speciesId);
@@ -50,13 +57,20 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
     try {
       String raw =
-          deepSeekClient.generateSpeciesEnrichment(
-              species.getScientificName(), species.getCommonName());
+          preference == AiModelPreference.OLLAMA_LLAVA
+              ? ollamaClient.generateSpeciesEnrichment(
+                  species.getScientificName(), species.getCommonName())
+              : deepSeekClient.generateSpeciesEnrichment(
+                  species.getScientificName(), species.getCommonName());
       SpeciesEnrichmentJson parsed = objectMapper.readValue(raw, SpeciesEnrichmentJson.class);
 
       species.setDescription(parsed.getDescription());
       species.setCareOverview(parsed.getCareOverview());
       species.setImageUrl(parsed.getImageUrl());
+      species.setCareCards(
+          parsed.getCareCards() != null && !parsed.getCareCards().isEmpty()
+              ? objectMapper.writeValueAsString(parsed.getCareCards())
+              : null);
       species.setExternalDataSource(AI_SOURCE);
       species.setExternalDataFetchedAt(Instant.now());
       speciesRepository.save(species);
@@ -84,6 +98,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
     private String description;
     private String careOverview;
     private String imageUrl;
+    private List<CareCardDto> careCards;
     private String source;
 
     public String getDescription() {
@@ -108,6 +123,14 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
     public void setImageUrl(String imageUrl) {
       this.imageUrl = imageUrl;
+    }
+
+    public List<CareCardDto> getCareCards() {
+      return careCards;
+    }
+
+    public void setCareCards(List<CareCardDto> careCards) {
+      this.careCards = careCards;
     }
 
     public String getSource() {

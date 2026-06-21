@@ -245,9 +245,19 @@
                 </configuration>
             </plugin>
 
-            <!-- ── JaCoCo: 80% line-coverage gate ────────────────────────── -->
-            <!-- NOTE: 'mvn verify' will fail until unit + integration tests  -->
-            <!--       are written. This is intentional — coverage is earned. -->
+            <!-- ── JaCoCo: line-coverage gate ─────────────────────────────── -->
+            <!-- NOTE: 'mvn verify' only runs unit tests (Surefire's default  -->
+            <!--       include pattern is **/*Test.java, not **/*IT.java —    -->
+            <!--       no failsafe plugin is configured). The 6 *IT.java      -->
+            <!--       integration tests under src/test/.../integration/ are  -->
+            <!--       run manually via 'mvn test -Dtest=SomeControllerIT'    -->
+            <!--       (each boots a full Testcontainers Postgres+Redis       -->
+            <!--       context; running several back-to-back in one JVM has   -->
+            <!--       caused connection-pool exhaustion on a resource-       -->
+            <!--       constrained dev machine — run them one at a time).     -->
+            <!--       58.9% achieved from the unit suite alone as of the     -->
+            <!--       pre-Phase-5 cleanup pass; minimum set with a margin    -->
+            <!--       below that, not the unearned original 80%.            -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -283,7 +293,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.10</minimum>
+                                            <minimum>0.55</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

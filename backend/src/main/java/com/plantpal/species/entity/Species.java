@@ -51,6 +51,12 @@ public class Species extends AuditableEntity {
   @Column(name = "image_url", columnDefinition = "TEXT")
   private String imageUrl;
 
+  // Raw JSON, List<CareCardDto>-shaped (no actionPlan -- that needs plant-specific context like
+  // reminders, which doesn't exist at the species level). Parsed on read in SpeciesServiceImpl,
+  // same pattern as Identification.carePlan.
+  @Column(name = "care_cards", columnDefinition = "TEXT")
+  private String careCards;
+
   @Column(name = "external_data_source", length = 20)
   private String externalDataSource;
 

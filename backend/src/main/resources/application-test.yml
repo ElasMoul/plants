@@ -25,8 +25,20 @@ anthropic:
   api:
     key: test-api-key-placeholder
 
+# ──── AI clients (placeholders — these have no application.yml-level default and would
+# otherwise fail ApplicationContext startup with "Could not resolve placeholder" the moment any
+# integration test boots the full context. The actual AI clients themselves are @MockBean'd in
+# any IT that exercises a controller backed by one, so these values are never used for a real
+# call. This is also why integration tests have never reliably loaded the context before — see
+# BACKEND.md's "Integration tests not running in CI" note.) ───────────────────
+github:
+  token: test-github-token-placeholder
+
 # ──── Application settings ────────────────────────────────────────────────────
 app:
+
+  plantnet:
+    api-key: test-plantnet-api-key-placeholder
 
   jwt:
     # Valid Base64, decodes to 32 bytes (256 bits) — never use in production
@@ -38,8 +50,13 @@ app:
     local-path: /tmp/plantpal-test/photos
 
   web-push:
-    public-key: test-vapid-public-key
-    private-key: test-vapid-private-key
+    # nl.martijndwars:web-push validates these as real P-256 EC points at WebPushServiceImpl
+    # construction time (PushService's constructor decodes them) -- a non-EC placeholder string
+    # fails ApplicationContext startup with "Invalid point encoding" the moment any integration
+    # test boots the full context. This is a real (freshly generated, never used anywhere else)
+    # test-only key pair, not a production secret.
+    public-key: BLhowkMbZpHjPN2xWYz6BRLQKNSJ35tZGtSUW7YtXmuvPZ8Q3D1QGi1z9ajYVk5K9dQwrFAlZS2yny8XSB3XmNo
+    private-key: adZn9Dosb0SoRcxR0G8VUzanNA9sLzFiGvH4jDVFqWA
     subject: mailto:test@plantpal.app
 
   rate-limit:

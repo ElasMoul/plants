@@ -7,7 +7,7 @@ import { takeUntil } from 'rxjs/operators';
 import { CareCardDto, CareCardType } from '../../models/identification.model';
 import { CareType } from '../../../reminder/models/reminder.model';
 import { ReminderService } from '../../../reminder/services/reminder.service';
-import { TreatmentPlanService } from '../../../reminder/services/treatment-plan.service';
+import { TreatmentService } from '../../../plant/services/treatment.service';
 import { SetReminderDialogComponent } from './set-reminder-dialog.component';
 import { parseDetailAsList, ParsedDetail } from '../../../../shared/utils/detail-list.util';
 
@@ -32,6 +32,7 @@ const CARD_COLORS: Record<CareCardType, string> = {
 export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() card!: CareCardDto;
   @Input() plantId: number | null = null;
+  @Input() identificationId: number | null = null;
   @Input() existingCareTypes: CareType[] = [];
 
   expanded = false;
@@ -41,13 +42,14 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   settingReminder = false;
   startingTreatment = false;
   treatmentStarted = false;
+  activeTreatmentId: number | null = null;
 
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private readonly dialog: MatDialog,
     private readonly reminderService: ReminderService,
-    private readonly treatmentPlanService: TreatmentPlanService,
+    private readonly treatmentService: TreatmentService,
     private readonly snackBar: MatSnackBar,
     private readonly router: Router,
   ) {}
@@ -62,6 +64,34 @@ export class CareCardComponent implements OnChanges, OnDestroy {
       this.reminderAlreadyExisted = alreadyExists;
       this.reminderSet = alreadyExists;
     }
+    if ((changes['card'] || changes['plantId']) && this.card?.actionPlan?.type === 'TREATMENT') {
+      this.checkActiveTreatment();
+    }
+  }
+
+  // The backend tracks only one active treatment per plant (most recent), not one per disease —
+  // matches the same check plant-detail.component.ts uses for the Scans-tab CTA. Deriving
+  // treatmentStarted from the real Treatment entity (instead of a session-only flag) means the
+  // button correctly shows "Plan in progress" even after a page refresh, and — together with
+  // TreatmentService.createTreatment()'s own duplicate check — is what stops this card and any
+  // other entry point (e.g. the Scans-tab CTA) from starting two treatments for the same disease.
+  private checkActiveTreatment(): void {
+    const plantId = this.plantId;
+    if (plantId === null) return;
+
+    this.treatmentService.getActiveTreatment(plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          const matches = res.data.diseaseName === this.card.title;
+          this.treatmentStarted = matches;
+          this.activeTreatmentId = matches ? res.data.id : null;
+        },
+        error: () => {
+          this.treatmentStarted = false;
+          this.activeTreatmentId = null;
+        },
+      });
   }
 
   ngOnDestroy(): void {
@@ -121,25 +151,37 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   startTreatmentPlan(event: Event): void {
     event.stopPropagation();
     const plantId = this.plantId;
-    if (!this.card.actionPlan || this.startingTreatment || this.treatmentStarted || plantId === null) return;
+    const identificationId = this.identificationId;
+    if (!this.card.actionPlan || this.startingTreatment || this.treatmentStarted) return;
+    if (plantId === null || identificationId === null) return;
 
     this.startingTreatment = true;
-    this.treatmentPlanService.createFromActionPlan({
-      plantId,
-      title: this.card.title,
-      sourceCareCardType: this.card.type,
-      actionPlan: this.card.actionPlan,
-    })
+    // Goes through the Treatment entity (createTreatment + craftPlan), not
+    // TreatmentPlanService.createFromActionPlan() directly — createTreatment() rejects a second
+    // active treatment for the same plant+diseaseName, which is what actually stops duplicates;
+    // see ARCHITECT.md's "Two Treatment concepts".
+    this.treatmentService.createTreatment(plantId, identificationId, this.card.title)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: res => {
-          this.startingTreatment = false;
-          this.treatmentStarted = true;
-          const snackRef = this.snackBar.open('Treatment plan started', 'View', { duration: 5000 });
-          snackRef.onAction()
+        next: created => {
+          this.treatmentService.craftPlan(created.data.id)
             .pipe(takeUntil(this.destroy$))
-            .subscribe(() => {
-              this.router.navigate(['/treatment-plans', res.data.id]);
+            .subscribe({
+              next: crafted => {
+                this.startingTreatment = false;
+                this.treatmentStarted = true;
+                this.activeTreatmentId = crafted.data.id;
+                const snackRef = this.snackBar.open('Treatment plan started', 'View', { duration: 5000 });
+                snackRef.onAction()
+                  .pipe(takeUntil(this.destroy$))
+                  .subscribe(() => this.router.navigate(['/treatment', crafted.data.id]));
+              },
+              error: () => {
+                this.startingTreatment = false;
+                this.treatmentStarted = true;
+                this.activeTreatmentId = created.data.id;
+                this.snackBar.open('Treatment started, but the plan could not be crafted yet.', 'Dismiss', { duration: 5000 });
+              },
             });
         },
         error: () => {
@@ -147,5 +189,12 @@ export class CareCardComponent implements OnChanges, OnDestroy {
           this.snackBar.open('Could not start treatment plan.', 'Dismiss', { duration: 4000 });
         },
       });
+  }
+
+  goToTreatment(event: Event): void {
+    event.stopPropagation();
+    if (this.activeTreatmentId !== null) {
+      this.router.navigate(['/treatment', this.activeTreatmentId]);
+    }
   }
 }

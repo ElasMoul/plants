@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -76,6 +77,15 @@ public class TreatmentController {
     if (response == null) {
       throw new ResourceNotFoundException("No active treatment for this plant");
     }
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @Operation(summary = "Get every active (DRAFT/IN_PROGRESS) treatment for a plant")
+  @GetMapping("/plants/{id}/active-treatments")
+  public ResponseEntity<ApiResponse<List<TreatmentResponse>>> getActiveTreatments(
+      @PathVariable Long id) {
+    List<TreatmentResponse> response =
+        treatmentService.getActiveTreatmentsForPlant(id, getCurrentUserId());
     return ResponseEntity.ok(ApiResponse.success(response));
   }
 

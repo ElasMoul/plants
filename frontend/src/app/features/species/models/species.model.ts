@@ -1,3 +1,5 @@
+import { CareCardDto } from '../../identification/models/identification.model';
+
 export interface SpeciesSummaryDto {
   speciesId: number;
   scientificName: string;
@@ -5,6 +7,7 @@ export interface SpeciesSummaryDto {
   imageUrl: string | null;
   plantCount: number;
   healthSummary: string;
+  lastScanAt: string | null;
 }
 
 export type SpeciesStatus = 'ACTIVE' | 'NEEDS_REVIEW';
@@ -18,4 +21,5 @@ export interface SpeciesResponse {
   imageUrl: string | null;
   externalDataSource: string | null;
   status: SpeciesStatus;
+  careCards: CareCardDto[];
 }

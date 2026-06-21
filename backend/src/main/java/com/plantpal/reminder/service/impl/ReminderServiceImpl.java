@@ -14,6 +14,7 @@ import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import com.plantpal.shared.exception.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -143,6 +144,10 @@ public class ReminderServiceImpl implements ReminderService {
       reminder.setNextDueAt(calculateNextDueAt(performedAt, reminder.getFrequencyDays()));
       reminderRepository.save(reminder);
       return;
+    }
+
+    if (!reminder.isEnabled()) {
+      throw new ValidationException("This reminder has already been completed");
     }
 
     reminder.setEnabled(false);

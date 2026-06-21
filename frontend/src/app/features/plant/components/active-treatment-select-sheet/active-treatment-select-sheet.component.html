@@ -1,0 +1,18 @@
+<div class="treatment-select-sheet">
+  <h3 class="treatment-select-title">Active treatments</h3>
+
+  <div class="treatment-select-list">
+    <button
+      type="button"
+      class="treatment-select-row"
+      *ngFor="let treatment of treatments"
+      (click)="select(treatment)"
+    >
+      <mat-icon class="treatment-select-icon">healing</mat-icon>
+      <div class="treatment-select-meta">
+        <span class="treatment-select-name">{{ treatment.diseaseName }}</span>
+        <span class="treatment-select-status">{{ treatment.status === 'DRAFT' ? 'Not started yet' : 'In progress' }}</span>
+      </div>
+    </button>
+  </div>
+</div>

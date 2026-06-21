@@ -7,6 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
@@ -21,6 +23,7 @@ import com.plantpal.species.mapper.SpeciesMapper;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.impl.SpeciesServiceImpl;
+import com.plantpal.user.entity.AiModelPreference;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -45,6 +49,7 @@ class SpeciesServiceTest {
   @Mock private SpeciesEnrichmentService speciesEnrichmentService;
   @Mock private PlantRepository plantRepository;
   @Mock private IdentificationRepository identificationRepository;
+  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   // Optional<SpeciesEnrichmentService> constructor param isn't @InjectMocks-friendly —
   // construct manually, same pattern as other services with non-mockable constructor params.
@@ -58,7 +63,8 @@ class SpeciesServiceTest {
             speciesMapper,
             Optional.of(speciesEnrichmentService),
             plantRepository,
-            identificationRepository);
+            identificationRepository,
+            objectMapper);
   }
 
   @Nested
@@ -79,12 +85,14 @@ class SpeciesServiceTest {
           .thenReturn(Optional.of(existing));
 
       // When
-      Species result = speciesService.findOrCreate("Monstera deliciosa", "Swiss Cheese Plant");
+      Species result =
+          speciesService.findOrCreate(
+              "Monstera deliciosa", "Swiss Cheese Plant", AiModelPreference.DEEPSEEK);
 
       // Then
       assertThat(result.getId()).isEqualTo(1L);
       verify(speciesRepository, never()).save(any(Species.class));
-      verify(speciesEnrichmentService, never()).enrich(any());
+      verify(speciesEnrichmentService, never()).enrich(any(), any());
     }
 
     @Test
@@ -101,7 +109,9 @@ class SpeciesServiceTest {
       when(speciesRepository.save(any(Species.class))).thenReturn(saved);
 
       // When
-      Species result = speciesService.findOrCreate("Ficus lyrata", "Fiddle Leaf Fig");
+      Species result =
+          speciesService.findOrCreate(
+              "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.DEEPSEEK);
 
       // Then
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
@@ -111,9 +121,25 @@ class SpeciesServiceTest {
       assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
 
       // Enrichment fired — only the call is verified, not its (T6.4) result.
-      verify(speciesEnrichmentService).enrich(7L);
+      verify(speciesEnrichmentService).enrich(7L, AiModelPreference.DEEPSEEK);
 
       assertThat(result.getId()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("should forward the triggering user's AI model preference to enrichment")
+    void shouldForwardAiModelPreferenceToEnrichment() {
+      // Given
+      when(speciesRepository.findByScientificName("Ficus lyrata")).thenReturn(Optional.empty());
+      Species saved = Species.builder().id(7L).scientificName("Ficus lyrata").build();
+      when(speciesRepository.save(any(Species.class))).thenReturn(saved);
+
+      // When
+      speciesService.findOrCreate(
+          "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.OLLAMA_LLAVA);
+
+      // Then
+      verify(speciesEnrichmentService).enrich(7L, AiModelPreference.OLLAMA_LLAVA);
     }
   }
 
@@ -135,6 +161,54 @@ class SpeciesServiceTest {
 
       // Then
       assertThat(result.getId()).isEqualTo(1L);
+      assertThat(result.getCareCards()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("should parse stored careCards JSON into the response")
+    void shouldParseCareCardsWhenPresent() {
+      // Given
+      Species species =
+          Species.builder()
+              .id(1L)
+              .scientificName("Monstera deliciosa")
+              .careCards(
+                  """
+                  [{"type":"WATERING","title":"Watering","icon":"water_drop",\
+                  "summary":"Water weekly","urgency":"MEDIUM"}]
+                  """)
+              .build();
+      when(speciesRepository.findById(1L)).thenReturn(Optional.of(species));
+      when(speciesMapper.toResponse(species)).thenReturn(SpeciesResponse.builder().id(1L).build());
+
+      // When
+      SpeciesResponse result = speciesService.getSpecies(1L);
+
+      // Then
+      assertThat(result.getCareCards()).hasSize(1);
+      CareCardDto card = result.getCareCards().get(0);
+      assertThat(card.getType()).isEqualTo("WATERING");
+      assertThat(card.getTitle()).isEqualTo("Watering");
+    }
+
+    @Test
+    @DisplayName("should degrade to an empty list on malformed careCards JSON, not throw")
+    void shouldDegradeGracefullyOnMalformedCareCards() {
+      // Given
+      Species species =
+          Species.builder()
+              .id(1L)
+              .scientificName("Monstera deliciosa")
+              .careCards("not valid json {{{")
+              .build();
+      when(speciesRepository.findById(1L)).thenReturn(Optional.of(species));
+      when(speciesMapper.toResponse(species)).thenReturn(SpeciesResponse.builder().id(1L).build());
+
+      // When
+      SpeciesResponse result = speciesService.getSpecies(1L);
+
+      // Then
+      assertThat(result.getCareCards()).isEmpty();
     }
 
     @Test
@@ -240,6 +314,69 @@ class SpeciesServiceTest {
 
       // Then
       assertThat(result.getContent().get(0).getHealthSummary()).isEqualTo("1 issue(s)");
+    }
+
+    @Test
+    @DisplayName("should report the most recent scan across the species' plants as lastScanAt")
+    void shouldComputeMostRecentLastScanAt() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      Plant plantB = Plant.builder().id(11L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA, plantB));
+
+      Identification olderScan =
+          Identification.builder().plantId(10L).healthStatus("HEALTHY").build();
+      olderScan.setCreatedAt(java.time.Instant.parse("2026-06-01T00:00:00Z"));
+      Identification newerScan =
+          Identification.builder().plantId(11L).healthStatus("HEALTHY").build();
+      newerScan.setCreatedAt(java.time.Instant.parse("2026-06-15T00:00:00Z"));
+      when(identificationRepository.findLatestPerPlant(List.of(10L, 11L)))
+          .thenReturn(List.of(olderScan, newerScan));
+
+      Species species = Species.builder().id(50L).scientificName("Monstera deliciosa").build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getLastScanAt())
+          .isEqualTo(java.time.Instant.parse("2026-06-15T00:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("should report a null lastScanAt when no scans have a createdAt set")
+    void shouldReportNullLastScanAtWhenAbsent() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA));
+
+      when(identificationRepository.findLatestPerPlant(List.of(10L)))
+          .thenReturn(
+              List.of(Identification.builder().plantId(10L).healthStatus("HEALTHY").build()));
+
+      Species species = Species.builder().id(50L).scientificName("Monstera deliciosa").build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getLastScanAt()).isNull();
     }
   }
 }

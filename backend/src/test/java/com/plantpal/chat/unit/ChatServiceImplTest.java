@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.plantpal.chat.dto.ChatMessageDto;
 import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.impl.ChatServiceImpl;
@@ -61,6 +62,14 @@ class ChatServiceImplTest {
 
   private ChatRequest request(String message, Long plantId) {
     return ChatRequest.builder().message(message).plantId(plantId).build();
+  }
+
+  private ChatRequest requestWithHistory(String message, List<ChatMessageDto> history) {
+    return ChatRequest.builder().message(message).history(history).build();
+  }
+
+  private ChatMessageDto turn(String role, String content) {
+    return ChatMessageDto.builder().role(role).content(content).build();
   }
 
   @Nested
@@ -177,6 +186,106 @@ class ChatServiceImplTest {
 
       assertThatThrownBy(() -> chatService.chat(request("How is Monty doing?", PLANT_ID), USER_ID))
           .isInstanceOf(ResourceNotFoundException.class);
+    }
+  }
+
+  @Nested
+  @DisplayName("chat() with history")
+  class ChatWithHistory {
+
+    @BeforeEach
+    void stubEmptyGarden() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(ollamaClient.chat(any())).thenReturn("reply");
+    }
+
+    @Test
+    @DisplayName("should include prior turns in the prompt, oldest first")
+    void shouldIncludeHistoryInPrompt() {
+      List<ChatMessageDto> history =
+          List.of(turn("user", "What plant is this?"), turn("assistant", "A Monstera deliciosa."));
+
+      chatService.chat(requestWithHistory("How often should I water it?", history), USER_ID);
+
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chat(promptCaptor.capture());
+      String prompt = promptCaptor.getValue();
+      assertThat(prompt)
+          .contains("Previous conversation:")
+          .contains("User: What plant is this?")
+          .contains("Assistant: A Monstera deliciosa.")
+          .contains("User: How often should I water it?");
+      assertThat(prompt.indexOf("What plant is this?"))
+          .isLessThan(prompt.indexOf("How often should I water it?"));
+    }
+
+    @Test
+    @DisplayName("should truncate to the most recent 10 messages")
+    void shouldTruncateLongHistory() {
+      List<ChatMessageDto> history = new java.util.ArrayList<>();
+      for (int i = 0; i < 15; i++) {
+        history.add(turn("user", "message " + i));
+      }
+
+      chatService.chat(requestWithHistory("latest question", history), USER_ID);
+
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chat(promptCaptor.capture());
+      String prompt = promptCaptor.getValue();
+      assertThat(prompt).doesNotContain("message 0").doesNotContain("message 4");
+      assertThat(prompt).contains("message 5").contains("message 14");
+    }
+
+    @Test
+    @DisplayName("should behave identically to before when history is absent")
+    void shouldBeUnchangedWithoutHistory() {
+      chatService.chat(request("plain question"), USER_ID);
+
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chat(promptCaptor.capture());
+      assertThat(promptCaptor.getValue()).doesNotContain("Previous conversation:");
+    }
+  }
+
+  @Nested
+  @DisplayName("chatStream()")
+  class ChatStream {
+
+    @Test
+    @DisplayName("should delegate to ollamaClient.chatStream() with the same prompt as chat()")
+    void shouldDelegateToOllamaClientStream() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+
+      List<String> tokens = new java.util.ArrayList<>();
+      chatService.chatStream(request("How often should I water?"), USER_ID, tokens::add);
+
+      ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+      verify(ollamaClient).chatStream(promptCaptor.capture(), any());
+      assertThat(promptCaptor.getValue()).contains("How often should I water?");
+    }
+
+    @Test
+    @DisplayName("should check the rate limit before any streaming starts")
+    void shouldCheckRateLimitBeforeStreaming() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+
+      for (int i = 0; i < 30; i++) {
+        chatService.chatStream(request("msg " + i), USER_ID, token -> {});
+      }
+
+      assertThatThrownBy(
+              () -> chatService.chatStream(request("one too many"), USER_ID, token -> {}))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+
+      // 30 legitimate calls went through; the 31st was rejected before reaching ollamaClient.
+      verify(ollamaClient, org.mockito.Mockito.times(30)).chatStream(any(), any());
     }
   }
 }

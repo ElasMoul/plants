@@ -1,11 +1,12 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-20 (Phase 6 closed out with T6.14; this file rewritten and
-> condensed — full pre-rewrite history archived at `Archive/STATE_1.md`)
+> Last updated: 2026-06-21 (pre-Phase-5 cleanup pass closed out — see new
+> section below; Phase 6/T6.14 entry below is from the prior session)
 
 ## Current Phase
-**Phases 0–4 and 6 are fully shipped. Phase 5 (Launch prep) is the only phase that
-hasn't started — see TASK_PLAN.md for its task breakdown.** One manual item is
+**Phases 0–4 and 6 are fully shipped, plus a pre-Phase-5 cleanup pass closing
+every gap flagged below. Phase 5 (Launch prep) is the only phase that hasn't
+started — see TASK_PLAN.md for its task breakdown.** One manual item is
 stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
 needs a real phone and hasn't been done.
 
@@ -15,9 +16,56 @@ needs a real phone and hasn't been done.
 | 1 — Auth + Plant Management | ✅ Complete |
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual device testing) |
-| 4 — AI Chat | ✅ Complete (basic, single-turn) — streaming/history polish not started |
+| 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
 | 5 — Launch prep | 🔲 Not started ← **current focus** |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
+| — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+
+## Pre-Phase-5 Cleanup Pass (2026-06-21)
+Closed every gap BACKEND.md/FRONTEND.md had flagged as open, plus three bugs
+found via live testing, on one branch (`feature/PP-038-pre-phase5-cleanup`,
+backend and frontend changes kept in separate commits):
+- **Reminder double-completion**: a one-time reminder (e.g. a treatment step)
+  could be completed more than once — backend guard
+  (`ReminderServiceImpl.applyCompletionToReminder()` throws on a disabled
+  non-recurring reminder) + frontend synchronous in-flight/done guard (see
+  FRONTEND.md's new Established Pattern).
+- **Duplicate treatment creation**: `DiseaseDetailPanelComponent` and
+  `CareCardComponent` each used to call `TreatmentPlanService` directly,
+  bypassing the `Treatment` entity's one-active-per-disease protection —
+  consolidated onto `CareCardComponent` → `TreatmentService` as the sole path.
+- **Species AI-preference routing**: `SpeciesEnrichmentServiceImpl` was
+  hardcoded to DeepSeek regardless of the user's saved AI model choice — now
+  threads `AiModelPreference` through from `IdentificationServiceImpl.
+  resolveSpecies()`.
+- **Structured species care cards**: species enrichment now also generates a
+  small AI `careCards` array (migration 020), rendered on the Species
+  Overview tab via the existing `CarePlanModule`.
+- **Plant page care cards moved to Overview** (were previously buried in the
+  Scans section, alongside scan-specific UI that has nothing to do with them).
+- **Chat conversation history + SSE streaming**: backend `chatStream()` +
+  `POST /chat/stream` (SseEmitter), frontend incremental rendering via
+  Angular's `HttpDownloadProgressEvent.partialText` (keeps the JWT
+  interceptor working, unlike a raw `fetch()` bypass) — closes out the Phase 4
+  polish item that had been open since T4.2.
+- **Species "recently scanned" filter** now works (`lastScanAt` added).
+- **Dead code removed**: `IdentificationResultComponent`.
+- **4 missing controller integration tests written**
+  (`IdentificationControllerIT`, `TreatmentPlanControllerIT`,
+  `TreatmentControllerIT`, `SpeciesControllerIT`) — in writing them, discovered
+  the ApplicationContext had *never* successfully booted under the test
+  profile at all (`application-test.yml` was missing placeholders for
+  `app.plantnet.api-key`/`github.token`, and the VAPID web-push keys were
+  non-EC placeholder strings that fail real EC-point decoding) — fixed, so
+  these and the pre-existing `PlantControllerIT`/`AuthControllerIT` can now
+  actually run. See BACKEND.md's Test Inventory for the "run one at a time,
+  not batched" caveat (Testcontainers connection-pool contention observed on
+  this dev machine when running 4 in one JVM).
+- **JaCoCo gate set to a real number**: 55%, just under the unit suite's
+  actual ~58.9% line coverage — was a hardcoded, never-achieved 10% before.
+- 198/198 unit tests passing, all 4 new ITs pass individually, `mvn clean
+  verify` is BUILD SUCCESS (spotless clean, checkstyle clean, coverage gate
+  met).
 
 ## What's Built
 
@@ -83,9 +131,12 @@ lives in ARCHITECT.md as a permanent reference — read that, not this list, bef
 extending any of this.
 
 ## Active Branches
-Current branch: **`feature/PP-030-treatment-entity`** — carries T6.2 (Treatment
-entity) and T6.14 (completion-sync event) work, latest commit `bf79250`. Not yet
-merged to `dev`/`master` — needs a PR.
+Current branch: **`feature/PP-038-pre-phase5-cleanup`** — see the cleanup pass
+section above for what it carries. Not yet merged to `dev`/`master` — needs a PR.
+
+`feature/PP-030-treatment-entity` (T6.2 + T6.14) was already merged to `dev`
+via PR #50 (confirmed in git log) — superseded, the old "open a PR for it"
+task below is stale and removed.
 
 All other Phase 6 feature branches (`PP-029`, `031`–`037`) are already merged to
 `dev` via PR (confirmed in git log). Phases 0–2's feature branches
@@ -94,7 +145,7 @@ sitting locally/remotely — safe cleanup candidate whenever convenient, not
 urgent.
 
 ## Next Tasks (in order)
-1. Open a PR / merge `feature/PP-030-treatment-entity` (T6.2 + T6.14) to `dev`.
+1. Open a PR / merge `feature/PP-038-pre-phase5-cleanup` to `dev`.
 2. **Phase 5 — Launch prep** (TASK_PLAN.md T5.1–T5.8): prod config, performance,
    security hardening, API docs, deploy to Railway/Vercel, beta test, release
    v1.0.0. This is the main remaining work.
@@ -103,10 +154,12 @@ urgent.
    ARCHITECT.md's Kafka pattern note.
 4. T3.3 — manual on-device testing (push notifications, PWA installability,
    offline reading) — needs a real phone, can happen any time before launch.
-5. Phase 4 polish (chat streaming/history) — optional, not blocking.
+5. Live-verify chat SSE streaming against a real Docker stack (written and
+   passes locally but never confirmed end-to-end this session — see
+   FRONTEND.md's Open Items).
 
 ## Known Tech Debt
 See BACKEND.md and FRONTEND.md's own "Open Items" sections for the current,
-maintained list (JaCoCo gate at 10% not 80%, missing integration tests,
+maintained list (JaCoCo gate at 55% not 80%, ITs not wired into `mvn verify`,
 PlantNetClient dead-code cleanup, GITHUB_TOKEN rotation before prod, etc.) —
 not duplicated here to avoid the two copies drifting apart.

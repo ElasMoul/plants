@@ -24,6 +24,7 @@ import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-imag
 import { PlantPhotoTimelineComponent } from '../plant-photo-timeline/plant-photo-timeline.component';
 import { PlantActionsSheetComponent, PlantAction } from '../plant-actions-sheet/plant-actions-sheet.component';
 import { PlantScanHistorySheetComponent } from '../plant-scan-history-sheet/plant-scan-history-sheet.component';
+import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-sheet/active-treatment-select-sheet.component';
 
 
 @Component({
@@ -169,23 +170,17 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     const scan = this.selectedScan;
     if (!plant || !region || !scan || this.startingTreatment) return;
 
+    // Stop at DRAFT and let the user trigger "Craft Treatment Plan" on the treatment page
+    // themselves — matches the Overview flow, where the disease description (kicked off async by
+    // createTreatment()) has time to finish before craft-plan's own AI call starts, instead of
+    // racing it.
     this.startingTreatment = true;
     this.treatmentService.createTreatment(plant.id, scan.id, region.label)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: created => {
-          this.treatmentService.craftPlan(created.data.id)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: crafted => {
-                this.startingTreatment = false;
-                this.router.navigate(['/treatment', crafted.data.id]);
-              },
-              error: () => {
-                this.startingTreatment = false;
-                this.snackBar.open('Treatment started, but the plan could not be crafted yet.', 'Dismiss', { duration: 5000 });
-              },
-            });
+          this.startingTreatment = false;
+          this.router.navigate(['/treatment', created.data.id]);
         },
         error: () => {
           this.startingTreatment = false;
@@ -195,9 +190,40 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   }
 
   goToActiveTreatment(): void {
-    if (this.plant?.activeTreatmentId) {
-      this.router.navigate(['/treatment', this.plant.activeTreatmentId]);
-    }
+    const plantId = this.plant?.id;
+    if (!plantId) return;
+
+    this.treatmentService.getActiveTreatments(plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          const treatments = res.data;
+          if (treatments.length === 1) {
+            this.router.navigate(['/treatment', treatments[0].id]);
+          } else if (treatments.length > 1) {
+            this.openActiveTreatmentSelectSheet(treatments);
+          }
+        },
+        error: () => {
+          // Fall back to the last-known single active treatment if the list fetch fails.
+          if (this.plant?.activeTreatmentId) {
+            this.router.navigate(['/treatment', this.plant.activeTreatmentId]);
+          }
+        },
+      });
+  }
+
+  private openActiveTreatmentSelectSheet(treatments: TreatmentResponse[]): void {
+    const ref = this.bottomSheet.open(ActiveTreatmentSelectSheetComponent, {
+      data: { treatments },
+    });
+    ref.afterDismissed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((treatment?: TreatmentResponse) => {
+        if (treatment) {
+          this.router.navigate(['/treatment', treatment.id]);
+        }
+      });
   }
 
   goToTreatment(treatment: TreatmentResponse): void {

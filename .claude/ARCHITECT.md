@@ -241,6 +241,44 @@ needs more sections than comfortably fit a `mat-tab-group` on mobile.
 - No shared `StickyHeaderComponent` exists yet — both pages duplicate the CSS/
   IntersectionObserver wiring. Worth extracting if a third page needs this pattern.
 
+### SSE token streaming (chat)
+First streaming precedent in the codebase (pre-Phase-5 cleanup pass) — read this before adding
+any other streamed endpoint.
+- **Backend:** `OllamaClient.chatStream(prompt, onToken)` posts to `/api/chat` with
+  `"stream": true` and reads the response body line-by-line via `RestClient.exchange()` (NOT
+  `.retrieve().body()` — that buffers the whole response; `.exchange()` exposes the raw
+  `InputStream` needed to read Ollama's NDJSON streaming format incrementally).
+  `ChatController`'s `POST /chat/stream` wraps this in an `SseEmitter` (60s timeout); the actual
+  send runs via `CompletableFuture.runAsync(..., aiTaskExecutor)` so the emitter returns
+  immediately and the HTTP thread isn't held for the stream's duration — same same-class
+  fire-and-forget convention as `TreatmentServiceImpl`'s disease-description generation
+  (`@Async`'s proxy has no effect on self-invocation, this is the only way to fire-and-forget
+  from within the same class).
+- **Frontend:** `chat.service.ts`'s `sendMessageStream()` uses Angular `HttpClient`'s
+  `{ responseType: 'text', reportProgress: true, observe: 'events' }` and reads
+  `HttpDownloadProgressEvent.partialText` as chunks arrive — NOT a raw `fetch()` call, which would
+  bypass `jwt.interceptor.ts` and silently stop attaching the auth token.
+- **Infra:** nginx buffers responses by default, which defeats streaming silently (the whole
+  reply arrives at once, no visible incremental effect) — `nginx.conf` needs `proxy_buffering
+  off; proxy_cache off; chunked_transfer_encoding on;` on the streaming route specifically, added
+  before the generic `/api/` block so it matches first.
+- **Caveat:** written and passes locally, but never confirmed against a live Docker stack in the
+  session it shipped in (no Docker stack was running). Re-verify tokens visibly arrive
+  incrementally — not all at once — before trusting this pattern is fully proven end-to-end.
+
+### Derive persisted UI state from the real entity, not a duplicated flag
+`CareCardComponent`'s "treatment started" button state used to be a session-only component
+boolean (`treatmentStarted`), set only when the user clicked the button in that page load — a
+refresh silently lost it and re-offered an action that was already done. Fixed by deriving it
+from the real source of truth instead: on `ngOnChanges`, call
+`treatmentService.getActiveTreatment(plantId)` and compare its `diseaseName` to the card's title.
+**General pattern:** when a UI needs to know "has the user already done X," check whether an
+entity already exists that tracks X (a `Treatment` row, a `Reminder`'s `enabled` flag, etc.)
+before reaching for a new boolean/flag field — a second source of truth for the same fact will
+eventually drift from the first, and the entity is usually already queryable cheaply. This is the
+same instinct behind `applyCompletionToReminder()` being the *single* completion choke-point
+(see below) — one place owns the fact, everything else reads it.
+
 ## Domain Model: Species & Treatment
 > Introduced 2026-06-19/20 (Phase 6) to fix two plant-centric gaps: two plants of the same
 > species couldn't share care-plan knowledge, and a detected disease had no persistent

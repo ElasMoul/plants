@@ -18,5 +18,8 @@ public interface TreatmentRepository extends JpaRepository<Treatment, Long> {
   Optional<Treatment> findFirstByPlantIdAndUserIdAndStatusInOrderByCreatedAtDesc(
       Long plantId, Long userId, List<TreatmentStatus> statuses);
 
+  List<Treatment> findByPlantIdAndUserIdAndStatusInOrderByCreatedAtDesc(
+      Long plantId, Long userId, List<TreatmentStatus> statuses);
+
   List<Treatment> findByTreatmentPlanId(Long treatmentPlanId);
 }

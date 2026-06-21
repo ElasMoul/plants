@@ -16,10 +16,11 @@ TypeScript strict mode, Angular Material, SCSS, @angular/pwa,
 RxJS, ReactiveFormsModule
 
 ## Current Status
-**Phases 0–4 and 6 are shipped. Phase 5 (Launch prep) is next** — see
-TASK_PLAN.md. Full session-by-session history of how each feature was built
-lives in STATE.md and git log, not here — this file is a durable reference to
-what exists *now*.
+**Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
+(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 5
+(Launch prep) is next** — see TASK_PLAN.md. Full session-by-session history of
+how each feature was built lives in STATE.md and git log, not here — this file
+is a durable reference to what exists *now*.
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components
@@ -59,11 +60,15 @@ features/
   treatment/  the disease-level Treatment entity's own page (/treatment/:id) —
               distinct from reminder/'s TreatmentPlan, see ARCHITECT.md's
               "Two Treatment concepts"
-  species/    Garden landing page (/garden, species-first cards) + species
-              detail page (/garden/species/:id)
+  species/    Garden landing page (/garden, species-first cards, "recently
+              scanned" filter chip sorts by lastScanAt) + species detail page
+              (/garden/species/:id, Overview tab now renders AI-generated
+              structured care cards via the existing CarePlanModule, plantId=null)
   dashboard/  Home page (/home, default landing) + the older Garden Dashboard
               health-trends view (/home/overview, was /dashboard)
-  chat/       single-turn chat, plant-context injection via ?plantId= query param
+  chat/       multi-turn chat (sends accumulated history), streamed token-by-
+              token replies via SSE, plant-context injection via ?plantId=
+              query param
 layout/       shell, navbar
 ```
 Bottom nav (5 items): Home | Garden | Identify | Reminders | Chat —
@@ -107,6 +112,16 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   threaded down from wherever the card is rendered (preview-card pre-save vs.
   plant-detail post-save) — the action row simply doesn't render without a
   `plantId`.
+- **Synchronous in-flight/done guards on completion buttons**: the
+  `[disabled]` template binding alone isn't enough to stop a fast double-click
+  (it only takes effect after Angular's next render tick). `reminder-list.
+  component.ts`'s `completeReminder()` checks a plain `Set<number>`
+  *synchronously* as its first line, before any async call — immune to render
+  timing. A non-recurring reminder's id stays in the set permanently after
+  success (button becomes "Done", disabled); a recurring one's id is removed
+  (the next reload reflects the new schedule). A 400 from the backend's
+  already-done guard is treated as success (refresh, no error toast), not a
+  failure — the reminder is, after all, done.
 - **Identification Flow 1 species/plant matching** (Garden FAB entry point
   only — Flows 2/3 from a Species or Plant page already know their context and
   skip this): after a scan completes, `species-confirm-step` then
@@ -123,23 +138,36 @@ npx tsc --noEmit
 ```
 
 ## Known Issues / Open Items
-- `IdentificationResultComponent` is dead code (orphaned — no route or template
-  references it anymore, superseded by `identification-preview-section`) —
-  cleanup candidate, not urgent
 - T3.3 (manual on-device testing — push notification delivery, PWA
   installability, offline reading) has never been done; needs a real phone, not
   something to automate. See STATE.md.
-- Chat streaming + conversation history not started (Phase 4 polish, optional)
 - No shared `StickyHeaderComponent` extracted yet — Plant page and Treatment
   page each duplicate the CSS/IntersectionObserver wiring. Worth extracting if
   a third page needs this pattern.
-- "Recently scanned" filter chip on the Garden species list is rendered but
-  disabled (`matTooltip` explains why) — `SpeciesSummaryDto` has no
-  last-scan-date field to sort on yet.
-- Button success states on care cards (`reminderSet`, `treatmentStarted`) are
-  session-only component booleans, not derived from a persisted backend flag —
-  a page refresh re-shows the actionable button even after a plan/reminder was
-  already created from that exact card.
+- Chat streaming (`chat.service.ts`'s `sendMessageStream()`) was written and
+  unit-style-verified but never confirmed against a live Docker stack in the
+  session it shipped in — re-verify tokens actually arrive incrementally (not
+  all at once) the first time anyone touches `nginx.conf`'s
+  `/api/v1/chat/stream` block or `ChatController`.
+
+### Closed out in the pre-Phase-5 cleanup pass (kept here as "don't re-break this")
+- `IdentificationResultComponent` was dead code — deleted, not just unreferenced.
+- "Recently scanned" filter chip now works — `SpeciesSummaryDto.lastScanAt` was
+  added (backend) and the chip wired up (frontend); don't re-disable it.
+- Care-card button success states (`treatmentStarted`) are no longer a
+  session-only boolean — `care-card.component.ts` now derives it from the real
+  `Treatment` entity (`treatmentService.getActiveTreatment(plantId)`, matched
+  on `diseaseName`) on `ngOnChanges`, so a refresh shows the correct state.
+  **Pattern for future "did the user already do X" UI state:** derive it from
+  the entity that actually tracks X, don't add a new persisted/session flag
+  that can drift out of sync with it.
+- Two separate UI paths (`DiseaseDetailPanelComponent` and `CareCardComponent`)
+  used to each call `TreatmentPlanService.createFromActionPlan()` directly,
+  bypassing the `Treatment` entity's one-active-per-disease protection — could
+  start two treatment plans for the same disease. `DiseaseDetailPanelComponent`
+  no longer offers its own "start treatment" button at all; `CareCardComponent`
+  is now the only path, and it goes through `TreatmentService.createTreatment()`
+  → `.craftPlan()` like the Plant-page CTA always did.
 
 ## Key Files
 ```

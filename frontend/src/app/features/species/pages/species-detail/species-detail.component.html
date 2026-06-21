@@ -48,6 +48,19 @@
             <h2 class="info-heading">Care overview</h2>
             <p class="info-text">{{ species.careOverview }}</p>
           </div>
+
+          <!-- Informational only -- plantId=null hides each card's action row (no reminders/
+               treatments at the species level), same as the unsaved-preview use of these cards. -->
+          <div *ngIf="species.careCards && species.careCards.length" class="info-block">
+            <h2 class="info-heading">How to care for it</h2>
+            <div class="care-cards-grid">
+              <app-care-card
+                *ngFor="let card of species.careCards"
+                [card]="card"
+                [plantId]="null"
+              ></app-care-card>
+            </div>
+          </div>
         </div>
       </mat-tab>
 

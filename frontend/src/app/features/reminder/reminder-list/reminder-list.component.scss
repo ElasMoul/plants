@@ -250,6 +250,22 @@
     height: 18px;
     color: var(--color-text-secondary);
   }
+
+  // Permanently completed (one-time/treatment-step reminder) — distinct from the
+  // generic dimmed :disabled look used for the brief in-flight state.
+  &.done {
+    opacity: 1;
+    border-color: var(--color-success);
+    background: var(--color-success);
+
+    mat-icon {
+      color: var(--color-surface);
+    }
+  }
+}
+
+.reminder-card.done {
+  opacity: 0.7;
 }
 
 // ── FAB ──────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ReminderResponse } from '../../../features/reminder/models/reminder.model';
 import { ReminderService } from '../../../features/reminder/services/reminder.service';
 import { StepDetailDialogComponent } from '../step-detail-dialog/step-detail-dialog.component';
@@ -66,15 +67,20 @@ export class TreatmentStepListComponent {
   }
 
   markStepDone(step: ReminderResponse): void {
-    if (this.markingDoneId !== null) return;
+    if (this.markingDoneId !== null || !step.enabled) return;
     this.markingDoneId = step.id;
     this.reminderService.markCareDone(step.id).subscribe({
       next: () => {
         this.markingDoneId = null;
         this.stepCompleted.emit();
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.markingDoneId = null;
+        if (err.status === 400) {
+          // Already completed (race with another surface, e.g. the reminder list) — the step
+          // really is done, just re-sync the parent's view of it instead of leaving it stuck.
+          this.stepCompleted.emit();
+        }
       },
     });
   }

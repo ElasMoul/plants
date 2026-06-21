@@ -159,6 +159,16 @@ public class TreatmentServiceImpl implements TreatmentService {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public List<TreatmentResponse> getActiveTreatmentsForPlant(Long plantId, Long userId) {
+    return treatmentRepository
+        .findByPlantIdAndUserIdAndStatusInOrderByCreatedAtDesc(plantId, userId, ACTIVE_STATUSES)
+        .stream()
+        .map(this::toResponse)
+        .toList();
+  }
+
+  @Override
   @Transactional
   public TreatmentResponse completeTreatment(Long id, Long userId) {
     Treatment treatment = findOwnedTreatment(id, userId);
@@ -170,6 +180,33 @@ public class TreatmentServiceImpl implements TreatmentService {
     log.info("Treatment completed: id={}, userId={}", id, userId);
 
     return toResponse(treatment);
+  }
+
+  @Override
+  @Transactional
+  public void dismissActiveTreatmentForDisease(Long plantId, String diseaseName) {
+    List<Treatment> active =
+        treatmentRepository.findByPlantIdAndDiseaseNameAndStatusIn(
+            plantId, diseaseName, ACTIVE_STATUSES);
+    for (Treatment treatment : active) {
+      treatment.setStatus(TreatmentStatus.DISMISSED);
+      treatment = treatmentRepository.save(treatment);
+      Long dismissedId = treatment.getId();
+      plantRepository
+          .findById(plantId)
+          .filter(p -> dismissedId.equals(p.getActiveTreatmentId()))
+          .ifPresent(
+              p -> {
+                p.setActiveTreatmentId(null);
+                plantRepository.save(p);
+              });
+      log.info(
+          "Treatment dismissed via duplicate care card cleanup: treatmentId={}, plantId={},"
+              + " diseaseName={}",
+          treatment.getId(),
+          plantId,
+          diseaseName);
+    }
   }
 
   @Override

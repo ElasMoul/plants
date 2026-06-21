@@ -30,9 +30,9 @@
     </button>
     <button
       type="button"
-      class="filter-chip filter-chip--disabled"
-      disabled
-      matTooltip="Coming soon — needs last-scan timestamps on the backend"
+      class="filter-chip"
+      [class.filter-chip--active]="activeFilter === 'recent'"
+      (click)="setFilter('recent')"
     >
       Recently scanned
     </button>

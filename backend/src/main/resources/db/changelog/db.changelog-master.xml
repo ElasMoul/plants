@@ -68,4 +68,7 @@
     <include file="db/changelog/migrations/019_alter_identifications_add_plant_species_fk.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/020_add_species_care_cards.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
