@@ -1,5 +1,6 @@
 package com.plantpal.species.dto;
 
+import java.time.Instant;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,4 +23,7 @@ public class SpeciesSummaryDto {
 
   /** Computed, not stored — e.g. "All healthy" or "N issue(s)". */
   private String healthSummary;
+
+  /** Computed, not stored — the most recent scan across all of this species' plants, or null. */
+  private Instant lastScanAt;
 }

@@ -315,5 +315,68 @@ class SpeciesServiceTest {
       // Then
       assertThat(result.getContent().get(0).getHealthSummary()).isEqualTo("1 issue(s)");
     }
+
+    @Test
+    @DisplayName("should report the most recent scan across the species' plants as lastScanAt")
+    void shouldComputeMostRecentLastScanAt() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      Plant plantB = Plant.builder().id(11L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA, plantB));
+
+      Identification olderScan =
+          Identification.builder().plantId(10L).healthStatus("HEALTHY").build();
+      olderScan.setCreatedAt(java.time.Instant.parse("2026-06-01T00:00:00Z"));
+      Identification newerScan =
+          Identification.builder().plantId(11L).healthStatus("HEALTHY").build();
+      newerScan.setCreatedAt(java.time.Instant.parse("2026-06-15T00:00:00Z"));
+      when(identificationRepository.findLatestPerPlant(List.of(10L, 11L)))
+          .thenReturn(List.of(olderScan, newerScan));
+
+      Species species = Species.builder().id(50L).scientificName("Monstera deliciosa").build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getLastScanAt())
+          .isEqualTo(java.time.Instant.parse("2026-06-15T00:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("should report a null lastScanAt when no scans have a createdAt set")
+    void shouldReportNullLastScanAtWhenAbsent() {
+      // Given
+      Pageable pageable = PageRequest.of(0, 20);
+      when(plantRepository.findDistinctSpeciesIdsByUserIdAndStatus(
+              1L, PlantStatus.ACTIVE, pageable))
+          .thenReturn(new PageImpl<>(List.of(50L), pageable, 1));
+
+      Plant plantA = Plant.builder().id(10L).userId(1L).speciesId(50L).build();
+      when(plantRepository.findAllByUserIdAndStatusAndSpeciesIdIn(
+              1L, PlantStatus.ACTIVE, List.of(50L)))
+          .thenReturn(List.of(plantA));
+
+      when(identificationRepository.findLatestPerPlant(List.of(10L)))
+          .thenReturn(
+              List.of(Identification.builder().plantId(10L).healthStatus("HEALTHY").build()));
+
+      Species species = Species.builder().id(50L).scientificName("Monstera deliciosa").build();
+      when(speciesRepository.findAllById(List.of(50L))).thenReturn(List.of(species));
+
+      // When
+      Page<SpeciesSummaryDto> result = speciesService.getUserSpecies(1L, pageable);
+
+      // Then
+      assertThat(result.getContent().get(0).getLastScanAt()).isNull();
+    }
   }
 }
