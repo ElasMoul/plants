@@ -11,6 +11,7 @@ export class CarePlanComponent {
   @Input() carePlan: CarePlanDto | null = null;
   @Input() maxCards: number | null = null;
   @Input() plantId: number | null = null;
+  @Input() identificationId: number | null = null;
   @Input() existingCareTypes: CareType[] = [];
 
   readonly skeletonCards = [1, 2, 3];

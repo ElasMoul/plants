@@ -19,6 +19,7 @@ import { IdentificationService } from './services/identification.service';
 import { PlantService } from '../plant/services/plant.service';
 import { ReminderService } from '../reminder/services/reminder.service';
 import { TreatmentPlanService } from '../reminder/services/treatment-plan.service';
+import { TreatmentService } from '../plant/services/treatment.service';
 
 @NgModule({
   declarations: [
@@ -46,6 +47,7 @@ import { TreatmentPlanService } from '../reminder/services/treatment-plan.servic
     PlantService,
     ReminderService,
     TreatmentPlanService,
+    TreatmentService,
   ],
 })
 export class IdentificationModule {}

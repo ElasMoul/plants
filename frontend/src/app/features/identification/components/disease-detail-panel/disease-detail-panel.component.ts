@@ -1,19 +1,21 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
-import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ActionPlanDto, AnnotationRegion, CarePlanDto } from '../../models/identification.model';
 import { IdentificationService } from '../../services/identification.service';
-import { TreatmentPlanService } from '../../../reminder/services/treatment-plan.service';
 
 interface CureCacheEntry {
   advice: string;
   actionPlan: ActionPlanDto | null;
   addedToPlan: boolean;
-  treatmentStarted: boolean;
 }
 
+// Cure-advice display + "Add to care plan" only — this panel deliberately does NOT offer its
+// own "Start treatment plan" action. That used to call TreatmentPlanService.createFromActionPlan()
+// directly, bypassing the Treatment entity's duplicate-protection (see ARCHITECT.md's "Two
+// Treatment concepts"); a user could end up starting two treatment plans for the same disease by
+// using this button and the PEST care-card's button separately. CareCardComponent is now the
+// single place a treatment is started from, via the protected TreatmentService path.
 @Component({
   selector: 'app-disease-detail-panel',
   templateUrl: './disease-detail-panel.component.html',
@@ -32,8 +34,6 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   adviceError = false;
   addingToPlan = false;
   addedToPlan = false;
-  startingTreatment = false;
-  treatmentStarted = false;
 
   // Keyed by identificationId:regionLabel — re-selecting a region already asked about should
   // show the cached advice instead of presenting "Ask for cure" again.
@@ -41,12 +41,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
 
-  constructor(
-    private readonly identificationService: IdentificationService,
-    private readonly treatmentPlanService: TreatmentPlanService,
-    private readonly snackBar: MatSnackBar,
-    private readonly router: Router,
-  ) {}
+  constructor(private readonly identificationService: IdentificationService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['region'] && !changes['identificationId']) return;
@@ -54,7 +49,6 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
     this.loadingAdvice = false;
     this.adviceError = false;
     this.addingToPlan = false;
-    this.startingTreatment = false;
 
     const key = this.cacheKey();
     const cached = key ? this.cureCache.get(key) : undefined;
@@ -62,12 +56,10 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
       this.advice = cached.advice;
       this.actionPlan = cached.actionPlan;
       this.addedToPlan = cached.addedToPlan;
-      this.treatmentStarted = cached.treatmentStarted;
     } else {
       this.advice = null;
       this.actionPlan = null;
       this.addedToPlan = false;
-      this.treatmentStarted = false;
     }
   }
 
@@ -82,7 +74,6 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
       advice: this.advice,
       actionPlan: this.actionPlan,
       addedToPlan: this.addedToPlan,
-      treatmentStarted: this.treatmentStarted,
     });
   }
 
@@ -93,10 +84,6 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
 
   get isDisease(): boolean {
     return this.region?.type === 'DISEASE';
-  }
-
-  get showTreatmentOption(): boolean {
-    return this.actionPlan?.type === 'TREATMENT' && this.plantId !== null;
   }
 
   askForCure(): void {
@@ -137,38 +124,6 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
         },
         error: () => {
           this.addingToPlan = false;
-        },
-      });
-  }
-
-  startTreatmentPlan(): void {
-    const plantId = this.plantId;
-    if (!this.region || !this.actionPlan || plantId === null) return;
-    if (this.startingTreatment || this.treatmentStarted) return;
-
-    this.startingTreatment = true;
-    this.treatmentPlanService.createFromActionPlan({
-      plantId,
-      title: this.region.label,
-      sourceCareCardType: 'PEST',
-      actionPlan: this.actionPlan,
-    })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: res => {
-          this.startingTreatment = false;
-          this.treatmentStarted = true;
-          this.cacheCurrent();
-          const snackRef = this.snackBar.open('Treatment plan started', 'View', { duration: 5000 });
-          snackRef.onAction()
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => {
-              this.router.navigate(['/treatment-plans', res.data.id]);
-            });
-        },
-        error: () => {
-          this.startingTreatment = false;
-          this.snackBar.open('Could not start treatment plan.', 'Dismiss', { duration: 4000 });
         },
       });
   }

@@ -48,21 +48,10 @@
           <mat-icon>{{ addedToPlan ? 'check' : 'playlist_add' }}</mat-icon>
           {{ addedToPlan ? 'Added to care plan' : (addingToPlan ? 'Adding…' : 'Add to care plan') }}
         </button>
-
-        <button mat-raised-button color="primary" type="button"
-          *ngIf="showTreatmentOption"
-          [disabled]="startingTreatment || treatmentStarted"
-          (click)="startTreatmentPlan()">
-          <mat-progress-spinner
-            *ngIf="startingTreatment"
-            diameter="16"
-            mode="indeterminate"
-            class="btn-spinner"
-          ></mat-progress-spinner>
-          <mat-icon *ngIf="!startingTreatment">medical_services</mat-icon>
-          {{ treatmentStarted ? 'Plan in progress' : (startingTreatment ? 'Starting…' : 'Start treatment plan') }}
-        </button>
       </div>
+      <p class="advice-hint" *ngIf="addedToPlan">
+        Added to your care plan — start the treatment plan from the card below.
+      </p>
     </ng-container>
 
   </mat-card-content>

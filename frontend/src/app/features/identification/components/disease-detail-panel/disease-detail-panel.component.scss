@@ -40,15 +40,6 @@
   font-size: 0.9rem;
 }
 
-.btn-spinner {
-  display: inline-block;
-  margin-right: 6px;
-
-  ::ng-deep circle {
-    stroke: currentColor;
-  }
-}
-
 .advice-text {
   font-size: 0.9rem;
   line-height: 1.6;
@@ -59,4 +50,10 @@
   background: #fafafa;
   border-radius: 6px;
   border: 1px solid #e0e0e0;
+}
+
+.advice-hint {
+  font-size: 0.8rem;
+  color: #757575;
+  margin: 4px 0 0;
 }
