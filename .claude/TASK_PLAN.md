@@ -77,8 +77,16 @@
   plant-context injection added in T6.13 — see STATE.md)
 ### T4.3 — Manual testing — Phase 4 👤 Manual ✅ DONE
 
-> Streaming responses + conversation history are a known future polish item,
-> not started, not blocking launch.
+> Streaming responses + conversation history shipped in the pre-Phase-5 cleanup
+> pass below (`feature/PP-038-pre-phase5-cleanup`) — no longer an open item.
+
+## Pre-Phase-5 cleanup pass ✅ DONE
+`feature/PP-038-pre-phase5-cleanup` — closed out every open gap flagged in
+BACKEND.md/FRONTEND.md/STATE.md from Phases 0–4/6 plus three bugs found via
+live testing, before starting Phase 5. See STATE.md for the full list (reminder
+double-completion, duplicate treatment creation, species AI-preference
+enrichment + structured care cards, chat history + SSE streaming, dead
+component removal, missing controller ITs, real JaCoCo gate at 55%).
 
 ## PHASE 5 — Launch Preparation
 > Goal: deploy to production, beta test, release v1.0.0.

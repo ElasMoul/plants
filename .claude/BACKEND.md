@@ -20,11 +20,13 @@ Spotless 2.43.0, springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
 ## Current Status
-**Phases 0–4 and 6 are shipped. Phase 5 (Launch prep) is next** — see
-TASK_PLAN.md for the full task breakdown (prod config, performance, security
-hardening, API docs, deploy). Full session-by-session history of how Phases
-0–6 were built lives in STATE.md and git log, not here — this file is a
-durable reference to what exists *now*, not a diary.
+**Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
+(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 5
+(Launch prep) is next** — see TASK_PLAN.md for the full task breakdown (prod
+config, performance, security hardening, API docs, deploy). Full
+session-by-session history of how Phases 0–6 were built lives in STATE.md and
+git log, not here — this file is a durable reference to what exists *now*, not
+a diary.
 
 ## AI Provider Map (current)
 | Client | Model | Purpose | Endpoint |
@@ -194,7 +196,10 @@ repository/UserRepository, service/UserService(+Impl), controller/AuthController
 - service/ReminderService(+Impl) — createReminder, getUserReminders (bounded 200,
   batch-fetches plants), deleteReminder (soft), calculateNextDueAt(),
   **applyCompletionToReminder(reminder, performedAt)** — the single completion
-  choke-point (see ARCHITECT.md), now also publishes TreatmentPlanCompletedEvent
+  choke-point (see ARCHITECT.md), now also publishes TreatmentPlanCompletedEvent.
+  Guards against re-completing a non-recurring reminder that's already disabled
+  (`ValidationException` — pre-Phase-5 cleanup pass fix; recurring reminders are
+  untouched, completing them again later is intended)
 - service/CareLogService(+Impl) — logCare() delegates to applyCompletionToReminder(),
   getPlantCareLogs (paginated, ownership-checked)
 - service/WebPushService(+Impl) — nl.martijndwars:web-push, VAPID keys via @Value
@@ -240,26 +245,50 @@ repository/UserRepository, service/UserService(+Impl), controller/AuthController
   imageUrl, plantCount, healthSummary)}
 - mapper/SpeciesMapper.java (MapStruct, toResponse only)
 - repository/SpeciesRepository.java — findByScientificName, existsByScientificName
-- service/SpeciesService(+Impl) — findOrCreate() (dedup + fires async enrichment),
-  getSpecies(), getUserSpecies(userId, pageable) — groups the caller's plants by
-  speciesId via PlantRepository's distinct-speciesId queries, healthSummary via
-  the same findLatestPerPlant() batch pattern PlantServiceImpl uses
-- service/SpeciesEnrichmentService(+Impl) — @Async enrich(speciesId), see
-  ARCHITECT.md's enrichment pattern for the full success/failure handling
+- service/SpeciesService(+Impl) — findOrCreate(scientificName, commonName,
+  AiModelPreference) (dedup + fires async enrichment, preference now threaded
+  through from the caller's saved AI model choice instead of hardcoded DeepSeek),
+  getSpecies() (parses careCards JSON on read, defensive — malformed JSON
+  degrades to null, never throws), getUserSpecies(userId, pageable) — groups the
+  caller's plants by speciesId via PlantRepository's distinct-speciesId queries,
+  healthSummary + lastScanAt (max across the species' plants) via the same
+  findLatestPerPlant() batch pattern PlantServiceImpl uses (zero extra queries)
+- service/SpeciesEnrichmentService(+Impl) — @Async enrich(speciesId,
+  AiModelPreference) — OLLAMA_LLAVA routes through OllamaClient.chat() with the
+  same SPECIES_ENRICHMENT_SYSTEM_PROMPT (made package-visible on DeepSeekClient
+  for this); every other preference still goes through DeepSeekClient. Also
+  generates a small `careCards` array (CareCardDto shape minus actionPlan — no
+  plant-specific reminders at the species level) alongside the existing
+  description/careOverview/imageUrl fields, persisted as JSON on
+  `Species.careCards` (migration 020). See ARCHITECT.md's enrichment pattern for
+  the full success/failure handling.
 - controller/SpeciesController.java — GET /{id} (public read), GET /mine (paginated)
 
-### chat/ — fully implemented (T4.1, T6.13)
-- dto/ChatRequest.java — @NotBlank message, nullable plantId (T6.13)
+### chat/ — fully implemented (T4.1, T6.13, pre-Phase-5 cleanup pass)
+- dto/ChatRequest.java — @NotBlank message, nullable plantId (T6.13), nullable
+  `history: List<ChatMessageDto>` (cleanup pass)
+- dto/ChatMessageDto.java — `role` ("user"|"assistant"), `content`
 - dto/ChatResponse.java — reply
 - service/ChatService(+Impl) — 4-param constructor (OllamaClient, PlantRepository,
-  IdentificationRepository, TreatmentRepository). chat(): rate-limit (30/hour) →
-  if plantId present, buildPlantContext() (ownership-checked, throws
-  ResourceNotFoundException before buildGardenContext() runs) prepended to
-  buildGardenContext(); else garden context alone → one prompt string →
-  ollamaClient.chat(prompt). buildPlantContext(): nickname/species line + optional
-  last-scan health line (IdentificationRepository.findLatestPerPlant, reused) +
-  optional active-treatment line (plant.activeTreatmentId → TreatmentRepository.findById())
-- controller/ChatController.java — POST /api/v1/chat
+  IdentificationRepository, TreatmentRepository). Prompt assembly extracted into
+  a private buildPrompt(request, userId), shared by both chat() and the new
+  chatStream(). History renders as a "Previous conversation:" block capped to
+  the most recent 10 messages (front-truncated — never trust unbounded client
+  input, mirrors ActionPlanValidator's convention); absent/empty history →
+  byte-for-byte unchanged behavior. chat(): rate-limit (30/hour) → buildPrompt()
+  → ollamaClient.chat(prompt). chatStream(request, userId, onToken): same
+  rate-limit check, delegates to ollamaClient.chatStream(prompt, onToken).
+  buildPlantContext() (used by buildPrompt() when plantId present,
+  ownership-checked, throws ResourceNotFoundException before garden context
+  runs): nickname/species line + optional last-scan health line
+  (IdentificationRepository.findLatestPerPlant, reused) + optional
+  active-treatment line (plant.activeTreatmentId → TreatmentRepository.findById())
+- controller/ChatController.java — POST /api/v1/chat, POST /api/v1/chat/stream
+  (returns SseEmitter, 60s timeout; the actual send runs via
+  `CompletableFuture.runAsync(..., aiTaskExecutor)` — same same-class
+  fire-and-forget convention as TreatmentServiceImpl's disease-description
+  generation, since `@Async` has no effect on self-invocation — so the emitter
+  returns immediately and the controller isn't blocked for the stream's duration)
 
 ### dashboard/ — fully implemented (T2.10b, extended T6.7)
 - dto/DashboardResponse.java — healthSummary, overdueReminders, todayReminders,
@@ -299,12 +328,16 @@ repository/UserRepository, service/UserService(+Impl), controller/AuthController
 019_alter_identifications_add_plant_species_fk.sql
                                           identifications.species_id FK; deferred
                                           fk_plants_active_treatment constraint from 017
+020_add_species_care_cards.sql           species.care_cards TEXT (nullable JSON,
+                                          same storage pattern as
+                                          identifications.care_plan)
 ```
-All 19 applied, in exactly this XML-listed order in db.changelog-master.xml
-(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #020).
+All 20 applied, in exactly this XML-listed order in db.changelog-master.xml
+(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #021).
 
 ## Test Inventory
-Full unit suite: 183/183 passing as of T6.14 (checkstyle clean). Layout:
+Full unit suite: 198/198 passing as of the pre-Phase-5 cleanup pass (checkstyle
+clean). Layout:
 ```
 unit/{UserServiceTest, PlantServiceTest, IdentificationServiceImplTest,
       ActionPlanValidatorTest, PlantNetClientTest, OllamaClientTest}.java
@@ -314,20 +347,34 @@ species/unit/{SpeciesServiceTest, SpeciesEnrichmentServiceImplTest}.java
 dashboard/unit/DashboardServiceTest.java
 chat/unit/ChatServiceImplTest.java
 shared/unit/LocalFileStorageServiceTest.java
-integration/{AuthControllerIT, PlantControllerIT}.java
-AbstractIntegrationTest.java    ← Testcontainers base (PostgreSQL + Redis)
+{user,plant}/integration/{AuthControllerIT, PlantControllerIT}.java
+identification/integration/IdentificationControllerIT.java
+reminder/integration/TreatmentPlanControllerIT.java
+treatment/integration/TreatmentControllerIT.java
+species/integration/SpeciesControllerIT.java
+AbstractIntegrationTest.java    ← Testcontainers base (PostgreSQL + Redis, static
+                                   shared containers across all *IT.java subclasses)
 testdata/{PlantTestDataBuilder, UserTestDataBuilder}.java
 ```
 `IdentificationServiceImplTest` is the largest file — nested classes per concern
 (Identify, CarePlanParsing, AnnotationRegions, Kafka, CureAdvice, AddCareCard,
 species-matching). Constructed manually in `@BeforeEach` (15+ param constructor).
-**Missing:** IdentificationControllerIT, TreatmentPlanControllerIT,
-TreatmentControllerIT, SpeciesControllerIT — only unit tests exist for these.
+
+**Running ITs:** no failsafe plugin is wired in — Surefire's default include
+pattern (`**/*Test.java`) never picks up `*IT.java` files, so `mvn verify` only
+ever runs the unit suite. Run an IT explicitly: `mvn test -Dtest=SomeControllerIT`.
+Each one passes cleanly alone but **running several `*IT.java` classes
+back-to-back in the same `-Dtest=A,B,C` invocation has caused Hikari/Lettuce
+connection-pool exhaustion** on a resource-constrained Windows dev machine
+(each spins up a full Spring context + new Testcontainers connections) — run
+them one at a time, don't batch.
 
 ## Known Issues / Open Items
-- JaCoCo gate is at 10% (not 80%) — restore once integration tests run in CI (Phase 5)
-- Integration tests not running in CI (Testcontainers phase isolation issue)
-- Missing controller-level integration tests — see Test Inventory above
+- JaCoCo gate is at 55% (the unit suite's real achieved line coverage, with a
+  small margin) — was a hardcoded, never-achieved 10%/80% before the
+  pre-Phase-5 cleanup pass. Still doesn't include IT coverage since ITs aren't
+  wired into `verify` (see Test Inventory above) — raise further only once
+  that's solved.
 - **GITHUB_TOKEN must be rotated before prod** — was shared in chat sessions during dev
 - PlantNetClient + plantnet/ DTOs are effectively dead code (only reachable via the
   non-primary PlantNetAnnotationClient fallback, or the PLANTNET preference) —

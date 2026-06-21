@@ -380,9 +380,13 @@ class PlantServiceTest {
 }
 ```
 
-**JaCoCo coverage gate:** currently 10% (temporary), target 80% — restore in Phase 5 with proper
-exclusions. 100% is a vanity metric; 80% forces testing of critical paths without wasting time on
-trivial getters.
+**JaCoCo coverage gate:** 55% (the unit suite's real achieved ~58.9% line coverage, with a small
+margin) as of the pre-Phase-5 cleanup pass — was a never-achieved 10%/80% placeholder before.
+`*IT.java` integration tests exist but aren't wired into `mvn verify` (no failsafe plugin —
+Surefire's default pattern never picks them up); run one at a time via
+`mvn test -Dtest=SomeControllerIT`, never batched (Testcontainers connection-pool contention on a
+resource-constrained dev machine). 100% is a vanity metric; the goal is testing critical paths
+without wasting time on trivial getters.
 
 ---
 
@@ -455,9 +459,10 @@ open backend/target/site/jacoco/index.html
 | 1 — Auth + Plant Management | ✅ Complete |
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual on-device push/PWA testing — never done, needs a real phone) |
-| 4 — AI Chat | ✅ Complete (basic, single-turn + plant-context) — streaming/history polish not started |
+| 4 — AI Chat | ✅ Complete, incl. streaming + conversation history (pre-Phase-5 cleanup pass) |
 | 5 — Launch Preparation | 🔲 **Not started — current focus** |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
+| — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
 
 ---
 
