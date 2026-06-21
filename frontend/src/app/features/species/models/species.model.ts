@@ -7,6 +7,7 @@ export interface SpeciesSummaryDto {
   imageUrl: string | null;
   plantCount: number;
   healthSummary: string;
+  lastScanAt: string | null;
 }
 
 export type SpeciesStatus = 'ACTIVE' | 'NEEDS_REVIEW';

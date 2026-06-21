@@ -13,7 +13,7 @@ import { IdentificationService } from '../../../identification/services/identifi
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
 
-type SpeciesFilter = 'all' | 'issues';
+type SpeciesFilter = 'all' | 'issues' | 'recent';
 
 @Component({
   selector: 'app-species-list',
@@ -49,10 +49,16 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
   }
 
   // Filters only the currently-fetched page — no backend query param for this yet, so the
-  // "With Issues" count is scoped to one page at a time, not the user's full species list.
+  // "With Issues"/"Recently scanned" counts are scoped to one page at a time, not the user's
+  // full species list.
   get filteredSpecies(): SpeciesSummaryDto[] {
     if (this.activeFilter === 'issues') {
       return this.species.filter(s => s.healthSummary !== 'All healthy');
+    }
+    if (this.activeFilter === 'recent') {
+      return this.species
+        .filter((s): s is SpeciesSummaryDto & { lastScanAt: string } => s.lastScanAt !== null)
+        .sort((a, b) => new Date(b.lastScanAt).getTime() - new Date(a.lastScanAt).getTime());
     }
     return this.species;
   }
