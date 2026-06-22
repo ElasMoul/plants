@@ -52,8 +52,20 @@
 // ── Sticky header — same pattern as plant-detail.component.scss (T6.10) ────
 .sticky-header {
   position: sticky;
-  top: 0;
+  top: 50px;
   z-index: 10;
+}
+
+.section-button-bar {
+  position: sticky;
+  top: 130px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 4px;
+  background: var(--color-surface);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .scroll-sentinel {
@@ -147,14 +159,14 @@
 }
 
 // ── Icon button bar ──────────────────────────────────────────
-.section-button-bar {
+/*.section-button-bar {
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 8px 4px;
   background: var(--color-surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
+}*/
 
 .active-section-btn {
   background: var(--color-success) !important;

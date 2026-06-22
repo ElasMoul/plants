@@ -8,6 +8,7 @@
   <ng-container *ngIf="!loading && plant">
 
     <!-- Sticky header -->
+    <div #scrollSentinel class="scroll-sentinel"></div>
     <div class="sticky-header" [class.collapsed]="headerCollapsed">
       <div class="detail-hero">
         <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
@@ -31,7 +32,7 @@
         </div>
       </div>
     </div>
-    <div #scrollSentinel class="scroll-sentinel"></div>
+    
 
     <!-- Icon button bar -->
     <div class="section-button-bar">
