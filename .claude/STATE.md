@@ -1,8 +1,10 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (post-T7.3 bugfix: batch scan no longer loses
-> queued items on dialog close/navigation — see new section below; T7.4/T7.3/
-> T7.2/T7.1 entries and pre-Phase-5 cleanup pass entry below are from prior
+> Last updated: 2026-06-22 (post-T7.3 bugfixes: batch scan no longer loses
+> queued items on dialog close/navigation, no NullInjectorError when opened
+> from non-identification modules, and all items submit concurrently instead
+> of trickling in one at a time — see updated section below; T7.4/T7.3/T7.2/
+> T7.1 entries and pre-Phase-5 cleanup pass entry below are from prior
 > sessions)
 
 ## Current Phase
@@ -24,38 +26,62 @@ needs a real phone and hasn't been done.
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
-## Bugfix — batch scan lost queued items on dialog close/navigation (2026-06-22, `feature/PP-041-batch-scan`)
-User-reported regression in T7.3: clicking Cancel mid-batch (or navigating
-away) only completed the one item already in flight — every other queued
-item was silently abandoned. Root cause: `runBatchQueue()` lived directly in
-`IdentificationUploadDialogComponent`, piped through `takeUntil(this.destroy$)`
-— closing the dialog destroyed the component, which unsubscribed the chain
-and killed both the in-flight HTTP call and every not-yet-started item.
-- Moved the entire queue into a new `BatchScanService`
-  (`features/identification/services/batch-scan.service.ts`, provided in
-  `identification.module.ts` — not root, but that lazy module's injector
-  persists for the rest of the SPA session once loaded, same as any Angular
-  lazy module, so the service outlives the dialog). The service's own
-  subscriptions have no `takeUntil` tied to the dialog at all — only the
-  service's own lifetime (= app session) bounds them now.
-  `BatchItem` uses a stable numeric `id` (not object identity) for its
-  immutable `BehaviorSubject` patches, since identity-based matching breaks
-  the moment an item is replaced by a new object reference on its first patch.
-- `IdentificationUploadDialogComponent` is now a thin view over
-  `BatchScanService`: `batchActive` (`items.length > 0`) replaces the old
-  local `batchRunning` flag and now also covers "batch is finished but the
-  user reopened the dialog" — reopening shows the same Done/Failed rows
-  instead of a blank upload form. Buttons: "Run in background" while running
-  (does NOT cancel — see below), "Close"/"Retry remaining"/"Scan more"/"Done"
-  once finished.
-- No actual cancel/abort affordance exists (none was asked for, and there
-  wasn't one before this fix either) — once a batch starts, every item runs
-  to completion or failure regardless of what the dialog does. If the user
-  closes the dialog or navigates away mid-batch, `BatchScanService.
-  notifyIfDone()` shows a snackbar with the final tally ("3 added, 1 failed")
-  and a "View" action to `/identify` once the whole queue resolves — the only
-  feedback available if they're not looking at the dialog anymore.
-- `ng build`, `ng lint`, `tsc --noEmit` all clean.
+## Bugfixes — batch scan: lost items, NullInjectorError, sequential trickle (2026-06-22, `feature/PP-041-batch-scan`)
+Three user-reported issues against T7.3's just-shipped batch scan, found via
+live testing, all fixed in the same session:
+
+**1. Lost items on dialog close/navigation.** Clicking Cancel mid-batch (or
+navigating away) only completed the one item already in flight — every other
+queued item was silently abandoned. Root cause: `runBatchQueue()` lived
+directly in `IdentificationUploadDialogComponent`, piped through
+`takeUntil(this.destroy$)` — closing the dialog destroyed the component,
+unsubscribing the chain and killing both the in-flight HTTP call and every
+not-yet-started item. Fix: moved the entire queue into a new
+`BatchScanService` (`features/identification/services/batch-scan.service.ts`)
+with no `takeUntil` tied to the dialog at all. `BatchItem` uses a stable
+numeric `id` (not object identity) for its immutable `BehaviorSubject`
+patches, since identity-based matching breaks the moment an item is replaced
+by a new object reference on its first patch.
+
+**2. `NullInjectorError` opening the dialog from Garden/Home/Plant pages.**
+`BatchScanService` was initially only listed in `identification.module.ts`'s
+`providers:`. Since `IdentificationUploadDialogComponent` is opened from 3
+*other* lazy modules too (`plant`/`species`/`dashboard`) without a
+`viewContainerRef`, and a module-scoped provider only resolves within the
+injector subtree of modules that explicitly list it, any entry point routed
+through those other modules hit a hard crash the instant the dialog tried to
+construct. **This also disproved an earlier (wrong) assumption written into
+FRONTEND.md** that Angular resolves a dialog's DI from its *declaring*
+module — it never did; `IdentificationService` only ever worked across all 4
+entry points by coincidence, because every one of those modules already
+independently provides it for its own unrelated needs. Fix: added
+`BatchScanService` to the `providers:` array of all 4 modules
+(`identification`/`plant`/`species`/`dashboard`) — corrected FRONTEND.md
+accordingly. (A `providedIn: 'root'` service would not have fixed this
+either — it'd be constructed via the root injector alone, with no path to
+its own module-scoped `IdentificationService` dependency.)
+
+**3. Items only appeared one at a time, in sequence.** The queue was
+deliberately sequential — submit one file, wait for its full poll-to-
+completion, only then submit the next — reasoning at the time was "avoid
+wasting calls if a 429 hits partway through." In practice this meant the 2nd
+identification didn't even exist on the backend (so couldn't show up
+PENDING anywhere it's listed, e.g. the identify page) until the 1st had
+fully resolved. Fix: all N items' `/analyze` calls now fire concurrently at
+batch start; each is polled to completion independently. Safe given the
+5-image batch cap vs. the 20/hour identification rate limit — a 429 on any
+one item still just fails that item via `AiErrorService`, same as before.
+
+`IdentificationUploadDialogComponent` is now a thin view over
+`BatchScanService`: `batchActive` (`items.length > 0`) drives the view,
+covering "batch finished but the user reopened the dialog" too — reopening
+shows the same Done/Failed rows instead of a blank upload form. Buttons:
+"Run in background" while running (does NOT cancel — no abort affordance
+exists, by design), "Close"/"Retry remaining"/"Scan more"/"Done" once
+finished. `BatchScanService.notifyIfDone()` shows a snackbar with the final
+tally ("3 added, 1 failed") and a "View" action to `/identify`, regardless of
+whether the dialog is even open when the batch finishes.
+`ng build`, `ng lint`, `tsc --noEmit` all clean.
 
 ## T7.4 — Frontend: multi-treatment picker + disease-description poll fix (2026-06-22, `feature/PP-041-batch-scan`)
 Full detail in FRONTEND.md — summary here for cross-session context. Built in

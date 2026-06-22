@@ -26,6 +26,7 @@ import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
 import { TreatmentService } from './services/treatment.service';
 import { IdentificationService } from '../identification/services/identification.service';
+import { BatchScanService } from '../identification/services/batch-scan.service';
 import { CareLogService } from '../reminder/services/care-log.service';
 import { ReminderService } from '../reminder/services/reminder.service';
 import { TreatmentPlanService } from '../reminder/services/treatment-plan.service';
@@ -74,6 +75,6 @@ import { ActiveTreatmentSelectSheetComponent } from './components/active-treatme
     MatDialogModule,
     MatBottomSheetModule,
   ],
-  providers: [PlantService, TreatmentService, IdentificationService, CareLogService, ReminderService, TreatmentPlanService],
+  providers: [PlantService, TreatmentService, IdentificationService, BatchScanService, CareLogService, ReminderService, TreatmentPlanService],
 })
 export class PlantModule {}

@@ -16,12 +16,17 @@ export interface BatchItem {
   errorMessage?: string;
 }
 
-// Owns the batch-scan queue independently of IdentificationUploadDialogComponent's lifecycle.
-// Provided once in identification.module.ts (not root, but the lazy module's injector — and
-// this service instance — lives for the rest of the SPA session once loaded, same as any other
-// Angular lazy module). Closing the dialog, navigating elsewhere, or reopening the dialog later
-// must never abort or lose queued/in-flight items — that was the bug in the dialog-owned version
-// of this queue (its subscriptions died with the dialog's own destroy$).
+// Owns the batch-scan queue independently of IdentificationUploadDialogComponent's lifecycle —
+// closing the dialog, navigating elsewhere, or reopening the dialog later must never abort or
+// lose queued/in-flight items (that was a real shipped bug: the queue used to live in the dialog
+// component, piped through its own takeUntil(this.destroy$), so closing the dialog killed it).
+//
+// NOT providedIn: 'root' — same convention as every other feature service (see FRONTEND.md).
+// IdentificationUploadDialogComponent is opened from 4 different lazy modules
+// (identification/plant/species/dashboard), each of which must list this in its own `providers:`
+// array, exactly like they already do for IdentificationService — a root-provided singleton here
+// would also be unable to constructor-inject IdentificationService (itself module-scoped, not
+// root), since root-level services are constructed via the root injector alone.
 @Injectable()
 export class BatchScanService {
   private readonly itemsSubject = new BehaviorSubject<BatchItem[]>([]);
@@ -52,17 +57,17 @@ export class BatchScanService {
   }
 
   start(files: { file: File; preview: string }[]): void {
-    this.itemsSubject.next(
-      files.map(f => ({ id: this.nextId++, file: f.file, preview: f.preview, status: 'PENDING' as BatchItemStatus })),
-    );
+    const items = files.map(f => ({ id: this.nextId++, file: f.file, preview: f.preview, status: 'PENDING' as BatchItemStatus }));
+    this.itemsSubject.next(items);
     this.running = true;
-    this.runQueue();
+    items.forEach(item => this.processItem(item.id));
   }
 
   retryFailed(): void {
+    const failedIds = this.itemsSubject.value.filter(i => i.status === 'FAILED').map(i => i.id);
     this.patchWhere(i => i.status === 'FAILED', { status: 'PENDING', errorMessage: undefined });
     this.running = true;
-    this.runQueue();
+    failedIds.forEach(id => this.processItem(id));
   }
 
   // A finished batch's rows stay visible (so reopening the dialog shows what happened) until the
@@ -72,37 +77,43 @@ export class BatchScanService {
     this.running = false;
   }
 
-  // Sequential by design (T7.3) — a 429 partway through means every later item would 429 too, so
-  // there's no point firing them all at once; one-at-a-time also keeps the per-item status list
-  // meaningful (item N+1 hasn't even been tried while item N is still in flight).
-  private runQueue(): void {
-    const next = this.itemsSubject.value.find(i => i.status === 'PENDING');
-    if (!next) {
-      this.running = false;
-      this.notifyIfDone();
-      return;
-    }
+  // Concurrent, not sequential — every item's /analyze call fires immediately so each
+  // identification is created on the backend (and shows up as PENDING in the identify list)
+  // right away, instead of the 2nd one not even existing server-side until the 1st fully
+  // resolves. A batch is capped at MAX_IMAGES (5, see PhotoUploadComponent), well under the
+  // per-user identification rate limit (20/hour), so firing them together is safe; a 429 on any
+  // one of them still just fails that item via AiErrorService, same as before.
+  private processItem(id: number): void {
+    const item = this.itemsSubject.value.find(i => i.id === id);
+    if (!item) return;
 
-    const id = next.id;
     this.patchItem(id, { status: 'SCANNING' });
-    this.identificationService.analyze([next.file], ['auto']).subscribe({
+    this.identificationService.analyze([item.file], ['auto']).subscribe({
       next: res => {
         this.identificationService.pollUntilComplete(res.data.identificationId).subscribe({
           next: () => {
             this.patchItem(id, { status: 'DONE' });
-            this.runQueue();
+            this.checkAllResolved();
           },
           error: () => {
             this.patchItem(id, { status: 'FAILED', errorMessage: 'Analysis failed — please try again' });
-            this.runQueue();
+            this.checkAllResolved();
           },
         });
       },
       error: (err: HttpErrorResponse) => {
         this.patchItem(id, { status: 'FAILED', errorMessage: this.aiErrorService.handle(err) });
-        this.runQueue();
+        this.checkAllResolved();
       },
     });
+  }
+
+  private checkAllResolved(): void {
+    const items = this.itemsSubject.value;
+    const allResolved = items.length > 0 && items.every(i => i.status === 'DONE' || i.status === 'FAILED');
+    if (!allResolved) return;
+    this.running = false;
+    this.notifyIfDone();
   }
 
   // Fires whether or not the dialog is even open — the queue runs entirely independently of it,

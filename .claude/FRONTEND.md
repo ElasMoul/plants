@@ -153,29 +153,51 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   of always popping a toast — used where the error also needs to render
   inline (chat's AI message bubble). Use one of these at every new AI-calling
   call site instead of a local `mapError()`/generic-toast pattern.
-- **Batch scan mode** (T7.3, queue ownership fixed post-launch): gate any
-  "batch" affordance on the *absence of locked context*
-  (`lockedPlantId`/`lockedSpeciesId` both null), not on which page/route
-  opened the dialog — multiple entry points can legitimately share that "no
-  context yet" state. The sequential per-file submission queue lives in
-  `BatchScanService` (`features/identification/services/batch-scan.service.ts`,
-  provided in `identification.module.ts`), **not** in
-  `IdentificationUploadDialogComponent` — a dialog-owned queue piped through
-  the dialog's own `takeUntil(this.destroy$)` dies the moment the dialog
-  closes, silently abandoning every not-yet-started item (this was a real
-  shipped bug, fixed the same day). `IdentificationUploadDialogComponent` is
-  now a thin view: `batchActive` reads `batchScan.items.length > 0`, so
-  reopening the dialog mid-batch (or after it finished) shows the real
-  state instead of a blank form. **Rule for any future "long-running queue
-  driven from inside a dialog" feature: own the queue in a service the
-  dialog merely observes, never in the dialog component itself** — the
-  dialog is allowed to close at any time without that being allowed to cancel
-  real work. This is also proof that a dialog component declared in a
-  feature module (here `identification.module.ts`) can inject that module's
-  other providers directly, even when opened via `MatDialog.open()` from a
-  *different* lazy module's component without passing `viewContainerRef` —
-  Angular Material resolves the dialog's DI from the module where the dialog
-  component itself is declared, not the caller's module.
+- **Batch scan mode** (T7.3, queue ownership + concurrency fixed post-launch
+  after live testing): gate any "batch" affordance on the *absence of locked
+  context* (`lockedPlantId`/`lockedSpeciesId` both null), not on which
+  page/route opened the dialog — multiple entry points can legitimately share
+  that "no context yet" state. The per-file submission queue lives in
+  `BatchScanService` (`features/identification/services/batch-scan.service.ts`),
+  **not** in `IdentificationUploadDialogComponent` — a dialog-owned queue
+  piped through the dialog's own `takeUntil(this.destroy$)` dies the moment
+  the dialog closes, silently abandoning every not-yet-started item (shipped
+  bug #1, fixed same day). `IdentificationUploadDialogComponent` is now a
+  thin view: `batchActive` reads `batchScan.items.length > 0`, so reopening
+  the dialog mid-batch (or after it finished) shows the real state instead of
+  a blank form. **Rule for any future "long-running queue driven from inside
+  a dialog" feature: own the queue in a service the dialog merely observes,
+  never in the dialog component itself** — the dialog is allowed to close at
+  any time without that being allowed to cancel real work.
+  - All N items' `/analyze` calls now fire **concurrently** at batch start,
+    not sequentially-waiting-for-full-poll-completion — the original
+    sequential design meant the 2nd identification didn't even exist
+    server-side (so couldn't show up as PENDING anywhere it's listed) until
+    the 1st had fully resolved (shipped bug #2, fixed same session). A batch
+    is capped at `MAX_IMAGES` (5, `PhotoUploadComponent`), well under the
+    20/hour identification rate limit, so firing them together is safe.
+  - **`BatchScanService` is correctly module-scoped (`@Injectable()`, NOT
+    `providedIn: 'root'`)** despite needing to survive navigation across
+    different feature areas — and must be listed in the `providers:` array
+    of **every** lazy module that opens `IdentificationUploadDialogComponent`
+    (currently `identification`/`plant`/`species`/`dashboard` — same 4
+    modules that already provide `IdentificationService` for the same
+    reason). This was a real shipped bug too: the service initially lived
+    only in `identification.module.ts`'s providers, causing a
+    `NullInjectorError` the instant the dialog was opened from any of the
+    other 3 modules. **Confirms `IdentificationService`'s actual resolution
+    mechanism was never "the dialog's declaring module" (an earlier, wrong
+    assumption written here and since corrected) — it only ever worked
+    because every calling module happens to *also* independently provide
+    `IdentificationService` for its own unrelated needs.** A `providedIn:
+    'root'` service can't fix this either: it would be constructed via the
+    root injector alone, which has no path to the module-scoped
+    `IdentificationService`/`AiErrorService` it depends on — so the
+    "register it in every module that opens this dialog" rule is the actual
+    correct, intentional pattern, not a workaround. (`AiErrorService` itself
+    is fine root-provided — its own dependencies, `MatSnackBar`/`Router`, are
+    root-available; the blocker is specifically `BatchScanService`'s
+    constructor dependency on the module-scoped `IdentificationService`.)
 - **Multi-treatment everywhere a plant's active treatment is checked** (T7.4):
   always use `TreatmentService.getActiveTreatments()` (plural) and match by
   `diseaseName`, never the deleted singular `getActiveTreatment()` — a plant

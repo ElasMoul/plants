@@ -6,11 +6,12 @@ import { GardenDashboardComponent } from './pages/garden-dashboard/garden-dashbo
 import { HomeComponent } from './pages/home/home.component';
 import { DashboardService } from './services/dashboard.service';
 import { IdentificationService } from '../identification/services/identification.service';
+import { BatchScanService } from '../identification/services/batch-scan.service';
 import { PlantService } from '../plant/services/plant.service';
 
 @NgModule({
   declarations: [GardenDashboardComponent, HomeComponent],
   imports: [SharedModule, DashboardRoutingModule, MatDialogModule],
-  providers: [DashboardService, IdentificationService, PlantService],
+  providers: [DashboardService, IdentificationService, BatchScanService, PlantService],
 })
 export class DashboardModule {}
