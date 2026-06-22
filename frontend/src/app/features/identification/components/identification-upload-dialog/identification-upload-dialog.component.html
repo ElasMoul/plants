@@ -3,15 +3,17 @@
 <mat-dialog-content>
 
   <app-photo-upload
-    *ngIf="!batchRunning"
+    *ngIf="!batchActive"
     [lockedPlantId]="data?.plantId"
     [lockedSpeciesId]="data?.speciesId"
     (analyze)="onAnalyze($event)"
   ></app-photo-upload>
 
-  <!-- Batch mode progress (T7.3) — one row per queued photo -->
-  <div class="batch-list" *ngIf="batchRunning">
-    <div class="batch-item" *ngFor="let item of batchItems">
+  <!-- Batch mode progress (T7.3) — one row per queued photo. Bound to BatchScanService's own
+       items$ rather than local state, so this stays correct even if the dialog was closed and
+       reopened mid-batch. -->
+  <div class="batch-list" *ngIf="batchActive">
+    <div class="batch-item" *ngFor="let item of (batchScan.items$ | async)">
       <img [src]="item.preview" alt="" class="batch-thumb" />
       <div class="batch-item-body">
         <span class="batch-status" [ngClass]="'status-' + item.status.toLowerCase()">
@@ -30,7 +32,7 @@
 
 <mat-dialog-actions align="end">
 
-  <ng-container *ngIf="!batchRunning">
+  <ng-container *ngIf="!batchActive">
     <button mat-button type="button" (click)="cancel()">Cancel</button>
     <button
       mat-raised-button
@@ -45,29 +47,30 @@
     </button>
   </ng-container>
 
-  <ng-container *ngIf="batchRunning">
-    <button mat-button type="button" (click)="cancel()">Cancel</button>
-    <button
-      *ngIf="batchDone && batchHasFailures"
-      mat-stroked-button
-      type="button"
-      class="btn-pill"
-      (click)="retryFailed()"
-    >
-      <mat-icon>refresh</mat-icon>
-      Retry remaining
+  <ng-container *ngIf="batchActive">
+    <button mat-button type="button" (click)="cancel()">
+      {{ batchScan.running ? 'Run in background' : 'Close' }}
     </button>
-    <button
-      *ngIf="batchDone"
-      mat-raised-button
-      color="primary"
-      type="button"
-      class="btn-pill"
-      (click)="done()"
-    >
-      <mat-icon>check</mat-icon>
-      Done
-    </button>
+    <ng-container *ngIf="batchScan.done">
+      <button
+        *ngIf="batchScan.hasFailures"
+        mat-stroked-button
+        type="button"
+        class="btn-pill"
+        (click)="retryFailed()"
+      >
+        <mat-icon>refresh</mat-icon>
+        Retry remaining
+      </button>
+      <button mat-stroked-button type="button" class="btn-pill" (click)="startNewBatch()">
+        <mat-icon>add_photo_alternate</mat-icon>
+        Scan more
+      </button>
+      <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="done()">
+        <mat-icon>check</mat-icon>
+        Done
+      </button>
+    </ng-container>
   </ng-container>
 
 </mat-dialog-actions>

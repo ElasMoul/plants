@@ -153,19 +153,29 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   of always popping a toast — used where the error also needs to render
   inline (chat's AI message bubble). Use one of these at every new AI-calling
   call site instead of a local `mapError()`/generic-toast pattern.
-- **Batch scan mode** (T7.3): gate any "batch" affordance on the *absence of
-  locked context* (`lockedPlantId`/`lockedSpeciesId` both null), not on which
-  page/route opened the dialog — multiple entry points can legitimately share
-  that "no context yet" state. `IdentificationUploadDialogComponent` drives
-  its own sequential per-file submission queue when batch mode is active
-  (`runBatchQueue()`) rather than emitting one combined payload for the
-  parent page to submit — this is also proof that a dialog component
-  declared in a feature module (here `identification.module.ts`) can inject
-  that module's other providers (`IdentificationService`, `AiErrorService`)
-  directly, even when opened via `MatDialog.open()` from a *different* lazy
-  module's component without passing `viewContainerRef` — Angular Material
-  resolves the dialog's DI from the module where the dialog component itself
-  is declared, not the caller's module.
+- **Batch scan mode** (T7.3, queue ownership fixed post-launch): gate any
+  "batch" affordance on the *absence of locked context*
+  (`lockedPlantId`/`lockedSpeciesId` both null), not on which page/route
+  opened the dialog — multiple entry points can legitimately share that "no
+  context yet" state. The sequential per-file submission queue lives in
+  `BatchScanService` (`features/identification/services/batch-scan.service.ts`,
+  provided in `identification.module.ts`), **not** in
+  `IdentificationUploadDialogComponent` — a dialog-owned queue piped through
+  the dialog's own `takeUntil(this.destroy$)` dies the moment the dialog
+  closes, silently abandoning every not-yet-started item (this was a real
+  shipped bug, fixed the same day). `IdentificationUploadDialogComponent` is
+  now a thin view: `batchActive` reads `batchScan.items.length > 0`, so
+  reopening the dialog mid-batch (or after it finished) shows the real
+  state instead of a blank form. **Rule for any future "long-running queue
+  driven from inside a dialog" feature: own the queue in a service the
+  dialog merely observes, never in the dialog component itself** — the
+  dialog is allowed to close at any time without that being allowed to cancel
+  real work. This is also proof that a dialog component declared in a
+  feature module (here `identification.module.ts`) can inject that module's
+  other providers directly, even when opened via `MatDialog.open()` from a
+  *different* lazy module's component without passing `viewContainerRef` —
+  Angular Material resolves the dialog's DI from the module where the dialog
+  component itself is declared, not the caller's module.
 - **Multi-treatment everywhere a plant's active treatment is checked** (T7.4):
   always use `TreatmentService.getActiveTreatments()` (plural) and match by
   `diseaseName`, never the deleted singular `getActiveTreatment()` — a plant
@@ -209,11 +219,13 @@ npx tsc --noEmit
   `reasoningModelPreference` to pick a client. The preference is readable/
   writable and persisted correctly; it's just not load-bearing yet. That
   wiring is unscoped follow-up work, not part of T7.2.
-- (T7.3) Batch scan mode has no "view results" deep-link after the batch
-  finishes — the dialog just closes; new plants/identifications show up
-  wherever they normally would (garden list, identify list) on their own.
-  Also no partial-success summary toast — the per-item status rows inside the
-  dialog are the only feedback, gone once it closes.
+- (T7.3) Batch scan mode has no "view results" deep-link beyond the
+  completion snackbar's "View" action (routes to `/identify`, not to the
+  specific new plants) — acceptable since the snackbar is the one piece of
+  feedback guaranteed to reach the user even if they've navigated away.
+  No actual "cancel the rest of the batch" affordance exists either — once
+  started, every queued item runs to completion or failure regardless of
+  what the dialog does (see `BatchScanService`).
 - (T7.4) `TreatmentDetailComponent`'s description poll has no visible "this
   timed out" state — if generation silently fails server-side, the page just
   keeps showing "Generating a description…" forever after the 30s poll gives
@@ -249,6 +261,7 @@ frontend/src/app/app.component.ts                              (bottom nav)
 frontend/src/app/shared/components/treatment-step-list/
 frontend/src/app/shared/components/model-usage-badge/             (T7.2)
 frontend/src/app/features/preferences/                            (T7.2)
+frontend/src/app/features/identification/services/batch-scan.service.ts  (T7.3)
 frontend/src/app/features/plant/components/active-treatment-select-sheet/  (T7.4)
 frontend/src/app/features/plant/components/plant-detail/
 frontend/src/app/features/treatment/pages/treatment-detail/
