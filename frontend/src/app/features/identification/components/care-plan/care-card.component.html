@@ -57,7 +57,7 @@
         </button>
       </div>
 
-      <div class="action-row" *ngIf="plan.type === 'TREATMENT'">
+      <div class="action-row" *ngIf="showTreatmentCta && plan.type === 'TREATMENT'">
         <button
           mat-raised-button
           color="primary"

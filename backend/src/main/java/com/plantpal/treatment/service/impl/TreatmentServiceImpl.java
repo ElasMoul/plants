@@ -1,10 +1,13 @@
 package com.plantpal.treatment.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.util.ActionPlanValidator;
+import com.plantpal.identification.util.LenientJsonParser;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.service.TreatmentPlanService;
@@ -19,6 +22,7 @@ import com.plantpal.treatment.entity.TreatmentStatus;
 import com.plantpal.treatment.repository.TreatmentRepository;
 import com.plantpal.treatment.service.TreatmentService;
 import com.plantpal.user.entity.ReasoningModelPreference;
+import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
@@ -46,11 +50,16 @@ public class TreatmentServiceImpl implements TreatmentService {
       List.of(TreatmentStatus.DRAFT, TreatmentStatus.IN_PROGRESS);
   private static final String DISEASE_CARE_CARD_TYPE = "PEST";
   private static final int TREATMENT_AI_RATE_LIMIT = 10;
+  // Disease description is fire-and-forget (no HTTP caller waiting), so a single bounded retry
+  // after the upstream-suggested wait is safe — caps the sleep in case of an implausible value.
+  private static final long MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS = 65;
 
   private final TreatmentRepository treatmentRepository;
   private final PlantRepository plantRepository;
   private final TreatmentPlanService treatmentPlanService;
   private final DeepSeekClient deepSeekClient;
+  private final OllamaClient ollamaClient;
+  private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
   private final Executor aiTaskExecutor;
 
@@ -61,12 +70,16 @@ public class TreatmentServiceImpl implements TreatmentService {
       PlantRepository plantRepository,
       TreatmentPlanService treatmentPlanService,
       DeepSeekClient deepSeekClient,
+      OllamaClient ollamaClient,
+      UserRepository userRepository,
       ObjectMapper objectMapper,
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor) {
     this.treatmentRepository = treatmentRepository;
     this.plantRepository = plantRepository;
     this.treatmentPlanService = treatmentPlanService;
     this.deepSeekClient = deepSeekClient;
+    this.ollamaClient = ollamaClient;
+    this.userRepository = userRepository;
     this.objectMapper = objectMapper;
     this.aiTaskExecutor = aiTaskExecutor;
   }
@@ -128,7 +141,8 @@ public class TreatmentServiceImpl implements TreatmentService {
             .orElseThrow(() -> new ResourceNotFoundException("Plant not found"));
 
     String species = plant.getSpecies() != null ? plant.getSpecies() : plant.getCommonName();
-    String raw = deepSeekClient.generateCureAdvice(species, treatment.getDiseaseName());
+    ReasoningModelPreference preference = loadReasoningPreference(userId);
+    String raw = generateCureAdvice(preference, species, treatment.getDiseaseName());
     ActionPlanDto actionPlan = ActionPlanValidator.normalize(parseActionPlan(raw));
 
     var plan =
@@ -136,7 +150,7 @@ public class TreatmentServiceImpl implements TreatmentService {
             plant.getId(), userId, treatment.getDiseaseName(), DISEASE_CARE_CARD_TYPE, actionPlan);
 
     treatment.setTreatmentPlanId(plan.getId());
-    treatment.setTreatmentPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name());
+    treatment.setTreatmentPlanModel(preference.name());
     treatment.setStatus(TreatmentStatus.IN_PROGRESS);
     treatment.setStartedAt(Instant.now());
     treatment = treatmentRepository.save(treatment);
@@ -269,23 +283,43 @@ public class TreatmentServiceImpl implements TreatmentService {
       return;
     }
     String species = plant.getSpecies() != null ? plant.getSpecies() : plant.getCommonName();
+    ReasoningModelPreference preference = loadReasoningPreference(userId);
     CompletableFuture.runAsync(
-        () -> generateAndSaveDiseaseDescription(treatmentId, species, diseaseName), aiTaskExecutor);
+        () -> generateAndSaveDiseaseDescription(treatmentId, preference, species, diseaseName),
+        aiTaskExecutor);
   }
 
+  /**
+   * Fire-and-forget, so a single bounded retry after an upstream 429's suggested wait is safe here
+   * (unlike {@link #craftPlan}, no HTTP caller is blocked on this) — this is what actually fixes
+   * "description never generated" rather than just logging the failure once and giving up.
+   */
   private void generateAndSaveDiseaseDescription(
-      Long treatmentId, String species, String diseaseName) {
+      Long treatmentId, ReasoningModelPreference preference, String species, String diseaseName) {
     try {
-      String description = deepSeekClient.generateDiseaseDescription(species, diseaseName);
-      treatmentRepository
-          .findById(treatmentId)
-          .ifPresent(
-              t -> {
-                t.setDiseaseDescription(description);
-                t.setDiseaseDescriptionModel(ReasoningModelPreference.DEEPSEEK_R1.name());
-                treatmentRepository.save(t);
-                log.info("Disease description saved: treatmentId={}", treatmentId);
-              });
+      saveDiseaseDescription(
+          treatmentId, generateDiseaseDescription(preference, species, diseaseName), preference);
+    } catch (RateLimitException e) {
+      long waitSeconds =
+          Math.min(
+              e.getRetryAfterSeconds() != null ? e.getRetryAfterSeconds() : 0,
+              MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS);
+      log.warn(
+          "Disease description rate-limited, retrying once in {}s: treatmentId={}",
+          waitSeconds,
+          treatmentId);
+      try {
+        Thread.sleep(Duration.ofSeconds(waitSeconds));
+        saveDiseaseDescription(
+            treatmentId, generateDiseaseDescription(preference, species, diseaseName), preference);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+      } catch (PlantPalException retryFailure) {
+        log.warn(
+            "Disease description retry also failed, leaving null: treatmentId={}, error={}",
+            treatmentId,
+            retryFailure.getMessage());
+      }
     } catch (PlantPalException e) {
       log.warn(
           "Disease description generation failed, leaving null: treatmentId={}, error={}",
@@ -294,11 +328,55 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
   }
 
+  private void saveDiseaseDescription(
+      Long treatmentId, String description, ReasoningModelPreference preference) {
+    treatmentRepository
+        .findById(treatmentId)
+        .ifPresent(
+            t -> {
+              t.setDiseaseDescription(description);
+              t.setDiseaseDescriptionModel(preference.name());
+              treatmentRepository.save(t);
+              log.info("Disease description saved: treatmentId={}", treatmentId);
+            });
+  }
+
+  private ReasoningModelPreference loadReasoningPreference(Long userId) {
+    return userRepository
+        .findById(userId)
+        .map(user -> user.getReasoningModelPreference())
+        .orElse(ReasoningModelPreference.DEEPSEEK_R1);
+  }
+
+  private String generateCureAdvice(
+      ReasoningModelPreference preference, String species, String diseaseName) {
+    return preference == ReasoningModelPreference.OLLAMA_LLAVA
+        ? ollamaClient.generateCureAdvice(species, diseaseName)
+        : deepSeekClient.generateCureAdvice(species, diseaseName);
+  }
+
+  private String generateDiseaseDescription(
+      ReasoningModelPreference preference, String species, String diseaseName) {
+    return preference == ReasoningModelPreference.OLLAMA_LLAVA
+        ? ollamaClient.generateDiseaseDescription(species, diseaseName)
+        : deepSeekClient.generateDiseaseDescription(species, diseaseName);
+  }
+
   private ActionPlanDto parseActionPlan(String raw) {
     try {
       CureAdviceJson parsed = objectMapper.readValue(raw, CureAdviceJson.class);
       return parsed.getActionPlan();
     } catch (JsonProcessingException e) {
+      // Some local models (Ollama/llava-phi3) emit two sibling JSON objects for this prompt
+      // instead of one combined object — see LenientJsonParser.
+      JsonNode merged = LenientJsonParser.mergeConcatenatedObjects(objectMapper, raw);
+      if (merged != null) {
+        try {
+          return objectMapper.treeToValue(merged, CureAdviceJson.class).getActionPlan();
+        } catch (JsonProcessingException ignored) {
+          // fall through to the warning + null below
+        }
+      }
       log.warn("Malformed treatment action plan JSON: {}", e.getMessage());
       return null;
     }

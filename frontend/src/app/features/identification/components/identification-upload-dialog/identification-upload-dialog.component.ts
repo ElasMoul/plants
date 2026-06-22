@@ -1,6 +1,7 @@
 import { Component, Inject, Optional, ViewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
+import { BatchScanService } from '../../services/batch-scan.service';
 import { PhotoUploadComponent } from '../photo-upload/photo-upload.component';
 
 export interface IdentificationUploadDialogData {
@@ -23,10 +24,14 @@ export class IdentificationUploadDialogComponent {
 
   constructor(
     private readonly dialogRef: MatDialogRef<IdentificationUploadDialogComponent, AnalyzeEmitPayload>,
+    readonly batchScan: BatchScanService,
     @Optional() @Inject(MAT_DIALOG_DATA) readonly data: IdentificationUploadDialogData | null,
   ) {}
 
   get title(): string {
+    if (this.batchActive) {
+      return this.batchScan.running ? 'Scanning your plants…' : 'Batch scan';
+    }
     if (this.data?.plantNickname) {
       return `Add a scan for ${this.data.plantNickname}`;
     }
@@ -36,15 +41,41 @@ export class IdentificationUploadDialogComponent {
     return 'Identify a Plant';
   }
 
+  // True once a batch has been started — including after it's finished, so reopening the
+  // dialog shows what happened instead of a blank upload form (the queue itself runs
+  // independently of this dialog's lifecycle, see BatchScanService).
+  get batchActive(): boolean {
+    return this.batchScan.items.length > 0;
+  }
+
   startIdentification(): void {
-    this.photoUpload?.onAnalyze();
+    if (!this.photoUpload) return;
+    if (this.photoUpload.batchMode) {
+      this.batchScan.start(this.photoUpload.entries.map(e => ({ file: e.file, preview: e.preview })));
+      return;
+    }
+    this.photoUpload.onAnalyze();
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
     this.dialogRef.close({ ...payload, speciesId: this.data?.speciesId });
   }
 
+  retryFailed(): void {
+    this.batchScan.retryFailed();
+  }
+
+  startNewBatch(): void {
+    this.batchScan.reset();
+  }
+
+  // Closing here never aborts the batch — it keeps running in BatchScanService regardless, and
+  // the user gets a snackbar when it finishes even if this dialog isn't open anymore.
   cancel(): void {
+    this.dialogRef.close();
+  }
+
+  done(): void {
     this.dialogRef.close();
   }
 }

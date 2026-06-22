@@ -1,8 +1,8 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject, interval } from 'rxjs';
+import { filter, map, switchMap, take, takeUntil, takeWhile, timeout } from 'rxjs/operators';
 import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { TreatmentService } from '../../../plant/services/treatment.service';
 import { TreatmentResponse } from '../../../plant/models/treatment.model';
@@ -15,6 +15,10 @@ import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-imag
 
 type PageState = 'loading' | 'ready' | 'error';
 type Section = 'overview' | 'plan';
+
+// Same convention as IdentificationService.pollUntilComplete() — 3s interval, bounded timeout.
+const DESCRIPTION_POLL_INTERVAL_MS = 3000;
+const DESCRIPTION_POLL_TIMEOUT_MS = 30000;
 
 @Component({
   selector: 'app-treatment-detail',
@@ -152,11 +156,35 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
           if (this.treatment.treatmentPlanId) {
             this.loadPlan(this.treatment.treatmentPlanId);
           }
+          if (this.treatment.status === 'DRAFT' && this.treatment.diseaseDescription == null) {
+            this.pollForDescription(this.treatment.id);
+          }
         },
         error: () => {
           this.state = 'error';
         },
       });
+  }
+
+  // The disease description is generated async server-side after createTreatment() returns —
+  // ngOnInit's single loadTreatment() fetch can land before it's written, and without this poll
+  // the page would show "Generating…" forever even once the backend finishes (T7.4). Stops once
+  // diseaseDescription is non-null or status leaves DRAFT, or after a bounded timeout if
+  // generation silently failed server-side (see TreatmentServiceImpl's catch-and-log-null path) —
+  // mirrors IdentificationService.pollUntilComplete()'s stop condition.
+  private pollForDescription(treatmentId: number): void {
+    interval(DESCRIPTION_POLL_INTERVAL_MS).pipe(
+      switchMap(() => this.treatmentService.getTreatment(treatmentId)),
+      map(res => res.data),
+      takeWhile(t => t.status === 'DRAFT' && t.diseaseDescription == null, true),
+      filter(t => !(t.status === 'DRAFT' && t.diseaseDescription == null)),
+      take(1),
+      timeout(DESCRIPTION_POLL_TIMEOUT_MS),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: t => { this.treatment = t; },
+      error: () => { /* timed out — leave the pending state showing, nothing more to do */ },
+    });
   }
 
   private loadPlant(plantId: number): void {

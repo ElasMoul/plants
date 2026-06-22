@@ -105,7 +105,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         userRepository
             .findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    user.setAiModelPreference(request.getAiModelPreference());
+    if (request.getAiModelPreference() != null) {
+      user.setAiModelPreference(request.getAiModelPreference());
+    }
     if (request.getVisionModelPreference() != null) {
       user.setVisionModelPreference(request.getVisionModelPreference());
     }

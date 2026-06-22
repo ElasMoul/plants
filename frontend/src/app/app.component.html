@@ -6,11 +6,6 @@
 
   <span class="spacer"></span>
 
-  <app-model-selector
-    *ngIf="authService.isLoggedIn()"
-    class="model-selector-toolbar"
-  ></app-model-selector>
-
   <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
     <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-menu-btn" aria-label="User menu">
       <mat-icon>account_circle</mat-icon>

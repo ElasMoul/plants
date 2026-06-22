@@ -1,9 +1,12 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.RateLimitException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -172,6 +175,13 @@ public class DeepSeekClient {
       no duplicates, return {"duplicateGroups": []}.
       """;
 
+  // Upstream (GitHub Models / Azure inference) enforces a hard per-user-per-model rate cap
+  // independent of our own Bucket4j limits — e.g. "Rate limit of 1 per 60s exceeded for
+  // UserByModelByMinute." Used as the retry-after fallback when the error body doesn't carry a
+  // parseable wait time.
+  private static final long DEFAULT_RETRY_AFTER_SECONDS = 60;
+  private static final Pattern RETRY_AFTER_PATTERN = Pattern.compile("wait (\\d+) seconds?");
+
   private final RestClient restClient;
   private final String model;
 
@@ -188,6 +198,39 @@ public class DeepSeekClient {
             .requestFactory(factory)
             .defaultHeader("Authorization", "Bearer " + token)
             .build();
+  }
+
+  /**
+   * Classifies an upstream error: 429 becomes a {@link RateLimitException} carrying a real
+   * retry-after estimate (so the frontend's already-built rate-limit UX can show an accurate wait
+   * time instead of a dead-end "service unavailable"), anything else keeps the existing generic 503
+   * behavior.
+   */
+  private PlantPalException toServiceException(
+      String fallbackMessage, RestClientResponseException e) {
+    log.error(
+        "DeepSeek error status={}, body={}",
+        e.getStatusCode().value(),
+        e.getResponseBodyAsString());
+    if (e.getStatusCode().value() == 429) {
+      return new RateLimitException(
+          "AI reasoning service rate limit reached — try again later", extractRetryAfterSeconds(e));
+    }
+    return new PlantPalException(fallbackMessage, 503);
+  }
+
+  private static long extractRetryAfterSeconds(RestClientResponseException e) {
+    String header =
+        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("Retry-After") : null;
+    if (header != null) {
+      try {
+        return Long.parseLong(header.trim());
+      } catch (NumberFormatException ignored) {
+        // fall through to body parsing
+      }
+    }
+    Matcher matcher = RETRY_AFTER_PATTERN.matcher(String.valueOf(e.getResponseBodyAsString()));
+    return matcher.find() ? Long.parseLong(matcher.group(1)) : DEFAULT_RETRY_AFTER_SECONDS;
   }
 
   public String generateCureAdvice(String species, String regionLabel) {
@@ -236,11 +279,7 @@ public class DeepSeekClient {
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      log.error(
-          "DeepSeek cure advice error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Cure advice unavailable", 503);
+      throw toServiceException("Cure advice unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
@@ -291,11 +330,7 @@ public class DeepSeekClient {
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      log.error(
-          "DeepSeek disease description error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Disease description unavailable", 503);
+      throw toServiceException("Disease description unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
@@ -350,11 +385,7 @@ public class DeepSeekClient {
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      log.error(
-          "DeepSeek species enrichment error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Species enrichment unavailable", 503);
+      throw toServiceException("Species enrichment unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
@@ -412,11 +443,7 @@ public class DeepSeekClient {
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      log.error(
-          "DeepSeek returned error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Care plan service unavailable", 503);
+      throw toServiceException("Care plan service unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
@@ -467,11 +494,7 @@ public class DeepSeekClient {
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      log.error(
-          "DeepSeek duplicate care card check error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Duplicate care card check unavailable", 503);
+      throw toServiceException("Duplicate care card check unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {

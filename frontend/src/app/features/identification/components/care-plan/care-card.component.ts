@@ -36,6 +36,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() plantId: number | null = null;
   @Input() identificationId: number | null = null;
   @Input() existingCareTypes: CareType[] = [];
+  @Input() showTreatmentCta = true;
 
   expanded = false;
   detailList: ParsedDetail | null = null;
@@ -67,28 +68,34 @@ export class CareCardComponent implements OnChanges, OnDestroy {
       this.reminderAlreadyExisted = alreadyExists;
       this.reminderSet = alreadyExists;
     }
-    if ((changes['card'] || changes['plantId']) && this.card?.actionPlan?.type === 'TREATMENT') {
+    if (
+      this.showTreatmentCta &&
+      (changes['card'] || changes['plantId']) &&
+      this.card?.actionPlan?.type === 'TREATMENT'
+    ) {
       this.checkActiveTreatment();
     }
   }
 
-  // The backend tracks only one active treatment per plant (most recent), not one per disease —
-  // matches the same check plant-detail.component.ts uses for the Scans-tab CTA. Deriving
-  // treatmentStarted from the real Treatment entity (instead of a session-only flag) means the
-  // button correctly shows "Plan in progress" even after a page refresh, and — together with
-  // TreatmentService.createTreatment()'s own duplicate check — is what stops this card and any
-  // other entry point (e.g. the Scans-tab CTA) from starting two treatments for the same disease.
+  // Deriving treatmentStarted from the real Treatment entity (instead of a session-only flag)
+  // means the button correctly shows "Plan in progress" even after a page refresh, and —
+  // together with TreatmentService.createTreatment()'s own duplicate check — is what stops this
+  // card and any other entry point (e.g. the Scans-tab CTA) from starting two treatments for the
+  // same disease. Uses the plural getActiveTreatments() (T7.4) — the plant can have more than one
+  // active treatment at once, so matching against only the single most-recent one (the old
+  // getActiveTreatment()) could miss this card's disease entirely if a different one started more
+  // recently.
   private checkActiveTreatment(): void {
     const plantId = this.plantId;
     if (plantId === null) return;
 
-    this.treatmentService.getActiveTreatment(plantId)
+    this.treatmentService.getActiveTreatments(plantId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
-          const matches = res.data.diseaseName === this.card.title;
-          this.treatmentStarted = matches;
-          this.activeTreatmentId = matches ? res.data.id : null;
+          const match = res.data.find(t => t.diseaseName === this.card.title);
+          this.treatmentStarted = !!match;
+          this.activeTreatmentId = match?.id ?? null;
         },
         error: () => {
           this.treatmentStarted = false;

@@ -1,6 +1,7 @@
 package com.plantpal.identification.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
@@ -34,6 +35,7 @@ import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.identification.util.ActionPlanValidator;
+import com.plantpal.identification.util.LenientJsonParser;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
@@ -53,6 +55,7 @@ import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesService;
 import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.entity.ReasoningModelPreference;
+import com.plantpal.user.entity.VisionModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -198,7 +201,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     // Step 4: Publish event for async processing by the Kafka consumer
-    AiModelPreference preference = loadUserPreference(userId);
+    VisionModelPreference preference = loadVisionPreference(userId);
     IdentificationRequestedEvent event =
         IdentificationRequestedEvent.builder()
             .identificationId(identification.getId())
@@ -231,7 +234,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     try {
       byte[] rawBytes = fileStorageService.loadPhotoBytes(identification.getPhotoUrl());
       String mediaType = resolveMediaType(identification.getPhotoUrl());
-      AiModelPreference preference = AiModelPreference.valueOf(event.getAiModelPreference());
+      VisionModelPreference preference = parseVisionPreference(event.getAiModelPreference());
       Long plantId = identification.getPlantId();
       Long userId = identification.getUserId();
 
@@ -361,8 +364,12 @@ public class IdentificationServiceImpl implements IdentificationService {
           "Cure advice rate limit reached — try again later",
           retryAfterSeconds(cureRateLimitProbe));
     }
-    String raw = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
-    return CompletableFuture.completedFuture(parseCureAdvice(raw));
+    ReasoningModelPreference preference = loadReasoningPreference(userId);
+    String raw =
+        preference == ReasoningModelPreference.OLLAMA_LLAVA
+            ? ollamaClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel())
+            : deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
+    return CompletableFuture.completedFuture(parseCureAdvice(raw, preference));
   }
 
   @Override
@@ -390,7 +397,10 @@ public class IdentificationServiceImpl implements IdentificationService {
               .detail(req.getAdviceText())
               .urgency("HIGH")
               .actionPlan(ActionPlanValidator.normalize(req.getActionPlan()))
-              .actionPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name())
+              .actionPlanModel(
+                  req.getReasoningModelUsed() != null
+                      ? req.getReasoningModelUsed()
+                      : ReasoningModelPreference.DEEPSEEK_R1.name())
               .build());
       plan.setCareCards(careCards);
       identification.setCarePlan(serializeToJson(plan));
@@ -562,7 +572,7 @@ public class IdentificationServiceImpl implements IdentificationService {
                     speciesService.findOrCreate(
                         identification.getScientificName(),
                         identification.getCommonName(),
-                        loadUserPreference(userId)));
+                        toLegacyReasoningPreference(loadReasoningPreference(userId))));
 
     identification.setSpeciesId(species.getId());
     identificationRepository.save(identification);
@@ -669,17 +679,48 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private CureAdviceResponse parseCureAdvice(String raw) {
+  private CureAdviceResponse parseCureAdvice(String raw, ReasoningModelPreference preference) {
     try {
       CureAdviceJson parsed = objectMapper.readValue(raw, CureAdviceJson.class);
       return CureAdviceResponse.builder()
           .advice(parsed.getAdvice())
           .actionPlan(ActionPlanValidator.normalize(parsed.getActionPlan()))
+          .reasoningModelUsed(preference.name())
           .build();
     } catch (JsonProcessingException e) {
+      CureAdviceJson merged = parseConcatenatedCureAdviceJson(raw);
+      if (merged != null) {
+        return CureAdviceResponse.builder()
+            .advice(merged.getAdvice())
+            .actionPlan(ActionPlanValidator.normalize(merged.getActionPlan()))
+            .reasoningModelUsed(preference.name())
+            .build();
+      }
       log.warn(
           "Malformed cure advice JSON, falling back to raw text as advice: {}", e.getMessage());
-      return CureAdviceResponse.builder().advice(raw).actionPlan(null).build();
+      return CureAdviceResponse.builder()
+          .advice(raw)
+          .actionPlan(null)
+          .reasoningModelUsed(preference.name())
+          .build();
+    }
+  }
+
+  /**
+   * Some local models (Ollama/llava-phi3) emit two sibling JSON objects for this prompt instead of
+   * one combined object (e.g. {@code {"advice":"..."}{"actionPlan":{...}}}) — see {@link
+   * LenientJsonParser}. Returns null (never throws) if the content isn't JSON at all, so the caller
+   * can fall back to showing the raw text.
+   */
+  private CureAdviceJson parseConcatenatedCureAdviceJson(String raw) {
+    JsonNode merged = LenientJsonParser.mergeConcatenatedObjects(objectMapper, raw);
+    if (merged == null) {
+      return null;
+    }
+    try {
+      return objectMapper.treeToValue(merged, CureAdviceJson.class);
+    } catch (JsonProcessingException e) {
+      return null;
     }
   }
 
@@ -813,18 +854,51 @@ public class IdentificationServiceImpl implements IdentificationService {
     return Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds();
   }
 
-  private AiModelPreference loadUserPreference(Long userId) {
+  private VisionModelPreference loadVisionPreference(Long userId) {
     return userRepository
         .findById(userId)
-        .map(user -> user.getAiModelPreference())
-        .orElse(AiModelPreference.DEEPSEEK);
+        .map(user -> user.getVisionModelPreference())
+        .orElse(VisionModelPreference.GITHUB_GPT4O);
+  }
+
+  private ReasoningModelPreference loadReasoningPreference(Long userId) {
+    return userRepository
+        .findById(userId)
+        .map(user -> user.getReasoningModelPreference())
+        .orElse(ReasoningModelPreference.DEEPSEEK_R1);
+  }
+
+  /**
+   * {@link com.plantpal.species.service.SpeciesService#findOrCreate} still takes the legacy {@link
+   * AiModelPreference} (only OLLAMA_LLAVA vs. everything-else-uses-DeepSeek matters to it) — map
+   * the real reasoning preference onto it rather than reading the stale stored field, so species
+   * enrichment actually respects the user's current choice.
+   */
+  private static AiModelPreference toLegacyReasoningPreference(
+      ReasoningModelPreference preference) {
+    return preference == ReasoningModelPreference.OLLAMA_LLAVA
+        ? AiModelPreference.OLLAMA_LLAVA
+        : AiModelPreference.DEEPSEEK;
+  }
+
+  /**
+   * Defensive: a stale/legacy preference string (e.g. a Kafka message enqueued before this
+   * deployment, or a value like the old "DEEPSEEK" which was never a real vision model) falls back
+   * to the default vision model instead of crashing the consumer.
+   */
+  private static VisionModelPreference parseVisionPreference(String raw) {
+    try {
+      return VisionModelPreference.valueOf(raw);
+    } catch (IllegalArgumentException | NullPointerException e) {
+      return VisionModelPreference.GITHUB_GPT4O;
+    }
   }
 
   /** rawJson is the AI response; providerUsed is the model that actually served the request. */
   private record IdentificationOutcome(String rawJson, String providerUsed) {}
 
   private IdentificationOutcome runIdentification(
-      AiModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
+      VisionModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
     return switch (preference) {
       case PLANTNET ->
           new IdentificationOutcome(
@@ -832,19 +906,15 @@ public class IdentificationServiceImpl implements IdentificationService {
                   plantNetClient.identify(
                       List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                       organs != null ? organs : List.of("auto"))),
-              AiModelPreference.PLANTNET.name());
+              VisionModelPreference.PLANTNET.name());
       case OLLAMA_LLAVA ->
           new IdentificationOutcome(
               ollamaClient.identifyPlant(imageBytes, mediaType),
-              AiModelPreference.OLLAMA_LLAVA.name());
+              VisionModelPreference.OLLAMA_LLAVA.name());
       case GITHUB_GPT4O ->
           new IdentificationOutcome(
               gitHubModelsClient.identifyPlant(imageBytes, mediaType),
-              AiModelPreference.GITHUB_GPT4O.name());
-      default ->
-          new IdentificationOutcome(
-              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
-              AiModelPreference.DEEPSEEK.name());
+              VisionModelPreference.GITHUB_GPT4O.name());
     };
   }
 

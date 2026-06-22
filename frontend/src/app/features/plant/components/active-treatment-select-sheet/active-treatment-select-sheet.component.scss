@@ -35,9 +35,12 @@
   }
 }
 
-.treatment-select-icon {
+.treatment-select-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-card);
+  object-fit: cover;
   flex-shrink: 0;
-  color: var(--color-primary);
 }
 
 .treatment-select-meta {
@@ -45,6 +48,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
 .treatment-select-name {
@@ -56,7 +60,43 @@
   white-space: nowrap;
 }
 
-.treatment-select-status {
+.treatment-select-date {
   font-size: 0.78rem;
   color: var(--color-text-secondary);
+}
+
+// Same chip styling as treatment-detail.component.scss — kept local rather than
+// extracted into a shared component, consistent with how the rest of the app
+// duplicates this small a pattern per page.
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &.status-draft {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+
+  &.status-in_progress {
+    background: transparent;
+    border: 1.5px solid var(--color-success);
+    color: var(--color-success);
+  }
+
+  &.status-completed {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.status-dismissed {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
 }

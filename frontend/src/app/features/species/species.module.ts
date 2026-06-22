@@ -14,6 +14,7 @@ import { SharedModule } from '../../shared/shared.module';
 import { SpeciesRoutingModule } from './species-routing.module';
 import { SpeciesService } from './services/species.service';
 import { IdentificationService } from '../identification/services/identification.service';
+import { BatchScanService } from '../identification/services/batch-scan.service';
 import { PlantService } from '../plant/services/plant.service';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
 import { SpeciesListComponent } from './pages/species-list/species-list.component';
@@ -43,6 +44,6 @@ import { SpeciesPlantRowComponent } from './components/species-plant-row/species
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  providers: [SpeciesService, IdentificationService, PlantService],
+  providers: [SpeciesService, IdentificationService, BatchScanService, PlantService],
 })
 export class SpeciesModule {}

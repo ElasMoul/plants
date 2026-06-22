@@ -16,14 +16,16 @@ TypeScript strict mode, Angular Material, SCSS, @angular/pwa,
 RxJS, ReactiveFormsModule
 
 ## Current Status
-**Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
+**Phases 0–4, 6, and 7 are all shipped, plus a pre-Phase-5 cleanup pass
 (`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
-T7.1 (backend) and T7.2 (frontend, `feature/PP-040-model-control-frontend`)
-are both shipped — model control UI, structured AI-error/rate-limit UX, and
-"powered by" badges. T7.3 (batch scanning) and T7.4 (multi-treatment picker)
-are next, alongside Phase 5 (Launch prep)** — see TASK_PLAN.md. Full
-session-by-session history of how each feature was built lives in STATE.md
-and git log, not here — this file is a durable reference to what exists *now*.
+T7.1 (backend) through T7.4 are all complete — model control UI, structured
+AI-error/rate-limit UX, "powered by" badges, multi-select batch scanning, the
+multi-treatment picker, and the disease-description poll fix. T7.2 shipped on
+its own `feature/PP-040-model-control-frontend` (merged to `dev`); T7.3 and
+T7.4 both shipped on `feature/PP-041-batch-scan`. Phase 5 (Launch prep) is the
+only phase left unstarted** — see TASK_PLAN.md. Full session-by-session
+history of how each feature was built lives in STATE.md and git log, not
+here — this file is a durable reference to what exists *now*.
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components
@@ -61,7 +63,9 @@ features/
               + treatment.service.ts (the Treatment entity, distinct from
               reminder/'s treatment-plan.service.ts — see ARCHITECT.md)
   identification/ photo upload, results, care plan + actionable cards, disease
-              detail, species-confirm-step + plant-select-step (Flow 1 matching)
+              detail, species-confirm-step + plant-select-step (Flow 1 matching),
+              batch scan mode (T7.3 — "Scan multiple plants" checkbox, only at
+              entry points with no locked plant/species context)
   reminder/   list, calendar, create dialog, care log, TreatmentPlan detail page
               (/treatment-plans/:id — the OLDER generic plan, not the species/
               treatment Treatment entity)
@@ -149,6 +153,61 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   of always popping a toast — used where the error also needs to render
   inline (chat's AI message bubble). Use one of these at every new AI-calling
   call site instead of a local `mapError()`/generic-toast pattern.
+- **Batch scan mode** (T7.3, queue ownership + concurrency fixed post-launch
+  after live testing): gate any "batch" affordance on the *absence of locked
+  context* (`lockedPlantId`/`lockedSpeciesId` both null), not on which
+  page/route opened the dialog — multiple entry points can legitimately share
+  that "no context yet" state. The per-file submission queue lives in
+  `BatchScanService` (`features/identification/services/batch-scan.service.ts`),
+  **not** in `IdentificationUploadDialogComponent` — a dialog-owned queue
+  piped through the dialog's own `takeUntil(this.destroy$)` dies the moment
+  the dialog closes, silently abandoning every not-yet-started item (shipped
+  bug #1, fixed same day). `IdentificationUploadDialogComponent` is now a
+  thin view: `batchActive` reads `batchScan.items.length > 0`, so reopening
+  the dialog mid-batch (or after it finished) shows the real state instead of
+  a blank form. **Rule for any future "long-running queue driven from inside
+  a dialog" feature: own the queue in a service the dialog merely observes,
+  never in the dialog component itself** — the dialog is allowed to close at
+  any time without that being allowed to cancel real work.
+  - All N items' `/analyze` calls now fire **concurrently** at batch start,
+    not sequentially-waiting-for-full-poll-completion — the original
+    sequential design meant the 2nd identification didn't even exist
+    server-side (so couldn't show up as PENDING anywhere it's listed) until
+    the 1st had fully resolved (shipped bug #2, fixed same session). A batch
+    is capped at `MAX_IMAGES` (5, `PhotoUploadComponent`), well under the
+    20/hour identification rate limit, so firing them together is safe.
+  - **`BatchScanService` is correctly module-scoped (`@Injectable()`, NOT
+    `providedIn: 'root'`)** despite needing to survive navigation across
+    different feature areas — and must be listed in the `providers:` array
+    of **every** lazy module that opens `IdentificationUploadDialogComponent`
+    (currently `identification`/`plant`/`species`/`dashboard` — same 4
+    modules that already provide `IdentificationService` for the same
+    reason). This was a real shipped bug too: the service initially lived
+    only in `identification.module.ts`'s providers, causing a
+    `NullInjectorError` the instant the dialog was opened from any of the
+    other 3 modules. **Confirms `IdentificationService`'s actual resolution
+    mechanism was never "the dialog's declaring module" (an earlier, wrong
+    assumption written here and since corrected) — it only ever worked
+    because every calling module happens to *also* independently provide
+    `IdentificationService` for its own unrelated needs.** A `providedIn:
+    'root'` service can't fix this either: it would be constructed via the
+    root injector alone, which has no path to the module-scoped
+    `IdentificationService`/`AiErrorService` it depends on — so the
+    "register it in every module that opens this dialog" rule is the actual
+    correct, intentional pattern, not a workaround. (`AiErrorService` itself
+    is fine root-provided — its own dependencies, `MatSnackBar`/`Router`, are
+    root-available; the blocker is specifically `BatchScanService`'s
+    constructor dependency on the module-scoped `IdentificationService`.)
+- **Multi-treatment everywhere a plant's active treatment is checked** (T7.4):
+  always use `TreatmentService.getActiveTreatments()` (plural) and match by
+  `diseaseName`, never the deleted singular `getActiveTreatment()` — a plant
+  can have more than one active treatment at once (one per disease), and the
+  old singular endpoint only ever returned the single most-recent one, which
+  silently hid every other active disease's state. When a lookup has exactly
+  one candidate, behave like a direct match always did (no extra click); when
+  it has more than one and the UI needs the user to choose,
+  `ActiveTreatmentSelectSheetComponent` (`features/plant/components/
+  active-treatment-select-sheet/`) is the one picker — don't build a second.
 
 ## Test/Build Commands
 ```bash
@@ -182,6 +241,18 @@ npx tsc --noEmit
   `reasoningModelPreference` to pick a client. The preference is readable/
   writable and persisted correctly; it's just not load-bearing yet. That
   wiring is unscoped follow-up work, not part of T7.2.
+- (T7.3) Batch scan mode has no "view results" deep-link beyond the
+  completion snackbar's "View" action (routes to `/identify`, not to the
+  specific new plants) — acceptable since the snackbar is the one piece of
+  feedback guaranteed to reach the user even if they've navigated away.
+  No actual "cancel the rest of the batch" affordance exists either — once
+  started, every queued item runs to completion or failure regardless of
+  what the dialog does (see `BatchScanService`).
+- (T7.4) `TreatmentDetailComponent`'s description poll has no visible "this
+  timed out" state — if generation silently fails server-side, the page just
+  keeps showing "Generating a description…" forever after the 30s poll gives
+  up internally. Matches the task prompt's "don't poll forever" ask but isn't
+  a full UX treatment of the failure case.
 
 ### Closed out in the pre-Phase-5 cleanup pass (kept here as "don't re-break this")
 - `IdentificationResultComponent` was dead code — deleted, not just unreferenced.
@@ -189,11 +260,11 @@ npx tsc --noEmit
   added (backend) and the chip wired up (frontend); don't re-disable it.
 - Care-card button success states (`treatmentStarted`) are no longer a
   session-only boolean — `care-card.component.ts` now derives it from the real
-  `Treatment` entity (`treatmentService.getActiveTreatment(plantId)`, matched
-  on `diseaseName`) on `ngOnChanges`, so a refresh shows the correct state.
-  **Pattern for future "did the user already do X" UI state:** derive it from
-  the entity that actually tracks X, don't add a new persisted/session flag
-  that can drift out of sync with it.
+  `Treatment` entity (`treatmentService.getActiveTreatments(plantId)`, matched
+  on `diseaseName` — plural since T7.4, see below) on `ngOnChanges`, so a
+  refresh shows the correct state. **Pattern for future "did the user already
+  do X" UI state:** derive it from the entity that actually tracks X, don't
+  add a new persisted/session flag that can drift out of sync with it.
 - Two separate UI paths (`DiseaseDetailPanelComponent` and `CareCardComponent`)
   used to each call `TreatmentPlanService.createFromActionPlan()` directly,
   bypassing the `Treatment` entity's one-active-per-disease protection — could
@@ -212,6 +283,8 @@ frontend/src/app/app.component.ts                              (bottom nav)
 frontend/src/app/shared/components/treatment-step-list/
 frontend/src/app/shared/components/model-usage-badge/             (T7.2)
 frontend/src/app/features/preferences/                            (T7.2)
+frontend/src/app/features/identification/services/batch-scan.service.ts  (T7.3)
+frontend/src/app/features/plant/components/active-treatment-select-sheet/  (T7.4)
 frontend/src/app/features/plant/components/plant-detail/
 frontend/src/app/features/treatment/pages/treatment-detail/
 frontend/src/app/features/species/pages/species-detail/

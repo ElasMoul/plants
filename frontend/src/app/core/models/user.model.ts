@@ -2,8 +2,9 @@ export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITH
 
 // Split out from AiModelPreference (T7.1/T7.2) — vision (identification + annotation) and
 // reasoning (care plans, cure advice, disease description, species enrichment) are now
-// independent choices. PLANTNET is dropped from the vision set (dead code, per BACKEND.md).
-export type VisionModelPreference = 'GITHUB_GPT4O' | 'OLLAMA_LLAVA';
+// independent choices. PLANTNET restored as a vision choice — PlantNetClient was never actually
+// removed backend-side, only dropped from this picker (see ARCHITECT.md).
+export type VisionModelPreference = 'GITHUB_GPT4O' | 'OLLAMA_LLAVA' | 'PLANTNET';
 export type ReasoningModelPreference = 'DEEPSEEK_R1' | 'OLLAMA_LLAVA';
 
 export interface UserPreferences {

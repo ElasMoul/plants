@@ -171,11 +171,23 @@ public class SpeciesServiceImpl implements SpeciesService {
         .speciesId(species.getId())
         .scientificName(species.getScientificName())
         .commonName(species.getCommonName())
-        .imageUrl(species.getImageUrl())
+        .imageUrl(species.getImageUrl() != null ? species.getImageUrl() : firstPlantPhoto(plants))
         .plantCount(plants.size())
         .healthSummary(healthSummary)
         .lastScanAt(lastScanAt)
         .build();
+  }
+
+  // Species.imageUrl only ever comes from AI enrichment and is frequently null (enrichment may
+  // not have finished, or failed) — fall back to a real photo from one of the caller's own plants
+  // of this species rather than showing a blank thumbnail. plants is already in hand from the
+  // batch fetch above, so this is zero extra queries.
+  private static String firstPlantPhoto(List<Plant> plants) {
+    return plants.stream()
+        .map(Plant::getPhotoUrl)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(null);
   }
 
   private Species createSpecies(
