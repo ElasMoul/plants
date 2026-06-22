@@ -1,14 +1,13 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (T7.3 frontend shipped — see new section below;
-> T7.2/T7.1 entries and pre-Phase-5 cleanup pass entry below are from prior
-> sessions)
+> Last updated: 2026-06-22 (T7.4 frontend shipped — Phase 7 fully complete,
+> see new section below; T7.3/T7.2/T7.1 entries and pre-Phase-5 cleanup pass
+> entry below are from prior sessions)
 
 ## Current Phase
-**Phases 0–4 and 6 are fully shipped, plus a pre-Phase-5 cleanup pass closing
-every gap flagged below. Phase 7's T7.1 (backend), T7.2 and T7.3 (frontend)
-are all shipped; T7.4 hasn't started. Phase 5 (Launch prep) hasn't started
-either** — see TASK_PLAN.md for task breakdowns. One manual item is
+**Phases 0–4, 6, and 7 are now fully shipped, plus a pre-Phase-5 cleanup pass
+closing every gap flagged below. Phase 5 (Launch prep) is the only phase that
+hasn't started** — see TASK_PLAN.md for task breakdowns. One manual item is
 stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
 needs a real phone and hasn't been done.
 
@@ -19,10 +18,54 @@ needs a real phone and hasn't been done.
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual device testing) |
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
-| 5 — Launch prep | 🔲 Not started |
+| 5 — Launch prep | 🔲 Not started ← **current focus** |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2+T7.3 done; T7.4 not started ← **current focus** |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+
+## T7.4 — Frontend: multi-treatment picker + disease-description poll fix (2026-06-22, `feature/PP-041-batch-scan`)
+Full detail in FRONTEND.md — summary here for cross-session context. Built in
+the same branch as T7.3 (per session instruction), not its own
+`feature/PP-042-multi-treatment-picker` branch from the original task plan.
+- **Discovery before building:** the multi-treatment picker (item 1 of the
+  task prompt) and its wiring into `plant-detail.component.ts`'s icon-bar
+  "treatment" CTA (item 2's first call site) had *already shipped* — in the
+  `c38d1da "cleaning ..."` commit, which predates this Phase 7 work and
+  predates the T7.1 investigation notes that assumed neither existed yet.
+  `ActiveTreatmentSelectSheetComponent` and `goToActiveTreatment()` (plural
+  `getActiveTreatments()`, picker on >1 result) were already correct and
+  unchanged in this task — did not rebuild or rename them.
+- What was actually still broken and got fixed:
+  - `care-card.component.ts`'s `checkActiveTreatment()` (task prompt's second
+    named call site) still used the singular `getActiveTreatment()` matched
+    against a single most-recent treatment — switched to
+    `getActiveTreatments()` + `.find(t => t.diseaseName === card.title)`. No
+    picker needed here (the card's disease name already disambiguates which
+    treatment it's about); just correct lookup logic.
+  - `plant-detail.component.ts`'s *other* active-treatment check,
+    `checkActiveTreatment(diseaseName)` (drives the disease-detail-panel's
+    "Treatment in Progress" state) — same singular-vs-plural bug, not named
+    explicitly in the task prompt but identical root cause sitting right next
+    to the call site that was named; fixed the same way for consistency
+    rather than leaving a known-buggy sibling unfixed.
+  - `TreatmentService.getActiveTreatment()` (singular) deleted — confirmed
+    zero remaining callers after the two fixes above.
+- Enhanced `ActiveTreatmentSelectSheetComponent` to match the task prompt's
+  fuller spec (it pre-existed but was simpler): added a real status chip
+  (same `.status-chip`/`.status-{draft,in_progress,completed,dismissed}` CSS
+  as `treatment-detail.component.scss`, duplicated locally per the app's
+  existing per-page-chip-CSS convention, not extracted into a shared
+  component), `startedAt` date, and a scan thumbnail fetched per-row via
+  `IdentificationService.getById(identificationId)` when present (falls back
+  to the placeholder image).
+- `TreatmentDetailComponent` now polls after `loadTreatment()` when
+  `status === 'DRAFT' && diseaseDescription == null` — `pollForDescription()`
+  mirrors `IdentificationService.pollUntilComplete()`'s convention (3s
+  interval via `takeWhile`+`filter`+`take(1)`, `timeout()` bound at 30s so a
+  silently-failed generation — see `TreatmentServiceImpl`'s
+  catch-and-log-null path — doesn't poll forever; the pending UI just stays
+  showing if it times out, no error state).
+- `ng build`, `ng lint`, `tsc --noEmit` all clean.
 
 ## T7.3 — Frontend: multi-select batch scan mode (2026-06-22, `feature/PP-041-batch-scan`)
 Full detail in FRONTEND.md — summary here for cross-session context. No

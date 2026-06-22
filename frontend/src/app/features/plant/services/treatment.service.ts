@@ -34,12 +34,6 @@ export class TreatmentService {
     return this.http.get<ApiResponse<TreatmentResponse>>(`${this.baseUrl}/treatments/${id}`);
   }
 
-  getActiveTreatment(plantId: number): Observable<ApiResponse<TreatmentResponse>> {
-    return this.http.get<ApiResponse<TreatmentResponse>>(
-      `${this.baseUrl}/plants/${plantId}/active-treatment`,
-    );
-  }
-
   getActiveTreatments(plantId: number): Observable<ApiResponse<TreatmentResponse[]>> {
     return this.http.get<ApiResponse<TreatmentResponse[]>>(
       `${this.baseUrl}/plants/${plantId}/active-treatments`,

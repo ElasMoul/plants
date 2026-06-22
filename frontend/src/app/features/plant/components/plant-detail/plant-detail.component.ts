@@ -319,20 +319,21 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  // The backend only tracks one active treatment per plant (most recent), not one per disease —
-  // so "is there an active treatment for THIS disease" means: the plant's active treatment
-  // exists AND its diseaseName matches the selected region's label.
+  // "Is there an active treatment for THIS disease" — uses the plural getActiveTreatments()
+  // (T7.4) and matches by diseaseName, same fix as care-card.component.ts's
+  // checkActiveTreatment(): the plant can have more than one active treatment at once, so the
+  // old getActiveTreatment() (single most-recent) could miss this disease's treatment entirely.
   private checkActiveTreatment(diseaseName: string): void {
     const plantId = this.plant?.id;
     if (!plantId) return;
 
     this.checkingActiveTreatment = true;
-    this.treatmentService.getActiveTreatment(plantId)
+    this.treatmentService.getActiveTreatments(plantId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
           this.checkingActiveTreatment = false;
-          this.activeTreatmentForDisease = res.data.diseaseName === diseaseName ? res.data : null;
+          this.activeTreatmentForDisease = res.data.find(t => t.diseaseName === diseaseName) ?? null;
         },
         error: () => {
           this.checkingActiveTreatment = false;

@@ -16,15 +16,16 @@ TypeScript strict mode, Angular Material, SCSS, @angular/pwa,
 RxJS, ReactiveFormsModule
 
 ## Current Status
-**Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
+**Phases 0–4, 6, and 7 are all shipped, plus a pre-Phase-5 cleanup pass
 (`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
-T7.1 (backend), T7.2 (`feature/PP-040-model-control-frontend`) and T7.3
-(`feature/PP-041-batch-scan`) are all shipped — model control UI, structured
-AI-error/rate-limit UX, "powered by" badges, and multi-select batch scanning.
-T7.4 (multi-treatment picker) is next, alongside Phase 5 (Launch prep)** —
-see TASK_PLAN.md. Full session-by-session history of how each feature was
-built lives in STATE.md and git log, not here — this file is a durable
-reference to what exists *now*.
+T7.1 (backend) through T7.4 are all complete — model control UI, structured
+AI-error/rate-limit UX, "powered by" badges, multi-select batch scanning, the
+multi-treatment picker, and the disease-description poll fix. T7.2 shipped on
+its own `feature/PP-040-model-control-frontend` (merged to `dev`); T7.3 and
+T7.4 both shipped on `feature/PP-041-batch-scan`. Phase 5 (Launch prep) is the
+only phase left unstarted** — see TASK_PLAN.md. Full session-by-session
+history of how each feature was built lives in STATE.md and git log, not
+here — this file is a durable reference to what exists *now*.
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components
@@ -165,6 +166,16 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   module's component without passing `viewContainerRef` — Angular Material
   resolves the dialog's DI from the module where the dialog component itself
   is declared, not the caller's module.
+- **Multi-treatment everywhere a plant's active treatment is checked** (T7.4):
+  always use `TreatmentService.getActiveTreatments()` (plural) and match by
+  `diseaseName`, never the deleted singular `getActiveTreatment()` — a plant
+  can have more than one active treatment at once (one per disease), and the
+  old singular endpoint only ever returned the single most-recent one, which
+  silently hid every other active disease's state. When a lookup has exactly
+  one candidate, behave like a direct match always did (no extra click); when
+  it has more than one and the UI needs the user to choose,
+  `ActiveTreatmentSelectSheetComponent` (`features/plant/components/
+  active-treatment-select-sheet/`) is the one picker — don't build a second.
 
 ## Test/Build Commands
 ```bash
@@ -203,6 +214,11 @@ npx tsc --noEmit
   wherever they normally would (garden list, identify list) on their own.
   Also no partial-success summary toast — the per-item status rows inside the
   dialog are the only feedback, gone once it closes.
+- (T7.4) `TreatmentDetailComponent`'s description poll has no visible "this
+  timed out" state — if generation silently fails server-side, the page just
+  keeps showing "Generating a description…" forever after the 30s poll gives
+  up internally. Matches the task prompt's "don't poll forever" ask but isn't
+  a full UX treatment of the failure case.
 
 ### Closed out in the pre-Phase-5 cleanup pass (kept here as "don't re-break this")
 - `IdentificationResultComponent` was dead code — deleted, not just unreferenced.
@@ -210,11 +226,11 @@ npx tsc --noEmit
   added (backend) and the chip wired up (frontend); don't re-disable it.
 - Care-card button success states (`treatmentStarted`) are no longer a
   session-only boolean — `care-card.component.ts` now derives it from the real
-  `Treatment` entity (`treatmentService.getActiveTreatment(plantId)`, matched
-  on `diseaseName`) on `ngOnChanges`, so a refresh shows the correct state.
-  **Pattern for future "did the user already do X" UI state:** derive it from
-  the entity that actually tracks X, don't add a new persisted/session flag
-  that can drift out of sync with it.
+  `Treatment` entity (`treatmentService.getActiveTreatments(plantId)`, matched
+  on `diseaseName` — plural since T7.4, see below) on `ngOnChanges`, so a
+  refresh shows the correct state. **Pattern for future "did the user already
+  do X" UI state:** derive it from the entity that actually tracks X, don't
+  add a new persisted/session flag that can drift out of sync with it.
 - Two separate UI paths (`DiseaseDetailPanelComponent` and `CareCardComponent`)
   used to each call `TreatmentPlanService.createFromActionPlan()` directly,
   bypassing the `Treatment` entity's one-active-per-disease protection — could
@@ -233,6 +249,7 @@ frontend/src/app/app.component.ts                              (bottom nav)
 frontend/src/app/shared/components/treatment-step-list/
 frontend/src/app/shared/components/model-usage-badge/             (T7.2)
 frontend/src/app/features/preferences/                            (T7.2)
+frontend/src/app/features/plant/components/active-treatment-select-sheet/  (T7.4)
 frontend/src/app/features/plant/components/plant-detail/
 frontend/src/app/features/treatment/pages/treatment-detail/
 frontend/src/app/features/species/pages/species-detail/

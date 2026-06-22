@@ -5,14 +5,19 @@
     <button
       type="button"
       class="treatment-select-row"
-      *ngFor="let treatment of treatments"
-      (click)="select(treatment)"
+      *ngFor="let row of rows"
+      (click)="select(row.treatment)"
     >
-      <mat-icon class="treatment-select-icon">healing</mat-icon>
+      <img [src]="row.photoUrl || placeholderImage" alt="" class="treatment-select-thumb" />
       <div class="treatment-select-meta">
-        <span class="treatment-select-name">{{ treatment.diseaseName }}</span>
-        <span class="treatment-select-status">{{ treatment.status === 'DRAFT' ? 'Not started yet' : 'In progress' }}</span>
+        <span class="treatment-select-name">{{ row.treatment.diseaseName }}</span>
+        <span class="treatment-select-date" *ngIf="row.treatment.startedAt">
+          Started {{ row.treatment.startedAt | date:'mediumDate' }}
+        </span>
       </div>
+      <span class="status-chip" [ngClass]="'status-' + row.treatment.status.toLowerCase()">
+        {{ row.treatment.status | titlecase }}
+      </span>
     </button>
   </div>
 </div>

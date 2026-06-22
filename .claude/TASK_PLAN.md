@@ -543,8 +543,9 @@ git push origin --delete release/v1.0.0
 
 ---
 
-### T7.4 — Frontend: multi-treatment picker modal + fix disease-description-never-shows bug 🤝 Assisted
-**Branch:** `feature/PP-042-multi-treatment-picker`
+### T7.4 — Frontend: multi-treatment picker modal + fix disease-description-never-shows bug 🤝 Assisted ✅ DONE
+**Branch:** `feature/PP-041-batch-scan` (built in the same branch as T7.3, not its
+own `feature/PP-042-multi-treatment-picker`) — summary in STATE.md/FRONTEND.md.
 
 **Claude Code prompt:**
 ```
@@ -593,7 +594,7 @@ git push origin --delete release/v1.0.0
 | 4 — Chat | ✅ Done (basic) — streaming/history polish not started |
 | 5 — Launch | 🔲 Not started |
 | 6 — Species & Treatment Restructure | ✅ Done |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2+T7.3 done; T7.4 not started |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Done (T7.1–T7.4) |
 
 ---
 
