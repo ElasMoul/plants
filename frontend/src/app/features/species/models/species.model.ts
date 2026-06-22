@@ -22,4 +22,6 @@ export interface SpeciesResponse {
   externalDataSource: string | null;
   status: SpeciesStatus;
   careCards: CareCardDto[];
+  // Reasoning model that generated description/careOverview enrichment (T7.2 "powered by" badge).
+  enrichmentModel?: string | null;
 }

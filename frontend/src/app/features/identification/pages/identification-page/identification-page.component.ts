@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { IdentificationService } from '../../services/identification.service';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
 import { IdentificationListComponent } from '../../components/identification-list/identification-list.component';
@@ -28,6 +29,7 @@ export class IdentificationPageComponent implements OnDestroy {
     private readonly identificationService: IdentificationService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
+    private readonly aiErrorService: AiErrorService,
   ) {}
 
   ngOnDestroy(): void {
@@ -73,18 +75,12 @@ export class IdentificationPageComponent implements OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           this.submitting = false;
-          this.snackBar.open(this.mapError(err), 'Dismiss', { duration: 5000 });
+          if (err.status === 404) {
+            this.snackBar.open('No matching plant species found — try a clearer photo', 'Dismiss', { duration: 5000 });
+            return;
+          }
+          this.aiErrorService.notify(err);
         },
       });
-  }
-
-  private mapError(err: HttpErrorResponse): string {
-    if (err.status === 0) {
-      return 'Connection problem — check your internet and try again';
-    }
-    if (err.status === 404) {
-      return 'No matching plant species found — try a clearer photo';
-    }
-    return 'Something went wrong — please try again';
   }
 }

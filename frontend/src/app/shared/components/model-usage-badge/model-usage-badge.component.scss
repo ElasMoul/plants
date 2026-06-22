@@ -1,0 +1,14 @@
+.model-usage-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--color-text-secondary, rgba(0, 0, 0, 0.6));
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}

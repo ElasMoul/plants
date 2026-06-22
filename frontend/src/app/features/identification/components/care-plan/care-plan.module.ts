@@ -10,6 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { SharedModule } from '../../../../shared/shared.module';
 import { CareCardComponent } from './care-card.component';
 import { CarePlanComponent } from './care-plan.component';
 import { SetReminderDialogComponent } from './set-reminder-dialog.component';
@@ -38,6 +39,7 @@ import { DiseaseDetailPanelComponent } from '../disease-detail-panel/disease-det
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    SharedModule,
   ],
   exports: [
     CareCardComponent,

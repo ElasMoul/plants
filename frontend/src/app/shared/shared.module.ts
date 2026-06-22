@@ -23,6 +23,7 @@ import { MermaidDiagramComponent } from './components/mermaid-diagram/mermaid-di
 import { ImageLightboxComponent } from './components/image-lightbox/image-lightbox.component';
 import { StepDetailDialogComponent } from './components/step-detail-dialog/step-detail-dialog.component';
 import { TreatmentStepListComponent } from './components/treatment-step-list/treatment-step-list.component';
+import { ModelUsageBadgeComponent } from './components/model-usage-badge/model-usage-badge.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -48,6 +49,7 @@ const MATERIAL_MODULES = [
     ImageLightboxComponent,
     StepDetailDialogComponent,
     TreatmentStepListComponent,
+    ModelUsageBadgeComponent,
   ],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
@@ -60,6 +62,7 @@ const MATERIAL_MODULES = [
     MermaidDiagramComponent,
     ImageLightboxComponent,
     TreatmentStepListComponent,
+    ModelUsageBadgeComponent,
   ],
 })
 export class SharedModule {}

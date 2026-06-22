@@ -4,20 +4,23 @@ import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UserService } from '../../../core/services/user.service';
-import { AiModelPreference } from '../../../core/models/user.model';
+import { ReasoningModelPreference, VisionModelPreference } from '../../../core/models/user.model';
 
-interface ModelOption {
-  value: AiModelPreference;
+interface ModelOption<T extends string> {
+  value: T;
   label: string;
   icon: string;
   tooltip: string;
 }
 
-const MODEL_OPTIONS: ModelOption[] = [
-  { value: 'PLANTNET',     label: 'PlantNet',  icon: 'eco',        tooltip: 'Species only — no health analysis' },
-  { value: 'DEEPSEEK',     label: 'DeepSeek',  icon: 'psychology', tooltip: '~20 identification calls/hour' },
-  { value: 'GITHUB_GPT4O', label: 'GPT-4o',    icon: 'smart_toy',  tooltip: '~50 vision calls/day on free tier' },
-  { value: 'OLLAMA_LLAVA', label: 'Ollama',    icon: 'computer',   tooltip: 'Fully local — no API quota' },
+const VISION_OPTIONS: ModelOption<VisionModelPreference>[] = [
+  { value: 'GITHUB_GPT4O', label: 'GPT-4o',  icon: 'smart_toy',  tooltip: '~50 vision calls/day on free tier' },
+  { value: 'OLLAMA_LLAVA', label: 'Ollama',  icon: 'computer',   tooltip: 'Fully local — no API quota' },
+];
+
+const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
+  { value: 'DEEPSEEK_R1', label: 'DeepSeek', icon: 'psychology', tooltip: '~20 reasoning calls/hour' },
+  { value: 'OLLAMA_LLAVA', label: 'Ollama',  icon: 'computer',   tooltip: 'Fully local — no API quota' },
 ];
 
 @Component({
@@ -26,8 +29,11 @@ const MODEL_OPTIONS: ModelOption[] = [
   styleUrls: ['./model-selector.component.scss'],
 })
 export class ModelSelectorComponent implements OnInit, OnDestroy {
-  readonly options = MODEL_OPTIONS;
-  selected: AiModelPreference = 'DEEPSEEK';
+  readonly visionOptions = VISION_OPTIONS;
+  readonly reasoningOptions = REASONING_OPTIONS;
+
+  selectedVision: VisionModelPreference = 'GITHUB_GPT4O';
+  selectedReasoning: ReasoningModelPreference = 'DEEPSEEK_R1';
   saving = false;
 
   private readonly destroy$ = new Subject<void>();
@@ -41,7 +47,10 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
     this.userService.getPreferences()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: res => { this.selected = res.data.aiModelPreference; },
+        next: res => {
+          this.selectedVision = res.data.visionModelPreference;
+          this.selectedReasoning = res.data.reasoningModelPreference;
+        },
       });
   }
 
@@ -50,26 +59,46 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  get selectedOption(): ModelOption | undefined {
-    return this.options.find(o => o.value === this.selected);
+  get selectedVisionOption(): ModelOption<VisionModelPreference> | undefined {
+    return this.visionOptions.find(o => o.value === this.selectedVision);
   }
 
-  onChange(event: MatSelectChange): void {
-    const value = event.value as AiModelPreference;
-    const previous = this.selected;
+  get selectedReasoningOption(): ModelOption<ReasoningModelPreference> | undefined {
+    return this.reasoningOptions.find(o => o.value === this.selectedReasoning);
+  }
+
+  onVisionChange(event: MatSelectChange): void {
+    this.save(event.value as VisionModelPreference, this.selectedReasoning, 'vision');
+  }
+
+  onReasoningChange(event: MatSelectChange): void {
+    this.save(this.selectedVision, event.value as ReasoningModelPreference, 'reasoning');
+  }
+
+  private save(
+    vision: VisionModelPreference,
+    reasoning: ReasoningModelPreference,
+    changed: 'vision' | 'reasoning',
+  ): void {
+    const previousVision = this.selectedVision;
+    const previousReasoning = this.selectedReasoning;
     this.saving = true;
 
-    this.userService.updatePreferences(value)
+    this.userService.updateModelPreferences(vision, reasoning)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.selected = value;
+          this.selectedVision = vision;
+          this.selectedReasoning = reasoning;
           this.saving = false;
-          const label = this.options.find(o => o.value === value)?.label ?? value;
-          this.snackBar.open(`Model changed to ${label}`, undefined, { duration: 2500 });
+          const label = changed === 'vision'
+            ? this.visionOptions.find(o => o.value === vision)?.label
+            : this.reasoningOptions.find(o => o.value === reasoning)?.label;
+          this.snackBar.open(`${changed === 'vision' ? 'Vision' : 'Reasoning'} model changed to ${label}`, undefined, { duration: 2500 });
         },
         error: () => {
-          this.selected = previous;
+          this.selectedVision = previousVision;
+          this.selectedReasoning = previousReasoning;
           this.saving = false;
           this.snackBar.open('Could not update model preference.', 'Dismiss', { duration: 4000 });
         },

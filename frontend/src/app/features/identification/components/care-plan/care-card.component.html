@@ -33,6 +33,12 @@
       <span>{{ card.seasonalVariation }}</span>
     </div>
 
+    <app-model-usage-badge
+      *ngIf="card.actionPlanModel as model"
+      [reasoningModel]="model"
+      prefix="Plan regenerated using"
+    ></app-model-usage-badge>
+
     <!-- Action row — only when this card has an actionPlan and a real plant to attach to -->
     <ng-container *ngIf="plantId !== null && card.actionPlan as plan">
       <mat-divider class="action-divider"></mat-divider>

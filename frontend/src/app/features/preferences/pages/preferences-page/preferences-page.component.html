@@ -1,0 +1,24 @@
+<div class="preferences-page">
+  <h1 class="page-title">AI Model Settings</h1>
+  <p class="page-subtitle">
+    Choose which model handles each kind of AI work. Switching here applies to every future
+    scan, cure-advice request, treatment plan, and chat reply.
+  </p>
+
+  <div class="preference-section">
+    <h2>Models</h2>
+    <p class="section-hint">
+      Vision model — used for plant identification and disease annotation. Reasoning model — used
+      for care plans, cure advice, disease descriptions, and species enrichment.
+    </p>
+    <app-model-selector class="model-selector-full"></app-model-selector>
+  </div>
+
+  <div class="preference-section">
+    <h2>Hitting a rate limit?</h2>
+    <p class="section-hint">
+      Each AI model has its own hourly call budget. If you see a rate-limit message, switching to
+      a different model above lets you keep going right away instead of waiting it out.
+    </p>
+  </div>
+</div>

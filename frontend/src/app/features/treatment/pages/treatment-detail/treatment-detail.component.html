@@ -64,6 +64,11 @@
             <mat-spinner diameter="16"></mat-spinner>
             Generating a description for this disease&hellip;
           </p>
+          <app-model-usage-badge
+            *ngIf="treatment.diseaseDescription"
+            [reasoningModel]="treatment.diseaseDescriptionModel"
+            prefix="Description generated using"
+          ></app-model-usage-badge>
         </div>
 
         <button
@@ -99,6 +104,12 @@
           [diagramContent]="plan.diagramContent"
           (stepCompleted)="onPlanStepCompleted()"
         ></app-treatment-step-list>
+
+        <app-model-usage-badge
+          *ngIf="!planLoading && plan"
+          [reasoningModel]="treatment.treatmentPlanModel"
+          prefix="Plan crafted using"
+        ></app-model-usage-badge>
 
       </div>
 

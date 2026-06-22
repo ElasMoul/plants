@@ -2,17 +2,45 @@
   <mat-select
     class="model-select"
     panelClass="model-select-panel"
-    [value]="selected"
+    [value]="selectedVision"
     [disabled]="saving"
-    aria-label="AI model preference"
-    (selectionChange)="onChange($event)"
+    aria-label="Vision model preference"
+    matTooltip="Vision model — identification + annotation"
+    matTooltipPosition="below"
+    (selectionChange)="onVisionChange($event)"
   >
     <mat-select-trigger>
-      <mat-icon class="trigger-icon">{{ selectedOption?.icon }}</mat-icon>
-      <span class="trigger-label">{{ selectedOption?.label }}</span>
+      <mat-icon class="trigger-icon">{{ selectedVisionOption?.icon }}</mat-icon>
+      <span class="trigger-label">{{ selectedVisionOption?.label }}</span>
     </mat-select-trigger>
     <mat-option
-      *ngFor="let opt of options"
+      *ngFor="let opt of visionOptions"
+      [value]="opt.value"
+      [matTooltip]="opt.tooltip"
+      matTooltipPosition="right"
+      [matTooltipShowDelay]="300"
+    >
+      <mat-icon>{{ opt.icon }}</mat-icon>
+      {{ opt.label }}
+    </mat-option>
+  </mat-select>
+
+  <mat-select
+    class="model-select"
+    panelClass="model-select-panel"
+    [value]="selectedReasoning"
+    [disabled]="saving"
+    aria-label="Reasoning model preference"
+    matTooltip="Reasoning model — care plans, cure advice, descriptions"
+    matTooltipPosition="below"
+    (selectionChange)="onReasoningChange($event)"
+  >
+    <mat-select-trigger>
+      <mat-icon class="trigger-icon">{{ selectedReasoningOption?.icon }}</mat-icon>
+      <span class="trigger-label">{{ selectedReasoningOption?.label }}</span>
+    </mat-select-trigger>
+    <mat-option
+      *ngFor="let opt of reasoningOptions"
       [value]="opt.value"
       [matTooltip]="opt.tooltip"
       matTooltipPosition="right"

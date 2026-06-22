@@ -10,6 +10,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 
+import { SharedModule } from '../../shared/shared.module';
 import { SpeciesRoutingModule } from './species-routing.module';
 import { SpeciesService } from './services/species.service';
 import { IdentificationService } from '../identification/services/identification.service';
@@ -30,6 +31,7 @@ import { SpeciesPlantRowComponent } from './components/species-plant-row/species
   imports: [
     CommonModule,
     RouterModule,
+    SharedModule,
     SpeciesRoutingModule,
     CarePlanModule,
     MatButtonModule,

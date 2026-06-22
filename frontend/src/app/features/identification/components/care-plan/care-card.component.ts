@@ -1,9 +1,11 @@
 import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { CareCardDto, CareCardType } from '../../models/identification.model';
 import { CareType } from '../../../reminder/models/reminder.model';
 import { ReminderService } from '../../../reminder/services/reminder.service';
@@ -52,6 +54,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
     private readonly treatmentService: TreatmentService,
     private readonly snackBar: MatSnackBar,
     private readonly router: Router,
+    private readonly aiErrorService: AiErrorService,
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -176,17 +179,17 @@ export class CareCardComponent implements OnChanges, OnDestroy {
                   .pipe(takeUntil(this.destroy$))
                   .subscribe(() => this.router.navigate(['/treatment', crafted.data.id]));
               },
-              error: () => {
+              error: (err: HttpErrorResponse) => {
                 this.startingTreatment = false;
                 this.treatmentStarted = true;
                 this.activeTreatmentId = created.data.id;
-                this.snackBar.open('Treatment started, but the plan could not be crafted yet.', 'Dismiss', { duration: 5000 });
+                this.aiErrorService.notify(err);
               },
             });
         },
-        error: () => {
+        error: (err: HttpErrorResponse) => {
           this.startingTreatment = false;
-          this.snackBar.open('Could not start treatment plan.', 'Dismiss', { duration: 4000 });
+          this.aiErrorService.notify(err);
         },
       });
   }

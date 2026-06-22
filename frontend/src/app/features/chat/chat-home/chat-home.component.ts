@@ -10,6 +10,7 @@ import { takeUntil } from 'rxjs/operators';
 import { ChatService } from '../services/chat.service';
 import { PlantService } from '../../plant/services/plant.service';
 import { ChatMessageDto } from '../models/chat.model';
+import { AiErrorService } from '../../../core/services/ai-error.service';
 
 interface ChatMessage {
   id: number;
@@ -53,6 +54,7 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     private readonly chatService: ChatService,
     private readonly plantService: PlantService,
     private readonly route: ActivatedRoute,
+    private readonly aiErrorService: AiErrorService,
   ) {}
 
   ngOnInit(): void {
@@ -136,7 +138,7 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
           this.sending = false;
           const msg = this.messages.find(m => m.id === aiMessageId);
           if (msg) {
-            msg.text = this.mapError(err);
+            msg.text = this.aiErrorService.handle(err);
           }
         },
       });
@@ -159,10 +161,4 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     this.draft = chip;
   }
 
-  private mapError(err: HttpErrorResponse): string {
-    if (err.status === 0) {
-      return "I'm having trouble connecting — check your internet and try again.";
-    }
-    return 'Sorry, something went wrong on my end. Please try again in a moment.';
-  }
 }
