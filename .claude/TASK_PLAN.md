@@ -328,6 +328,260 @@ git push origin --delete release/v1.0.0
 
 ---
 
+## PHASE 7 — AI Model Control, Batch Scanning, Multi-Treatment UX
+> Goal: (1) split "vision model" from "reasoning model" as two independent user
+> choices, remove every silent model-substitution fallback, and surface AI
+> errors (incl. rate limits, with a wait time) to the UI instead of swallowing
+> them; (2) let a user queue multiple photos in one upload session, each
+> becoming its own scan, instead of reopening the dialog per plant; (3) let a
+> user pick which active treatment to open when a plant has more than one, and
+> fix the bug where a treatment's AI-generated disease description never
+> appears even though the backend successfully generates it.
+>
+> **Sequencing relative to Phase 5:** not decided. Phase 5 (launch prep) was
+> the prior "current focus" and hasn't started. This phase is real feature
+> work, not launch infra — 👤 decide whether it ships before or after Phase 5
+> before starting T7.1.
+>
+> Investigation already done (don't re-derive — see ARCHITECT.md once these
+> tasks are recorded there):
+> - **Real bug found:** `GlobalExceptionHandler.handlePlantPal()` hardcodes
+>   `HttpStatus.INTERNAL_SERVER_ERROR` for every `PlantPalException`, ignoring
+>   `ex.getErrorCode()`. The 429s already thrown by `IdentificationServiceImpl`
+>   (AI rate limit, cure-advice rate limit) and `TreatmentServiceImpl` arrive at
+>   the frontend today as a generic 500, not a 429 — there is no rate-limit UX
+>   today because the status code itself is wrong.
+> - **Real bug found (disease description):** it IS generated correctly —
+>   `TreatmentServiceImpl.createTreatment()` → `fireDiseaseDescriptionGeneration()`
+>   → async `generateAndSaveDiseaseDescription()` → saves to the row. The bug is
+>   purely frontend: `TreatmentDetailComponent.loadTreatment()` fetches the
+>   treatment exactly once in `ngOnInit`. Since the user navigates to
+>   `/treatment/:id` immediately after `createTreatment()` returns (description
+>   still null at that instant), the page shows the "Gathering info…" pending
+>   state and never looks again — the async write lands seconds later into a
+>   page that already stopped asking.
+> - **Multi-treatment backend mostly already exists, unused:**
+>   `TreatmentService.getActiveTreatmentsForPlant()` (plural),
+>   `GET /plants/{id}/active-treatments`, and even
+>   `TreatmentService.getActiveTreatments()` on the Angular `treatment.service.ts`
+>   are all already shipped and correct. No component calls them. Both
+>   `plant-detail.component.ts` and `care-card.component.ts` instead call the
+>   *singular* `getActiveTreatment()` (most-recent-only) and match it against
+>   one disease name — which is exactly why a second, different active disease
+>   on the same plant is currently invisible to the UI.
+> - **Three places with silent model fallback / silent error-swallowing to
+>   remove or scope explicitly:**
+>   1. `IdentificationServiceImpl.runIdentification()` — `OLLAMA_LLAVA` case
+>      catches `PlantPalException` and silently re-runs on `GITHUB_GPT4O`.
+>   2. `DeepSeekAnnotationClient.analyzeRegions()` — on a 429 it silently calls
+>      `OllamaClient` instead; if both fail it returns `EMPTY_REGIONS` rather
+>      than surfacing an error. (Its 2-attempt *retry* on the same model for a
+>      GOAWAY/EOF is connection resilience, not model substitution — judgment
+>      call on whether that retry survives this phase; default to keeping it,
+>      only removing the cross-model substitution and the error-swallow.)
+>   3. `UserServiceImpl`/`IdentificationServiceImpl.loadUserPreference()` —
+>      defaults to `AiModelPreference.DEEPSEEK` when a user row is missing a
+>      preference. This is a default value, not an error-path fallback; fine to
+>      keep an equivalent default for the new split preferences, just flagging
+>      so it isn't confused with the other two.
+> - `AiModelPreference` today is one enum (`DEEPSEEK, PLANTNET, OLLAMA_LLAVA,
+>   GITHUB_GPT4O`) covering both vision and text tasks at once — it doesn't
+>   model "vision model" and "reasoning model" as independent choices. Next
+>   free migration number is **021** (020 was `add_species_care_cards` from the
+>   pre-Phase-5 cleanup pass).
+> - `IdentificationResponse.aiModelUsed` (frontend model) already exists as a
+>   single string field — a precedent to extend, not a green field.
+> - `PhotoUploadComponent` already accepts multiple images per session, but
+>   they're treated as multiple *angles of one plant* (`organs[]`, one
+>   `analyze` emit, one Identification) — not multiple *different* plants each
+>   becoming their own scan. `IdentificationUploadDialogComponent` closes the
+>   moment `onAnalyze()` fires once, which is the "open, close, open, close"
+>   friction described — confirmed at all three entry points that share this
+>   dialog (Garden FAB / Species "add plant" / Plant "scan").
+
+---
+
+### T7.1 — Backend: split vision/reasoning model preference, remove fallback, structured AI errors 🤖 AI
+**Branch:** `feature/PP-039-model-control-backend`
+
+**Claude Code prompt:**
+```
+// Phase 7 — Split AI model choice into vision + reasoning, remove model
+// fallback, and make rate-limit/AI errors structured and surfaced correctly.
+
+1. Migration 021_split_ai_model_preference.sql:
+   - Add `vision_model_preference` VARCHAR(30) NOT NULL DEFAULT 'GITHUB_GPT4O'
+     and `reasoning_model_preference` VARCHAR(30) NOT NULL DEFAULT 'DEEPSEEK'
+     to `users`.
+   - Backfill from the existing `ai_model_preference` column: GITHUB_GPT4O/
+     OLLAMA_LLAVA/PLANTNET → vision_model_preference; DEEPSEEK → reasoning_model_preference
+     (both columns get a sane default regardless, old column untouched — don't
+     drop it this phase, mark deprecated in a comment only).
+   - Append to db.changelog-master.xml in order (after 020 — verify, don't
+     assume, per CLAUDE.md's Database Schema section).
+
+2. New enums replacing single-purpose use of AiModelPreference:
+   - VisionModelPreference { GITHUB_GPT4O, OLLAMA_LLAVA }  (drop PLANTNET — dead
+     code per BACKEND.md's Open Items, do not carry it into the new enum)
+   - ReasoningModelPreference { DEEPSEEK_R1, OLLAMA_LLAVA }
+   - Keep AiModelPreference only where it's still load-bearing (check
+     UserPreferencesRequest/Response usage); add the two new fields alongside,
+     don't break existing callers in one shot — additive this task.
+
+3. Remove model-fallback (do NOT remove retry-on-same-model connection
+   resilience — see investigation notes above for the precise boundary):
+   - IdentificationServiceImpl.runIdentification(): delete the
+     OLLAMA_LLAVA catch-and-retry-on-GITHUB_GPT4O branch. On failure, let the
+     PlantPalException propagate with the real provider's error message.
+   - DeepSeekAnnotationClient.analyzeRegions(): delete tryOllamaFallback() and
+     the EMPTY_REGIONS-on-exhaustion swallow. Keep the existing 2-attempt
+     same-client retry for the GOAWAY/EOF case. On exhaustion, throw a
+     PlantPalException carrying the real failure instead of returning empty
+     regions silently.
+
+4. Fix GlobalExceptionHandler.handlePlantPal(): use
+   HttpStatus.resolve(ex.getErrorCode()) (falling back to 500 only if the code
+   isn't a valid HTTP status) instead of hardcoding INTERNAL_SERVER_ERROR. This
+   makes existing 429s (AI rate limit, cure-advice rate limit, Treatment AI
+   rate limit) actually arrive at the frontend as 429, not 500.
+
+5. Add a RateLimitException extends PlantPalException carrying
+   retryAfterSeconds (Long). Add `retryAfterSeconds` (Long, NON_NULL-included)
+   to ApiResponse. Compute it via Bucket4j's verbose API
+   (bucket.asVerbose().tryConsumeAndReturnRemaining(1)... or, simpler given the
+   fixed-window Bandwidth config already in use, the bucket's own refill
+   period) at each of the three existing rate-limit throw sites
+   (IdentificationServiceImpl x2, TreatmentServiceImpl) — replace their plain
+   `new PlantPalException(msg, 429)` with `new RateLimitException(msg, retryAfterSeconds)`.
+   Add a dedicated GlobalExceptionHandler.handleRateLimit() before the generic
+   PlantPalException handler (RestControllerAdvice matches most-specific type)
+   that also sets a `Retry-After` response header.
+
+6. Add model-usage tracking to AI-generating responses that don't have it yet
+   (IdentificationResponse.aiModelUsed already exists for identification —
+   extend the same idea, don't reinvent the field name/shape):
+   - TreatmentResponse: add `diseaseDescriptionModel` (which reasoning model
+     generated diseaseDescription) and `treatmentPlanModel` (which reasoning
+     model generated the craft-plan action plan).
+   - CarePlanDto / CareCardDto: add a plan-level field for which model(s)
+     generated the care plan (vision model alone if folded into the
+     identification call, vision+reasoning if DeepSeek regenerated it).
+   - SpeciesResponse (or wherever enrichment surfaces): same pattern for
+     SpeciesEnrichmentService's reasoning-model output.
+```
+
+---
+
+### T7.2 — Frontend: vision/reasoning model picker, error + rate-limit UX, "powered by" badges 🤝 Assisted
+**Branch:** `feature/PP-040-model-control-frontend`
+
+**Claude Code prompt:**
+```
+// Phase 7 — Surface model choice, AI errors, and which model served each result.
+
+1. Update the user preferences page + shared `model-selector` component: split
+   the single model dropdown into two — "Vision model" (identification +
+   annotation) and "Reasoning model" (care plans, cure advice, disease
+   description, species enrichment) — bound to the new backend
+   visionModelPreference/reasoningModelPreference fields from T7.1.
+
+2. Global AI-error handling (wherever AI-calling endpoints are invoked —
+   identification submit, cure advice, craft-plan, chat): on a 429 response,
+   read `retryAfterSeconds` from the ApiResponse error body and show a
+   snackbar/toast: "Rate limit reached — try again in {time}, or switch your
+   AI model in Settings" with an action button routing to preferences. On any
+   other AI-call error, surface the actual backend message (now that
+   GlobalExceptionHandler returns real status codes/messages per T7.1) instead
+   of a generic "something went wrong" toast.
+
+3. Add a small "Identified using: {vision model} + {reasoning model}" chip/
+   badge — reusing the new per-response model-usage fields from T7.1 — to:
+   identification-result, the disease detail panel, care-card (when a card's
+   actionPlan came from a reasoning-model regeneration), treatment-detail
+   (disease description + plan), species detail (enrichment). Keep it
+   unobtrusive — a small caption under the relevant content block, not a
+   prominent banner.
+```
+
+---
+
+### T7.3 — Frontend: multi-select batch scan mode 🤝 Assisted
+**Branch:** `feature/PP-041-batch-scan`
+
+**Claude Code prompt:**
+```
+// Phase 7 — Let a user queue several different plants' photos in one upload
+// session instead of reopening the dialog per plant. No backend changes
+// needed — POST /analyze is already async (Kafka) and already rate-limited
+// per user before publish; this is N independent calls to the existing
+// endpoint, not a new batch endpoint.
+
+1. PhotoUploadComponent: add a "Scan multiple plants" checkbox, visible only
+   when there's no lockedPlantId/speciesId (i.e. only at the plain Garden
+   entry point — Species/Plant entry points are inherently single-plant, see
+   investigation notes; confirm this scoping before building, don't add the
+   checkbox to all three entry points by default).
+   - When checked: each selected file becomes its own independent queue entry
+     (no organ/multi-angle grouping — that grouping is for multiple photos of
+     ONE plant, which is a different, still-supported mode). Reuse the
+     existing multi-file drag/drop handling in processFiles(), just change
+     what an "entry" represents in this mode.
+
+2. IdentificationUploadDialogComponent: when batch mode is active, don't close
+   the dialog on the first onAnalyze(). Instead submit one /analyze call per
+   queued file sequentially, reusing the existing 3s-poll-to-completion logic
+   per item, and render a per-item status row (Pending / Scanning / Done /
+   Failed — using T7.2's real error surfacing if a 429 hits partway through
+   the batch, so the user sees exactly which items failed and why, with a
+   "retry remaining" affordance rather than the batch silently stalling).
+   Close (or offer a "Done") only once every item has resolved or the user
+   cancels.
+
+3. Garden page: confirm the FAB still opens the same dialog unchanged — only
+   the dialog's internal behavior changes in batch mode.
+```
+
+---
+
+### T7.4 — Frontend: multi-treatment picker modal + fix disease-description-never-shows bug 🤝 Assisted
+**Branch:** `feature/PP-042-multi-treatment-picker`
+
+**Claude Code prompt:**
+```
+// Phase 7 — Most of the backend for this already exists and is correct (see
+// investigation notes) — this is primarily a frontend wiring + bug-fix task.
+
+1. New TreatmentPickerSheetComponent (MatBottomSheet), modeled directly on the
+   existing PlantScanHistorySheetComponent pattern (same module, same
+   open/close convention) — lists each entry from
+   TreatmentService.getActiveTreatments(plantId) (diseaseName, status chip,
+   startedAt, scan thumbnail via identificationId if present). Tapping a row
+   navigates to /treatment/:id.
+
+2. Wire it into both existing call sites that currently use the *singular*
+   getActiveTreatment() and a diseaseName-equality guess:
+   - plant-detail.component.ts's Scans-section CTA
+   - care-card.component.ts's checkActiveTreatment()/treatment button
+   Switch both to TreatmentService.getActiveTreatments() (plural, already
+   exists, unused today). If the array has exactly one entry, preserve today's
+   UX (navigate/match directly, no extra click). If more than one, open
+   TreatmentPickerSheetComponent instead of guessing.
+
+3. Fix TreatmentDetailComponent: it fetches the treatment exactly once in
+   ngOnInit (loadTreatment()), so the AI-generated diseaseDescription — which
+   really is generated async server-side seconds later — never appears
+   because the page never asks again. Add the same poll-until-resolved pattern
+   already established for Kafka identification polling (3s interval, same
+   convention): while treatment.status === 'DRAFT' &&
+   treatment.diseaseDescription == null, keep polling getTreatment(id); stop
+   once diseaseDescription is non-null or after a bounded timeout (mirror
+   identification's COMPLETED/FAILED stop condition — don't poll forever on a
+   treatment whose generation silently failed, see TreatmentServiceImpl's
+   catch-and-log-null path).
+```
+
+---
+
 ## Status Summary
 
 | Phase | Status |
@@ -337,8 +591,9 @@ git push origin --delete release/v1.0.0
 | 2 — AI Identification | ✅ Done |
 | 3 — Reminders | ✅ Done except T3.3 (manual on-device testing) |
 | 4 — Chat | ✅ Done (basic) — streaming/history polish not started |
-| 5 — Launch | 🔲 **Not started — current focus** |
+| 5 — Launch | 🔲 Not started |
 | 6 — Species & Treatment Restructure | ✅ Done |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 **Planned — current focus, sequencing vs. Phase 5 not yet decided** |
 
 ---
 

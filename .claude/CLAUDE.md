@@ -460,8 +460,9 @@ open backend/target/site/jacoco/index.html
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual on-device push/PWA testing — never done, needs a real phone) |
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history (pre-Phase-5 cleanup pass) |
-| 5 — Launch Preparation | 🔲 **Not started — current focus** |
+| 5 — Launch Preparation | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 **Planned — current focus, sequencing vs. Phase 5 not yet decided** |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
 
 ---

@@ -146,17 +146,50 @@ urgent.
 
 ## Next Tasks (in order)
 1. Open a PR / merge `feature/PP-038-pre-phase5-cleanup` to `dev`.
-2. **Phase 5 — Launch prep** (TASK_PLAN.md T5.1–T5.8): prod config, performance,
+2. **Phase 7 — Model Control, Batch Scanning, Multi-Treatment UX** (TASK_PLAN.md
+   T7.1–T7.4) — planned 2026-06-22, not yet started. Sequencing vs. Phase 5 is
+   an open decision (see below).
+3. **Phase 5 — Launch prep** (TASK_PLAN.md T5.1–T5.8): prod config, performance,
    security hardening, API docs, deploy to Railway/Vercel, beta test, release
-   v1.0.0. This is the main remaining work.
-3. T5.5 needs a decision on Kafka/Zookeeper's production story (managed add-on,
+   v1.0.0.
+4. 👤 **Decide Phase 5 vs. Phase 7 ordering** — Phase 7 is real feature work
+   (model control, batch scanning, multi-treatment UX), Phase 5 is launch
+   infra; neither blocks the other technically.
+5. T5.5 needs a decision on Kafka/Zookeeper's production story (managed add-on,
    or fall back to synchronous identification for v1.0.0) — not yet decided, see
    ARCHITECT.md's Kafka pattern note.
-4. T3.3 — manual on-device testing (push notifications, PWA installability,
+6. T3.3 — manual on-device testing (push notifications, PWA installability,
    offline reading) — needs a real phone, can happen any time before launch.
-5. Live-verify chat SSE streaming against a real Docker stack (written and
+7. Live-verify chat SSE streaming against a real Docker stack (written and
    passes locally but never confirmed end-to-end this session — see
    FRONTEND.md's Open Items).
+
+## Phase 7 — Planning Session (2026-06-22)
+Not started, planned only. Full task breakdown in TASK_PLAN.md (T7.1–T7.4).
+Three asks, all grounded against the real code before planning (see
+TASK_PLAN.md's Phase 7 investigation notes for the full detail — not
+duplicated here):
+- **Model control:** split the single `AiModelPreference` into independent
+  vision/reasoning choices, remove silent cross-model fallback (found in
+  `IdentificationServiceImpl.runIdentification()`'s OLLAMA_LLAVA→GITHUB_GPT4O
+  catch and `DeepSeekAnnotationClient`'s 429→Ollama fallback +
+  empty-regions-on-exhaustion swallow), and fix a real bug:
+  `GlobalExceptionHandler.handlePlantPal()` hardcodes HTTP 500 for every
+  `PlantPalException`, so the 429s already thrown by `IdentificationServiceImpl`/
+  `TreatmentServiceImpl` arrive at the frontend mislabeled as 500 today — there
+  is no working rate-limit UX yet because the status code itself is wrong.
+- **Batch scanning:** frontend-only — `POST /analyze` is already async/Kafka
+  and already rate-limited per user, so queuing N independent scans is N calls
+  to the existing endpoint, not a new batch endpoint.
+- **Multi-treatment picker:** the backend is mostly already shipped and
+  unused — `TreatmentService.getActiveTreatmentsForPlant()` (plural),
+  `GET /plants/{id}/active-treatments`, and even
+  `TreatmentService.getActiveTreatments()` on the Angular service all exist
+  and work; no component calls them. Also found and scoped a real bug:
+  `TreatmentDetailComponent` fetches the treatment once in `ngOnInit` and
+  never again, so the async-generated `diseaseDescription` (which the backend
+  does correctly generate and save within seconds) never appears on-screen —
+  not a generation bug, a missing-poll bug.
 
 ## Known Tech Debt
 See BACKEND.md and FRONTEND.md's own "Open Items" sections for the current,
