@@ -834,12 +834,12 @@ class IdentificationServiceImplTest {
 
     @Test
     @DisplayName(
-        "processIdentification: aiModelUsed reflects the fallback provider when OLLAMA_LLAVA fails")
-    void shouldPersistFallbackAiModelUsed() throws Exception {
+        "processIdentification: OLLAMA_LLAVA failure marks FAILED — no silent fallback to"
+            + " GITHUB_GPT4O")
+    void shouldMarkFailedWithoutFallbackWhenOllamaFails() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(ollamaClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Ollama unavailable", 503));
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
 
       Identification pendingEntity =
@@ -863,9 +863,10 @@ class IdentificationServiceImplTest {
 
       identificationService.processIdentification(event);
 
+      verify(gitHubModelsClient, never()).identifyPlant(any(), any());
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository).save(captor.capture());
-      assertThat(captor.getValue().getAiModelUsed()).isEqualTo("GITHUB_GPT4O");
+      assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
     }
 
     @Test

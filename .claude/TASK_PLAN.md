@@ -401,8 +401,8 @@ git push origin --delete release/v1.0.0
 
 ---
 
-### T7.1 — Backend: split vision/reasoning model preference, remove fallback, structured AI errors 🤖 AI
-**Branch:** `feature/PP-039-model-control-backend`
+### T7.1 — Backend: split vision/reasoning model preference, remove fallback, structured AI errors 🤖 AI ✅ DONE
+**Branch:** `feature/PP-039-model-control-backend` — merged. Summary in STATE.md/BACKEND.md.
 
 **Claude Code prompt:**
 ```
@@ -593,7 +593,7 @@ git push origin --delete release/v1.0.0
 | 4 — Chat | ✅ Done (basic) — streaming/history polish not started |
 | 5 — Launch | 🔲 Not started |
 | 6 — Species & Treatment Restructure | ✅ Done |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 **Planned — current focus, sequencing vs. Phase 5 not yet decided** |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1 done (backend); T7.2 (frontend) in progress; T7.3/T7.4 not started |
 
 ---
 

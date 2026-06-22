@@ -9,6 +9,7 @@ import com.plantpal.species.entity.SpeciesStatus;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.user.entity.AiModelPreference;
+import com.plantpal.user.entity.ReasoningModelPreference;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -55,9 +56,10 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       return;
     }
 
+    boolean useOllama = preference == AiModelPreference.OLLAMA_LLAVA;
     try {
       String raw =
-          preference == AiModelPreference.OLLAMA_LLAVA
+          useOllama
               ? ollamaClient.generateSpeciesEnrichment(
                   species.getScientificName(), species.getCommonName())
               : deepSeekClient.generateSpeciesEnrichment(
@@ -72,6 +74,9 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
               ? objectMapper.writeValueAsString(parsed.getCareCards())
               : null);
       species.setExternalDataSource(AI_SOURCE);
+      species.setEnrichmentModel(
+          (useOllama ? ReasoningModelPreference.OLLAMA_LLAVA : ReasoningModelPreference.DEEPSEEK_R1)
+              .name());
       species.setExternalDataFetchedAt(Instant.now());
       speciesRepository.save(species);
       log.info("Species enrichment succeeded: id={}", speciesId);

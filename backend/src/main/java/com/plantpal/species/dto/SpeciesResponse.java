@@ -24,6 +24,8 @@ public class SpeciesResponse {
 
   private String externalDataSource;
 
+  private String enrichmentModel;
+
   private SpeciesStatus status;
 
   // Parsed from Species.careCards (raw JSON) in SpeciesServiceImpl -- never trust the AI

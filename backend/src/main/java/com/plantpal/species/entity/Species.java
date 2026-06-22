@@ -60,6 +60,10 @@ public class Species extends AuditableEntity {
   @Column(name = "external_data_source", length = 20)
   private String externalDataSource;
 
+  // Which reasoning model produced description/careOverview/careCards above.
+  @Column(name = "enrichment_model", length = 30)
+  private String enrichmentModel;
+
   @Column(name = "external_data_fetched_at")
   private Instant externalDataFetchedAt;
 

@@ -18,6 +18,8 @@ public class TreatmentResponse {
   private Long identificationId;
   private String diseaseName;
   private String diseaseDescription;
+  private String diseaseDescriptionModel;
+  private String treatmentPlanModel;
   private TreatmentStatus status;
   private Long treatmentPlanId;
   private Instant startedAt;

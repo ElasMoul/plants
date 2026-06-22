@@ -95,7 +95,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         userRepository
             .findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    return UserPreferencesResponse.builder().aiModelPreference(user.getAiModelPreference()).build();
+    return toPreferencesResponse(user);
   }
 
   @Override
@@ -106,12 +106,29 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             .findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     user.setAiModelPreference(request.getAiModelPreference());
+    if (request.getVisionModelPreference() != null) {
+      user.setVisionModelPreference(request.getVisionModelPreference());
+    }
+    if (request.getReasoningModelPreference() != null) {
+      user.setReasoningModelPreference(request.getReasoningModelPreference());
+    }
     userRepository.save(user);
     log.info(
-        "User preference updated: userId={}, preference={}",
+        "User preference updated: userId={}, aiModelPreference={}, visionModelPreference={},"
+            + " reasoningModelPreference={}",
         userId,
-        request.getAiModelPreference());
-    return UserPreferencesResponse.builder().aiModelPreference(user.getAiModelPreference()).build();
+        user.getAiModelPreference(),
+        user.getVisionModelPreference(),
+        user.getReasoningModelPreference());
+    return toPreferencesResponse(user);
+  }
+
+  private UserPreferencesResponse toPreferencesResponse(User user) {
+    return UserPreferencesResponse.builder()
+        .aiModelPreference(user.getAiModelPreference())
+        .visionModelPreference(user.getVisionModelPreference())
+        .reasoningModelPreference(user.getReasoningModelPreference())
+        .build();
   }
 
   @Override
