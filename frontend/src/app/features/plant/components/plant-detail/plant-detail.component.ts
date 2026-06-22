@@ -46,7 +46,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         // rootMargin pushes the effective viewport top down 40px, so the sentinel
         // (sitting at scrollY=0) only counts as "out of view" — i.e. collapse fires —
         // once the user has scrolled past 40px.
-        { threshold: 0, rootMargin: '-80px 0px 0px 0px' },
+        { threshold: 0, rootMargin: '-40px 0px 0px 0px' },
       );
       this.sentinelObserver.observe(el.nativeElement);
     }
