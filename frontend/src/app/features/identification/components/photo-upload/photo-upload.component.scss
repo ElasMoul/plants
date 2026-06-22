@@ -3,6 +3,12 @@
   margin: 0 auto;
 }
 
+.batch-mode-checkbox {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
 .drop-zone {
   border: 2px dashed var(--color-primary-light);
   border-radius: var(--radius-card);

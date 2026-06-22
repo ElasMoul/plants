@@ -18,12 +18,13 @@ RxJS, ReactiveFormsModule
 ## Current Status
 **Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
 (`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
-T7.1 (backend) and T7.2 (frontend, `feature/PP-040-model-control-frontend`)
-are both shipped — model control UI, structured AI-error/rate-limit UX, and
-"powered by" badges. T7.3 (batch scanning) and T7.4 (multi-treatment picker)
-are next, alongside Phase 5 (Launch prep)** — see TASK_PLAN.md. Full
-session-by-session history of how each feature was built lives in STATE.md
-and git log, not here — this file is a durable reference to what exists *now*.
+T7.1 (backend), T7.2 (`feature/PP-040-model-control-frontend`) and T7.3
+(`feature/PP-041-batch-scan`) are all shipped — model control UI, structured
+AI-error/rate-limit UX, "powered by" badges, and multi-select batch scanning.
+T7.4 (multi-treatment picker) is next, alongside Phase 5 (Launch prep)** —
+see TASK_PLAN.md. Full session-by-session history of how each feature was
+built lives in STATE.md and git log, not here — this file is a durable
+reference to what exists *now*.
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components
@@ -61,7 +62,9 @@ features/
               + treatment.service.ts (the Treatment entity, distinct from
               reminder/'s treatment-plan.service.ts — see ARCHITECT.md)
   identification/ photo upload, results, care plan + actionable cards, disease
-              detail, species-confirm-step + plant-select-step (Flow 1 matching)
+              detail, species-confirm-step + plant-select-step (Flow 1 matching),
+              batch scan mode (T7.3 — "Scan multiple plants" checkbox, only at
+              entry points with no locked plant/species context)
   reminder/   list, calendar, create dialog, care log, TreatmentPlan detail page
               (/treatment-plans/:id — the OLDER generic plan, not the species/
               treatment Treatment entity)
@@ -149,6 +152,19 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   of always popping a toast — used where the error also needs to render
   inline (chat's AI message bubble). Use one of these at every new AI-calling
   call site instead of a local `mapError()`/generic-toast pattern.
+- **Batch scan mode** (T7.3): gate any "batch" affordance on the *absence of
+  locked context* (`lockedPlantId`/`lockedSpeciesId` both null), not on which
+  page/route opened the dialog — multiple entry points can legitimately share
+  that "no context yet" state. `IdentificationUploadDialogComponent` drives
+  its own sequential per-file submission queue when batch mode is active
+  (`runBatchQueue()`) rather than emitting one combined payload for the
+  parent page to submit — this is also proof that a dialog component
+  declared in a feature module (here `identification.module.ts`) can inject
+  that module's other providers (`IdentificationService`, `AiErrorService`)
+  directly, even when opened via `MatDialog.open()` from a *different* lazy
+  module's component without passing `viewContainerRef` — Angular Material
+  resolves the dialog's DI from the module where the dialog component itself
+  is declared, not the caller's module.
 
 ## Test/Build Commands
 ```bash
@@ -182,6 +198,11 @@ npx tsc --noEmit
   `reasoningModelPreference` to pick a client. The preference is readable/
   writable and persisted correctly; it's just not load-bearing yet. That
   wiring is unscoped follow-up work, not part of T7.2.
+- (T7.3) Batch scan mode has no "view results" deep-link after the batch
+  finishes — the dialog just closes; new plants/identifications show up
+  wherever they normally would (garden list, identify list) on their own.
+  Also no partial-success summary toast — the per-item status rows inside the
+  dialog are the only feedback, gone once it closes.
 
 ### Closed out in the pre-Phase-5 cleanup pass (kept here as "don't re-break this")
 - `IdentificationResultComponent` was dead code — deleted, not just unreferenced.

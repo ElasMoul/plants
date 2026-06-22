@@ -23,6 +23,10 @@ interface ImageEntry {
 })
 export class PhotoUploadComponent implements OnInit, OnDestroy {
   @Input() lockedPlantId?: number;
+  // Species-seeded context (Flow 2) — same "this entry point already knows its single plant"
+  // case as lockedPlantId for batch-mode eligibility, just not threaded into the analyze
+  // payload here (the dialog adds speciesId itself, see IdentificationUploadDialogComponent).
+  @Input() lockedSpeciesId?: number;
   @Output() readonly analyze = new EventEmitter<AnalyzeEmitPayload>();
 
   entries: ImageEntry[] = [];
@@ -30,6 +34,11 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   selectedPlantId: number | undefined;
   isDragOver = false;
   validationErrors: string[] = [];
+  batchMode = false;
+
+  get batchModeAvailable(): boolean {
+    return this.lockedPlantId == null && this.lockedSpeciesId == null;
+  }
 
   private readonly destroy$ = new Subject<void>();
 
@@ -87,6 +96,16 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
   onPlantChange(event: MatSelectChange): void {
     this.selectedPlantId = event.value as number | undefined;
+  }
+
+  onBatchModeChange(checked: boolean): void {
+    this.batchMode = checked;
+    if (checked) {
+      // Batch entries are independent new plants — an existing-plant link or a
+      // multi-angle organ hint don't apply to any single one of them.
+      this.selectedPlantId = undefined;
+      this.entries = this.entries.map(e => ({ ...e, organ: 'auto' }));
+    }
   }
 
   removeImage(index: number): void {

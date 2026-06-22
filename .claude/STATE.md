@@ -1,13 +1,13 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (T7.2 frontend shipped — see new section below;
-> T7.1 backend entry and pre-Phase-5 cleanup pass entry below are from prior
+> Last updated: 2026-06-22 (T7.3 frontend shipped — see new section below;
+> T7.2/T7.1 entries and pre-Phase-5 cleanup pass entry below are from prior
 > sessions)
 
 ## Current Phase
 **Phases 0–4 and 6 are fully shipped, plus a pre-Phase-5 cleanup pass closing
-every gap flagged below. Phase 7's T7.1 (backend) and T7.2 (frontend) are both
-shipped; T7.3/T7.4 haven't started. Phase 5 (Launch prep) hasn't started
+every gap flagged below. Phase 7's T7.1 (backend), T7.2 and T7.3 (frontend)
+are all shipped; T7.4 hasn't started. Phase 5 (Launch prep) hasn't started
 either** — see TASK_PLAN.md for task breakdowns. One manual item is
 stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
 needs a real phone and hasn't been done.
@@ -21,8 +21,45 @@ needs a real phone and hasn't been done.
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
 | 5 — Launch prep | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2 done; T7.3/T7.4 not started ← **current focus** |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2+T7.3 done; T7.4 not started ← **current focus** |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+
+## T7.3 — Frontend: multi-select batch scan mode (2026-06-22, `feature/PP-041-batch-scan`)
+Full detail in FRONTEND.md — summary here for cross-session context. No
+backend changes — `POST /analyze` was already async (Kafka) and already
+rate-limited per user before publish, so batch mode is just N independent
+calls to the existing endpoint from the frontend.
+- `PhotoUploadComponent` gained a "Scan multiple plants" checkbox and a new
+  `lockedSpeciesId` input (parity with the existing `lockedPlantId`) —
+  checkbox only renders when `batchModeAvailable` (`lockedPlantId == null &&
+  lockedSpeciesId == null`), gating on *context*, not on which page opened
+  the dialog. In practice the plain Garden FAB is the main case this affects,
+  but other no-context entry points (Home's quick-action, the legacy
+  `/plants` list page) get it too — a deliberate generalization of the task
+  prompt's "Garden entry point only" framing to the actual condition it was
+  describing, not a literal page allowlist.
+- When batch mode is on: the per-entry organ select and the "link to existing
+  plant" dropdown are hidden (don't apply to N independent new plants).
+- `IdentificationUploadDialogComponent` now injects `IdentificationService`
+  and `AiErrorService` directly (works because both are provided in
+  `identification.module.ts`, where this dialog is declared — confirmed
+  empirically via the pre-existing `PhotoUploadComponent`→`PlantService`
+  injection already working the same way across all 6 entry-point modules
+  that open this dialog without passing a `viewContainerRef`). In batch mode,
+  `startIdentification()` no longer emits a single combined payload; it
+  drives its own sequential queue (`runBatchQueue()`) — one `/analyze` call
+  per file, `pollUntilComplete()` per item (reusing T2's polling), a status
+  row per item (Pending/Scanning/Done/Failed) using `AiErrorService.handle()`
+  for the failure message. A 429 partway through does not halt the queue —
+  every item is still attempted and gets its own status, with a "Retry
+  remaining" button once the batch finishes if any failed. The dialog stays
+  open until every item resolves or the user cancels; closing unsubscribes
+  the in-flight chain via the component's own `destroy$`.
+- `ng build`, `ng lint`, `tsc --noEmit` all clean.
+- **Not done in T7.3**: no "view results" deep-link after a batch finishes —
+  closing just closes the dialog; the new plants show up wherever
+  identifications/plants normally appear (garden list, identify list) on
+  their own. Out of scope per the task prompt's minimal ask.
 
 ## T7.2 — Frontend: model picker, error + rate-limit UX, "powered by" badges (2026-06-22, `feature/PP-040-model-control-frontend`)
 Full detail in FRONTEND.md — summary here for cross-session context. Built

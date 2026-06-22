@@ -1,5 +1,14 @@
 <div class="upload-wrapper">
 
+  <mat-checkbox
+    *ngIf="batchModeAvailable"
+    class="batch-mode-checkbox"
+    [checked]="batchMode"
+    (change)="onBatchModeChange($event.checked)"
+  >
+    Scan multiple plants
+  </mat-checkbox>
+
   <!-- Drop zone / click to browse -->
   <div
     class="drop-zone"
@@ -19,7 +28,8 @@
     </div>
     <p class="drop-primary">Upload a photo</p>
     <p class="drop-secondary">Drag & drop, or <strong>click to browse</strong></p>
-    <p class="drop-hint">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
+    <p class="drop-hint" *ngIf="!batchMode">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
+    <p class="drop-hint" *ngIf="batchMode">Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each</p>
   </div>
 
   <!-- Hidden file input -->
@@ -55,7 +65,7 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <mat-form-field appearance="outline" class="organ-field">
+      <mat-form-field appearance="outline" class="organ-field" *ngIf="!batchMode">
         <mat-label>Plant part</mat-label>
         <mat-select [value]="entry.organ" (selectionChange)="onOrganChange(i, $event)">
           <mat-option value="auto">Auto-detect</mat-option>
@@ -69,7 +79,7 @@
   </div>
 
   <!-- Optional plant link -->
-  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length && !lockedPlantId">
+  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length && !lockedPlantId && !batchMode">
     <mat-label>Link to existing plant (optional)</mat-label>
     <mat-icon matPrefix>local_florist</mat-icon>
     <mat-select
