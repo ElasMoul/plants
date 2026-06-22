@@ -17,10 +17,13 @@ RxJS, ReactiveFormsModule
 
 ## Current Status
 **Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
-(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 5
-(Launch prep) is next** — see TASK_PLAN.md. Full session-by-session history of
-how each feature was built lives in STATE.md and git log, not here — this file
-is a durable reference to what exists *now*.
+(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
+T7.1 (backend) and T7.2 (frontend, `feature/PP-040-model-control-frontend`)
+are both shipped — model control UI, structured AI-error/rate-limit UX, and
+"powered by" badges. T7.3 (batch scanning) and T7.4 (multi-treatment picker)
+are next, alongside Phase 5 (Launch prep)** — see TASK_PLAN.md. Full
+session-by-session history of how each feature was built lives in STATE.md
+and git log, not here — this file is a durable reference to what exists *now*.
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components
@@ -44,10 +47,15 @@ is a durable reference to what exists *now*.
 
 ## Module Structure
 ```
-core/         auth service, JWT interceptor, auth guard, models, push-notification.service
+core/         auth service, JWT interceptor, auth guard, models, push-notification.service,
+              user.service.ts (preferences), ai-error.service.ts (T7.2 — see below)
 shared/       reusable components + constants (see shared/components/ below)
 features/
   auth/       login, register
+  preferences/ /preferences page (T7.2) — hosts the vision/reasoning model-selector
+              full-page; linked from the user account menu and from AiErrorService's
+              rate-limit snackbar action. Didn't exist before T7.2 — the model picker
+              used to be toolbar-only.
   plant/      list (now at /garden via species/), form, detail (sticky header +
               icon button bar — overview/care log/actions/treatment/scans),
               + treatment.service.ts (the Treatment entity, distinct from
@@ -77,11 +85,14 @@ Bottom nav (5 items): Home | Garden | Identify | Reminders | Chat —
 ### shared/components/
 `image-lightbox/` (full-size photo viewer, MatDialog), `mermaid-diagram/`
 (dynamic `import('mermaid')`, module-level init guard, renders nothing on
-malformed DSL — diagrams are always a bonus), `model-selector/` (AI model
-preference dropdown, toolbar), `step-detail-dialog/` (per-step "How to" detail —
-moved here from reminder/ once treatment/ needed it too), `treatment-step-list/`
-(diagram + step list + mark-done UI, shared by both the TreatmentPlan detail page
-and the Treatment page's "plan" section).
+malformed DSL — diagrams are always a bonus), `model-selector/` (T7.2 — now two
+dropdowns, vision + reasoning, not one; used in the toolbar and on the
+`/preferences` page), `model-usage-badge/` (T7.2 — "powered by" caption,
+renders nothing if both `visionModel`/`reasoningModel` inputs are null/
+undefined, so it's safe ahead of a backend field landing), `step-detail-dialog/`
+(per-step "How to" detail — moved here from reminder/ once treatment/ needed it
+too), `treatment-step-list/` (diagram + step list + mark-done UI, shared by
+both the TreatmentPlan detail page and the Treatment page's "plan" section).
 
 ## API Contract
 Backend base URL proxied to localhost:8080.
@@ -128,6 +139,16 @@ All responses: `{ success: boolean, data: T, message: string, correlationId: str
   `plant-select-step` components walk the user through
   `IdentificationService.getSpeciesMatch()/resolveSpecies()/getPlantMatch()/
   resolvePlant()` before landing on the resulting plant's detail page.
+- **AI-call error handling** (T7.2): `core/services/ai-error.service.ts`
+  (`AiErrorService`, root-provided like `UserService` — core cross-cutting
+  services are the one exception to the no-`providedIn:'root'` rule) is the
+  single place that turns an `HttpErrorResponse` from an AI-calling endpoint
+  into UI. `.notify(err)` shows a snackbar (429 gets the actionable
+  rate-limit message + Settings action; anything else shows the real backend
+  `message`). `.handle(err)` does the same but *returns* the message instead
+  of always popping a toast — used where the error also needs to render
+  inline (chat's AI message bubble). Use one of these at every new AI-calling
+  call site instead of a local `mapError()`/generic-toast pattern.
 
 ## Test/Build Commands
 ```bash
@@ -149,6 +170,18 @@ npx tsc --noEmit
   session it shipped in — re-verify tokens actually arrive incrementally (not
   all at once) the first time anyone touches `nginx.conf`'s
   `/api/v1/chat/stream` block or `ChatController`.
+- (T7.2) `CureAdviceResponse` (backend) has no model-usage field yet — the
+  disease-detail-panel's "powered by" badge is wired to
+  `result.reasoningModelUsed` and will light up the moment one's added, but
+  shows nothing today. Every other badge surface (identification preview,
+  care-card, treatment-detail, species-detail) already has live backend data
+  from T7.1's migration 022.
+- (T7.2, inherited from T7.1) Setting a vision/reasoning model preference on
+  the new `/preferences` page doesn't yet change which AI client actually
+  runs — no backend service reads `visionModelPreference`/
+  `reasoningModelPreference` to pick a client. The preference is readable/
+  writable and persisted correctly; it's just not load-bearing yet. That
+  wiring is unscoped follow-up work, not part of T7.2.
 
 ### Closed out in the pre-Phase-5 cleanup pass (kept here as "don't re-break this")
 - `IdentificationResultComponent` was dead code — deleted, not just unreferenced.
@@ -173,9 +206,12 @@ npx tsc --noEmit
 ```
 frontend/src/app/core/interceptors/jwt.interceptor.ts
 frontend/src/app/core/services/auth.service.ts
+frontend/src/app/core/services/ai-error.service.ts                (T7.2)
 frontend/src/app/app-routing.module.ts
 frontend/src/app/app.component.ts                              (bottom nav)
 frontend/src/app/shared/components/treatment-step-list/
+frontend/src/app/shared/components/model-usage-badge/             (T7.2)
+frontend/src/app/features/preferences/                            (T7.2)
 frontend/src/app/features/plant/components/plant-detail/
 frontend/src/app/features/treatment/pages/treatment-detail/
 frontend/src/app/features/species/pages/species-detail/

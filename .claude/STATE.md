@@ -1,14 +1,14 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (T7.1 backend shipped — see new section below;
-> T7.2 frontend in progress in parallel; pre-Phase-5 cleanup pass entry below
-> is from a prior session)
+> Last updated: 2026-06-22 (T7.2 frontend shipped — see new section below;
+> T7.1 backend entry and pre-Phase-5 cleanup pass entry below are from prior
+> sessions)
 
 ## Current Phase
 **Phases 0–4 and 6 are fully shipped, plus a pre-Phase-5 cleanup pass closing
-every gap flagged below. Phase 7's backend task (T7.1) is also shipped; T7.2
-(frontend) is in progress. Phase 5 (Launch prep) and Phase 7's T7.3/T7.4
-haven't started** — see TASK_PLAN.md for task breakdowns. One manual item is
+every gap flagged below. Phase 7's T7.1 (backend) and T7.2 (frontend) are both
+shipped; T7.3/T7.4 haven't started. Phase 5 (Launch prep) hasn't started
+either** — see TASK_PLAN.md for task breakdowns. One manual item is
 stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
 needs a real phone and hasn't been done.
 
@@ -21,8 +21,43 @@ needs a real phone and hasn't been done.
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
 | 5 — Launch prep | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1 (backend) done; T7.2 (frontend) in progress ← **current focus** |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2 done; T7.3/T7.4 not started ← **current focus** |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+
+## T7.2 — Frontend: model picker, error + rate-limit UX, "powered by" badges (2026-06-22, `feature/PP-040-model-control-frontend`)
+Full detail in FRONTEND.md — summary here for cross-session context. Built
+directly against T7.1's already-merged backend contract (verified field names
+against the actual DTOs before wiring, not assumed from the task prompt).
+- `ModelSelectorComponent` now renders two dropdowns (vision/reasoning) bound
+  to `visionModelPreference`/`reasoningModelPreference`; `UserService` gained
+  `updateModelPreferences()` replacing the old single-field updater.
+- New `AiErrorService` (core, root-provided like `UserService`) is the one
+  place that turns an `HttpErrorResponse` into UI: a 429 reads
+  `retryAfterSeconds` off the response body and shows an actionable snackbar
+  ("Rate limit reached — try again in {time}, or switch your AI model in
+  Settings") routing to the new `/preferences` page; anything else surfaces
+  the real backend `message`. Wired into identification submit, cure advice,
+  treatment create+craft-plan, and chat send — replacing four different
+  hand-rolled `mapError()`/generic-toast patterns.
+- New `/preferences` route (`features/preferences/`) — **didn't exist
+  before**; the model picker was toolbar-only. Linked from the user account
+  menu ("AI Model Settings"). This is also where the rate-limit snackbar's
+  action button routes to.
+- New shared `ModelUsageBadgeComponent` ("powered by" caption, renders
+  nothing if both inputs are null/undefined — safe to drop in ahead of data)
+  wired into 5 surfaces reading T7.1's migration-022 fields: identification
+  preview (`visionModelUsed ?? aiModelUsed` + `reasoningModelUsed`),
+  disease-detail-panel cure advice, care-card (`actionPlanModel`),
+  treatment-detail (`diseaseDescriptionModel` + `treatmentPlanModel`),
+  species-detail (`enrichmentModel`).
+- `ng build`, `ng lint`, `tsc --noEmit` all clean.
+- **Not done in T7.2**: cure-advice's backend response (`CureAdviceResponse`)
+  has no model-usage field yet — the disease-detail-panel badge is wired and
+  will light up once one's added, but won't show anything today. Also still
+  open from T7.1: no service actually reads
+  `visionModelPreference`/`reasoningModelPreference` to pick an AI client —
+  the new `/preferences` page lets a user set them, but until that wiring
+  exists, switching models there doesn't change which model actually runs.
 
 ## T7.1 — Backend: Model Control + Structured AI Errors (2026-06-22, `feature/PP-039-model-control-backend`)
 Full detail in BACKEND.md's "T7.1" section — summary here for cross-session

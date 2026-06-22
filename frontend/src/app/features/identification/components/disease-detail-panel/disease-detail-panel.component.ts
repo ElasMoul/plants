@@ -1,6 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { ActionPlanDto, AnnotationRegion, CarePlanDto } from '../../models/identification.model';
 import { IdentificationService } from '../../services/identification.service';
 
@@ -8,6 +10,7 @@ interface CureCacheEntry {
   advice: string;
   actionPlan: ActionPlanDto | null;
   addedToPlan: boolean;
+  reasoningModelUsed: string | null;
 }
 
 // Cure-advice display + "Add to care plan" only — this panel deliberately does NOT offer its
@@ -30,6 +33,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
 
   advice: string | null = null;
   actionPlan: ActionPlanDto | null = null;
+  reasoningModelUsed: string | null = null;
   loadingAdvice = false;
   adviceError = false;
   addingToPlan = false;
@@ -41,7 +45,10 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
 
-  constructor(private readonly identificationService: IdentificationService) {}
+  constructor(
+    private readonly identificationService: IdentificationService,
+    private readonly aiErrorService: AiErrorService,
+  ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['region'] && !changes['identificationId']) return;
@@ -56,10 +63,12 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
       this.advice = cached.advice;
       this.actionPlan = cached.actionPlan;
       this.addedToPlan = cached.addedToPlan;
+      this.reasoningModelUsed = cached.reasoningModelUsed;
     } else {
       this.advice = null;
       this.actionPlan = null;
       this.addedToPlan = false;
+      this.reasoningModelUsed = null;
     }
   }
 
@@ -74,6 +83,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
       advice: this.advice,
       actionPlan: this.actionPlan,
       addedToPlan: this.addedToPlan,
+      reasoningModelUsed: this.reasoningModelUsed,
     });
   }
 
@@ -98,12 +108,14 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
         next: result => {
           this.advice = result.advice;
           this.actionPlan = result.actionPlan;
+          this.reasoningModelUsed = result.reasoningModelUsed ?? null;
           this.loadingAdvice = false;
           this.cacheCurrent();
         },
-        error: () => {
+        error: (err: HttpErrorResponse) => {
           this.adviceError = true;
           this.loadingAdvice = false;
+          this.aiErrorService.notify(err);
         },
       });
   }

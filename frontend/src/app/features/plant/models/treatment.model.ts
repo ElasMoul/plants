@@ -10,4 +10,7 @@ export interface TreatmentResponse {
   treatmentPlanId: number | null;
   startedAt: string | null;
   completedAt: string | null;
+  // Which reasoning model generated diseaseDescription / the crafted plan (T7.2 "powered by" badge).
+  diseaseDescriptionModel?: string | null;
+  treatmentPlanModel?: string | null;
 }

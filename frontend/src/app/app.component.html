@@ -18,6 +18,10 @@
     <mat-menu #userMenu="matMenu">
       <div mat-menu-item disabled>{{ authService.getCurrentUser()?.email }}</div>
       <mat-divider></mat-divider>
+      <button mat-menu-item routerLink="/preferences">
+        <mat-icon>tune</mat-icon>
+        <span>AI Model Settings</span>
+      </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
         <span>Sign out</span>

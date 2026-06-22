@@ -4,9 +4,13 @@ import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { AiModelPreference, UserPreferences } from '../models/user.model';
+import {
+  ReasoningModelPreference,
+  UserPreferences,
+  VisionModelPreference,
+} from '../models/user.model';
 
-const SESSION_KEY = 'ai_model_preference';
+const SESSION_KEY = 'ai_model_preferences';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -21,17 +25,23 @@ export class UserService {
         success: true,
         message: 'cached',
         timestamp: new Date().toISOString(),
-        data: { aiModelPreference: cached as AiModelPreference },
+        data: JSON.parse(cached) as UserPreferences,
       });
     }
     return this.http.get<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`).pipe(
-      tap(res => sessionStorage.setItem(SESSION_KEY, res.data.aiModelPreference)),
+      tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))),
     );
   }
 
-  updatePreferences(pref: AiModelPreference): Observable<ApiResponse<UserPreferences>> {
+  updateModelPreferences(
+    visionModelPreference: VisionModelPreference,
+    reasoningModelPreference: ReasoningModelPreference,
+  ): Observable<ApiResponse<UserPreferences>> {
     return this.http
-      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { aiModelPreference: pref })
-      .pipe(tap(() => sessionStorage.setItem(SESSION_KEY, pref)));
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, {
+        visionModelPreference,
+        reasoningModelPreference,
+      })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
   }
 }

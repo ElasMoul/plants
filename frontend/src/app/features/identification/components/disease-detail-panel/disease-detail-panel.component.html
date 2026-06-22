@@ -41,6 +41,10 @@
     <!-- Advice result -->
     <ng-container *ngIf="advice">
       <p class="advice-text">{{ advice }}</p>
+      <app-model-usage-badge
+        [reasoningModel]="reasoningModelUsed"
+        prefix="Advice generated using"
+      ></app-model-usage-badge>
       <div class="panel-actions">
         <button mat-stroked-button type="button"
           [disabled]="addingToPlan || addedToPlan"

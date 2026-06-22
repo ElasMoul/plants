@@ -1,8 +1,9 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { TreatmentService } from '../../../plant/services/treatment.service';
 import { TreatmentResponse } from '../../../plant/models/treatment.model';
 import { PlantService } from '../../../plant/services/plant.service';
@@ -58,11 +59,11 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly snackBar: MatSnackBar,
     private readonly treatmentService: TreatmentService,
     private readonly plantService: PlantService,
     private readonly identificationService: IdentificationService,
     private readonly treatmentPlanService: TreatmentPlanService,
+    private readonly aiErrorService: AiErrorService,
   ) {}
 
   ngOnInit(): void {
@@ -102,9 +103,9 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
           }
           this.activeSection = 'plan';
         },
-        error: () => {
+        error: (err: HttpErrorResponse) => {
           this.craftingPlan = false;
-          this.snackBar.open('Could not craft the treatment plan. Please try again.', 'Dismiss', { duration: 5000 });
+          this.aiErrorService.notify(err);
         },
       });
   }

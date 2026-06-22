@@ -49,6 +49,12 @@
             <p class="info-text">{{ species.careOverview }}</p>
           </div>
 
+          <app-model-usage-badge
+            *ngIf="species.description"
+            [reasoningModel]="species.enrichmentModel"
+            prefix="Enriched using"
+          ></app-model-usage-badge>
+
           <!-- Informational only -- plantId=null hides each card's action row (no reminders/
                treatments at the species level), same as the unsaved-preview use of these cards. -->
           <div *ngIf="species.careCards && species.careCards.length" class="info-block">

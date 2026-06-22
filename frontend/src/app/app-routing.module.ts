@@ -63,6 +63,12 @@ const routes: Routes = [
     loadChildren: () => import('./features/chat/chat.module').then(m => m.ChatModule),
     canActivate: [AuthGuard],
   },
+  {
+    path: 'preferences',
+    loadChildren: () =>
+      import('./features/preferences/preferences.module').then(m => m.PreferencesModule),
+    canActivate: [AuthGuard],
+  },
   // Auth catch-all — prefix '' matches /login, /register, and unknown paths.
   // Auth-routing handles login, register, and ** (fallback to plants).
   // Must be last so specific routes above take priority.

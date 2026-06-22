@@ -76,6 +76,9 @@ export interface CareCardDto {
   urgency: 'LOW' | 'MEDIUM' | 'HIGH';
   seasonalVariation: string | null;
   actionPlan?: ActionPlanDto | null;
+  // Which reasoning model generated actionPlan, when it came from a standalone regeneration
+  // (e.g. the cure-advice "add to care plan" flow) rather than the original vision call.
+  actionPlanModel?: string | null;
 }
 
 export interface CarePlanDto {
@@ -131,6 +134,10 @@ export interface IdentificationResponse {
   annotationRegions: AnnotationRegion[] | null;
   createdAt: string;
   aiModelUsed?: string | null;
+  // Split out from aiModelUsed (T7.1/T7.2) — which model handled the vision pass (species +
+  // health + initial care plan) vs. any later reasoning-model work on this identification.
+  visionModelUsed?: string | null;
+  reasoningModelUsed?: string | null;
   speciesId: number | null;
 }
 

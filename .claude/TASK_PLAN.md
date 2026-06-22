@@ -472,8 +472,8 @@ git push origin --delete release/v1.0.0
 
 ---
 
-### T7.2 — Frontend: vision/reasoning model picker, error + rate-limit UX, "powered by" badges 🤝 Assisted
-**Branch:** `feature/PP-040-model-control-frontend`
+### T7.2 — Frontend: vision/reasoning model picker, error + rate-limit UX, "powered by" badges 🤝 Assisted ✅ DONE
+**Branch:** `feature/PP-040-model-control-frontend` — summary in STATE.md/FRONTEND.md.
 
 **Claude Code prompt:**
 ```
@@ -593,7 +593,7 @@ git push origin --delete release/v1.0.0
 | 4 — Chat | ✅ Done (basic) — streaming/history polish not started |
 | 5 — Launch | 🔲 Not started |
 | 6 — Species & Treatment Restructure | ✅ Done |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1 done (backend); T7.2 (frontend) in progress; T7.3/T7.4 not started |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1+T7.2 done; T7.3/T7.4 not started |
 
 ---
 
