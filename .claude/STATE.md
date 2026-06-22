@@ -1,11 +1,143 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (post-T7.3 bugfixes: batch scan no longer loses
-> queued items on dialog close/navigation, no NullInjectorError when opened
-> from non-identification modules, and all items submit concurrently instead
-> of trickling in one at a time — see updated section below; T7.4/T7.3/T7.2/
-> T7.1 entries and pre-Phase-5 cleanup pass entry below are from prior
-> sessions)
+> Last updated: 2026-06-22 (post-T7.1-followup bugfixes: craft-plan/disease-
+> description rate-limit handling, model preference save + actual vision/
+> reasoning wiring, PlantNet restored to the picker, scan-result treatment CTA
+> scoping, species list photo fallback — see new section below; older entries
+> are from prior sessions)
+
+## Bugfixes — T7.1 follow-up: rate limiting, model preference wiring, PlantNet, scan CTA, species photos (2026-06-22)
+Five user-reported bugs against the just-shipped T7.1/T7.2 Model Control work,
+fixed in one session. **Uncommitted** — currently sitting on
+`feature/PP-041-batch-scan` (the batch-scan branch from the prior session);
+these are unrelated to batch scanning and need their own branch before
+committing, not yet done as of this writing. All backend unit tests (71
+classes/nested groups, 0 failures) and `ng build`/`ng lint`/`tsc --noEmit`
+pass clean.
+
+**1. Craft-plan failing + disease description never generating.** Root cause
+was the SAME upstream constraint hitting two different code paths:
+GitHub Models/Azure enforces "1 DeepSeek-R1 call per 60s per user per model"
+— `Treatment.createTreatment()` fires disease-description generation
+immediately, so clicking "Craft Treatment Plan" within ~60s of creating the
+treatment collided with that cap. `DeepSeekClient` laundered every upstream
+429 into a generic 503 with zero retry, so the collision was unrecoverable
+and silent (the async disease-description path just logged a warning and
+left the field null forever — no retry, nothing re-triggers it later).
+  - Fix: `DeepSeekClient` now classifies a 429 specifically — parses
+    `Retry-After` header or the "wait N seconds" text in the error body
+    (`extractRetryAfterSeconds()`), falls back to 60s — and throws the
+    existing `RateLimitException` (carries `retryAfterSeconds`) instead of a
+    generic 503. This reuses T7.2's already-built frontend rate-limit UX
+    (actionable snackbar with accurate wait time) for free; new shared
+    `toServiceException()` helper collapses the 5 near-identical catch blocks
+    that used to exist across `generateCureAdvice`/`generateDiseaseDescription`/
+    `generateSpeciesEnrichment`/`generateCarePlan`/`detectDuplicateCareCards`.
+  - `craftPlan()` stays fail-fast (no retry) since its controller blocks the
+    HTTP thread on `.get()` — sleeping there would hang the request for up to
+    a minute. `generateAndSaveDiseaseDescription()` (genuinely fire-and-forget,
+    no caller waiting) now does ONE bounded retry after the suggested wait
+    (capped at 65s) on `RateLimitException` specifically — this is what
+    actually fixes "description never generated".
+- **2 & 3. Model preference save 400'ing + vision/reasoning choice doing
+  nothing.** `UserPreferencesRequest.aiModelPreference` still had `@NotNull`
+  from before the T7.1 vision/reasoning split, but the current frontend
+  (`UserService.updateModelPreferences()`) only ever sends
+  `visionModelPreference`/`reasoningModelPreference` — every save 400'd
+  (`ne doit pas être nul`). Separately, T7.1 had left both new preference
+  fields storage-only: `IdentificationServiceImpl.runIdentification()` still
+  branched exclusively on the legacy `AiModelPreference`, and nothing read
+  `reasoningModelPreference` anywhere — switching the picker visibly saved
+  but never changed which model actually ran.
+  - Fix: dropped `@NotNull` from the deprecated field +
+    `UserServiceImpl.updatePreferences()` now only overwrites it when present
+    (matches the pattern already used for the two new fields). `Identification
+    ServiceImpl` now has separate `loadVisionPreference()`/
+    `loadReasoningPreference()` reading the real columns;
+    `runIdentification()`'s switch is retyped from `AiModelPreference` to
+    `VisionModelPreference` (with a defensive `parseVisionPreference()`
+    fallback to GITHUB_GPT4O for stale/legacy event payloads, e.g. the old
+    "DEEPSEEK" value, which was never a real vision model anyway).
+    `getCureAdvice()`, `TreatmentServiceImpl.craftPlan()`, and
+    `fireDiseaseDescriptionGeneration()` all now branch on
+    `ReasoningModelPreference` between `deepSeekClient`/`ollamaClient` — added
+    `OllamaClient.generateCureAdvice()`/`generateDiseaseDescription()` (same
+    reuse-DeepSeekClient's-prompt-constant pattern as the pre-existing
+    `generateSpeciesEnrichment()`) to give Ollama parity. Species enrichment's
+    `AiModelPreference` parameter was deliberately left alone (no signature
+    change, avoids rippling through tests) — `resolveSpecies()` now just maps
+    the real `ReasoningModelPreference` onto it via a tiny
+    `toLegacyReasoningPreference()` helper instead of reading the stale field.
+    `TreatmentServiceImpl` gained `UserRepository`+`OllamaClient`
+    constructor dependencies (test file updated to match).
+- **4. PlantNet missing from the vision picker.** Was never actually deleted
+  backend-side (`PlantNetClient` is still a live `@Component`, still wired
+  into `runIdentification()`'s `PLANTNET` case) — T7.1 just narrowed the new
+  `VisionModelPreference` enum/picker to GITHUB_GPT4O/OLLAMA_LLAVA without
+  carrying it forward. Re-added `PLANTNET` to the backend enum, the frontend
+  `VisionModelPreference` type, and `model-selector.component.ts`'s
+  `VISION_OPTIONS` (tooltip notes it's species-ID-only — PlantNet's result
+  always sets `healthStatus: UNKNOWN` and has no care plan).
+- **5. "Start treatment plan" removed from the scan result, kept on Plant/
+  Species pages.** The button lives in the *shared* `care-card.component`
+  (used by the scan-result preview, Plant Detail's Care section, AND Species
+  Detail) — a blanket removal there would have silently removed it from the
+  other two pages too, which the user didn't ask for and which are the
+  Plant page's only "start a treatment" entry points outside its separate
+  Scans-tab CTA. Added `CarePlanComponent`/`CareCardComponent` `@Input()
+  showTreatmentCta = true` (default preserves existing behavior everywhere),
+  threaded through to the button's `*ngIf` and to skip the now-pointless
+  `checkActiveTreatment()` HTTP call when hidden; `preview-card.component.html`
+  (the scan-result page) is the only caller passing `[showTreatmentCta]="false"`.
+  "Add to care plan" (`disease-detail-panel.component`) is a separate
+  component, untouched, still on the scan-result page.
+- **Follow-up correction:** the scan-result "Start treatment plan" removal (item 5) was reverted
+  same-session — `preview-card.component.html` no longer passes `[showTreatmentCta]="false"`, so
+  the button is back on the scan-result care-card too. The `showTreatmentCta` `@Input` plumbing
+  itself was left in place (harmless default-`true`, no current caller sets it `false`) in case a
+  future ask is scoped more precisely.
+- **Follow-up bug found via live testing: cure-advice "powered by" badge always said DeepSeek,
+  even when Ollama actually generated it.** `IdentificationServiceImpl.addCareCard()` hardcoded
+  `actionPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name())` unconditionally — no way to know
+  which model the earlier `/cure-advice` call actually used. Fixed by threading it through end to
+  end: `CureAdviceResponse.reasoningModelUsed` (set from the real `ReasoningModelPreference` in
+  `getCureAdvice()`/`parseCureAdvice()`); `AddCareCardRequest.reasoningModelUsed` (nullable, falls
+  back to DEEPSEEK_R1 for older/direct API callers); `IdentificationService.addCareCard()` gained a
+  5th param; `DiseaseDetailPanelComponent.addToCarePlan()` passes its already-cached
+  `reasoningModelUsed` (the frontend's `getCureAdvice()` return type had `reasoningModelUsed?:
+  string | null` typed the whole time, just never populated backend-side until now). **Session
+  note:** this was built, reverted on user feedback ("you made it worse"), then explicitly
+  re-requested ("keep model used to generate description") and re-applied unchanged in the same
+  session — the revert wasn't about this fix being wrong, just a moment of back-and-forth: keep
+  this fix as a real, intentional fix in any future session, not as one in question.
+- **Root cause of the "revert" confusion, found via live testing: cure advice showing raw JSON
+  instead of clean text, only for Ollama.** Ollama/llava-phi3 doesn't reliably emit the single
+  combined JSON object `CURE_ADVICE_SYSTEM_PROMPT` asks for — observed emitting TWO sibling
+  top-level objects back to back instead: `{"advice":"..."}{"actionPlan":{...}}}`. GitHub
+  Models/DeepSeek-R1 always emits the correct single-object shape, so this was never hit before
+  the reasoning-preference wiring above made Ollama actually reachable for cure advice — it's a
+  latent bug this session's other fix exposed, not something the model-badge fix itself caused
+  (the user's "abort" request named the wrong commit; the actual regression was the JSON shape).
+  `objectMapper.readValue(raw, CureAdviceJson.class)` throws on that shape, and the existing
+  fallback dumped the still-JSON-ish raw text as "advice" — ugly and exactly what was reported.
+  Fix: new `com.plantpal.identification.util.LenientJsonParser.mergeConcatenatedObjects()` —
+  reads a SEQUENCE of root-level JSON values from the raw text via
+  `objectMapper.readValues(parser, JsonNode.class)` (a real Jackson feature for exactly this:
+  multiple concatenated top-level values) and merges their fields into one node. Wired into both
+  `IdentificationServiceImpl.parseCureAdvice()` (cure-advice display) AND
+  `TreatmentServiceImpl.parseActionPlan()` (craft-plan) — same prompt, same vulnerability, same
+  fix, both call sites can now route to Ollama. Only engages on the existing
+  `JsonProcessingException` catch path (zero behavior change for the normal single-object case);
+  if the merge itself fails to produce a parseable result, both call sites fall back to their
+  original behavior unchanged (raw text / null actionPlan).
+- **Bonus: species list images.** `SpeciesSummaryDto.imageUrl` only ever came
+  from AI enrichment (`Species.imageUrl`, frequently null). `SpeciesServiceImpl
+  .toSummary()` now falls back to the first non-null `photoUrl` among that
+  species' plants — zero new queries, the plant list was already batch-fetched
+  for health/count. Scoped to `/species/mine` only (already viewer-owned, no
+  cross-user query/privacy question); `/species/{id}` (the public single-
+  species endpoint) still shows only the species' own `imageUrl` if a future
+  session wants the same treatment there.
 
 ## Current Phase
 **Phases 0–4, 6, and 7 are now fully shipped, plus a pre-Phase-5 cleanup pass

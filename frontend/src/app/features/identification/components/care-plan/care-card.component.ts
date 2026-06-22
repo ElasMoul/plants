@@ -36,6 +36,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() plantId: number | null = null;
   @Input() identificationId: number | null = null;
   @Input() existingCareTypes: CareType[] = [];
+  @Input() showTreatmentCta = true;
 
   expanded = false;
   detailList: ParsedDetail | null = null;
@@ -67,7 +68,11 @@ export class CareCardComponent implements OnChanges, OnDestroy {
       this.reminderAlreadyExisted = alreadyExists;
       this.reminderSet = alreadyExists;
     }
-    if ((changes['card'] || changes['plantId']) && this.card?.actionPlan?.type === 'TREATMENT') {
+    if (
+      this.showTreatmentCta &&
+      (changes['card'] || changes['plantId']) &&
+      this.card?.actionPlan?.type === 'TREATMENT'
+    ) {
       this.checkActiveTreatment();
     }
   }

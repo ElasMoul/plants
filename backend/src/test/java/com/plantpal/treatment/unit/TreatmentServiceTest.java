@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.TreatmentStepDto;
 import com.plantpal.plant.entity.Plant;
@@ -26,6 +27,7 @@ import com.plantpal.treatment.entity.Treatment;
 import com.plantpal.treatment.entity.TreatmentStatus;
 import com.plantpal.treatment.repository.TreatmentRepository;
 import com.plantpal.treatment.service.impl.TreatmentServiceImpl;
+import com.plantpal.user.repository.UserRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +51,8 @@ class TreatmentServiceTest {
   @Mock private PlantRepository plantRepository;
   @Mock private TreatmentPlanService treatmentPlanService;
   @Mock private DeepSeekClient deepSeekClient;
+  @Mock private OllamaClient ollamaClient;
+  @Mock private UserRepository userRepository;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   private TreatmentServiceImpl treatmentService;
@@ -72,6 +76,8 @@ class TreatmentServiceTest {
             plantRepository,
             treatmentPlanService,
             deepSeekClient,
+            ollamaClient,
+            userRepository,
             objectMapper,
             Runnable::run);
   }

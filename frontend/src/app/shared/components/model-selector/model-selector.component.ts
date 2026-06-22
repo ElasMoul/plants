@@ -14,8 +14,9 @@ interface ModelOption<T extends string> {
 }
 
 const VISION_OPTIONS: ModelOption<VisionModelPreference>[] = [
-  { value: 'GITHUB_GPT4O', label: 'GPT-4o',  icon: 'smart_toy',  tooltip: '~50 vision calls/day on free tier' },
-  { value: 'OLLAMA_LLAVA', label: 'Ollama',  icon: 'computer',   tooltip: 'Fully local — no API quota' },
+  { value: 'GITHUB_GPT4O', label: 'GPT-4o',   icon: 'smart_toy',  tooltip: '~50 vision calls/day on free tier' },
+  { value: 'OLLAMA_LLAVA', label: 'Ollama',   icon: 'computer',   tooltip: 'Fully local — no API quota' },
+  { value: 'PLANTNET',     label: 'PlantNet', icon: 'eco',        tooltip: 'Plant-only identification, no health/care plan' },
 ];
 
 const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [

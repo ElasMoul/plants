@@ -143,6 +143,34 @@ public class OllamaClient {
     return DeepSeekClient.stripThinkTags(chat(prompt));
   }
 
+  /**
+   * Local-model equivalent of {@link DeepSeekClient#generateCureAdvice}, used when the triggering
+   * user's ReasoningModelPreference is OLLAMA_LLAVA. Same reuse-the-prompt-constant approach as
+   * {@link #generateSpeciesEnrichment}.
+   */
+  public String generateCureAdvice(String species, String regionLabel) {
+    String effectiveSpecies = species != null ? species : "Unknown plant";
+    String userMessage =
+        "My "
+            + effectiveSpecies
+            + " has the following issue: "
+            + regionLabel
+            + ". Provide a concise cure procedure in 3-5 numbered steps.";
+    String prompt = DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT + "\n\n" + userMessage;
+    return DeepSeekClient.stripThinkTags(chat(prompt));
+  }
+
+  /**
+   * Local-model equivalent of {@link DeepSeekClient#generateDiseaseDescription}, used when the
+   * triggering user's ReasoningModelPreference is OLLAMA_LLAVA.
+   */
+  public String generateDiseaseDescription(String species, String diseaseName) {
+    String effectiveSpecies = species != null ? species : "Unknown plant";
+    String userMessage = "Plant: " + effectiveSpecies + "\nDisease/pest issue: " + diseaseName;
+    String prompt = DeepSeekClient.DISEASE_DESCRIPTION_SYSTEM_PROMPT + "\n\n" + userMessage;
+    return DeepSeekClient.stripThinkTags(chat(prompt));
+  }
+
   public String identifyPlant(byte[] imageBytes, String mediaType) {
     String base64 =
         Base64.getEncoder()

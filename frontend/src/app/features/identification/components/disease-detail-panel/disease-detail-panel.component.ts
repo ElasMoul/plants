@@ -125,7 +125,13 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
     this.addingToPlan = true;
 
     this.identificationService
-      .addCareCard(this.identificationId, this.region.label, this.advice, this.actionPlan)
+      .addCareCard(
+        this.identificationId,
+        this.region.label,
+        this.advice,
+        this.actionPlan,
+        this.reasoningModelUsed,
+      )
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: plan => {

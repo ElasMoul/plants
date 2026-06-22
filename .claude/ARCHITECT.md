@@ -48,8 +48,9 @@ plus one stranded manual item (T3.3 — on-device push/PWA testing). See
   - Config: `github.base-url`, `github.token`, `github.models.identification-model`, `github.models.annotation-model`
   - HTTP/2 required (JdkClientHttpRequestFactory, 5-min read timeout)
   - Owns PLANT_IDENTIFICATION_SYSTEM_PROMPT and ANNOTATION_SYSTEM_PROMPT (package-private static)
-- **DeepSeekClient** — text-only tasks: care plan (DeepSeek-R1), cure advice (DeepSeek-R1),
-  disease description (DeepSeek-R1, used by Treatment), species enrichment (DeepSeek-R1)
+- **DeepSeekClient** — text-only tasks: care plan (DeepSeek-R1, currently unused — see below),
+  cure advice (DeepSeek-R1), disease description (DeepSeek-R1, used by Treatment), species
+  enrichment (DeepSeek-R1)
   - Config: `github.base-url`, `github.token`, `deepseek.model` (same endpoint, different model)
   - Owns `stripThinkTags()` (package-private static) — called by DeepSeekClient,
     GitHubModelsClient, and OllamaClient
@@ -57,12 +58,71 @@ plus one stranded manual item (T3.3 — on-device push/PWA testing). See
   - One AI client class per *modality* (vision vs. text), not one per feature — new
     text-only AI features (disease description, species enrichment) were added as new
     methods on the existing DeepSeekClient rather than new client classes
-- **OllamaClient** — local dev identification (llava-phi3); also annotation fallback
+  - **`generateCarePlan()` is dead code** — the single gpt-4o vision call already returns
+    `care_plan` inline (see the Plant identification response shape in CLAUDE.md), so nothing
+    calls this method. Don't assume it's load-bearing just because it exists.
+  - **429 handling (added post-T7.1):** every method funnels its `RestClientResponseException`
+    catch through a shared `toServiceException()` — a 429 specifically becomes a
+    `RateLimitException` with a real `retryAfterSeconds` (parsed from the `Retry-After` header,
+    falling back to a "wait N seconds" regex match against the error body, falling back to a
+    60s default), everything else stays a generic 503. Upstream (GitHub Models/Azure) enforces a
+    hard **1 DeepSeek-R1 call per 60s per user per model** cap independent of our own Bucket4j
+    limits — two DeepSeek-R1 calls for the same user within ~60s of each other (e.g. Treatment's
+    disease-description fire-and-forget immediately followed by a user clicking "Craft Treatment
+    Plan") WILL collide with this. Any new DeepSeek-R1 call site should expect 429s under normal
+    use, not just abuse, and should either reuse `toServiceException()`'s classification or accept
+    its `RateLimitException` propagating to `GlobalExceptionHandler` as-is — never re-launder it
+    back into a generic 503.
+- **OllamaClient** — local dev identification (llava-phi3) + annotation fallback; ALSO now has
+  text-completion parity for `generateSpeciesEnrichment()`/`generateCureAdvice()`/
+  `generateDiseaseDescription()` (each: concatenate the matching `DeepSeekClient.*_SYSTEM_PROMPT`
+  constant — package-private, same package — with the user message, call `chat()`, run through
+  `DeepSeekClient.stripThinkTags()`). `generateCarePlan`/`detectDuplicateCareCards` have no Ollama
+  equivalent (the first is dead code per above, the second is an internal background dedup check
+  the user never sees the model for, deliberately left DeepSeek-only).
   - Calls ImageUtil.resizeAndConvertToJpeg(bytes, 1024) before base64 — llava-phi3 rejects high-res
   - Uses /api/generate (NOT /api/chat) for vision calls — images at top level, not in message content
-  - On PlantPalException: IdentificationServiceImpl falls back to GitHubModelsClient
+  - **No silent cross-model fallback** (removed T7.1) — `IdentificationServiceImpl` no longer
+    falls back from Ollama to GitHubModels on failure; an Ollama failure now genuinely fails.
 - **DeepSeekAnnotationClient** (@Primary VisionAnnotationClient)
-  - Calls GitHubModelsClient.analyzeRegions(); 2-attempt retry on GOAWAY; 429 → OllamaClient fallback
+  - Calls GitHubModelsClient.analyzeRegions(); 2-attempt retry on GOAWAY only — a 429 is NOT
+    retried, it's rethrown immediately as a 429 `PlantPalException`. Don't confuse this with
+    DeepSeekClient's 429 handling above; they're different exception shapes (this one isn't a
+    `RateLimitException`, has no `retryAfterSeconds`) and were never unified — flagged here so a
+    future cleanup pass doesn't assume they already match.
+
+### Vision/Reasoning Model Preference — now load-bearing (closed a T7.1 gap)
+T7.1 (2026-06-22) split the single `AiModelPreference` into `VisionModelPreference`
+(`GITHUB_GPT4O`/`OLLAMA_LLAVA`/`PLANTNET`) and `ReasoningModelPreference`
+(`DEEPSEEK_R1`/`OLLAMA_LLAVA`) on `User`, and T7.2 shipped a picker UI for them — but T7.1
+explicitly left both fields storage-only ("no service yet actually reads
+visionModelPreference/reasoningModelPreference to pick a client"). A same-day follow-up session
+closed that gap:
+- `IdentificationServiceImpl.loadVisionPreference(userId)` drives `runIdentification()`'s vision
+  client choice (replacing the legacy `AiModelPreference`-driven switch). The Kafka event still
+  carries the choice in a field literally named `aiModelPreference` (deliberately NOT renamed —
+  large test blast radius for zero behavioral gain since the enum constant names are identical
+  strings) but the VALUE now comes from `VisionModelPreference`, parsed defensively
+  (`parseVisionPreference()` falls back to `GITHUB_GPT4O` on any unparseable/legacy string —
+  protects against stale enqueued Kafka messages from before this deployment).
+- `IdentificationServiceImpl.loadReasoningPreference(userId)` now drives `getCureAdvice()`;
+  `TreatmentServiceImpl` gained the same helper (plus `UserRepository`+`OllamaClient`
+  constructor deps) driving `craftPlan()`'s cure-advice call and the disease-description
+  fire-and-forget call.
+- Species enrichment (`SpeciesEnrichmentServiceImpl.enrich()`) deliberately KEPT its
+  `AiModelPreference`-typed parameter rather than being migrated to `ReasoningModelPreference` —
+  changing that interface's signature would ripple through `SpeciesService.findOrCreate()` and
+  multiple test files for no real benefit, since the two enums only ever differ on the
+  OLLAMA_LLAVA-vs-everything-else axis for this one call site. `IdentificationServiceImpl
+  .resolveSpecies()` now maps the real reasoning preference onto the legacy enum via a small
+  `toLegacyReasoningPreference()` helper instead of reading the stale stored field. **Pattern for
+  next time:** when a real preference needs to reach code that still types against the
+  deprecated enum, map at the call site rather than cascading a signature change through an
+  interface + all its implementers + their tests.
+- PlantNet was never deleted backend-side — it was simply left out of the new
+  `VisionModelPreference` enum/picker. If a future cleanup removes `PlantNetClient` for real,
+  remove `PLANTNET` from `VisionModelPreference` (both backend enum and frontend type) and the
+  `model-selector` option at the same time — don't let only one side drift.
 
 ### Kafka Async Identification Pattern
 ```
@@ -220,6 +280,22 @@ caller has loaded, and `ReminderModule`/`TreatmentModule` are independent lazy m
 need it. **Pattern for next time:** when a second lazy module needs a component/dialog only one
 other lazy module currently owns, move it to `SharedModule` rather than duplicating it — two
 consumers justifies extraction (same call made for `health-badge.util.ts`).
+
+### Angular pattern: gate a feature in a shared component via @Input, don't fork it
+`CareCardComponent` (`features/identification/components/care-plan/`) is rendered by THREE
+different pages through `CarePlanComponent`: the scan-result preview (`preview-card.component`),
+the Plant Detail page's Care section, and Species Detail. When the scan-result page needed its
+"Start treatment plan" CTA removed while the other two kept it, the fix was an `@Input()
+showTreatmentCta = true` on both `CarePlanComponent` and `CareCardComponent` (default `true`
+preserves the other two pages untouched), threaded down and gating both the button's `*ngIf` AND
+the now-pointless `checkActiveTreatment()` HTTP call when hidden — only
+`preview-card.component.html` passes `[showTreatmentCta]="false"`. Same instinct as
+`PhotoUploadComponent`'s `lockedPlantId`/`lockedSpeciesId` (gate behavior by an explicit context
+input, not by which page happens to be the caller) — and the inverse move from "Shared
+TreatmentStepListComponent" above: that section is about extracting a NEW shared component when
+2+ consumers need identical UI; this is about NOT forking an EXISTING shared component when only
+some consumers want to suppress one feature of it. Reach for a boolean `@Input` first before
+duplicating a component over a single feature's visibility.
 
 ### Angular pattern: sticky-on-scroll header + icon button bar
 Used by the Plant page and the Treatment page — the precedent for any future "detail" page that

@@ -95,10 +95,11 @@ export class IdentificationService {
     regionLabel: string,
     adviceText: string,
     actionPlan?: ActionPlanDto | null,
+    reasoningModelUsed?: string | null,
   ): Observable<CarePlanDto> {
     return this.http.post<ApiResponse<CarePlanDto>>(
       `${this.baseUrl}/${identificationId}/care-plan/cards`,
-      { regionLabel, adviceText, actionPlan: actionPlan ?? null },
+      { regionLabel, adviceText, actionPlan: actionPlan ?? null, reasoningModelUsed: reasoningModelUsed ?? null },
     ).pipe(map(res => res.data));
   }
 

@@ -13,4 +13,5 @@ public class CureAdviceResponse {
 
   private String advice;
   private ActionPlanDto actionPlan;
+  private String reasoningModelUsed;
 }

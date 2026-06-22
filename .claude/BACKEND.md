@@ -37,7 +37,7 @@ a diary.
 | DeepSeekClient (model) | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment | GitHub Models |
 | DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt same-client retry on GOAWAY/EOF only — no cross-model fallback (removed in T7.1) | GitHub Models |
 | OllamaClient | llava-phi3 | OLLAMA_LLAVA identification/annotation preference (no longer an automatic fallback target — T7.1) | localhost:11434 |
-| PlantNetAnnotationClient / PlantNetClient | — | Non-primary fallback; dead-code cleanup candidate (see Open Items) | plantnet.org |
+| PlantNetAnnotationClient / PlantNetClient | — | PlantNetClient: live `VisionModelPreference.PLANTNET` choice, selectable in the model picker again (restored 2026-06-22, was never actually deleted — just dropped from the picker by T7.1). PlantNetAnnotationClient: still non-primary, effectively unreachable | plantnet.org |
 
 See ARCHITECT.md's "AI Client Architecture" for why the split is vision-client vs.
 text-client rather than one-client-per-feature, and the `stripThinkTags()` /
@@ -438,9 +438,10 @@ them one at a time, don't batch.
   wired into `verify` (see Test Inventory above) — raise further only once
   that's solved.
 - **GITHUB_TOKEN must be rotated before prod** — was shared in chat sessions during dev
-- PlantNetClient + plantnet/ DTOs are effectively dead code (only reachable via the
-  non-primary PlantNetAnnotationClient fallback, or the PLANTNET preference) —
-  cleanup candidate, not urgent
+- PlantNetClient is live again (not dead code) — restored to `VisionModelPreference` and the
+  model-selector picker 2026-06-22 (see STATE.md/ARCHITECT.md). `PlantNetAnnotationClient`
+  (the non-primary annotation fallback) remains effectively unreachable — still a real cleanup
+  candidate if its dual-use with PlantNetClient ever gets disentangled.
 - GitHub Models rate limits: ~50 gpt-4o vision calls/day. Since T7.1, a 429 on
   annotation or identification always bubbles to the user as a structured
   `RateLimitException`/429 (with `retryAfterSeconds`) — no automatic
