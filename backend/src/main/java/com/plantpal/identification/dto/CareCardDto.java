@@ -21,4 +21,9 @@ public class CareCardDto {
   private String urgency;
   private String seasonalVariation;
   private ActionPlanDto actionPlan;
+
+  // Which reasoning model generated actionPlan, when it came from a standalone regeneration
+  // (e.g. addCareCard()'s cure-advice flow) rather than the original vision call. Null for cards
+  // whose actionPlan (if any) was part of the identification response.
+  private String actionPlanModel;
 }

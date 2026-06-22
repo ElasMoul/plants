@@ -49,10 +49,22 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "status", nullable = false, length = 20)
   private UserStatus status;
 
+  // Deprecated — superseded by visionModelPreference/reasoningModelPreference below.
+  // Kept (not dropped) so existing callers aren't broken in this phase.
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(name = "ai_model_preference", nullable = false, length = 50)
   private AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "vision_model_preference", nullable = false, length = 30)
+  private VisionModelPreference visionModelPreference = VisionModelPreference.GITHUB_GPT4O;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "reasoning_model_preference", nullable = false, length = 30)
+  private ReasoningModelPreference reasoningModelPreference = ReasoningModelPreference.DEEPSEEK_R1;
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {

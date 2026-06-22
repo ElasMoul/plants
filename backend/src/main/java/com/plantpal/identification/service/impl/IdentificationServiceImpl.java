@@ -43,6 +43,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
@@ -51,9 +52,11 @@ import com.plantpal.species.entity.Species;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesService;
 import com.plantpal.user.entity.AiModelPreference;
+import com.plantpal.user.entity.ReasoningModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -187,8 +190,11 @@ public class IdentificationServiceImpl implements IdentificationService {
     log.info("Identification submitted: id={}, userId={}", identification.getId(), userId);
 
     // Step 3: Rate-limit check before publishing — fail fast, no wasted Kafka message
-    if (!consumeRateLimit(userId)) {
-      throw new PlantPalException("AI identification rate limit reached — try again later", 429);
+    ConsumptionProbe rateLimitProbe = consumeRateLimit(userId);
+    if (!rateLimitProbe.isConsumed()) {
+      throw new RateLimitException(
+          "AI identification rate limit reached — try again later",
+          retryAfterSeconds(rateLimitProbe));
     }
 
     // Step 4: Publish event for async processing by the Kafka consumer
@@ -259,6 +265,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
       CarePlanDto carePlan =
           result.getCarePlan() != null ? result.getCarePlan() : fallbackCarePlan();
+      carePlan.setGeneratedByModel(outcome.providerUsed());
       normalizeActionPlans(carePlan);
 
       // Persist completed identification
@@ -348,8 +355,11 @@ public class IdentificationServiceImpl implements IdentificationService {
     if (!identification.getUserId().equals(userId)) {
       throw new ResourceNotFoundException("Identification not found");
     }
-    if (!consumeCureRateLimit(userId)) {
-      throw new PlantPalException("Cure advice rate limit reached — try again later", 429);
+    ConsumptionProbe cureRateLimitProbe = consumeCureRateLimit(userId);
+    if (!cureRateLimitProbe.isConsumed()) {
+      throw new RateLimitException(
+          "Cure advice rate limit reached — try again later",
+          retryAfterSeconds(cureRateLimitProbe));
     }
     String raw = deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
     return CompletableFuture.completedFuture(parseCureAdvice(raw));
@@ -380,6 +390,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               .detail(req.getAdviceText())
               .urgency("HIGH")
               .actionPlan(ActionPlanValidator.normalize(req.getActionPlan()))
+              .actionPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name())
               .build());
       plan.setCareCards(careCards);
       identification.setCarePlan(serializeToJson(plan));
@@ -768,7 +779,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     log.info("Auto-created reminders from care plan: plantId={}, userId={}", plantId, userId);
   }
 
-  private boolean consumeRateLimit(Long userId) {
+  private ConsumptionProbe consumeRateLimit(Long userId) {
     Bucket bucket =
         deepSeekBuckets.computeIfAbsent(
             userId,
@@ -780,10 +791,10 @@ public class IdentificationServiceImpl implements IdentificationService {
                             .refillIntervally(DEEPSEEK_RATE_LIMIT, Duration.ofHours(1))
                             .build())
                     .build());
-    return bucket.tryConsume(1);
+    return bucket.tryConsumeAndReturnRemaining(1);
   }
 
-  private boolean consumeCureRateLimit(Long userId) {
+  private ConsumptionProbe consumeCureRateLimit(Long userId) {
     Bucket bucket =
         cureAdviceBuckets.computeIfAbsent(
             userId,
@@ -795,7 +806,11 @@ public class IdentificationServiceImpl implements IdentificationService {
                             .refillIntervally(CURE_ADVICE_RATE_LIMIT, Duration.ofHours(1))
                             .build())
                     .build());
-    return bucket.tryConsume(1);
+    return bucket.tryConsumeAndReturnRemaining(1);
+  }
+
+  private static long retryAfterSeconds(ConsumptionProbe probe) {
+    return Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds();
   }
 
   private AiModelPreference loadUserPreference(Long userId) {
@@ -805,11 +820,7 @@ public class IdentificationServiceImpl implements IdentificationService {
         .orElse(AiModelPreference.DEEPSEEK);
   }
 
-  /**
-   * rawJson is the AI response; providerUsed is the model that actually served the request — may
-   * differ from the requested {@link AiModelPreference} when a fallback kicks in (e.g. OLLAMA_LLAVA
-   * failing over to GITHUB_GPT4O).
-   */
+  /** rawJson is the AI response; providerUsed is the model that actually served the request. */
   private record IdentificationOutcome(String rawJson, String providerUsed) {}
 
   private IdentificationOutcome runIdentification(
@@ -822,19 +833,10 @@ public class IdentificationServiceImpl implements IdentificationService {
                       List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                       organs != null ? organs : List.of("auto"))),
               AiModelPreference.PLANTNET.name());
-      case OLLAMA_LLAVA -> {
-        try {
-          yield new IdentificationOutcome(
+      case OLLAMA_LLAVA ->
+          new IdentificationOutcome(
               ollamaClient.identifyPlant(imageBytes, mediaType),
               AiModelPreference.OLLAMA_LLAVA.name());
-        } catch (PlantPalException e) {
-          log.warn(
-              "Ollama identification failed ({}), falling back to GitHubModels", e.getMessage());
-          yield new IdentificationOutcome(
-              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
-              AiModelPreference.GITHUB_GPT4O.name());
-        }
-      }
       case GITHUB_GPT4O ->
           new IdentificationOutcome(
               gitHubModelsClient.identifyPlant(imageBytes, mediaType),

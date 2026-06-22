@@ -52,6 +52,12 @@ public class Treatment {
   @Column(name = "disease_description", columnDefinition = "TEXT")
   private String diseaseDescription;
 
+  @Column(name = "disease_description_model", length = 30)
+  private String diseaseDescriptionModel;
+
+  @Column(name = "treatment_plan_model", length = 30)
+  private String treatmentPlanModel;
+
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)

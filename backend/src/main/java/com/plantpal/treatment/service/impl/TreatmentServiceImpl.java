@@ -9,6 +9,7 @@ import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.service.TreatmentPlanService;
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.treatment.dto.CreateTreatmentRequest;
@@ -17,8 +18,10 @@ import com.plantpal.treatment.entity.Treatment;
 import com.plantpal.treatment.entity.TreatmentStatus;
 import com.plantpal.treatment.repository.TreatmentRepository;
 import com.plantpal.treatment.service.TreatmentService;
+import com.plantpal.user.entity.ReasoningModelPreference;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.ConsumptionProbe;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -114,6 +117,11 @@ public class TreatmentServiceImpl implements TreatmentService {
     if (treatment.getStatus() != TreatmentStatus.DRAFT) {
       throw new ValidationException("Treatment plan can only be crafted from DRAFT status");
     }
+    ConsumptionProbe rateLimitProbe = consumeAiRateLimit(userId);
+    if (!rateLimitProbe.isConsumed()) {
+      throw new RateLimitException(
+          "Treatment AI rate limit reached — try again later", retryAfterSeconds(rateLimitProbe));
+    }
     Plant plant =
         plantRepository
             .findByIdAndUserId(treatment.getPlantId(), userId)
@@ -128,6 +136,7 @@ public class TreatmentServiceImpl implements TreatmentService {
             plant.getId(), userId, treatment.getDiseaseName(), DISEASE_CARE_CARD_TYPE, actionPlan);
 
     treatment.setTreatmentPlanId(plan.getId());
+    treatment.setTreatmentPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name());
     treatment.setStatus(TreatmentStatus.IN_PROGRESS);
     treatment.setStartedAt(Instant.now());
     treatment = treatmentRepository.save(treatment);
@@ -251,7 +260,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   private void fireDiseaseDescriptionGeneration(
       Long treatmentId, Plant plant, String diseaseName, Long userId) {
-    if (!consumeAiRateLimit(userId)) {
+    if (!consumeAiRateLimit(userId).isConsumed()) {
       log.warn(
           "Treatment AI rate limit reached, skipping disease description: treatmentId={},"
               + " userId={}",
@@ -273,6 +282,7 @@ public class TreatmentServiceImpl implements TreatmentService {
           .ifPresent(
               t -> {
                 t.setDiseaseDescription(description);
+                t.setDiseaseDescriptionModel(ReasoningModelPreference.DEEPSEEK_R1.name());
                 treatmentRepository.save(t);
                 log.info("Disease description saved: treatmentId={}", treatmentId);
               });
@@ -294,7 +304,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
   }
 
-  private boolean consumeAiRateLimit(Long userId) {
+  private ConsumptionProbe consumeAiRateLimit(Long userId) {
     Bucket bucket =
         aiBuckets.computeIfAbsent(
             userId,
@@ -306,7 +316,11 @@ public class TreatmentServiceImpl implements TreatmentService {
                             .refillIntervally(TREATMENT_AI_RATE_LIMIT, Duration.ofHours(1))
                             .build())
                     .build());
-    return bucket.tryConsume(1);
+    return bucket.tryConsumeAndReturnRemaining(1);
+  }
+
+  private static long retryAfterSeconds(ConsumptionProbe probe) {
+    return Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds();
   }
 
   private TreatmentResponse toResponse(Treatment treatment) {
@@ -316,6 +330,8 @@ public class TreatmentServiceImpl implements TreatmentService {
         .identificationId(treatment.getIdentificationId())
         .diseaseName(treatment.getDiseaseName())
         .diseaseDescription(treatment.getDiseaseDescription())
+        .diseaseDescriptionModel(treatment.getDiseaseDescriptionModel())
+        .treatmentPlanModel(treatment.getTreatmentPlanModel())
         .status(treatment.getStatus())
         .treatmentPlanId(treatment.getTreatmentPlanId())
         .startedAt(treatment.getStartedAt())

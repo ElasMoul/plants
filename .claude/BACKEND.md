@@ -21,9 +21,10 @@ OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
 ## Current Status
 **Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
-(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 5
-(Launch prep) is next** — see TASK_PLAN.md for the full task breakdown (prod
-config, performance, security hardening, API docs, deploy). Full
+(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
+backend task (T7.1, `feature/PP-039-model-control-backend`) is also shipped —
+see below. Phase 5 (Launch prep) and Phase 7's remaining frontend tasks
+(T7.2–T7.4) are next** — see TASK_PLAN.md for the full task breakdown. Full
 session-by-session history of how Phases 0–6 were built lives in STATE.md and
 git log, not here — this file is a durable reference to what exists *now*, not
 a diary.
@@ -34,8 +35,8 @@ a diary.
 | GitHubModelsClient (identificationModel) | gpt-4o | Plant photo identification + health + care plan incl. actionPlan (single call) | GitHub Models |
 | GitHubModelsClient (annotationModel) | gpt-4o-mini | Polygon annotation regions | GitHub Models |
 | DeepSeekClient (model) | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment | GitHub Models |
-| DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt retry on EOF, falls back to OllamaClient on 429 | GitHub Models |
-| OllamaClient | llava-phi3 | (1) OLLAMA_LLAVA identification preference (2) annotation 429 fallback | localhost:11434 |
+| DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt same-client retry on GOAWAY/EOF only — no cross-model fallback (removed in T7.1) | GitHub Models |
+| OllamaClient | llava-phi3 | OLLAMA_LLAVA identification/annotation preference (no longer an automatic fallback target — T7.1) | localhost:11434 |
 | PlantNetAnnotationClient / PlantNetClient | — | Non-primary fallback; dead-code cleanup candidate (see Open Items) | plantnet.org |
 
 See ARCHITECT.md's "AI Client Architecture" for why the split is vision-client vs.
@@ -43,6 +44,60 @@ text-client rather than one-client-per-feature, and the `stripThinkTags()` /
 HTTP-2 / rate-limit details. Auth for both Azure-backed clients:
 `Authorization: Bearer <GITHUB_TOKEN>` — **rotate this before going to prod**, it
 was shared in chat sessions during development (Phase 5 / T5.3 item).
+
+## T7.1 — Model control + structured AI errors (2026-06-22, `feature/PP-039-model-control-backend`)
+- **Vision/reasoning preference split**: `users` gained `vision_model_preference`
+  (`VisionModelPreference{GITHUB_GPT4O,OLLAMA_LLAVA}`) and
+  `reasoning_model_preference` (`ReasoningModelPreference{DEEPSEEK_R1,OLLAMA_LLAVA}`)
+  columns (migration 021, backfilled from the old `ai_model_preference`). The old
+  enum/column/DTO field are kept (deprecated, not dropped) — additive this phase,
+  nothing currently reads the two new fields end-to-end yet (no service threads
+  `VisionModelPreference`/`ReasoningModelPreference` into AI calls; that's the
+  next increment once T7.2's frontend picker exists). `UserPreferencesRequest`'s
+  two new fields are nullable — omitting them leaves the stored preference
+  untouched, so old frontend callers don't break.
+- **Model fallback removed**: `IdentificationServiceImpl.runIdentification()`'s
+  OLLAMA_LLAVA→GITHUB_GPT4O catch-and-retry is gone — Ollama failures now mark
+  the identification FAILED and propagate the real error.
+  `DeepSeekAnnotationClient` no longer falls back to `OllamaClient` on a 429 or
+  swallows exhausted retries into `EMPTY_REGIONS` — it now throws
+  `PlantPalException` (429 or 500). The 2-attempt same-client retry for
+  GOAWAY/EOF connection resets is unchanged (that's resilience, not model
+  substitution).
+- **`GlobalExceptionHandler.handlePlantPal()`** now does
+  `HttpStatus.resolve(ex.getErrorCode())` instead of hardcoding 500 — existing
+  429s (identification rate limit, cure-advice rate limit) now actually reach
+  the frontend as 429.
+- **`RateLimitException extends PlantPalException`** carries `retryAfterSeconds`
+  (computed via Bucket4j's `tryConsumeAndReturnRemaining`/`ConsumptionProbe`,
+  not `tryConsume`). `ApiResponse` gained a `retryAfterSeconds` field;
+  `GlobalExceptionHandler.handleRateLimit()` (matched before the generic
+  `PlantPalException` handler) also sets a `Retry-After` response header. Wired
+  at three sites: `IdentificationServiceImpl.submitIdentification()`,
+  `IdentificationServiceImpl.getCureAdvice()`, and
+  `TreatmentServiceImpl.craftPlan()` (which previously had **no** rate limit at
+  all on its synchronous `deepSeekClient.generateCureAdvice()` call — now uses
+  the existing `aiBuckets`/`TREATMENT_AI_RATE_LIMIT`). The disease-description
+  fire-and-forget path in `TreatmentServiceImpl.fireDiseaseDescriptionGeneration()`
+  deliberately still degrades to a logged skip rather than throwing — it runs
+  synchronously inside `createTreatment()` and throwing there would block
+  treatment creation for a background enrichment call.
+- **Model-usage tracking fields** (migration 022 adds
+  `treatments.disease_description_model`/`treatment_plan_model` and
+  `species.enrichment_model`): `CarePlanDto.generatedByModel` (vision model used,
+  set in `processIdentification()`), `CareCardDto.actionPlanModel` (set only in
+  `addCareCard()`, since that's the one path where a card's actionPlan comes
+  from a standalone reasoning-model regeneration rather than the original
+  vision call), `TreatmentResponse.diseaseDescriptionModel`/`treatmentPlanModel`,
+  `SpeciesResponse.enrichmentModel` (auto-mapped by `SpeciesMapper`, no
+  `@Mapping` override needed — field names match). All currently hardcode
+  `ReasoningModelPreference.DEEPSEEK_R1`/`OLLAMA_LLAVA` based on which client
+  was actually called, since none of these call sites take a per-user
+  reasoning-model preference parameter yet.
+- `IdentificationServiceImplTest.shouldPersistFallbackAiModelUsed` rewritten to
+  `shouldMarkFailedWithoutFallbackWhenOllamaFails` — it had been asserting the
+  now-removed fallback behavior.
+- 198/198 unit tests pass; `mvn spotless:apply` clean.
 
 ## Non-Negotiable Conventions
 - Constructor injection only. Never @Autowired on fields.
@@ -331,9 +386,16 @@ repository/UserRepository, service/UserService(+Impl), controller/AuthController
 020_add_species_care_cards.sql           species.care_cards TEXT (nullable JSON,
                                           same storage pattern as
                                           identifications.care_plan)
+021_split_ai_model_preference.sql        users.vision_model_preference /
+                                          reasoning_model_preference, backfilled
+                                          from the old ai_model_preference (kept,
+                                          deprecated, not dropped)
+022_add_ai_model_usage_tracking.sql      treatments.disease_description_model /
+                                          treatment_plan_model;
+                                          species.enrichment_model
 ```
-All 20 applied, in exactly this XML-listed order in db.changelog-master.xml
-(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #021).
+All 22 applied, in exactly this XML-listed order in db.changelog-master.xml
+(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #023).
 
 ## Test Inventory
 Full unit suite: 198/198 passing as of the pre-Phase-5 cleanup pass (checkstyle
@@ -379,11 +441,18 @@ them one at a time, don't batch.
 - PlantNetClient + plantnet/ DTOs are effectively dead code (only reachable via the
   non-primary PlantNetAnnotationClient fallback, or the PLANTNET preference) —
   cleanup candidate, not urgent
-- GitHub Models rate limits: ~50 gpt-4o vision calls/day. 429 on annotation →
-  Ollama fallback; 429 on identification → PlantPalException(429) bubbles to the
-  user, no automatic fallback at that layer
+- GitHub Models rate limits: ~50 gpt-4o vision calls/day. Since T7.1, a 429 on
+  annotation or identification always bubbles to the user as a structured
+  `RateLimitException`/429 (with `retryAfterSeconds`) — no automatic
+  cross-model fallback anywhere in the identification pipeline anymore.
 - Kafka/Zookeeper has no production hosting decision yet — needed before T5.5
   (managed add-on, or fall back to synchronous identification for v1.0.0)
+- T7.1's `VisionModelPreference`/`ReasoningModelPreference` columns exist and
+  are readable/writable via `/users/me/preferences`, but no service yet reads
+  them to choose which AI client to call — every AI-calling service still
+  branches on the old `AiModelPreference`. Wiring that through is follow-up
+  work once T7.2's frontend picker lands (the two new fields would otherwise
+  have no UI to set them).
 - Spotless (Google Java Format) flags CRLF line endings on new files written on
   Windows — fix with `cd backend && mvn spotless:apply`
 
@@ -391,6 +460,7 @@ them one at a time, don't batch.
 ```
 backend/src/main/java/com/plantpal/shared/dto/ApiResponse.java
 backend/src/main/java/com/plantpal/shared/exception/GlobalExceptionHandler.java
+backend/src/main/java/com/plantpal/shared/exception/RateLimitException.java
 backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java
 backend/src/main/java/com/plantpal/identification/client/DeepSeekClient.java
 backend/src/main/java/com/plantpal/identification/client/GitHubModelsClient.java

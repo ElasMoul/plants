@@ -71,4 +71,10 @@
     <include file="db/changelog/migrations/020_add_species_care_cards.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/021_split_ai_model_preference.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/022_add_ai_model_usage_tracking.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

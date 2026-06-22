@@ -1,12 +1,14 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-21 (pre-Phase-5 cleanup pass closed out — see new
-> section below; Phase 6/T6.14 entry below is from the prior session)
+> Last updated: 2026-06-22 (T7.1 backend shipped — see new section below;
+> T7.2 frontend in progress in parallel; pre-Phase-5 cleanup pass entry below
+> is from a prior session)
 
 ## Current Phase
 **Phases 0–4 and 6 are fully shipped, plus a pre-Phase-5 cleanup pass closing
-every gap flagged below. Phase 5 (Launch prep) is the only phase that hasn't
-started — see TASK_PLAN.md for its task breakdown.** One manual item is
+every gap flagged below. Phase 7's backend task (T7.1) is also shipped; T7.2
+(frontend) is in progress. Phase 5 (Launch prep) and Phase 7's T7.3/T7.4
+haven't started** — see TASK_PLAN.md for task breakdowns. One manual item is
 stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
 needs a real phone and hasn't been done.
 
@@ -17,9 +19,37 @@ needs a real phone and hasn't been done.
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual device testing) |
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
-| 5 — Launch prep | 🔲 Not started ← **current focus** |
+| 5 — Launch prep | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
+| 7 — Model Control, Batch Scanning, Multi-Treatment UX | 🔲 T7.1 (backend) done; T7.2 (frontend) in progress ← **current focus** |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+
+## T7.1 — Backend: Model Control + Structured AI Errors (2026-06-22, `feature/PP-039-model-control-backend`)
+Full detail in BACKEND.md's "T7.1" section — summary here for cross-session
+context. Landed on its own branch, merging straight to `dev` (no frontend
+coupling needed for this part — T7.2 reads the new preference fields and
+`retryAfterSeconds`/model-usage fields independently).
+- Split AI model choice into `visionModelPreference`/`reasoningModelPreference`
+  (migration 021, additive — old `aiModelPreference` kept, deprecated).
+- Removed every silent cross-model fallback: `IdentificationServiceImpl`'s
+  OLLAMA_LLAVA→GITHUB_GPT4O retry, and `DeepSeekAnnotationClient`'s
+  429→Ollama fallback + empty-regions-on-exhaustion swallow. Both now
+  propagate a real `PlantPalException`/429 instead.
+- `GlobalExceptionHandler` now resolves the actual HTTP status from
+  `PlantPalException.getErrorCode()` (was hardcoded to 500) — existing 429s
+  reach the frontend correctly for the first time.
+- New `RateLimitException` (carries `retryAfterSeconds` via Bucket4j's
+  `ConsumptionProbe`) wired at 3 sites, including `TreatmentServiceImpl
+  .craftPlan()` which had no rate limit at all before this.
+- Model-usage tracking fields added across `CarePlanDto`, `CareCardDto`,
+  `TreatmentResponse`, `SpeciesResponse` (migration 022) — these are what
+  T7.2's "powered by" badges read.
+- 198/198 unit tests pass (one test rewritten to match the no-fallback
+  behavior); `mvn spotless:apply` clean.
+- **Not done in T7.1**: no service yet actually reads
+  `visionModelPreference`/`reasoningModelPreference` to pick a client — they're
+  readable/writable via the API but not yet load-bearing. That wiring is
+  follow-up work, naturally sequenced after T7.2 ships a UI to set them.
 
 ## Pre-Phase-5 Cleanup Pass (2026-06-21)
 Closed every gap BACKEND.md/FRONTEND.md had flagged as open, plus three bugs
