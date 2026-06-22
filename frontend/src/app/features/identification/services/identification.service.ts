@@ -106,7 +106,7 @@ export class IdentificationService {
   getPlantIdentifications(
     plantId: number,
     page = 0,
-    size = 10,
+    size = 3,
   ): Observable<ApiResponse<PageResponse<IdentificationResponse>>> {
     const params = new HttpParams()
       .set('page', page)

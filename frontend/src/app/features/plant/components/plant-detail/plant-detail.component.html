@@ -70,38 +70,6 @@
           <p>This plant has reported health issues. Check the Scans section for details.</p>
         </div>
 
-        <div class="info-grid">
-          <div class="info-item" *ngIf="plant.species">
-            <span class="info-label">Species</span>
-            <span class="info-value">{{ plant.species }}</span>
-          </div>
-          <div class="info-item" *ngIf="plant.commonName">
-            <span class="info-label">Common name</span>
-            <span class="info-value">{{ plant.commonName }}</span>
-          </div>
-          <div class="info-item" *ngIf="plant.location">
-            <span class="info-label">Location</span>
-            <span class="info-value">
-              <mat-icon class="inline-icon">place</mat-icon>
-              {{ plant.location }}
-            </span>
-          </div>
-          <div class="info-item" *ngIf="plant.acquiredAt">
-            <span class="info-label">Acquired</span>
-            <span class="info-value">{{ plant.acquiredAt | date:'longDate' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Added</span>
-            <span class="info-value">{{ plant.createdAt | date:'mediumDate' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Status</span>
-            <mat-chip [class]="'status-' + plant.status.toLowerCase()">
-              {{ plant.status }}
-            </mat-chip>
-          </div>
-        </div>
-
         <mat-divider *ngIf="plant.notes"></mat-divider>
 
         <div class="notes-section" *ngIf="plant.notes">
@@ -132,10 +100,8 @@
       <div *ngSwitchCase="'scans'" class="tab-content">
 
         <div class="scans-header">
-          <h3 class="scans-subheading">Scan history</h3>
           <button mat-stroked-button type="button" class="btn-pill" (click)="openScanHistorySheet()">
             <mat-icon>history</mat-icon>
-            History
           </button>
         </div>
         <app-plant-photo-timeline
@@ -175,28 +141,6 @@
             [identificationId]="scan.id"
             (regionSelected)="onRegionSelected($event)"
           ></app-annotation-list>
-
-          <div class="treatment-cta" *ngIf="selectedRegion?.type === 'DISEASE' && !checkingActiveTreatment">
-            <button
-              *ngIf="!activeTreatmentForDisease"
-              mat-raised-button
-              color="warn"
-              type="button"
-              class="btn-pill"
-              [disabled]="startingTreatment"
-              (click)="startTreatment()"
-            >
-              <mat-icon>healing</mat-icon>
-              {{ startingTreatment ? 'Starting…' : 'Start Treatment Plan' }}
-            </button>
-            <mat-chip
-              *ngIf="activeTreatmentForDisease"
-              class="treatment-progress-chip"
-              (click)="goToTreatment(activeTreatmentForDisease)"
-            >
-              Treatment in Progress
-            </mat-chip>
-          </div>
 
           <app-disease-detail-panel
             [region]="selectedRegion"
