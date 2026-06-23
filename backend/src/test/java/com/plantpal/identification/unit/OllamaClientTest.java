@@ -31,7 +31,7 @@ class OllamaClientTest {
   void setUp() throws IOException {
     server = new MockWebServer();
     server.start();
-    ollamaClient = new OllamaClient(server.url("/").toString(), MODEL, new ObjectMapper());
+    ollamaClient = new OllamaClient(server.url("/").toString(), MODEL, 5, 10, "10m", new ObjectMapper());
   }
 
   @AfterEach
@@ -77,6 +77,7 @@ class OllamaClientTest {
       assertThat(body).contains("\"model\":\"" + MODEL + "\"");
       assertThat(body).contains("\"role\":\"user\"");
       assertThat(body).contains("\"stream\":false");
+      assertThat(body).contains("\"keep_alive\":\"10m\"");
     }
 
     @Test

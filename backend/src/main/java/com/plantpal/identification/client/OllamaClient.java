@@ -1,5 +1,6 @@
 package com.plantpal.identification.client;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.util.ImageUtil;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -31,14 +33,22 @@ public class OllamaClient {
 
   private final RestClient restClient;
   private final String model;
+  private final String keepAlive;
   private final ObjectMapper objectMapper;
 
   public OllamaClient(
       @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
       @Value("${ollama.model:gemma3:4b}") String model,
+      @Value("${ollama.read-timeout-minutes:5}") int readTimeoutMinutes,
+      @Value("${ollama.connect-timeout-seconds:10}") int connectTimeoutSeconds,
+      @Value("${ollama.keep-alive:10m}") String keepAlive,
       ObjectMapper objectMapper) {
     this.model = model;
-    this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+    this.keepAlive = keepAlive;
+    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+    factory.setConnectTimeout(connectTimeoutSeconds * 1_000);
+    factory.setReadTimeout(readTimeoutMinutes * 60 * 1_000);
+    this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
     this.objectMapper = objectMapper;
   }
 
@@ -53,7 +63,7 @@ public class OllamaClient {
     log.debug("Sending prompt to Ollama [model={}]: {}", model, userPrompt);
 
     OllamaChatRequest request =
-        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), false);
+        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), false, keepAlive);
 
     try {
       OllamaChatResponse response =
@@ -91,7 +101,7 @@ public class OllamaClient {
     log.debug("Streaming prompt to Ollama [model={}]: {}", model, userPrompt);
 
     OllamaChatRequest request =
-        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), true);
+        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), true, keepAlive);
 
     try {
       restClient
@@ -183,7 +193,12 @@ public class OllamaClient {
         GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
             + "\n\nIdentify this plant and generate a complete beginner care plan.";
     Map<String, Object> requestBody =
-        Map.of("model", model, "prompt", prompt, "images", List.of(base64), "stream", false);
+        Map.of(
+            "model", model,
+            "prompt", prompt,
+            "images", List.of(base64),
+            "stream", false,
+            "keep_alive", keepAlive);
 
     log.debug("Sending vision prompt to Ollama [model={}] via /api/generate", model);
     try {
@@ -224,7 +239,9 @@ public class OllamaClient {
             "images",
             List.of(base64),
             "stream",
-            false);
+            false,
+            "keep_alive",
+            keepAlive);
 
     log.debug("Sending annotation prompt to Ollama [model={}] via /api/generate", model);
     try {
@@ -253,7 +270,11 @@ public class OllamaClient {
 
   // ── Private DTOs (Ollama wire format) ────────────────────────────────────
 
-  private record OllamaChatRequest(String model, List<OllamaMessage> messages, boolean stream) {}
+  private record OllamaChatRequest(
+      String model,
+      List<OllamaMessage> messages,
+      boolean stream,
+      @JsonProperty("keep_alive") String keepAlive) {}
 
   private record OllamaMessage(String role, String content) {}
 

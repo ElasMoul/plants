@@ -80,14 +80,25 @@ Deploy: Railway (backend) + Vercel (frontend).
     use, not just abuse, and should either reuse `toServiceException()`'s classification or accept
     its `RateLimitException` propagating to `GlobalExceptionHandler` as-is — never re-launder it
     back into a generic 503.
-- **OllamaClient** — local dev identification (llava-phi3) + annotation fallback; ALSO now has
-  text-completion parity for `generateSpeciesEnrichment()`/`generateCureAdvice()`/
+- **OllamaClient** — offline/LAN identification (gemma3:12b-it-qat on dedicated LAN machine, or
+  gemma3:4b locally) + text-completion parity for `generateSpeciesEnrichment()`/`generateCureAdvice()`/
   `generateDiseaseDescription()` (each: concatenate the matching `DeepSeekClient.*_SYSTEM_PROMPT`
   constant — package-private, same package — with the user message, call `chat()`, run through
   `DeepSeekClient.stripThinkTags()`). `generateCarePlan`/`detectDuplicateCareCards` have no Ollama
   equivalent (the first is dead code per above, the second is an internal background dedup check
   the user never sees the model for, deliberately left DeepSeek-only).
-  - Calls ImageUtil.resizeAndConvertToJpeg(bytes, 1024) before base64 — llava-phi3 rejects high-res
+  - **Dedicated LAN machine (bugfix/PP-044):** OLLAMA_GEMMA3 now targets a dedicated LAN host
+    (Ryzen 5 5600G / GTX 1660 6GB / 16GB RAM), not localhost. Hardware: gemma3:12b-it-qat with
+    ~2–3GB CPU offload → 60–120s vision, 30–60s text. The **read timeout is intentionally 5 minutes**
+    (`ollama.read-timeout-minutes: 5`) — this is a known hardware characteristic, not a bug.
+    Required env vars on the Ollama host: `OLLAMA_HOST=0.0.0.0:11434` (binds to LAN interface),
+    `OLLAMA_KEEP_ALIVE=10m` (keeps model loaded between calls). App-side `keep_alive: 10m` is
+    sent on every /api/generate and /api/chat request so the host-side timer resets on each call.
+    Connect timeout stays short (10s) — if the host is unreachable that fails fast.
+    **Fallback config:** if 12B proves too slow, switch to `gemma3:4b` (fits fully in 6GB VRAM,
+    much faster, weaker reasoning) by setting `OLLAMA_MODEL=gemma3:4b` in the .env.
+  - Calls ImageUtil.resizeAndConvertToJpeg(bytes, 1024) before base64 — keeps request size
+    predictable regardless of model (applies to llava-phi3, gemma3, etc.)
   - Uses /api/generate (NOT /api/chat) for vision calls — images at top level, not in message content
   - **No silent cross-model fallback** (removed T7.1) — `IdentificationServiceImpl` no longer
     falls back from Ollama to GitHubModels on failure; an Ollama failure now genuinely fails.
@@ -698,13 +709,13 @@ per the "migration numbers have collided twice" lesson above.
 |---|---|---|---|---|---|
 | Vision | GITHUB_GPT41 | gpt-4.1 | GitHubModelsClient (Azure) | Best | New model string on existing client |
 | Vision | GITHUB_GPT4O | gpt-4o | GitHubModelsClient (Azure) | Balanced | Pre-existing |
-| Vision | OLLAMA_GEMMA3 | gemma3:4b | OllamaClient (local) | Offline | Replaces llava-phi3 as the local vision choice; keep llava-phi3 as fallback config |
+| Vision | OLLAMA_GEMMA3 | gemma3:12b-it-qat (LAN) / gemma3:4b (local) | OllamaClient | Offline | Dedicated LAN machine; read timeout 5 min intentional (CPU offload); gemma3:4b fallback if 12B too slow |
 | Vision | PLANTNET | — | PlantNetClient | Specialist | Species-ID only (+ disease via Phase 8); healthStatus UNKNOWN, no care plan; runs alongside a general model (see D1) |
 | Vision | ANTHROPIC_CLAUDE | claude-sonnet-4-6 | AnthropicClient (NEW) | Frontier | Needs anthropic.api-key; multimodal so one client serves both axes |
 | Reasoning | GITHUB_O4_MINI | o4-mini | Azure text client | Best | o-series request shape: max_completion_tokens, no temperature, no <think> tags |
 | Reasoning | DEEPSEEK_R1 | DeepSeek-R1 | Azure text client (DeepSeekClient) | Deep | Pre-existing; 1-call/60s upstream cap — see toServiceException() |
 | Reasoning | GITHUB_GPT41_MINI | gpt-4.1-mini | Azure text client | Balanced | **Recommended default** — fast structured-JSON generation, no 60s cap |
-| Reasoning | OLLAMA_GEMMA3 | gemma3:4b | OllamaClient (local) | Offline | Same local model as the vision axis |
+| Reasoning | OLLAMA_GEMMA3 | gemma3:12b-it-qat (LAN) / gemma3:4b (local) | OllamaClient | Offline | Same model as vision axis; one gemma3 process on the LAN host serves both |
 | Reasoning | ANTHROPIC_CLAUDE | claude-sonnet-4-6 | AnthropicClient (NEW) | Frontier | Same client as vision Claude |
 
 - **Cloud tier is cheap to grow** because GitHubModelsClient and the Azure text

@@ -72,7 +72,11 @@ deepseek:
 # ──── Ollama (local AI) ───────────────────────────────────────────────────────
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:gemma3:4b}      # Run: ollama pull gemma3:4b
+  model: ${OLLAMA_MODEL:gemma3:4b}      # Local: gemma3:4b; dedicated LAN machine: gemma3:12b-it-qat
+  # Long timeout: 12B model on GTX 1660 takes 60–120s vision / 30–60s text due to CPU offload
+  read-timeout-minutes: ${OLLAMA_READ_TIMEOUT_MINUTES:5}
+  connect-timeout-seconds: ${OLLAMA_CONNECT_TIMEOUT_SECONDS:10}
+  keep-alive: ${OLLAMA_KEEP_ALIVE:10m}  # Keeps the model loaded between calls; set OLLAMA_KEEP_ALIVE=10m on the host too
 
 # ──── Anthropic (Claude — vision + reasoning) ─────────────────────────────────
 # api.key has no required default: an un-keyed Claude is reported as unavailable on the
