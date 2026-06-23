@@ -13,10 +13,15 @@ PostgreSQL 15 + Redis 7 + Kafka + Liquibase + Maven.
 Deploy: Railway (backend) + Vercel (frontend).
 
 ## Current State
-Phases 0–4 and 6 are shipped. **Phase 5 (Launch prep) is the only phase left**,
-plus one stranded manual item (T3.3 — on-device push/PWA testing). See
-.claude/STATE.md for the session-by-session history and active branches, and
-.claude/TASK_PLAN.md for Phase 5's task breakdown.
+  Phases 0–4, 6, and 7 are shipped. Two phases are planned, not started:
+  **Phase 8 (PlantNet first-class provider — T8.0–T8.7, with open decisions
+  D1–D4)** and **Phase 9 (Quality, Testing & Hardening — T9.1–T9.8)**. **Launch
+  was renumbered Phase 5 → Phase 10 and moved to the end** (you launch a tested,
+  hardened build last). Recommended order: Phase 9 foundation (T9.1–T9.3, T9.5)
+  first or interleaved with Phase 8, then the rest, then Phase 10. The only
+  stranded manual item, T3.3 (on-device push/PWA), is now folded into T9.2's PWA
+  E2E journey + T10.6 beta. See .claude/STATE.md for session history + active
+  branches, .claude/TASK_PLAN.md for the Phase 8/9/10 breakdowns.
 
 ## Established Patterns
 
@@ -35,7 +40,9 @@ plus one stranded manual item (T3.3 — on-device push/PWA testing). See
 - Bucket4j rate limiting on AI endpoints — use Bandwidth.builder() API (Bandwidth.simple() is deprecated in 8.7.0)
 - Constructor injection only, no @Autowired
 - FileStorageService abstraction (local dev, S3/Cloudinary prod)
-- JaCoCo gate at 10% temporarily — restore to 80% with exclusions (Phase 5 item)
+- JaCoCo gate at 55% (the unit suite's real ~58.9% line coverage) — restore to
+    80% with proper exclusions in Phase 9 (T9.5), which also wires the Testcontainers
+    ITs into `mvn verify`.
 - Angular: CarePlanModule is a shared NgModule imported by both IdentificationModule and PlantModule — avoids lazy-module circular deps
 - Angular: every lazy feature module re-provides the `@Injectable()` services it needs
   in its own `providers:` array (none of PlantService/IdentificationService/
@@ -355,6 +362,64 @@ eventually drift from the first, and the entity is usually already queryable che
 same instinct behind `applyCompletionToReminder()` being the *single* completion choke-point
 (see below) — one place owns the fact, everything else reads it.
 
+### Testing & Quality Pipeline (Phase 9)
+> Durable model for how this project is tested and kept at enterprise standard.
+> Read before adding any test infrastructure.
+
+**Tooling: Playwright, not Cypress.** Decided 2026 against the current landscape.
+Deciding factors for THIS project: the PWA must work on iOS Safari and Cypress has
+no WebKit support; Playwright ships Chromium + Firefox + WebKit, free
+parallelization, and built-in `toHaveScreenshot()` visual regression (no
+Percy/Applitools subscription). Cypress's only real remaining edge is its
+time-travel debugger — not decisive here.
+
+**The four-layer UI-quality model — deterministic layers GATE, AI layer ADVISES:**
+- **Layer 1 (gate)** — Playwright E2E: critical user journeys work at all. ~10–15
+  journeys, not hundreds (over-testing is the trap that produces flaky suites
+  nobody trusts).
+- **Layer 2 (gate)** — visual regression (`toHaveScreenshot`): committed baselines;
+  flags *changes*, not taste. Mask volatile regions (timestamps, AI-generated text).
+- **Layer 3 (gate)** — accessibility (`@axe-core/playwright`) + Lighthouse CI
+  budgets: contrast, labels, tap targets, ARIA, bundle size, PWA installability.
+  Measurable floors, fully deterministic.
+- **Layer 4 (advisory, NEVER gates)** — AI visual review: a vision model comments on
+  PR screenshots with flagged issues/suggestions. Non-deterministic, so it must
+  never block CI (an AI gate either flakes and fails good PRs or rubber-stamps and
+  gets ignored — both destroy trust). It *proposes*; the human / Architect agent
+  *disposes*. Keep it a standalone dev/CI tool, separate from the product's runtime
+  AI codepaths.
+
+**Load-bearing principle — stub external AI in E2E; eval real AI separately.** E2E
+(Layers 1–3) `page.route`-stubs every gpt-4o / DeepSeek / PlantNet / Anthropic call
+so journeys are deterministic, free, and rate-limit-free. The *real* AI quality is a
+separate concern, owned by the **nightly eval suite (T9.8)**: a fixed golden set
+asserting responses PARSE (the recurring malformed-JSON / concatenated-object pain —
+see `LenientJsonParser`) and meet basic shape checks, run nightly because of cost +
+the DeepSeek-R1 1-call/60s cap, kept OUT of the PR gate. Never let E2E depend on a
+live model — that's the classic flaky-and-expensive failure.
+
+**Frontend test runner:** Vitest + `@analogjs/vitest-angular` + Testing Library
+(the 2026 Angular default, over the skeleton Karma/Jasmine). The frontend had ZERO
+tests before Phase 9 — coverage gate starts low (~30%) and ratchets; don't fake 80%
+on day one. Backend: Testcontainers ITs run serially (forkCount=1) to avoid the
+known connection-pool contention; JaCoCo 55% → 80% with exclusions (T9.5).
+
+**Observability:** error tracking first (Sentry, free tier) — highest ROI for a
+small team. ONE correlation id flows frontend → backend → Sentry (the MDC
+correlationId from prod logging, T10.1), so a frontend error links to its backend
+stack trace. Metrics (Micrometer/Prometheus) are a later add.
+
+**Supply chain / secrets (CI):** gitleaks (secret scanning — would have caught the
+GITHUB_TOKEN that leaked into chat), Dependabot/Renovate, Trivy (image CVEs), OWASP
+Dependency-Check (consolidated here in T9.7 — NOT duplicated in launch hardening).
+A scanner doesn't un-leak a credential — rotate the token regardless.
+
+**Prompt injection is its own attack class**, distinct from the HTML-XSS input
+sanitization in launch hardening (T10.3): user chat + uploaded/OCR'd text reach AI
+prompts. Delimit user content, keep system instructions authoritative, and
+re-validate AI OUTPUT before persistence (`ActionPlanValidator` is the precedent).
+Covered in T9.8.
+
 ## Domain Model: Species & Treatment
 > Introduced 2026-06-19/20 (Phase 6) to fix two plant-centric gaps: two plants of the same
 > species couldn't share care-plan knowledge, and a detected disease had no persistent
@@ -548,3 +613,127 @@ Scan initiated from...
   any of them — that's what the Archive is for.
 - **Output SESSION SUMMARY block** (format defined in AGENTS.md) at end of every response
   so the user can paste it back and trigger a .claude/ sync
+
+
+
+
+### PlantNet v2 — botanical ground-truth provider (Phase 8)
+> Phase 8 reframed PlantNet from a degraded species-only vision option into the
+> app's botanical ground-truth layer. Contract below is from the real swagger
+> (My Pl@ntNet API 2.2.2). Read this before touching identification, species
+> confirmation, or the disease path.
+
+- **Auth + limits:** api-key is a **query param**. Max POST **50 MB**. Real status
+  codes: **404** = non-plant reject ("Species Not Found"), **413** too large,
+  **415** bad mime, **429** Too Many Requests. Map each to its true status — never
+  launder to 500 (the T7.1 GlobalExceptionHandler fix already does the right thing
+  if we throw the right exception).
+- **`type=kt` is mandatory.** `legacy` floras/engine are deprecated and "will be
+  dropped" — always send `type=kt` (2023+ POWO/WGSRPD engine).
+- **Candidate list, not a single answer.** `/v2/identify/{project}` returns ranked
+  `results[]` (score + taxonomy + commonNames + reference `images[]` +
+  `gbif{id}` + `powo{id}` + `iucn{id,category}`), plus `bestMatch`,
+  `switchToProject` (a hint another flora would do better — surface it),
+  `predictedOrgans[]`, `version`, `remainingIdentificationRequests`. Keep the FULL
+  list; collapsing to `results[0]` (pre-Phase-8) threw away the confidence signal
+  Flow-1 confirmation needs.
+- **Reference images carry attribution.** Each `Image` has `author`, `license`,
+  `citation`, `url{o,m,s}` (original/medium/small). If we display a reference
+  thumbnail, we must show author + license. Use `url.s`/`url.m`, never hot-link `o`.
+- **Organs.** Forward per-image organ tags (multi-angle single-plant mode forwards
+  `organs[]`). Practical consumer set: auto/leaf/flower/fruit/bark/habit. Accuracy
+  order flower > fruit > leaf > entire > bark. Batch mode (different plants) does
+  NOT tag organs.
+- **Health is separate.** `/v2/identify` does not assess health — a PlantNet-only
+  species scan keeps `healthStatus: UNKNOWN` honestly. Disease/pest detection is
+  `/v2/diseases/identify` (T8.5, **multi-image, cultivated-plant-scoped**), whose
+  results carry `{name, description, score, images[]}` — the `description` can seed
+  `Treatment.diseaseDescription`. Diseases are EPPO-coded (`/v2/diseases` →
+  `{name:"1COCCF", label, categories[]}`). Run it as a SECOND OPINION alongside
+  gpt-4o, never a silent replacement (no-silent-fallback rule from T7.1).
+- **Geolocation-ranked floras.** `GET /v2/projects?lat&lon&type=kt&lang` filters
+  AND sorts floras by location — better UX than a manual picker for a Morocco-
+  centric base. Needs a user lat/lon source (may not exist yet — ship manual
+  dropdown first). Cache `/v2/projects` + `/v2/languages` server-side (@Cacheable,
+  24h) and proxy them so the frontend never burns identify quota.
+- **Quota is a real endpoint.** `GET /v2/quota/daily` →
+  `{day, quota.identify.{count,total,remaining}}`; `/v2/quota/history?year=` for a
+  chart. Use these proactively; `remainingIdentificationRequests` on each
+  identify/disease response is the per-scan echo. Quota is daily, independent from
+  our Bucket4j 20/hour — a Flow-3 scan that hits gpt-4o AND `/v2/diseases/identify`
+  consumes PlantNet quota twice.
+- **Factual taxonomy is partly free.** `gbifId`/`powoId`/`iucnCategory` arrive on
+  every result — persist them onto `Species` with no extra call (the cheap half of
+  T8.6). The `Species.externalDataSource` slot ("AI"|"WIKIPEDIA"|"MANUAL") gains
+  "GBIF"/"POWO". A GBIF *fetch* (api.gbif.org) is only for deeper distribution/
+  vernacular data. Also available: IUCN conservation badge (factual, free).
+- **Reuse, don't reinvent:** Apache HttpClient 5 + HTTP/1.1 ALPN workaround (NOT
+  Java's built-in HttpClient); defensive "never throw on a malformed field"
+  parsing; nullable response fields; ModelUsageBadge / AiErrorService for the
+  "powered by Pl@ntNet {version}" caption and the 404/quota UX.
+- **Optional/secondary (noted, not scheduled):** `/v2/varieties/identify` (cultivar
+  ID — result adds a `varieties[]` block), `/v2/projects/{project}/species/align`
+  (reconcile a free-text species name onto PlantNet's referential, synonyms/fuzzy —
+  a clean way to align existing `Species.scientificName` rows), `/v2/embeddings`
+  (image vectors for visual similarity/dedup), `/v2/prediction/geo/species`
+  ("what grows near me" SDM — tagged [private], confirm key access first).
+
+**Two design forks recorded in TASK_PLAN.md Phase 8 (D1: PlantNet always-on vs.
+only-when-selected; D4: disease cross-check authority) — both need a human ruling
+before T8.1 / T8.5 run. Don't let an agent pick silently.**
+
+### Migration sequencing note (refresh)
+Sequence is at **022** (not 019 — the stale number in T5.2's prompt). Next free is
+**023**. Phase 8 claims 023 (PlantNet candidates), 024 (PlantNet project/lang prefs),
+025 (PlantNet disease result) — VERIFY against db.changelog-master.xml before each,
+per the "migration numbers have collided twice" lesson above.
+
+---
+
+### AI model lineup (5 vision / 5 reasoning) — providers, clients, defaults
+> Established T8.0 (Phase 8). The two axes stay independent (T7.1 split). Each
+> option routes to exactly one client; only Claude is a new provider.
+
+| Axis | Option (enum) | Model | Client / provider | Tier | Notes |
+|---|---|---|---|---|---|
+| Vision | GITHUB_GPT41 | gpt-4.1 | GitHubModelsClient (Azure) | Best | New model string on existing client |
+| Vision | GITHUB_GPT4O | gpt-4o | GitHubModelsClient (Azure) | Balanced | Pre-existing |
+| Vision | OLLAMA_GEMMA3 | gemma3:4b | OllamaClient (local) | Offline | Replaces llava-phi3 as the local vision choice; keep llava-phi3 as fallback config |
+| Vision | PLANTNET | — | PlantNetClient | Specialist | Species-ID only (+ disease via Phase 8); healthStatus UNKNOWN, no care plan; runs alongside a general model (see D1) |
+| Vision | ANTHROPIC_CLAUDE | claude-sonnet-4-6 | AnthropicClient (NEW) | Frontier | Needs anthropic.api-key; multimodal so one client serves both axes |
+| Reasoning | GITHUB_O4_MINI | o4-mini | Azure text client | Best | o-series request shape: max_completion_tokens, no temperature, no <think> tags |
+| Reasoning | DEEPSEEK_R1 | DeepSeek-R1 | Azure text client (DeepSeekClient) | Deep | Pre-existing; 1-call/60s upstream cap — see toServiceException() |
+| Reasoning | GITHUB_GPT41_MINI | gpt-4.1-mini | Azure text client | Balanced | **Recommended default** — fast structured-JSON generation, no 60s cap |
+| Reasoning | OLLAMA_GEMMA3 | gemma3:4b | OllamaClient (local) | Offline | Same local model as the vision axis |
+| Reasoning | ANTHROPIC_CLAUDE | claude-sonnet-4-6 | AnthropicClient (NEW) | Frontier | Same client as vision Claude |
+
+- **Cloud tier is cheap to grow** because GitHubModelsClient and the Azure text
+  client (historically "DeepSeekClient") share one Azure inference endpoint — new
+  GitHub Models options are config strings + a switch branch, not new classes. The
+  "DeepSeekClient" name is now historical: it serves DeepSeek-R1, o4-mini, AND
+  gpt-4.1-mini. Not renamed this phase (blast radius); documented instead.
+- **AnthropicClient is the only new provider** and is multimodal, so it serves both
+  the vision identification contract and the text reasoning contract. It must be
+  gated on `anthropic.api-key` presence (the prefs response carries per-provider
+  `available` flags) — an un-keyed Claude option must be unselectable or every call
+  401s.
+- **Recommended default switch:** reasoning default DEEPSEEK_R1 -> GITHUB_GPT41_MINI.
+  The app's reasoning tasks (care plan / cure advice / disease description / species
+  enrichment) are structured *generation*, not logic puzzles — R1's chain-of-thought
+  is overkill and is the exact call site that keeps colliding with the 1-call/60s
+  DeepSeek-R1 upstream cap (STATE.md history). gpt-4.1-mini is faster, cheaper, and
+  has no such cap. Vision default stays a GitHub Models model (gpt-4o or gpt-4.1).
+- **gemma3:4b on 4GB VRAM is marginal** — vision models spike VRAM under load (the
+  reason llava-phi3 was originally chosen). Verify gemma3:4b identification on the
+  actual GTX 960 before shipping it as the local vision default; keep llava-phi3 as
+  a documented fallback.
+- **o4-mini request shape** differs from chat models: `max_completion_tokens` (not
+  `max_tokens`), no `temperature`, reasoning hidden server-side. Build the Azure
+  text request per-model so o4-mini and gpt-4.1-mini don't share one rigid body.
+- **UI labels by intent, not model name** (Best/Balanced/Offline/Specialist/
+  Frontier with the model name as subtitle) — names churn; the "powered by {model}"
+  badge keeps the actual model visible and honest.
+- **Migration note:** adding enum VALUES needs no schema migration (pref columns are
+  VARCHAR(30)). Only the optional default-change + OLLAMA_LLAVA->OLLAMA_GEMMA3
+  backfill is a migration (claims 023; if used, bump the Phase 8 PlantNet migrations
+  to 024/025/026).

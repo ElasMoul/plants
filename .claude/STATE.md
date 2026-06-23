@@ -528,6 +528,41 @@ duplicated here):
   does correctly generate and save within seconds) never appears on-screen —
   not a generation bug, a missing-poll bug.
 
+## Phase 8 — Planned (PlantNet v2 deep integration) — NOT STARTED
+Planned this session, no code yet. Full task breakdown + Claude Code prompts in
+TASK_PLAN.md (T8.1–T8.7). Reframes PlantNet from a degraded species-only vision
+option into the app's botanical ground-truth layer. Contract validated against the
+real swagger (My Pl@ntNet API 2.2.2).
+
+Surface we start using: ranked candidate list (score + reference images +
+gbif/powo/iucn per result), `type=kt` engine, organ-tagged multi-image accuracy,
+geolocation-ranked floras (`/v2/projects?lat&lon`), `switchToProject` hint, a
+dedicated cultivated-plant disease classifier (`/v2/diseases/identify`, results
+carry a description + EPPO code via `/v2/diseases`), and real quota endpoints
+(`/v2/quota/daily` + `/history`).
+
+Core slice: **T8.1 (v2 client) → T8.2 (ranked species-match) → T8.3 (candidate
+confirm UI, with reference-image attribution)** — ship together. Then T8.4
+(organs + location-ranked flora/lang), T8.5 (disease cross-check, heaviest), T8.6
+(factual enrichment — cheap IUCN/POWO/gbifId layer is near-free; GBIF fetch
+optional), T8.7 (quota telemetry, small).
+
+**Blocked on human rulings before starting:**
+- **D1** (blocks T8.1): PlantNet always-on alongside gpt-4o vs. only-when-selected.
+  Architect rec: always-on for Flow-1 candidates behind a feature flag.
+- **D2** (blocks T8.1): candidate storage = JSONB on `identifications` (rec) vs. side table.
+- **D3** (shapes T8.6): cheap factual layer (gbif/powo/iucn off the response) ships
+  regardless; defer the deeper GBIF fetch unless distribution data is a launch need.
+- **D4** (blocks T8.5): disease cross-check authority on gpt-4o↔PlantNet disagreement.
+  Architect rec: keep gpt-4o's label, seed diseaseDescription from PlantNet's
+  `description` on agreement, attach PlantNet as flagged second opinion + mark
+  Treatment NEEDS_REVIEW on disagreement.
+- **D-location** (shapes T8.4, non-blocking): location-ranked floras need a user
+  lat/lon source that may not exist yet — ship manual dropdown first.
+
+Migration numbers reserved: 023/024/025 (verify before use). Sequencing vs. Phase 5
+launch still undecided — feature work, not launch infra.
+
 ## Known Tech Debt
 See BACKEND.md and FRONTEND.md's own "Open Items" sections for the current,
 maintained list (JaCoCo gate at 55% not 80%, ITs not wired into `mvn verify`,
