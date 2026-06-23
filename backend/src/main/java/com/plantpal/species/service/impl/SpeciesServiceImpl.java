@@ -64,9 +64,22 @@ public class SpeciesServiceImpl implements SpeciesService {
   @Transactional
   public Species findOrCreate(
       String scientificName, String commonName, AiModelPreference preference) {
+    return findOrCreate(scientificName, commonName, preference, null, null, null);
+  }
+
+  @Override
+  @Transactional
+  public Species findOrCreate(
+      String scientificName,
+      String commonName,
+      AiModelPreference preference,
+      String gbifId,
+      String powoId,
+      String iucnCategory) {
     return speciesRepository
         .findByScientificName(scientificName)
-        .orElseGet(() -> createSpecies(scientificName, commonName, preference));
+        .map(existing -> patchFactualFields(existing, gbifId, powoId, iucnCategory))
+        .orElseGet(() -> createSpecies(scientificName, commonName, preference, gbifId, powoId, iucnCategory));
   }
 
   @Override
@@ -190,13 +203,46 @@ public class SpeciesServiceImpl implements SpeciesService {
         .orElse(null);
   }
 
+  private Species patchFactualFields(
+      Species species, String gbifId, String powoId, String iucnCategory) {
+    boolean changed = false;
+    if (gbifId != null && species.getGbifId() == null) {
+      species.setGbifId(gbifId);
+      changed = true;
+    }
+    if (powoId != null && species.getPowoId() == null) {
+      species.setPowoId(powoId);
+      changed = true;
+    }
+    if (iucnCategory != null && species.getIucnCategory() == null) {
+      species.setIucnCategory(iucnCategory);
+      changed = true;
+    }
+    if (changed) {
+      species = speciesRepository.save(species);
+      log.info(
+          "Patched taxonomy IDs on existing species: id={}, scientificName={}",
+          species.getId(),
+          species.getScientificName());
+    }
+    return species;
+  }
+
   private Species createSpecies(
-      String scientificName, String commonName, AiModelPreference preference) {
+      String scientificName,
+      String commonName,
+      AiModelPreference preference,
+      String gbifId,
+      String powoId,
+      String iucnCategory) {
     Species species =
         speciesRepository.save(
             Species.builder()
                 .scientificName(scientificName)
                 .commonName(commonName)
+                .gbifId(gbifId)
+                .powoId(powoId)
+                .iucnCategory(iucnCategory)
                 .status(SpeciesStatus.ACTIVE)
                 .build());
     log.info("Species created: id={}, scientificName={}", species.getId(), scientificName);

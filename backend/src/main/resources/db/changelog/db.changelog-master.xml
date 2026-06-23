@@ -80,4 +80,7 @@
     <include file="db/changelog/migrations/023_add_plantnet_candidates.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/024_add_species_taxonomy_ids.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

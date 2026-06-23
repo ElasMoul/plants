@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -1393,7 +1394,7 @@ class IdentificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("resolve-species: confirmed=true on existing species attaches speciesId")
+    @DisplayName("resolve-species: confirmed=true delegates to findOrCreate and attaches speciesId")
     void resolveSpeciesConfirmedAttachesExistingSpecies() {
       Identification identification = identificationWithSpecies("Monstera deliciosa", null);
       when(identificationRepository.findById(IDENTIFICATION_ID))
@@ -1404,26 +1405,29 @@ class IdentificationServiceImplTest {
               .scientificName("Monstera deliciosa")
               .commonName("Swiss cheese plant")
               .build();
-      when(speciesRepository.findByScientificName("Monstera deliciosa"))
-          .thenReturn(Optional.of(species));
+      when(speciesService.findOrCreate(
+              eq("Monstera deliciosa"), any(), any(AiModelPreference.class),
+              isNull(), isNull(), isNull()))
+          .thenReturn(species);
 
       SpeciesMatchDto result =
           identificationService.resolveSpecies(
-              IDENTIFICATION_ID, new ResolveSpeciesRequest(true), USER_ID);
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(true, null), USER_ID);
 
       assertThat(result.getSpeciesId()).isEqualTo(SPECIES_ID);
       assertThat(identification.getSpeciesId()).isEqualTo(SPECIES_ID);
       verify(identificationRepository).save(identification);
-      verify(speciesService, never()).findOrCreate(any(), any(), any());
+      verify(speciesService).findOrCreate(
+          eq("Monstera deliciosa"), any(), any(AiModelPreference.class),
+          isNull(), isNull(), isNull());
     }
 
     @Test
-    @DisplayName("resolve-species: confirmed=true on new species calls findOrCreate")
+    @DisplayName("resolve-species: confirmed=true on new species calls findOrCreate(6-arg)")
     void resolveSpeciesConfirmedCreatesNewSpecies() {
       Identification identification = identificationWithSpecies("Ficus lyrata", null);
       when(identificationRepository.findById(IDENTIFICATION_ID))
           .thenReturn(Optional.of(identification));
-      when(speciesRepository.findByScientificName("Ficus lyrata")).thenReturn(Optional.empty());
       com.plantpal.species.entity.Species newSpecies =
           com.plantpal.species.entity.Species.builder()
               .id(99L)
@@ -1431,12 +1435,13 @@ class IdentificationServiceImplTest {
               .commonName("Fiddle-leaf fig")
               .build();
       when(speciesService.findOrCreate(
-              "Ficus lyrata", "Swiss cheese plant", AiModelPreference.DEEPSEEK))
+              eq("Ficus lyrata"), any(), any(AiModelPreference.class),
+              isNull(), isNull(), isNull()))
           .thenReturn(newSpecies);
 
       SpeciesMatchDto result =
           identificationService.resolveSpecies(
-              IDENTIFICATION_ID, new ResolveSpeciesRequest(true), USER_ID);
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(true, null), USER_ID);
 
       assertThat(result.getSpeciesId()).isEqualTo(99L);
       assertThat(identification.getSpeciesId()).isEqualTo(99L);
@@ -1451,7 +1456,7 @@ class IdentificationServiceImplTest {
 
       SpeciesMatchDto result =
           identificationService.resolveSpecies(
-              IDENTIFICATION_ID, new ResolveSpeciesRequest(false), USER_ID);
+              IDENTIFICATION_ID, new ResolveSpeciesRequest(false, null), USER_ID);
 
       assertThat(result.isMatched()).isFalse();
       assertThat(identification.getSpeciesId()).isNull();

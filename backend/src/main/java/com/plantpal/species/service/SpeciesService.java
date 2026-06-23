@@ -11,6 +11,14 @@ public interface SpeciesService {
 
   Species findOrCreate(String scientificName, String commonName, AiModelPreference preference);
 
+  Species findOrCreate(
+      String scientificName,
+      String commonName,
+      AiModelPreference preference,
+      String gbifId,
+      String powoId,
+      String iucnCategory);
+
   SpeciesResponse getSpecies(Long id);
 
   Page<SpeciesSummaryDto> getUserSpecies(Long userId, Pageable pageable);
