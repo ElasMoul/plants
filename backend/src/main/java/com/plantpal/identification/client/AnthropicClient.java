@@ -28,8 +28,8 @@ import org.springframework.web.client.RestClientResponseException;
  *
  * <p>{@code anthropic.api.key} has no required default (unlike {@code github.token}) so the
  * application still boots when no Anthropic key is configured; callers must check {@link
- * #isAvailable()} before routing to this client (see {@code UserServiceImpl}'s availability
- * flags) — an un-keyed call would otherwise surface as a confusing 401 from Anthropic.
+ * #isAvailable()} before routing to this client (see {@code UserServiceImpl}'s availability flags)
+ * — an un-keyed call would otherwise surface as a confusing 401 from Anthropic.
  */
 @Component
 public class AnthropicClient {
@@ -83,8 +83,10 @@ public class AnthropicClient {
         List.of(
             imageBlock(imageBytes, mediaType),
             Map.of(
-                "type", "text", "text", "Identify this plant and generate a complete beginner care"
-                    + " plan."));
+                "type",
+                "text",
+                "text",
+                "Identify this plant and generate a complete beginner care" + " plan."));
     return call(
         defaultModel,
         GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT,
@@ -142,7 +144,8 @@ public class AnthropicClient {
 
   private String call(String requestModel, String systemPrompt, Object userContent, String label) {
     if (!isAvailable()) {
-      throw new PlantPalException(label + " unavailable — Anthropic API key is not configured", 503);
+      throw new PlantPalException(
+          label + " unavailable — Anthropic API key is not configured", 503);
     }
 
     Map<String, Object> requestBody =
@@ -197,7 +200,9 @@ public class AnthropicClient {
   private PlantPalException toServiceException(
       String fallbackMessage, RestClientResponseException e) {
     log.error(
-        "Anthropic error status={}, body={}", e.getStatusCode().value(), e.getResponseBodyAsString());
+        "Anthropic error status={}, body={}",
+        e.getStatusCode().value(),
+        e.getResponseBodyAsString());
     if (e.getStatusCode().value() == 429) {
       return new RateLimitException(
           "Anthropic rate limit reached — try again later", extractRetryAfterSeconds(e));
@@ -207,9 +212,7 @@ public class AnthropicClient {
 
   private static long extractRetryAfterSeconds(RestClientResponseException e) {
     String header =
-        e.getResponseHeaders() != null
-            ? e.getResponseHeaders().getFirst("retry-after")
-            : null;
+        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("retry-after") : null;
     if (header != null) {
       try {
         return Long.parseLong(header.trim());

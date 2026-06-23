@@ -147,8 +147,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
   /**
    * Every option here other than ANTHROPIC_CLAUDE has its required config (github.token,
-   * app.plantnet.api-key) enforced at application startup, so it's always available once the app
-   * is running — only Claude's API key is genuinely optional (see {@link AnthropicClient}).
+   * app.plantnet.api-key) enforced at application startup, so it's always available once the app is
+   * running — only Claude's API key is genuinely optional (see {@link AnthropicClient}).
    */
   private Map<String, Boolean> visionModelAvailability() {
     Map<String, Boolean> availability = new LinkedHashMap<>();
@@ -165,7 +165,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     for (ReasoningModelPreference option : ReasoningModelPreference.values()) {
       availability.put(
           option.name(),
-          option == ReasoningModelPreference.ANTHROPIC_CLAUDE ? anthropicClient.isAvailable() : true);
+          option == ReasoningModelPreference.ANTHROPIC_CLAUDE
+              ? anthropicClient.isAvailable()
+              : true);
     }
     return availability;
   }

@@ -22,8 +22,8 @@ import org.springframework.web.client.RestClientResponseException;
  * Despite the name, this client now serves multiple Azure-inference text models, not just
  * DeepSeek-R1 — {@link #generateCureAdviceViaO4Mini} and friends route the same {@code
  * /chat/completions} endpoint through o4-mini / gpt-4.1-mini for {@link
- * com.plantpal.user.entity.ReasoningModelPreference#GITHUB_O4_MINI} / {@code
- * #GITHUB_GPT41_MINI}. Not renamed to avoid a sweeping rename across every caller.
+ * com.plantpal.user.entity.ReasoningModelPreference#GITHUB_O4_MINI} / {@code #GITHUB_GPT41_MINI}.
+ * Not renamed to avoid a sweeping rename across every caller.
  */
 @Component
 public class DeepSeekClient {
@@ -301,8 +301,8 @@ public class DeepSeekClient {
   /**
    * Shared single-turn {@code /chat/completions} call used by the cure-advice and
    * disease-description paths now that they can target DeepSeek-R1, o4-mini, or gpt-4.1-mini. The
-   * o4-mini family rejects {@code temperature} and uses {@code max_completion_tokens} instead of
-   * an implicit cap — see CLAUDE.md's "o4-mini request shape" flagged gap.
+   * o4-mini family rejects {@code temperature} and uses {@code max_completion_tokens} instead of an
+   * implicit cap — see CLAUDE.md's "o4-mini request shape" flagged gap.
    */
   private String chatCompletion(
       String requestModel,
@@ -341,7 +341,8 @@ public class DeepSeekClient {
           || response.choices() == null
           || response.choices().isEmpty()
           || response.choices().get(0).message() == null) {
-        throw new PlantPalException("Empty response from " + errorLabel.toLowerCase() + " service", 503);
+        throw new PlantPalException(
+            "Empty response from " + errorLabel.toLowerCase() + " service", 503);
       }
 
       String raw = response.choices().get(0).message().content();

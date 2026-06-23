@@ -369,7 +369,8 @@ public class IdentificationServiceImpl implements IdentificationService {
           retryAfterSeconds(cureRateLimitProbe));
     }
     ReasoningModelPreference preference = loadReasoningPreference(userId);
-    String raw = generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel());
+    String raw =
+        generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel());
     return CompletableFuture.completedFuture(parseCureAdvice(raw, preference));
   }
 
@@ -875,8 +876,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, regionLabel);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, regionLabel);
       case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, regionLabel);
-      case GITHUB_GPT41_MINI ->
-          deepSeekClient.generateCureAdviceViaGpt41Mini(species, regionLabel);
+      case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, regionLabel);
       case DEEPSEEK_R1 -> deepSeekClient.generateCureAdvice(species, regionLabel);
     };
   }

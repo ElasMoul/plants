@@ -358,8 +358,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, diseaseName);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, diseaseName);
       case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, diseaseName);
-      case GITHUB_GPT41_MINI ->
-          deepSeekClient.generateCureAdviceViaGpt41Mini(species, diseaseName);
+      case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, diseaseName);
       case DEEPSEEK_R1 -> deepSeekClient.generateCureAdvice(species, diseaseName);
     };
   }
