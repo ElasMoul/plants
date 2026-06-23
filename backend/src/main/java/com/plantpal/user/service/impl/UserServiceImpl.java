@@ -124,14 +124,21 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     if (request.getReasoningModelPreference() != null) {
       user.setReasoningModelPreference(request.getReasoningModelPreference());
     }
+    if (request.getPlantnetProject() != null) {
+      user.setPlantnetProject(request.getPlantnetProject());
+    }
+    if (request.getPlantnetLang() != null) {
+      user.setPlantnetLang(request.getPlantnetLang());
+    }
     userRepository.save(user);
     log.info(
-        "User preference updated: userId={}, aiModelPreference={}, visionModelPreference={},"
-            + " reasoningModelPreference={}",
+        "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
+            + " plantnetProject={}, plantnetLang={}",
         userId,
-        user.getAiModelPreference(),
         user.getVisionModelPreference(),
-        user.getReasoningModelPreference());
+        user.getReasoningModelPreference(),
+        user.getPlantnetProject(),
+        user.getPlantnetLang());
     return toPreferencesResponse(user);
   }
 
@@ -142,6 +149,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .reasoningModelPreference(user.getReasoningModelPreference())
         .visionModelAvailability(visionModelAvailability())
         .reasoningModelAvailability(reasoningModelAvailability())
+        .plantnetProject(user.getPlantnetProject())
+        .plantnetLang(user.getPlantnetLang())
         .build();
   }
 

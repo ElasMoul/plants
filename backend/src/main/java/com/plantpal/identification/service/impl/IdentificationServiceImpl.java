@@ -266,6 +266,12 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setSourceImageWidth(dims[0]);
       identification.setSourceImageHeight(dims[1]);
 
+      // Load user's PlantNet flora + lang preferences (T8.4). Falls back to app-level defaults
+      // so the always-on call and PLANTNET-primary path both respect the per-user choice.
+      String[] pnPrefs = loadPlantNetPreferences(userId);
+      final String userPlantNetProject = pnPrefs[0];
+      final String userPlantNetLang = pnPrefs[1];
+
       // Fire identification + annotation (+ optional always-on PlantNet) in parallel.
       // The always-on PlantNet call runs even when the primary model is not PLANTNET so that
       // the species-confirm step (T8.2) always has a ranked candidate list to show. It swallows
@@ -273,7 +279,14 @@ public class IdentificationServiceImpl implements IdentificationService {
       final List<String> organsForParallelCall = event.getOrgans();
       CompletableFuture<IdentificationOutcome> identificationFuture =
           CompletableFuture.supplyAsync(
-              () -> runIdentification(preference, imageBytes, mediaType, event.getOrgans()));
+              () ->
+                  runIdentification(
+                      preference,
+                      imageBytes,
+                      mediaType,
+                      event.getOrgans(),
+                      userPlantNetProject,
+                      userPlantNetLang));
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
@@ -285,8 +298,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                       return plantNetClient.identify(
                           List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                           organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
-                          plantNetDefaultProject,
-                          plantNetDefaultLang);
+                          userPlantNetProject,
+                          userPlantNetLang);
                     } catch (Exception e) {
                       log.warn(
                           "Always-on PlantNet call failed, continuing without candidates: {}",
@@ -981,6 +994,28 @@ public class IdentificationServiceImpl implements IdentificationService {
         .orElse(ReasoningModelPreference.DEEPSEEK_R1);
   }
 
+  /**
+   * Returns [project, lang] for PlantNet calls, reading the user's stored preferences and falling
+   * back to the app-level defaults when the stored value is null/blank.
+   */
+  private String[] loadPlantNetPreferences(Long userId) {
+    return userRepository
+        .findById(userId)
+        .map(
+            u -> {
+              String project =
+                  (u.getPlantnetProject() != null && !u.getPlantnetProject().isBlank())
+                      ? u.getPlantnetProject()
+                      : plantNetDefaultProject;
+              String lang =
+                  (u.getPlantnetLang() != null && !u.getPlantnetLang().isBlank())
+                      ? u.getPlantnetLang()
+                      : plantNetDefaultLang;
+              return new String[] {project, lang};
+            })
+        .orElse(new String[] {plantNetDefaultProject, plantNetDefaultLang});
+  }
+
   private String generateCureAdviceForPreference(
       ReasoningModelPreference preference, String species, String regionLabel) {
     return switch (preference) {
@@ -1032,15 +1067,20 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   private IdentificationOutcome runIdentification(
-      VisionModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
+      VisionModelPreference preference,
+      byte[] imageBytes,
+      String mediaType,
+      List<String> organs,
+      String plantNetProject,
+      String plantNetLang) {
     return switch (preference) {
       case PLANTNET -> {
         PlantNetResponse pnr =
             plantNetClient.identify(
                 List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                 organs != null ? organs : List.of("auto"),
-                plantNetDefaultProject,
-                plantNetDefaultLang);
+                plantNetProject,
+                plantNetLang);
         yield new IdentificationOutcome(
             plantNetToRawResult(pnr), VisionModelPreference.PLANTNET.name(), pnr);
       }

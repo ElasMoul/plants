@@ -26,4 +26,8 @@ public class UserPreferencesResponse {
   // rather than letting a user pick a model that will 401/503 on first call.
   private Map<String, Boolean> visionModelAvailability;
   private Map<String, Boolean> reasoningModelAvailability;
+
+  // PlantNet flora and common-name language (T8.4).
+  private String plantnetProject;
+  private String plantnetLang;
 }

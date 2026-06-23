@@ -26,4 +26,8 @@ public class UserPreferencesRequest {
   // omitted, the user's existing stored preference is left untouched.
   private VisionModelPreference visionModelPreference;
   private ReasoningModelPreference reasoningModelPreference;
+
+  // PlantNet flora and common-name language (T8.4). Nullable — omit to leave existing value.
+  private String plantnetProject;
+  private String plantnetLang;
 }

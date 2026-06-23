@@ -16,6 +16,60 @@
   </div>
 
   <div class="preference-section">
+    <h2>Pl@ntNet</h2>
+    <p class="section-hint">
+      Controls which botanical database and language Pl@ntNet uses for species identification and
+      common names. Changes apply to every scan that uses the Pl@ntNet provider.
+    </p>
+
+    <ng-container *ngIf="!plantnetLoadError; else plantnetError">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Flora / region</mat-label>
+        <mat-select [(ngModel)]="selectedProject" (ngModelChange)="plantnetSaved = false">
+          <mat-option value="all">World flora (default)</mat-option>
+          <mat-option *ngFor="let p of plantnetProjects" [value]="p.id">
+            {{ projectLabel(p) }}
+          </mat-option>
+        </mat-select>
+        <mat-hint>Restricts identification to plants known in that region — improves accuracy for local species.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width mt-12">
+        <mat-label>Common-name language</mat-label>
+        <mat-select [(ngModel)]="selectedLang" (ngModelChange)="plantnetSaved = false">
+          <mat-option *ngFor="let l of plantnetLanguages" [value]="l.code">
+            {{ l.label }}
+          </mat-option>
+          <mat-option *ngIf="plantnetLanguages.length === 0" value="en">English</mat-option>
+        </mat-select>
+        <mat-hint>Language used for common plant names in the candidate list.</mat-hint>
+      </mat-form-field>
+
+      <div class="plantnet-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="savePlantNetPreferences()"
+          [disabled]="plantnetSaving"
+        >
+          <mat-icon *ngIf="plantnetSaved">check</mat-icon>
+          {{ plantnetSaving ? 'Saving…' : plantnetSaved ? 'Saved' : 'Save Pl@ntNet preferences' }}
+        </button>
+        <span class="location-hint">
+          <mat-icon class="hint-icon">info_outline</mat-icon>
+          Flora ranking by your location is not yet available — coming in a future update.
+        </span>
+      </div>
+    </ng-container>
+
+    <ng-template #plantnetError>
+      <p class="section-hint error-hint">
+        Could not load Pl@ntNet options — check your connection and try again.
+      </p>
+    </ng-template>
+  </div>
+
+  <div class="preference-section">
     <h2>Hitting a rate limit?</h2>
     <p class="section-hint">
       Each AI model has its own hourly call budget. If you see a rate-limit message, switching to

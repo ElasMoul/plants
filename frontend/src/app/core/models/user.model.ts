@@ -33,6 +33,9 @@ export interface UserPreferences {
   // break — ModelSelectorComponent treats a missing entry as available.
   visionModelAvailability?: Partial<Record<VisionModelPreference, boolean>>;
   reasoningModelAvailability?: Partial<Record<ReasoningModelPreference, boolean>>;
+  // PlantNet flora (project code e.g. "k-world-flora") and common-name language (T8.4).
+  plantnetProject?: string;
+  plantnetLang?: string;
 }
 
 export interface User {

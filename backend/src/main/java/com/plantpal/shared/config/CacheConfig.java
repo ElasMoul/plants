@@ -81,7 +81,14 @@ public class CacheConfig implements CachingConfigurer {
                 RedisSerializationContext.SerializationPair.fromSerializer(
                     new GenericJackson2JsonRedisSerializer(redisMapper)));
 
-    return RedisCacheManager.builder(connectionFactory).cacheDefaults(config).build();
+    // PlantNet flora / language lists are stable — cache for 24h so metadata calls never burn
+    // identify quota. All other caches use the 10-minute default above.
+    RedisCacheConfiguration longLivedConfig = config.entryTtl(Duration.ofHours(24));
+    return RedisCacheManager.builder(connectionFactory)
+        .cacheDefaults(config)
+        .withCacheConfiguration("plantnet-projects", longLivedConfig)
+        .withCacheConfiguration("plantnet-languages", longLivedConfig)
+        .build();
   }
 
   // Raw byte[] storage for photo bytes (separate from the JSON-serialising cache above).
