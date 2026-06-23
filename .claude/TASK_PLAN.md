@@ -583,6 +583,508 @@ own `feature/PP-042-multi-treatment-picker`) — summary in STATE.md/FRONTEND.md
 
 ---
 
+
+## PHASE 8 — PlantNet as a First-Class Identification Provider
+> Goal: stop treating PlantNet as a degraded, species-only vision option
+> (today: single guess, `healthStatus: UNKNOWN`, no care plan, no organ tags,
+> `project=all`, no reference images, quota invisible) and turn it into the
+> app's botanical ground-truth layer using the v2 surface we weren't touching:
+> a **ranked candidate list with confidence scores + reference images**,
+> **organ-tagged multi-image accuracy**, **geolocation-ranked floras**, a
+> **dedicated disease/pest classifier**, **GBIF/POWO/IUCN linkage** carried on
+> every result, and **daily-quota telemetry**.
+>
+> **API contract — CONFIRMED against the real swagger (My Pl@ntNet API 2.2.2);
+> these supersede the earlier reconstructed notes:**
+> - Base `https://my-api.plantnet.org`. **api-key is a query param.** Max POST
+>   **52,428,800 bytes (50 MB)**. Statuses: **404** = "Species Not Found" (the
+>   non-plant reject), **413** payload too large, **415** bad mime, **429** =
+>   Too Many Requests (real rate-limit status, not a generic 500).
+> - `POST /v2/identify/{project}` — multipart, `images`+`organs` repeated 1–5×.
+>   **Always send `type=kt`** — `legacy` is deprecated and "will be dropped."
+>   Params: `include-related-images`, `no-reject` (leave false), `nb-results`
+>   (default 10), `lang`, `detailed` (adds genus/family `otherResults`).
+>   Response (`Identification result`): `bestMatch`, `results[]`, `language`,
+>   `preferedReferential`, **`switchToProject`** (a hint that another flora would
+>   identify better — surface it), `predictedOrgans[]`, `version`,
+>   `remainingIdentificationRequests`, `otherResults`.
+>   Each `Result`: `score`, `species{scientificName, scientificNameWithoutAuthor,
+>   scientificNameAuthorship, genus{}, family{}, commonNames[]}`, `images[]`
+>   (reference photos), **`gbif{id}`**, **`powo{id}`**, **`iucn{id,category}`**.
+>   Each reference `Image`: `organ, author, license, citation, date,
+>   url{o,m,s}` — **license/author/citation travel with the image → attribution
+>   is required if we display it.**
+> - `organs` enum (full): auto, leaf, flower, fruit, bark, habit, scan, branch,
+>   sheet, other, drawing, seed, bud, anatomy, aerial. **Practical consumer set:
+>   auto, leaf, flower, fruit, bark, habit.**
+> - `GET /v2/projects?lang=&type=kt&lat=&lon=` — **lat/lon filter and SORT floras
+>   by location** (this is how a Casablanca user gets the right Mediterranean/N-
+>   Africa flora automatically). `Project{id,title,description,speciesCount}`.
+> - `GET /v2/languages` -> string[]. `GET /v2/diseases?lang=&prefix=` -> EPPO-coded
+>   disease list (`{name:"1COCCF", label, categories[]}`).
+> - `POST /v2/diseases/identify` — **multi-image** (up to 5) + organs, scoped to
+>   **cultivated-plant** diseases. Response (`Model62`): `results[]` where each is
+>   `{name, description, score, images[]}`, `version`,
+>   `remainingIdentificationRequests`.
+> - `GET /v2/quota/daily?day=YYYY-MM-DD` -> `{day, quota:{identify:{count, total,
+>   remaining}}}`; `GET /v2/quota/history?year=YYYY` -> per-day usage. **Real quota
+>   endpoints — don't rely only on the per-scan `remainingIdentificationRequests`.**
+> - Optional/secondary, noted not scheduled: `POST /v2/varieties/identify`
+>   (cultivar ID), `GET /v2/projects/{project}/species/align` (reconcile a
+>   free-text name onto PlantNet's referential — synonyms/fuzzy),
+>   `POST /v2/embeddings` (image vectors), `GET /v2/prediction/geo/species`
+>   ("what grows near me" SDM — appears [private], confirm key access).
+>
+> **Two forks the human must rule on before T8.1 / T8.5 run — see "Open
+> Decisions". Do not start T8.1 until D1 is answered.**
+
+
+---
+
+### T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider 🤝 Assisted
+**Branch:** `feature/PP-042-model-lineup` (verify next free PP number)
+
+> Foundational for the rest of Phase 8 — establishes the full enum that T8.1's
+> PlantNet work layers on. Adds one genuinely new provider (Claude); everything
+> else is a model-string on an existing client.
+>
+> Target menus:
+> - **Vision:** PLANTNET · GITHUB_GPT41 · GITHUB_GPT4O · OLLAMA_GEMMA3 · ANTHROPIC_CLAUDE
+> - **Reasoning:** GITHUB_O4_MINI · DEEPSEEK_R1 · GITHUB_GPT41_MINI · OLLAMA_GEMMA3 · ANTHROPIC_CLAUDE
+
+**Claude Code prompt:**
+```
+// Phase 8 — Expand both AI model menus to 5 options each and add Claude as a new
+// provider. Most additions are model-strings on existing clients; Claude is the
+// only new client. Keep the T7.1 split (VisionModelPreference /
+// ReasoningModelPreference) and the loadVisionPreference()/loadReasoningPreference()
+// routing pattern — extend, don't rebuild.
+
+BACKEND
+
+1. New AnthropicClient (serves BOTH vision and reasoning — Claude is multimodal):
+   - Implements the same vision-identification + text-completion contracts as
+     GitHubModelsClient / the Azure text client respectively (so the routing
+     switches can treat it like any other provider).
+   - Anthropic Messages API: JSON body, images as base64 content blocks (NOT
+     multipart like PlantNet, NOT /api/generate like Ollama). System prompt as the
+     top-level `system` field. Reuse the existing defensive JSON parsing + the
+     ```-fence stripping half of stripThinkTags() (Claude won't emit <think>, but
+     may wrap JSON in fences).
+   - Config: anthropic.api-key, anthropic.base-url (https://api.anthropic.com),
+     anthropic.models.default (claude-sonnet-4-6), optional .cheap
+     (claude-haiku-4-5) / .max (claude-opus-4-8). Same Apache HttpClient 5 setup
+     as the other external clients.
+   - 429 handling: reuse the RateLimitException/retryAfterSeconds shape (parse
+     Retry-After). Never launder to 500.
+
+2. VisionModelPreference: add GITHUB_GPT41, OLLAMA_GEMMA3, ANTHROPIC_CLAUDE
+   (PLANTNET, GITHUB_GPT4O already exist). Mark OLLAMA_LLAVA @Deprecated but keep
+   it PARSEABLE (parseVisionPreference() already falls back defensively — map a
+   stored OLLAMA_LLAVA to OLLAMA_GEMMA3 so existing users move to the new local
+   model). Mirror the same change in the frontend VisionModelPreference type.
+
+3. ReasoningModelPreference: add GITHUB_O4_MINI, GITHUB_GPT41_MINI, OLLAMA_GEMMA3,
+   ANTHROPIC_CLAUDE (DEEPSEEK_R1 already exists). Same OLLAMA_LLAVA deprecation +
+   defensive remap as above.
+
+4. Routing — extend the existing switches (do NOT add new client classes except
+   AnthropicClient):
+   - runIdentification() vision switch: GITHUB_GPT41 -> GitHubModelsClient with the
+     gpt-4.1 model string; OLLAMA_GEMMA3 -> OllamaClient (gemma3 is multimodal —
+     send the image the same way llava-phi3 is sent today, verify /api/generate vs
+     /api/chat for gemma3); ANTHROPIC_CLAUDE -> AnthropicClient.
+   - Reasoning switches (getCureAdvice / craftPlan / disease-description /
+     species-enrichment): GITHUB_O4_MINI and GITHUB_GPT41_MINI -> the existing
+     Azure text client (currently named DeepSeekClient — same endpoint, just new
+     model strings; DO NOT rename it this phase, the blast radius is large, but add
+     a class-level comment that it now serves multiple Azure text models, not only
+     DeepSeek). OLLAMA_GEMMA3 -> OllamaClient text. ANTHROPIC_CLAUDE -> AnthropicClient.
+
+5. o-series request shape (o4-mini) — FLAGGED GAP, handle explicitly: o4-mini uses
+   `max_completion_tokens` (NOT `max_tokens`), does NOT accept a `temperature`
+   override (omit it), and exposes no <think> tags (reasoning is server-side, so
+   stripThinkTags() is a no-op for it — fine). Build the request per-model in the
+   Azure text client so gpt-4.1-mini (standard chat shape) and o4-mini (reasoning
+   shape) don't share one rigid body.
+
+6. Provider availability: expose which providers are actually configured (e.g.
+   add an `availableProviders` / per-option `available` flag to the preferences
+   response, derived from whether each provider's key/host is set —
+   anthropic.api-key present? ollama host reachable/configured?). The frontend uses
+   this to disable un-configured options (Claude with no key MUST be unselectable,
+   or every call 401s).
+
+7. Config strings (application.yml): github.models.identification-model gains a
+   gpt-4.1 entry alongside the existing gpt-4o; the Azure text client gains o4-mini
+   + gpt-4.1-mini entries alongside deepseek; ollama gains gemma3:4b; anthropic
+   block as in (1). Keep all existing keys; additive only.
+
+8. OPTIONAL migration 023 (only if you take the default change + backfill — if you
+   do, BUMP the Phase 8 PlantNet migrations to 024/025/026 and update the docs):
+   - reasoning_model_preference DEFAULT 'DEEPSEEK_R1' -> 'GITHUB_GPT41_MINI'
+     (the recommended default switch — fast structured-JSON generation, avoids
+     DeepSeek-R1's 1-call/60s upstream cap; see ARCHITECT.md). Confirm before
+     applying — this changes current behavior for new users.
+   - Backfill any stored OLLAMA_LLAVA -> OLLAMA_GEMMA3 in both pref columns.
+   - (No migration is needed merely to add enum VALUES — the columns are plain
+     VARCHAR(30); new strings just fit.)
+
+FRONTEND
+
+9. ModelSelectorComponent: VISION_OPTIONS (5) + REASONING_OPTIONS (5). LABEL BY
+   INTENT, model name as subtitle (names churn): e.g. vision = "Best (Cloud) ·
+   gpt-4.1", "Balanced (Cloud) · gpt-4o", "Offline (Local) · gemma3",
+   "Botanical · Pl@ntNet", "Frontier · Claude". Reasoning similarly
+   ("Best · o4-mini" / "Deep · DeepSeek-R1" / "Balanced · gpt-4.1-mini" /
+   "Offline · gemma3" / "Frontier · Claude"). Tooltip each with its tradeoff
+   (Pl@ntNet = species-ID only, no care plan, sets healthStatus UNKNOWN; gemma3 =
+   runs locally/offline, lower accuracy; Claude = needs an Anthropic key;
+   o4-mini/R1 = slower, deeper reasoning).
+   - Disable any option whose provider isn't available (step 6). Show a small
+     "requires setup" hint on a disabled Claude/local option rather than hiding it.
+   - Update the TS union types to match the new backend enums.
+   - The existing "powered by {model}" badge (T7.2) already records the ACTUAL
+     model used — no change needed; it keeps the labels honest.
+```
+
+> 💡 **Why label by intent, not model name:** gpt-4o became gpt-4.1 became
+> gpt-5-chat inside a year. A user who picked "Balanced" should keep getting the
+> current balanced model without re-choosing when the underlying string changes.
+> The badge still shows the real model, so nothing is hidden.
+
+---
+
+### T8.1 — Backend: PlantNet v2 client upgrade — ranked candidates, organs, reference images, quota 🤖 AI
+**Branch:** `feature/PP-043-plantnet-v2-client` (verify next free PP number)
+
+> Depends on **D1** (always-on vs. only-when-selected) and **D2** (candidate storage).
+
+**Claude Code prompt:**
+```
+// Phase 8 — Upgrade PlantNetClient from a single-result guesser to a full v2
+// ranked-candidate identifier. CONFIRM whether the existing client already calls
+// /v2/identify; if it's on v1, migrate. Keep Apache HttpClient 5 + the HTTP/1.1
+// ALPN workaround (do NOT reintroduce Java's built-in HttpClient — see ARCHITECT.md).
+
+1. PlantNetClient.identify(images, organs, project, lang):
+   - multipart POST /v2/identify/{project}; api-key as QUERY PARAM.
+   - ALWAYS send type=kt (legacy is deprecated/dropping).
+   - `organs` repeated to match each image in order; default any unset image to
+     `auto`. Restrict the app's selectable organs to the consumer set
+     (auto/leaf/flower/fruit/bark/habit).
+   - Query: include-related-images=true, nb-results=<config, default 6>,
+     no-reject=false, lang=<param>.
+   - Enforce the 50 MB total cap client-side before sending (sum of resized
+     image bytes) — fail fast with a clear message rather than eating a 413.
+   - Error mapping (real statuses, NOT laundered to 500): 404 -> friendly
+     "doesn't look like a plant" PlantPalException (404). 429 -> RateLimitException
+     (parse Retry-After; this is the existing T7.1 shape). 413/415 -> clear client
+     error. Do NOT set no-reject=true.
+
+2. Parse the FULL ranked results[] into a PlantNetCandidate list (do NOT collapse
+   to results[0] as today):
+   - score, scientificName, scientificNameWithoutAuthor, scientificNameAuthorship,
+     genus, family, commonNames[], gbifId (results carry gbif{id}),
+     powoId (powo{id}), iucnCategory (iucn{category}),
+     referenceImages[] (each: url.s + url.m, organ, author, license, citation —
+     KEEP author/license/citation for attribution, cap 3 per candidate).
+   - Top-level: bestMatch, switchToProject (nullable), predictedOrgans[], version,
+     remainingIdentificationRequests.
+   - Defensive parse, never throw on a malformed field (ActionPlanValidator
+     philosophy) — a missing optional field degrades to null/empty, never fails
+     the whole identification.
+
+3. Storage (migration 023 — VERIFY next free number against db.changelog-master.xml
+   and STATE.md; sequence is at 022 but the brief has guessed wrong twice, see
+   ARCHITECT.md Migration Sequencing). Per D2: JSONB `plantnet_candidates` on
+   `identifications` (matches care_plan / annotation_regions JSONB precedent —
+   recommended) or a side table. Also persist `plantnet_version`,
+   `plantnet_best_match`, `plantnet_switch_to_project`, `plantnet_quota_remaining`
+   (nullable). Store the raw response too (enterprise "raw AI response for
+   reprocessing" checklist item). Append to changelog IN ORDER.
+
+4. runIdentification() PLANTNET case: returns the ranked candidate list +
+   bestMatch + switchToProject, not one species. healthStatus stays UNKNOWN for a
+   PlantNet-only scan (identify does NOT assess health — that's T8.5). Do not
+   fabricate a care plan from a PlantNet result. Per D1, build EITHER the
+   always-on-alongside-gpt-4o path OR the gated-on-VisionModelPreference.PLANTNET
+   path — not both.
+
+5. DTO surface: PlantNetCandidateDto + add plantNetCandidates, plantNetBestMatch,
+   plantNetSwitchToProject, plantNetQuotaRemaining (all nullable) to
+   IdentificationResponse. Reuse the nullable-field convention so the frontend
+   renders nothing when absent.
+
+6. Config (application.yml): app.plantnet.nb-results (default 6),
+   app.plantnet.lang (default app language). project default comes from user prefs
+   (T8.4), falling back to "all". Leave api-key sourcing unchanged.
+```
+
+> 💡 **Candidate list, not a single answer:** PlantNet returns a *ranked
+> distribution with confidence*; collapsing to `results[0]` throws away exactly
+> the signal Flow-1 confirmation (T8.2/T8.3) needs. The single-guess shape was our
+> limitation, not the API's.
+
+---
+
+### T8.2 — Backend: ranked-candidate species matching (Flow 1) wired to PlantNet 🤖 AI
+**Branch:** `feature/PP-044-plantnet-species-match` (verify)
+
+**Claude Code prompt:**
+```
+// Phase 8 — Make Flow-1 species confirmation a ranked pick-list, not a yes/no on
+// one guess. Flow-1 endpoints already exist (T6.9): GET /{id}/species-match,
+// POST /{id}/resolve-species. Extend, don't replace.
+
+1. GET /{id}/species-match: return T8.1's candidate list (top-N: scientificName,
+   commonName, score 0..1, referenceImages[] with attribution, gbifId, powoId,
+   iucnCategory) + a bestMatch flag/index + switchToProject (nullable). Preserve
+   the single-match fast path: when exactly one candidate clears
+   app.plantnet.auto-confirm-score (default ~0.90) with no close runner-up, mark
+   it auto-confirmable so the UI can skip the picker.
+
+2. POST /{id}/resolve-species: accept the chosen candidate's scientificName (or a
+   "none / rescan" signal). On a choice, run the EXISTING
+   SpeciesService.findOrCreate(scientificName, commonName, reasoningPreference) —
+   no parallel create path. Pass the candidate's gbifId/powoId/iucnCategory
+   through to the Species row (these are free, factual, straight off the identify
+   response — see T8.6; this is the cheap half of "factual enrichment" with no
+   extra external call).
+
+3. Do NOT touch Flow 2 / Flow 3 (they already know their species — ARCHITECT.md's
+   3-path tree). Flow-1 only.
+
+4. SpeciesMatchDto already exists — extend it to carry the candidate list (additive;
+   don't break T6.9 callers in one shot — deprecate scalar fields in a comment if
+   they become redundant).
+```
+
+---
+
+### T8.3 — Frontend: multi-candidate species confirmation UI (confidence + reference images) 🤝 Assisted
+**Branch:** `feature/PP-045-species-confirm-candidates` (verify)
+
+**Claude Code prompt:**
+```
+// Phase 8 — Rework species-confirm-step from yes/no into a ranked chooser.
+// Backend contract is T8.2's extended /species-match.
+
+1. species-confirm-step.component: candidate cards (vertical list). Each: common
+   name (bold) + scientific name (italic), a confidence chip (whole %), up to 3
+   PlantNet reference thumbnails to compare against the user's own photo
+   (lazy-loaded, alt = scientific name). Tap a candidate to confirm.
+   - Auto-confirmable candidate (T8.2 threshold): keep today's frictionless
+     one-tap confirm, but expose a "Not this one ->" link revealing the full list.
+   - Always include "None of these — rescan" -> back to upload.
+
+2. ATTRIBUTION (required — license/author/citation travel with each reference
+   image): show a small caption/tooltip per thumbnail with author + license (e.g.
+   "(c) {author}, {license}"). Do not display reference images without it.
+
+3. Surface switchToProject when present: a one-line nudge ("These may identify
+   better in the {X} flora — change it in Settings"), linking to T8.4's flora
+   preference. Show predictedOrgans + a one-line organ-quality hint ("flowers and
+   fruits identify most accurately; bark least"). Optional: an IUCN conservation
+   chip when iucnCategory indicates a threatened category.
+
+4. Reuse ModelUsageBadge ("Candidates from Pl@ntNet {version}") and AiErrorService
+   (404 non-plant -> friendly "doesn't look like a plant", back to upload). No new
+   error pattern. A broken/slow thumbnail must never block confirmation
+   (leaf-placeholder fallback).
+```
+
+---
+
+### T8.4 — Both: organ tagging + geolocation-ranked flora & common-name language 🤝 Assisted
+**Branch:** `feature/PP-046-plantnet-organs-projects` (verify)
+
+**Claude Code prompt:**
+```
+// Phase 8 — Per-image organ tags (PlantNet rewards them) and a location-ranked
+// flora + common-name language. PhotoUploadComponent already handles multiple
+// angles of ONE plant via organs[] — surface and forward it.
+
+FRONTEND:
+1. Multi-angle (single-plant) mode ONLY — not batch mode (batch = different
+   plants, T7.3): a small per-image organ selector
+   (auto|leaf|flower|fruit|bark|habit, default auto) on each thumbnail; forward
+   organs[] on the analyze emit (parallel-indexed to files if processFiles only
+   tracks files today).
+2. Preferences page (/preferences): a "Pl@ntNet" subsection with "Flora / region"
+   and "Common-name language". The flora list comes from /v2/projects RANKED BY
+   THE USER'S LOCATION when available — default-select the top-ranked one, let the
+   user override. Language defaults to the app language.
+
+BACKEND:
+3. Location source for project ranking: pass lat/lon to GET /v2/projects?lat&lon.
+   FLAG — confirm where a user lat/lon comes from (browser geolocation captured on
+   the prefs page? a stored profile field?). If none exists, ship the manual
+   dropdown first and add location-ranking when a lat/lon source lands. Do NOT
+   hardcode a region.
+4. Migration 024 (VERIFY): users.plantnet_project VARCHAR (default 'all'),
+   users.plantnet_lang VARCHAR (nullable -> app default). Additive.
+5. Thread project + lang from prefs into T8.1's identify() call
+   (loadPlantNetPreferences(userId), mirroring loadVisionPreference()).
+6. Cached proxy endpoints (so the frontend never calls PlantNet directly or burns
+   identify quota): GET /plantnet/projects (accepts optional lat/lon),
+   GET /plantnet/languages — @Cacheable, TTL 24h, ALWAYS type=kt upstream.
+```
+
+---
+
+### T8.5 — Backend: PlantNet disease/pest cross-check feeding the Treatment flow 🤖 AI
+**Branch:** `feature/PP-047-plantnet-disease-crosscheck` (verify)
+
+> Depends on **D4** (cross-check authority on disagreement). Heaviest task —
+> sequence last, after T8.1–T8.4 are proven.
+
+**Claude Code prompt:**
+```
+// Phase 8 — Add PlantNet's dedicated disease classifier as a SECOND OPINION on the
+// Flow-3 health scan, cross-checking gpt-4o's annotation-based detection. NOT a
+// replacement. NOTE: /v2/diseases/identify is scoped to CULTIVATED-plant diseases
+// — treat a low/empty result as "no corroboration", not "healthy".
+
+1. PlantNetDiseaseClient.identifyDisease(images, organs, lang): multipart POST
+   /v2/diseases/identify (up to 5 images + organs — same multi-image shape as
+   identify, NOT single-image), include-related-images=true, nb-results=<cap>,
+   lang. Same HttpClient 5 / api-key-as-query / 50MB cap / defensive-parse / real-
+   status-mapping conventions as T8.1. Parse results[] (each: name, description,
+   score, images[]) + remainingIdentificationRequests. 404/empty -> empty result,
+   NOT an error. Optionally resolve `name` against GET /v2/diseases (EPPO codes +
+   labels + categories) for a human-readable, canonical disease label.
+
+2. Flow 3 (plantId+speciesId known): run identifyDisease() alongside the existing
+   gpt-4o annotation (parallel CompletableFuture on aiTaskExecutor — same pattern
+   as identification+annotation). Cross-check per D4:
+   - AGREEMENT: raise a confidence flag, prefer the EPPO/taxonomic label for
+     Treatment.diseaseName, and SEED Treatment.diseaseDescription from PlantNet's
+     result.description (it ships one — saves a DeepSeek call and is factual).
+   - DISAGREEMENT (D4 default rec): keep gpt-4o's diseaseName (it drives downstream
+     care-plan/cure-advice), attach PlantNet's result as a flagged "second
+     opinion" (label + description + reference images), mark Treatment
+     NEEDS_REVIEW so the uncertainty is visible.
+   - Build only the policy D4 selects.
+
+3. Storage (migration 025, VERIFY): persist PlantNet's disease result on the
+   identification (JSONB) + surface on TreatmentResponse (second-opinion block +
+   agreement flag + EPPO code). Reuse T7.1's model-usage-tracking pattern to record
+   PlantNet corroboration.
+
+4. Quota/rate-limit: a Flow-3 scan may now hit gpt-4o AND /v2/diseases/identify,
+   each consuming PlantNet daily quota independently from our Bucket4j 20/hour.
+   Surface remainingIdentificationRequests; on a 429/quota-exhausted, map to the
+   existing RateLimitException/retryAfterSeconds UX — never swallow (the T7.1
+   no-silent-fallback rule applies here too).
+```
+
+---
+
+### T8.6 — Backend: factual species enrichment (IUCN/POWO free; GBIF deeper) 🤖 AI — secondary
+**Branch:** `feature/PP-048-factual-species-enrichment` (verify)
+
+> Depends on **D3** (how far to go now). The swagger DEFLATES this task: gbifId,
+> powoId and iucnCategory already arrive on every identify result (captured in
+> T8.1/T8.2) — so the cheap factual layer needs NO extra API call. A GBIF/POWO
+> fetch is only for *deeper* data (distribution, extended vernaculars).
+
+**Claude Code prompt:**
+```
+// Phase 8 — Prefer factual taxonomy over hallucination-prone DeepSeek enrichment.
+// Species.externalDataSource already supports "WIKIPEDIA"|"MANUAL" beside "AI" —
+// add "GBIF"/"POWO" as needed.
+
+1. CHEAP LAYER (no new external call — do this regardless of D3): persist the
+   gbifId/powoId/iucnCategory already passed from T8.2.resolve-species onto the
+   Species row. Set externalDataSource where these came from PlantNet. This alone
+   gives factual family/genus/commonNames/conservation status without any extra
+   request.
+
+2. DEEPER LAYER (only if D3 says "now"): GbifClient.fetchSpecies(gbifId) -> GET
+   api.gbif.org/v1/species/{id} (confirm GBIF needs no auth for read) for
+   distribution + extended vernaculars; defensive parse, never throws. When a
+   Species has a gbifId, prefer GBIF for taxonomy/common-names, set
+   externalDataSource="GBIF", externalDataFetchedAt=now; fall back to DeepSeek ONLY
+   when no gbifId or GBIF returns nothing. Care-overview PROSE can still come from
+   DeepSeek (GBIF won't have it) — split factual fields (GBIF) from prose (AI).
+
+3. Add the new externalDataSource values; migration only if the column is
+   constrained (check — it may be free-text). NEEDS_REVIEW semantics unchanged.
+```
+
+---
+
+### T8.7 — Frontend: PlantNet quota + provider telemetry 🤝 Assisted — small
+**Branch:** `feature/PP-049-plantnet-quota` (verify)
+
+**Claude Code prompt:**
+```
+// Phase 8 — Surface PlantNet's daily quota proactively. The swagger gives real
+// quota endpoints — use them, don't only scrape the last scan's leftover count.
+
+1. Backend: cached proxy GET /plantnet/quota -> upstream GET /v2/quota/daily
+   ({day, quota.identify.{count,total,remaining}}), short TTL (e.g. 5 min).
+   Optional GET /plantnet/quota/history -> /v2/quota/history?year= for a usage chart.
+2. Preferences Pl@ntNet subsection (T8.4): show "Pl@ntNet: {remaining}/{total}
+   identifications left today" from /plantnet/quota. Treat unknown as unknown, not
+   zero. Optional small history sparkline.
+3. On a PlantNet 429/quota-exhausted (the mapped RateLimitException from T8.1/T8.5),
+   reuse AiErrorService's snackbar with a PlantNet-specific message + the existing
+   "switch your AI model in Settings" action (gpt-4o/Ollama don't share PlantNet's
+   quota). When PlantNet is the selected vision model and quota is known-low, show
+   a small inline hint in ModelSelectorComponent's vision dropdown.
+```
+
+---
+
+## Open Decisions (resolve before the dependent tasks run)
+
+- **D1 — PlantNet always-on vs. only-when-selected** *(blocks T8.1; biggest fork)*
+  Today PlantNet runs only when the user picks `VisionModelPreference.PLANTNET`.
+  The "best assistant" version runs PlantNet's botanical candidate list + reference
+  images *alongside* gpt-4o on every Flow-1 scan (gpt-4o for structured care-plan-
+  capable vision, PlantNet for ground-truth candidates). Trade-off: richer/
+  trustworthier ID vs. an extra external call + PlantNet daily-quota burn per scan
+  + a second rate-limit surface. *Architect rec:* always-on for Flow-1 candidates,
+  behind a feature flag so it can be turned off if quota bites. **Need the call.**
+
+- **D2 — Candidate storage shape** *(blocks T8.1)*
+  JSONB `plantnet_candidates` on `identifications` (matches care_plan /
+  annotation_regions precedent — rec) vs. a normalized side table. Candidates are
+  read as a unit, never queried by field -> JSONB.
+
+- **D3 — How far to take factual enrichment now** *(shapes T8.6)*
+  The cheap layer (persist gbifId/powoId/iucnCategory off the identify response) is
+  near-free and should ship regardless. The deeper GBIF fetch is a separate API.
+  *Rec:* ship the cheap layer in T8.6; defer the GBIF fetch unless factual
+  distribution data is a launch priority.
+
+- **D4 — Disease cross-check authority** *(blocks T8.5)*
+  When gpt-4o and PlantNet disagree, who owns `Treatment.diseaseName`? *Rec:*
+  agreement -> high confidence + EPPO/taxonomic label + seed diseaseDescription from
+  PlantNet's `description`; disagreement -> keep gpt-4o's label (drives downstream
+  care/cure generation), attach PlantNet as a flagged second opinion, mark
+  Treatment NEEDS_REVIEW. **Need the call.**
+
+- **D-location** *(shapes T8.4 — non-blocking)*
+  `/v2/projects?lat&lon` ranks floras by location, which is the better UX than a
+  manual picker for a Morocco-centric base. But it needs a user lat/lon source
+  (browser geolocation on the prefs page, or a stored profile field) that may not
+  exist yet. Ship the manual dropdown first; add location-ranking when a lat/lon
+  source lands. Don't hardcode a region default.
+
+## Sequencing
+T8.1 -> T8.2 -> T8.3 are the core "ranked-candidate identification" slice — ship
+together (highest value, lowest risk). T8.4 layers accuracy (organs + flora). T8.5
+(disease) is heaviest — after the core is proven. T8.6 (cheap factual layer) and
+T8.7 (quota) are small/secondary, slot in opportunistically.
+
+Sequencing vs. Phase 5 (launch) is the same open question as Phase 7: this is
+feature work, not launch infra. Decide whether Phase 8 ships before or after v1.0.0.
+
+
+
 ## Status Summary
 
 | Phase | Status |
