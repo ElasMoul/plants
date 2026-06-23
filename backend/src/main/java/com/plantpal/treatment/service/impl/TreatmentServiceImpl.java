@@ -3,6 +3,7 @@ package com.plantpal.treatment.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
@@ -49,7 +50,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private static final List<TreatmentStatus> ACTIVE_STATUSES =
       List.of(TreatmentStatus.DRAFT, TreatmentStatus.IN_PROGRESS);
   private static final String DISEASE_CARE_CARD_TYPE = "PEST";
-  private static final int TREATMENT_AI_RATE_LIMIT = 10;
+  private static final int TREATMENT_AI_RATE_LIMIT = 100000;
   // Disease description is fire-and-forget (no HTTP caller waiting), so a single bounded retry
   // after the upstream-suggested wait is safe — caps the sleep in case of an implausible value.
   private static final long MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS = 65;
@@ -59,6 +60,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private final TreatmentPlanService treatmentPlanService;
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
+  private final AnthropicClient anthropicClient;
   private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
   private final Executor aiTaskExecutor;
@@ -71,6 +73,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       TreatmentPlanService treatmentPlanService,
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
+      AnthropicClient anthropicClient,
       UserRepository userRepository,
       ObjectMapper objectMapper,
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor) {
@@ -79,6 +82,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     this.treatmentPlanService = treatmentPlanService;
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
+    this.anthropicClient = anthropicClient;
     this.userRepository = userRepository;
     this.objectMapper = objectMapper;
     this.aiTaskExecutor = aiTaskExecutor;
@@ -350,16 +354,27 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   private String generateCureAdvice(
       ReasoningModelPreference preference, String species, String diseaseName) {
-    return preference == ReasoningModelPreference.OLLAMA_LLAVA
-        ? ollamaClient.generateCureAdvice(species, diseaseName)
-        : deepSeekClient.generateCureAdvice(species, diseaseName);
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, diseaseName);
+      case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, diseaseName);
+      case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, diseaseName);
+      case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, diseaseName);
+      case DEEPSEEK_R1 -> deepSeekClient.generateCureAdvice(species, diseaseName);
+    };
   }
 
   private String generateDiseaseDescription(
       ReasoningModelPreference preference, String species, String diseaseName) {
-    return preference == ReasoningModelPreference.OLLAMA_LLAVA
-        ? ollamaClient.generateDiseaseDescription(species, diseaseName)
-        : deepSeekClient.generateDiseaseDescription(species, diseaseName);
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
+          ollamaClient.generateDiseaseDescription(species, diseaseName);
+      case ANTHROPIC_CLAUDE -> anthropicClient.generateDiseaseDescription(species, diseaseName);
+      case GITHUB_O4_MINI ->
+          deepSeekClient.generateDiseaseDescriptionViaO4Mini(species, diseaseName);
+      case GITHUB_GPT41_MINI ->
+          deepSeekClient.generateDiseaseDescriptionViaGpt41Mini(species, diseaseName);
+      case DEEPSEEK_R1 -> deepSeekClient.generateDiseaseDescription(species, diseaseName);
+    };
   }
 
   private ActionPlanDto parseActionPlan(String raw) {

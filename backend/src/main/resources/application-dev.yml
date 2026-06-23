@@ -54,13 +54,16 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-# ──── GitHub Models (gpt-4o vision: identification + annotation) ─────────────
+# ──── GitHub Models (vision: identification + annotation; text: o4-mini / gpt-4.1-mini) ───────
 github:
   base-url: ${GITHUB_BASE_URL:https://models.inference.ai.azure.com}
   token: ${GITHUB_TOKEN}
   models:
     identification-model: ${GITHUB_IDENTIFICATION_MODEL:gpt-4o}
     annotation-model: ${GITHUB_ANNOTATION_MODEL:gpt-4o-mini}
+    gpt41-model: ${GITHUB_GPT41_MODEL:gpt-4.1}             # VisionModelPreference.GITHUB_GPT41
+    o4-mini-model: ${GITHUB_O4_MINI_MODEL:o4-mini}          # ReasoningModelPreference.GITHUB_O4_MINI
+    gpt41-mini-model: ${GITHUB_GPT41_MINI_MODEL:gpt-4.1-mini} # ReasoningModelPreference.GITHUB_GPT41_MINI
 
 # ──── DeepSeek (text-only: care plan + cure advice via GitHub Models endpoint) ─
 deepseek:
@@ -69,7 +72,19 @@ deepseek:
 # ──── Ollama (local AI) ───────────────────────────────────────────────────────
 ollama:
   base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:llava-phi3}     # Run: ollama pull llava-phi3
+  model: ${OLLAMA_MODEL:gemma3:4b}      # Run: ollama pull gemma3:4b
+
+# ──── Anthropic (Claude — vision + reasoning) ─────────────────────────────────
+# api.key has no required default: an un-keyed Claude is reported as unavailable on the
+# preferences endpoint instead of failing application startup (see AnthropicClient).
+anthropic:
+  base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
+  api:
+    key: ${ANTHROPIC_API_KEY:}
+  models:
+    default: ${ANTHROPIC_MODEL_DEFAULT:claude-sonnet-4-6}
+    cheap: ${ANTHROPIC_MODEL_CHEAP:claude-haiku-4-5-20251001}
+    max: ${ANTHROPIC_MODEL_MAX:claude-opus-4-8}
 
 # ──── Application-specific settings ──────────────────────────────────────────
 app:

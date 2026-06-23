@@ -1,5 +1,10 @@
 <div class="preferences-page">
-  <h1 class="page-title">AI Model Settings</h1>
+  <div class="page-header">
+    <h1 class="page-title">AI Model Settings</h1>
+    <button mat-icon-button class="close-btn" (click)="close()" aria-label="Close settings">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
   <p class="page-subtitle">
     Choose which model handles each kind of AI work. Switching here applies to every future
     scan, cure-advice request, treatment plan, and chat reply.
@@ -7,10 +12,6 @@
 
   <div class="preference-section">
     <h2>Models</h2>
-    <p class="section-hint">
-      Vision model — used for plant identification and disease annotation. Reasoning model — used
-      for care plans, cure advice, disease descriptions, and species enrichment.
-    </p>
     <app-model-selector class="model-selector-full"></app-model-selector>
   </div>
 

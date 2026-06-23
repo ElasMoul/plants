@@ -3,6 +3,7 @@ package com.plantpal.identification.client;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -17,6 +18,13 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+/**
+ * Despite the name, this client now serves multiple Azure-inference text models, not just
+ * DeepSeek-R1 — {@link #generateCureAdviceViaO4Mini} and friends route the same {@code
+ * /chat/completions} endpoint through o4-mini / gpt-4.1-mini for {@link
+ * com.plantpal.user.entity.ReasoningModelPreference#GITHUB_O4_MINI} / {@code #GITHUB_GPT41_MINI}.
+ * Not renamed to avoid a sweeping rename across every caller.
+ */
 @Component
 public class DeepSeekClient {
 
@@ -181,15 +189,24 @@ public class DeepSeekClient {
   // parseable wait time.
   private static final long DEFAULT_RETRY_AFTER_SECONDS = 60;
   private static final Pattern RETRY_AFTER_PATTERN = Pattern.compile("wait (\\d+) seconds?");
+  // o4-mini (and other o-series reasoning models) reject "temperature" and use
+  // "max_completion_tokens" in place of an implicit cap — see chatCompletion().
+  private static final int O4_MINI_MAX_COMPLETION_TOKENS = 4096;
 
   private final RestClient restClient;
   private final String model;
+  private final String o4MiniModel;
+  private final String gpt41MiniModel;
 
   public DeepSeekClient(
       @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl,
       @Value("${github.token}") String token,
-      @Value("${deepseek.model:DeepSeek-R1}") String model) {
+      @Value("${deepseek.model:DeepSeek-R1}") String model,
+      @Value("${github.models.o4-mini-model:o4-mini}") String o4MiniModel,
+      @Value("${github.models.gpt41-mini-model:gpt-4.1-mini}") String gpt41MiniModel) {
     this.model = model;
+    this.o4MiniModel = o4MiniModel;
+    this.gpt41MiniModel = gpt41MiniModel;
     JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
     factory.setReadTimeout(Duration.ofMinutes(5));
     this.restClient =
@@ -234,6 +251,20 @@ public class DeepSeekClient {
   }
 
   public String generateCureAdvice(String species, String regionLabel) {
+    return generateCureAdvice(species, regionLabel, model);
+  }
+
+  /** Same call as {@link #generateCureAdvice(String, String)} but routed through o4-mini. */
+  public String generateCureAdviceViaO4Mini(String species, String regionLabel) {
+    return generateCureAdvice(species, regionLabel, o4MiniModel);
+  }
+
+  /** Same call as {@link #generateCureAdvice(String, String)} but routed through gpt-4.1-mini. */
+  public String generateCureAdviceViaGpt41Mini(String species, String regionLabel) {
+    return generateCureAdvice(species, regionLabel, gpt41MiniModel);
+  }
+
+  private String generateCureAdvice(String species, String regionLabel, String requestModel) {
     String effectiveSpecies = species != null ? species : "Unknown plant";
     String userMessage =
         "My "
@@ -241,67 +272,59 @@ public class DeepSeekClient {
             + " has the following issue: "
             + regionLabel
             + ". Provide a concise cure procedure in 3-5 numbered steps.";
-
-    Map<String, Object> requestBody =
-        Map.of(
-            "model",
-            model,
-            "messages",
-            List.of(
-                Map.of("role", "system", "content", CURE_ADVICE_SYSTEM_PROMPT),
-                Map.of("role", "user", "content", userMessage)),
-            "temperature",
-            0.3,
-            "response_format",
-            Map.of("type", "json_object"));
-
-    long start = System.currentTimeMillis();
-    try {
-      DeepSeekApiResponse response =
-          restClient
-              .post()
-              .uri("/chat/completions")
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(requestBody)
-              .retrieve()
-              .body(DeepSeekApiResponse.class);
-
-      if (response == null
-          || response.choices() == null
-          || response.choices().isEmpty()
-          || response.choices().get(0).message() == null) {
-        throw new PlantPalException("Empty response from cure advice service", 503);
-      }
-
-      String raw = response.choices().get(0).message().content();
-      log.debug("DeepSeek cure advice raw response: {}", raw);
-      log.info("DeepSeek cure advice generated in {}ms", System.currentTimeMillis() - start);
-      return stripThinkTags(raw);
-
-    } catch (RestClientResponseException e) {
-      throw toServiceException("Cure advice unavailable", e);
-    } catch (PlantPalException e) {
-      throw e;
-    } catch (RestClientException e) {
-      log.error("Failed to reach DeepSeek cure advice API", e);
-      throw new PlantPalException("Cure advice unavailable", 503);
-    }
+    return chatCompletion(
+        requestModel, CURE_ADVICE_SYSTEM_PROMPT, userMessage, true, "Cure advice");
   }
 
   public String generateDiseaseDescription(String species, String diseaseName) {
+    return generateDiseaseDescription(species, diseaseName, model);
+  }
+
+  /** Same call as {@link #generateDiseaseDescription(String, String)} but routed via o4-mini. */
+  public String generateDiseaseDescriptionViaO4Mini(String species, String diseaseName) {
+    return generateDiseaseDescription(species, diseaseName, o4MiniModel);
+  }
+
+  /** Same call as {@link #generateDiseaseDescription(String, String)}, via gpt-4.1-mini. */
+  public String generateDiseaseDescriptionViaGpt41Mini(String species, String diseaseName) {
+    return generateDiseaseDescription(species, diseaseName, gpt41MiniModel);
+  }
+
+  private String generateDiseaseDescription(
+      String species, String diseaseName, String requestModel) {
     String effectiveSpecies = species != null ? species : "Unknown plant";
     String userMessage = "Plant: " + effectiveSpecies + "\nDisease/pest issue: " + diseaseName;
+    return chatCompletion(
+        requestModel, DISEASE_DESCRIPTION_SYSTEM_PROMPT, userMessage, false, "Disease description");
+  }
 
-    Map<String, Object> requestBody =
-        Map.of(
-            "model",
-            model,
-            "messages",
-            List.of(
-                Map.of("role", "system", "content", DISEASE_DESCRIPTION_SYSTEM_PROMPT),
-                Map.of("role", "user", "content", userMessage)),
-            "temperature",
-            0.3);
+  /**
+   * Shared single-turn {@code /chat/completions} call used by the cure-advice and
+   * disease-description paths now that they can target DeepSeek-R1, o4-mini, or gpt-4.1-mini. The
+   * o4-mini family rejects {@code temperature} and uses {@code max_completion_tokens} instead of an
+   * implicit cap — see CLAUDE.md's "o4-mini request shape" flagged gap.
+   */
+  private String chatCompletion(
+      String requestModel,
+      String systemPrompt,
+      String userMessage,
+      boolean jsonMode,
+      String errorLabel) {
+    Map<String, Object> requestBody = new LinkedHashMap<>();
+    requestBody.put("model", requestModel);
+    requestBody.put(
+        "messages",
+        List.of(
+            Map.of("role", "system", "content", systemPrompt),
+            Map.of("role", "user", "content", userMessage)));
+    if (requestModel.equals(o4MiniModel)) {
+      requestBody.put("max_completion_tokens", O4_MINI_MAX_COMPLETION_TOKENS);
+    } else {
+      requestBody.put("temperature", 0.3);
+    }
+    if (jsonMode) {
+      requestBody.put("response_format", Map.of("type", "json_object"));
+    }
 
     long start = System.currentTimeMillis();
     try {
@@ -318,24 +341,26 @@ public class DeepSeekClient {
           || response.choices() == null
           || response.choices().isEmpty()
           || response.choices().get(0).message() == null) {
-        throw new PlantPalException("Empty response from disease description service", 503);
+        throw new PlantPalException(
+            "Empty response from " + errorLabel.toLowerCase() + " service", 503);
       }
 
       String raw = response.choices().get(0).message().content();
-      log.debug("DeepSeek disease description raw response: {}", raw);
+      log.debug("DeepSeek {} raw response [model={}]: {}", errorLabel, requestModel, raw);
       log.info(
-          "DeepSeek disease description generated in {}ms for diseaseName={}",
+          "DeepSeek {} generated in {}ms [model={}]",
+          errorLabel,
           System.currentTimeMillis() - start,
-          diseaseName);
+          requestModel);
       return stripThinkTags(raw);
 
     } catch (RestClientResponseException e) {
-      throw toServiceException("Disease description unavailable", e);
+      throw toServiceException(errorLabel + " unavailable", e);
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
-      log.error("Failed to reach DeepSeek disease description API", e);
-      throw new PlantPalException("Disease description unavailable", 503);
+      log.error("Failed to reach DeepSeek {} API [model={}]", errorLabel, requestModel, e);
+      throw new PlantPalException(errorLabel + " unavailable", 503);
     }
   }
 

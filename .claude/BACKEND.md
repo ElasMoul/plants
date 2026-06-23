@@ -29,21 +29,27 @@ session-by-session history of how Phases 0–6 were built lives in STATE.md and
 git log, not here — this file is a durable reference to what exists *now*, not
 a diary.
 
-## AI Provider Map (current)
+## AI Provider Map (current — updated T8.0, 2026-06-23)
 | Client | Model | Purpose | Endpoint |
 |---|---|---|---|
-| GitHubModelsClient (identificationModel) | gpt-4o | Plant photo identification + health + care plan incl. actionPlan (single call) | GitHub Models |
-| GitHubModelsClient (annotationModel) | gpt-4o-mini | Polygon annotation regions | GitHub Models |
-| DeepSeekClient (model) | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment | GitHub Models |
+| GitHubModelsClient (identificationModel) | gpt-4o | `VisionModelPreference.GITHUB_GPT4O` — photo identification + health + care plan incl. actionPlan (single call) | GitHub Models |
+| GitHubModelsClient (gpt41Model) | gpt-4.1 | `VisionModelPreference.GITHUB_GPT41` — same call, alternate model (`identifyPlantWithGpt41`) | GitHub Models |
+| GitHubModelsClient (annotationModel) | gpt-4o-mini | Polygon annotation regions — not preference-routed, always used regardless of vision preference | GitHub Models |
+| DeepSeekClient (model) | DeepSeek-R1 | `ReasoningModelPreference.DEEPSEEK_R1` — care plan text, cure advice, disease description, species enrichment | GitHub Models |
+| DeepSeekClient (o4MiniModel) | o4-mini | `ReasoningModelPreference.GITHUB_O4_MINI` — cure advice/disease description only (`...ViaO4Mini` methods); `chatCompletion()` swaps `temperature`→`max_completion_tokens` for this model | GitHub Models |
+| DeepSeekClient (gpt41MiniModel) | gpt-4.1-mini | `ReasoningModelPreference.GITHUB_GPT41_MINI` — same two calls (`...ViaGpt41Mini`) | GitHub Models |
 | DeepSeekAnnotationClient (@Primary) | injects GitHubModelsClient | Polygon annotation; 2-attempt same-client retry on GOAWAY/EOF only — no cross-model fallback (removed in T7.1) | GitHub Models |
-| OllamaClient | llava-phi3 | OLLAMA_LLAVA identification/annotation preference (no longer an automatic fallback target — T7.1) | localhost:11434 |
+| OllamaClient | gemma3:4b (was llava-phi3 pre-T8.0) | `VisionModelPreference`/`ReasoningModelPreference.OLLAMA_GEMMA3` (no longer an automatic fallback target — T7.1); `OLLAMA_LLAVA` kept as a `@Deprecated` enum alias, routes identically | localhost:11434 |
+| AnthropicClient | claude-sonnet-4-6 | `VisionModelPreference`/`ReasoningModelPreference.ANTHROPIC_CLAUDE` — one client serves both menus (Claude is multimodal); `isAvailable()` false when `anthropic.api.key` unset, surfaced via `UserPreferencesResponse.visionModelAvailability`/`reasoningModelAvailability` | api.anthropic.com |
 | PlantNetAnnotationClient / PlantNetClient | — | PlantNetClient: live `VisionModelPreference.PLANTNET` choice, selectable in the model picker again (restored 2026-06-22, was never actually deleted — just dropped from the picker by T7.1). PlantNetAnnotationClient: still non-primary, effectively unreachable | plantnet.org |
 
 See ARCHITECT.md's "AI Client Architecture" for why the split is vision-client vs.
 text-client rather than one-client-per-feature, and the `stripThinkTags()` /
-HTTP-2 / rate-limit details. Auth for both Azure-backed clients:
+HTTP-2 / rate-limit details. Auth for the two Azure-backed clients:
 `Authorization: Bearer <GITHUB_TOKEN>` — **rotate this before going to prod**, it
-was shared in chat sessions during development (Phase 5 / T5.3 item).
+was shared in chat sessions during development (Phase 5 / T5.3 item). Anthropic
+auth: `x-api-key: <ANTHROPIC_API_KEY>` (optional — `AnthropicClient` has no
+required default so the app boots without it).
 
 ## T7.1 — Model control + structured AI errors (2026-06-22, `feature/PP-039-model-control-backend`)
 - **Vision/reasoning preference split**: `users` gained `vision_model_preference`
@@ -465,6 +471,7 @@ backend/src/main/java/com/plantpal/shared/exception/RateLimitException.java
 backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java
 backend/src/main/java/com/plantpal/identification/client/DeepSeekClient.java
 backend/src/main/java/com/plantpal/identification/client/GitHubModelsClient.java
+backend/src/main/java/com/plantpal/identification/client/AnthropicClient.java
 backend/src/main/java/com/plantpal/identification/service/impl/IdentificationServiceImpl.java
 backend/src/main/java/com/plantpal/identification/util/ActionPlanValidator.java
 backend/src/main/java/com/plantpal/reminder/service/impl/ReminderServiceImpl.java

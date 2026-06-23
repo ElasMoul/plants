@@ -105,12 +105,30 @@ identification flow. Durable domain model + lifecycle in ARCHITECT.md. (T6.1–T
 > **Two forks the human must rule on before T8.1 / T8.5 — see "Phase 8 Open
 > Decisions". Do not start T8.1 until D1 is answered.**
 
-### T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider 🤝 Assisted
+### T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider ✅ Complete
 **Branch:** `feature/PP-042-model-lineup`
 > Foundational — establishes the full enum T8.1 layers on. Adds one new provider
 > (Claude); everything else is a model-string on an existing client.
 > - **Vision:** PLANTNET · GITHUB_GPT41 · GITHUB_GPT4O · OLLAMA_GEMMA3 · ANTHROPIC_CLAUDE
 > - **Reasoning:** GITHUB_O4_MINI · DEEPSEEK_R1 · GITHUB_GPT41_MINI · OLLAMA_GEMMA3 · ANTHROPIC_CLAUDE
+>
+> **Shipped:** new `AnthropicClient` (Apache HttpClient5 `RestClient`, Claude Messages API,
+> serves both vision identification/annotation and cure-advice/disease-description text calls;
+> `anthropic.api.key` has no required default so the app still boots un-keyed — `isAvailable()`
+> gates it). `VisionModelPreference`/`ReasoningModelPreference` both grew to 5 live options +
+> `OLLAMA_LLAVA` kept as a `@Deprecated` parseable alias (old stored rows still resolve; routing
+> treats it identically to `OLLAMA_GEMMA3`) — no DB migration needed (additive enum values on a
+> VARCHAR(30) column). `GitHubModelsClient.identifyPlant` and `DeepSeekClient`'s cure-advice /
+> disease-description methods got model-parameterized overloads (`identifyPlantWithGpt41`,
+> `generateCureAdviceViaO4Mini`/`ViaGpt41Mini`, etc.) routed through `IdentificationServiceImpl`
+> and `TreatmentServiceImpl`'s preference switches; o4-mini's request shape (`max_completion_tokens`
+> instead of `temperature`) is handled in `DeepSeekClient`'s shared `chatCompletion` helper.
+> `UserPreferencesResponse` gained `visionModelAvailability`/`reasoningModelAvailability` maps
+> (keyed by enum name) so the frontend can disable an un-keyed Claude instead of letting it 401.
+> `ollama.model` default moved `llava-phi3` → `gemma3:4b`. Frontend: `ModelSelectorComponent`
+> options relabeled by intent (Best/Balanced/Frontier/Specialist/Offline) with the real model name
+> as a subtitle, unavailable options disabled with a tooltip. D1–D4 (Phase 8 Open Decisions) still
+> open — out of scope for T8.0.
 
 **Claude Code prompt:**
 ```
@@ -573,7 +591,7 @@ to `main`, tag `v1.0.0`, merge back to `dev`, delete release branch.
 | 4 — Chat | ✅ Done (streaming + history shipped) |
 | 6 — Species & Treatment Restructure | ✅ Done |
 | 7 — Model Control, Batch, Multi-Treatment | ✅ Done |
-| 8 — PlantNet First-Class Provider | 🟡 Planned (T8.0–T8.7; D1–D4 open) |
+| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ done; T8.1–T8.7 planned; D1–D4 open |
 | 9 — Quality, Testing & Hardening | 🟡 Planned (T9.1–T9.8) |
 | 10 — Launch | 🟡 Not started (was Phase 5) |
 

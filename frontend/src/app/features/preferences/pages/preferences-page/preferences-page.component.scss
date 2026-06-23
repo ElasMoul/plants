@@ -4,10 +4,24 @@
   padding: 24px 16px 96px;
 }
 
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .page-title {
   margin: 0 0 8px;
   font-size: 22px;
   font-weight: 700;
+}
+
+.close-btn {
+  flex-shrink: 0;
+  margin-top: -8px;
+  margin-right: -8px;
+  color: var(--color-text-secondary, rgba(0, 0, 0, 0.6));
 }
 
 .page-subtitle {

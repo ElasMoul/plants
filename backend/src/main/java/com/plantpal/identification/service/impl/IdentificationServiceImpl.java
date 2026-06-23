@@ -3,6 +3,7 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
@@ -114,6 +115,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final UserRepository userRepository;
   private final PlantNetClient plantNetClient;
   private final OllamaClient ollamaClient;
+  private final AnthropicClient anthropicClient;
   private final KafkaTemplate<String, Object> kafkaTemplate;
   private final CacheManager cacheManager;
   private final SpeciesRepository speciesRepository;
@@ -138,6 +140,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       UserRepository userRepository,
       PlantNetClient plantNetClient,
       OllamaClient ollamaClient,
+      AnthropicClient anthropicClient,
       KafkaTemplate<String, Object> kafkaTemplate,
       CacheManager cacheManager,
       SpeciesRepository speciesRepository,
@@ -157,6 +160,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.userRepository = userRepository;
     this.plantNetClient = plantNetClient;
     this.ollamaClient = ollamaClient;
+    this.anthropicClient = anthropicClient;
     this.kafkaTemplate = kafkaTemplate;
     this.cacheManager = cacheManager;
     this.speciesRepository = speciesRepository;
@@ -366,9 +370,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
     ReasoningModelPreference preference = loadReasoningPreference(userId);
     String raw =
-        preference == ReasoningModelPreference.OLLAMA_LLAVA
-            ? ollamaClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel())
-            : deepSeekClient.generateCureAdvice(req.getSpecies(), req.getRegionLabel());
+        generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel());
     return CompletableFuture.completedFuture(parseCureAdvice(raw, preference));
   }
 
@@ -868,6 +870,17 @@ public class IdentificationServiceImpl implements IdentificationService {
         .orElse(ReasoningModelPreference.DEEPSEEK_R1);
   }
 
+  private String generateCureAdviceForPreference(
+      ReasoningModelPreference preference, String species, String regionLabel) {
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, regionLabel);
+      case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, regionLabel);
+      case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, regionLabel);
+      case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, regionLabel);
+      case DEEPSEEK_R1 -> deepSeekClient.generateCureAdvice(species, regionLabel);
+    };
+  }
+
   /**
    * {@link com.plantpal.species.service.SpeciesService#findOrCreate} still takes the legacy {@link
    * AiModelPreference} (only OLLAMA_LLAVA vs. everything-else-uses-DeepSeek matters to it) — map
@@ -876,9 +889,11 @@ public class IdentificationServiceImpl implements IdentificationService {
    */
   private static AiModelPreference toLegacyReasoningPreference(
       ReasoningModelPreference preference) {
-    return preference == ReasoningModelPreference.OLLAMA_LLAVA
-        ? AiModelPreference.OLLAMA_LLAVA
-        : AiModelPreference.DEEPSEEK;
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> AiModelPreference.OLLAMA_LLAVA;
+      case DEEPSEEK_R1, GITHUB_O4_MINI, GITHUB_GPT41_MINI, ANTHROPIC_CLAUDE ->
+          AiModelPreference.DEEPSEEK;
+    };
   }
 
   /**
@@ -907,14 +922,22 @@ public class IdentificationServiceImpl implements IdentificationService {
                       List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                       organs != null ? organs : List.of("auto"))),
               VisionModelPreference.PLANTNET.name());
-      case OLLAMA_LLAVA ->
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
           new IdentificationOutcome(
               ollamaClient.identifyPlant(imageBytes, mediaType),
-              VisionModelPreference.OLLAMA_LLAVA.name());
+              VisionModelPreference.OLLAMA_GEMMA3.name());
       case GITHUB_GPT4O ->
           new IdentificationOutcome(
               gitHubModelsClient.identifyPlant(imageBytes, mediaType),
               VisionModelPreference.GITHUB_GPT4O.name());
+      case GITHUB_GPT41 ->
+          new IdentificationOutcome(
+              gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType),
+              VisionModelPreference.GITHUB_GPT41.name());
+      case ANTHROPIC_CLAUDE ->
+          new IdentificationOutcome(
+              anthropicClient.identifyPlant(imageBytes, mediaType),
+              VisionModelPreference.ANTHROPIC_CLAUDE.name());
     };
   }
 

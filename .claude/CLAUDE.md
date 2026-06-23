@@ -248,17 +248,25 @@ checkstyle-plugin, spotless-plugin (Google Java Format), jacoco-plugin
 ### Provider Map
 | Provider | Model | Purpose |
 |---|---|---|
-| GitHubModelsClient | gpt-4o | Photo identification + health + care plan (single vision call) |
-| GitHubModelsClient | gpt-4o-mini | Visual annotation (polygon regions) |
-| DeepSeekClient | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment (all text-only) |
-| OllamaClient | llava-phi3 | Local dev identification + annotation fallback only |
+| GitHubModelsClient | gpt-4o | Photo identification + health + care plan (single vision call) — `VisionModelPreference.GITHUB_GPT4O` |
+| GitHubModelsClient | gpt-4.1 | Alternate identification model — `VisionModelPreference.GITHUB_GPT41` |
+| GitHubModelsClient | gpt-4o-mini | Visual annotation (polygon regions) — not preference-routed, always used |
+| DeepSeekClient | DeepSeek-R1 | Care plan text, cure advice, disease description, species enrichment — `ReasoningModelPreference.DEEPSEEK_R1` |
+| DeepSeekClient | o4-mini | Cure advice / disease description, via the same Azure endpoint — `ReasoningModelPreference.GITHUB_O4_MINI` (despite the class name, see its class-level Javadoc) |
+| DeepSeekClient | gpt-4.1-mini | Same, faster/cheaper tier — `ReasoningModelPreference.GITHUB_GPT41_MINI` |
+| OllamaClient | gemma3:4b | Local vision + reasoning — `VisionModelPreference`/`ReasoningModelPreference.OLLAMA_GEMMA3` (`OLLAMA_LLAVA` kept `@Deprecated`+parseable, routes identically) |
+| AnthropicClient | claude-sonnet-4-6 | Vision (identification + annotation) AND reasoning (cure advice, disease description) — Claude is multimodal, one client serves both menus. `anthropic.api.key` has no required default; `isAvailable()` gates the option off when un-keyed (see `UserPreferencesResponse.visionModelAvailability`/`reasoningModelAvailability`) — `VisionModelPreference`/`ReasoningModelPreference.ANTHROPIC_CLAUDE` |
 
-> **Endpoint:** `https://models.inference.ai.azure.com/chat/completions` (GitHub Models)
-> **Auth:** GitHub PAT via `${GITHUB_TOKEN}` (Bearer) — **rotate before prod**, shared in dev chats.
-> **HTTP/2 required** for both Azure-backed clients; 5-minute read timeout.
+> **Endpoint:** `https://models.inference.ai.azure.com/chat/completions` (GitHub Models, incl. DeepSeekClient's o4-mini/gpt-4.1-mini routes)
+> **Anthropic endpoint:** `https://api.anthropic.com/v1/messages`, `x-api-key` + `anthropic-version` headers, Apache HttpClient5-backed `RestClient`.
+> **Auth:** GitHub PAT via `${GITHUB_TOKEN}` (Bearer) — **rotate before prod**, shared in dev chats. Anthropic via `${ANTHROPIC_API_KEY}` (optional).
+> **HTTP/2 required** for both Azure-backed clients; 5-minute read timeout. Anthropic uses HTTP/1.1 via Apache HttpClient5.
 > **DeepSeek-R1 quirk:** wraps output in `<think>...</think>` before JSON —
-> `DeepSeekClient.stripThinkTags()` (package-private static, also used by GitHubModelsClient and
-> OllamaClient) handles this plus stray ` ```json...``` ` fences.
+> `DeepSeekClient.stripThinkTags()` (package-private static, also used by GitHubModelsClient,
+> OllamaClient, and AnthropicClient) handles this plus stray ` ```json...``` ` fences.
+> **o4-mini quirk:** rejects `temperature`, uses `max_completion_tokens` instead — handled in
+> `DeepSeekClient`'s shared `chatCompletion()` helper (checked by comparing the request model
+> string against the injected `o4MiniModel` field).
 
 Full client-split rationale and the Kafka async pipeline built around these calls: ARCHITECT.md.
 
@@ -463,6 +471,7 @@ open backend/target/site/jacoco/index.html
 | 5 — Launch Preparation | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
+| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ Complete (`feature/PP-042-model-lineup`); T8.1–T8.7 not started |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
 
 ---
