@@ -63,7 +63,8 @@ public class OllamaClient {
     log.debug("Sending prompt to Ollama [model={}]: {}", model, userPrompt);
 
     OllamaChatRequest request =
-        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), false, keepAlive);
+        new OllamaChatRequest(
+            model, List.of(new OllamaMessage("user", userPrompt)), false, keepAlive);
 
     try {
       OllamaChatResponse response =
@@ -101,7 +102,8 @@ public class OllamaClient {
     log.debug("Streaming prompt to Ollama [model={}]: {}", model, userPrompt);
 
     OllamaChatRequest request =
-        new OllamaChatRequest(model, List.of(new OllamaMessage("user", userPrompt)), true, keepAlive);
+        new OllamaChatRequest(
+            model, List.of(new OllamaMessage("user", userPrompt)), true, keepAlive);
 
     try {
       restClient

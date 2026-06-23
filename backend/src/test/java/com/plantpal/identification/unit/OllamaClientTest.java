@@ -31,7 +31,8 @@ class OllamaClientTest {
   void setUp() throws IOException {
     server = new MockWebServer();
     server.start();
-    ollamaClient = new OllamaClient(server.url("/").toString(), MODEL, 5, 10, "10m", new ObjectMapper());
+    ollamaClient =
+        new OllamaClient(server.url("/").toString(), MODEL, 5, 10, "10m", new ObjectMapper());
   }
 
   @AfterEach
