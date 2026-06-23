@@ -79,7 +79,10 @@ public class SpeciesServiceImpl implements SpeciesService {
     return speciesRepository
         .findByScientificName(scientificName)
         .map(existing -> patchFactualFields(existing, gbifId, powoId, iucnCategory))
-        .orElseGet(() -> createSpecies(scientificName, commonName, preference, gbifId, powoId, iucnCategory));
+        .orElseGet(
+            () ->
+                createSpecies(
+                    scientificName, commonName, preference, gbifId, powoId, iucnCategory));
   }
 
   @Override

@@ -1406,8 +1406,12 @@ class IdentificationServiceImplTest {
               .commonName("Swiss cheese plant")
               .build();
       when(speciesService.findOrCreate(
-              eq("Monstera deliciosa"), any(), any(AiModelPreference.class),
-              isNull(), isNull(), isNull()))
+              eq("Monstera deliciosa"),
+              any(),
+              any(AiModelPreference.class),
+              isNull(),
+              isNull(),
+              isNull()))
           .thenReturn(species);
 
       SpeciesMatchDto result =
@@ -1417,9 +1421,14 @@ class IdentificationServiceImplTest {
       assertThat(result.getSpeciesId()).isEqualTo(SPECIES_ID);
       assertThat(identification.getSpeciesId()).isEqualTo(SPECIES_ID);
       verify(identificationRepository).save(identification);
-      verify(speciesService).findOrCreate(
-          eq("Monstera deliciosa"), any(), any(AiModelPreference.class),
-          isNull(), isNull(), isNull());
+      verify(speciesService)
+          .findOrCreate(
+              eq("Monstera deliciosa"),
+              any(),
+              any(AiModelPreference.class),
+              isNull(),
+              isNull(),
+              isNull());
     }
 
     @Test
@@ -1435,8 +1444,12 @@ class IdentificationServiceImplTest {
               .commonName("Fiddle-leaf fig")
               .build();
       when(speciesService.findOrCreate(
-              eq("Ficus lyrata"), any(), any(AiModelPreference.class),
-              isNull(), isNull(), isNull()))
+              eq("Ficus lyrata"),
+              any(),
+              any(AiModelPreference.class),
+              isNull(),
+              isNull(),
+              isNull()))
           .thenReturn(newSpecies);
 
       SpeciesMatchDto result =
