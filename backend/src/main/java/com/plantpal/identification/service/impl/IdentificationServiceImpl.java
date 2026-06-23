@@ -21,10 +21,13 @@ import com.plantpal.identification.dto.DeepSeekPlantResult;
 import com.plantpal.identification.dto.IdentificationPendingResponse;
 import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.dto.PlantMatchDto;
+import com.plantpal.identification.dto.PlantNetCandidateDto;
+import com.plantpal.identification.dto.PlantNetReferenceImageDto;
 import com.plantpal.identification.dto.PlantSummaryDto;
 import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
+import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
@@ -77,6 +80,7 @@ import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
@@ -102,6 +106,15 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final String PLANTS_CACHE = "plants";
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
+
+  @Value("${app.plantnet.always-on-candidates:true}")
+  private boolean plantNetAlwaysOn;
+
+  @Value("${app.plantnet.project:all}")
+  private String plantNetDefaultProject;
+
+  @Value("${app.plantnet.lang:en}")
+  private String plantNetDefaultLang;
 
   private final DeepSeekClient deepSeekClient;
   private final GitHubModelsClient gitHubModelsClient;
@@ -248,13 +261,36 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setSourceImageWidth(dims[0]);
       identification.setSourceImageHeight(dims[1]);
 
-      // Fire identification + annotation in parallel
+      // Fire identification + annotation (+ optional always-on PlantNet) in parallel.
+      // The always-on PlantNet call runs even when the primary model is not PLANTNET so that
+      // the species-confirm step (T8.2) always has a ranked candidate list to show. It swallows
+      // its own exceptions — a PlantNet failure must never fail the main identification.
+      final List<String> organsForParallelCall = event.getOrgans();
       CompletableFuture<IdentificationOutcome> identificationFuture =
           CompletableFuture.supplyAsync(
               () -> runIdentification(preference, imageBytes, mediaType, event.getOrgans()));
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
+      CompletableFuture<PlantNetResponse> alwaysOnPlantNetFuture =
+          (plantNetAlwaysOn && preference != VisionModelPreference.PLANTNET)
+              ? CompletableFuture.supplyAsync(
+                  () -> {
+                    try {
+                      return plantNetClient.identify(
+                          List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+                          organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
+                          plantNetDefaultProject,
+                          plantNetDefaultLang);
+                    } catch (Exception e) {
+                      log.warn(
+                          "Always-on PlantNet call failed, continuing without candidates: {}",
+                          e.getMessage());
+                      return null;
+                    }
+                  },
+                  aiTaskExecutor)
+              : CompletableFuture.completedFuture(null);
 
       IdentificationOutcome outcome;
       try {
@@ -267,6 +303,12 @@ public class IdentificationServiceImpl implements IdentificationService {
       }
       String rawResult = outcome.rawJson();
       String annotationJson = annotationFuture.join();
+
+      // PlantNet candidates: from the PLANTNET-primary outcome OR from the always-on parallel call
+      PlantNetResponse plantNetResponse =
+          outcome.plantNetResponse() != null
+              ? outcome.plantNetResponse()
+              : alwaysOnPlantNetFuture.join();
 
       // Parse combined result; fall back gracefully if AI JSON is malformed
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
@@ -286,6 +328,14 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setAnnotationRegions(annotationJson);
       identification.setAiModelUsed(outcome.providerUsed());
       identification.setStatus(IdentificationStatus.COMPLETED);
+      if (plantNetResponse != null) {
+        identification.setPlantnetCandidates(serializeToJson(mapToCandidateDtos(plantNetResponse)));
+        identification.setPlantnetVersion(plantNetResponse.version());
+        identification.setPlantnetBestMatch(plantNetResponse.bestMatch());
+        identification.setPlantnetSwitchToProject(plantNetResponse.switchToProject());
+        identification.setPlantnetQuotaRemaining(
+            plantNetResponse.remainingIdentificationRequests());
+      }
       identification = identificationRepository.save(identification);
       evictPlantsCache();
 
@@ -318,6 +368,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     IdentificationResponse response = identificationMapper.toResponse(entity);
     response.setCarePlan(parseCarePlan(entity.getCarePlan()));
     response.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+    response.setPlantNetCandidates(parsePlantNetCandidates(entity.getPlantnetCandidates()));
     return response;
   }
 
@@ -330,6 +381,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               IdentificationResponse resp = identificationMapper.toResponse(entity);
               resp.setCarePlan(parseCarePlan(entity.getCarePlan()));
               resp.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+              resp.setPlantNetCandidates(parsePlantNetCandidates(entity.getPlantnetCandidates()));
               return resp;
             });
   }
@@ -347,6 +399,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               IdentificationResponse resp = identificationMapper.toResponse(entity);
               resp.setCarePlan(parseCarePlan(entity.getCarePlan()));
               resp.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
+              resp.setPlantNetCandidates(parsePlantNetCandidates(entity.getPlantnetCandidates()));
               return resp;
             });
   }
@@ -909,19 +962,30 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  /** rawJson is the AI response; providerUsed is the model that actually served the request. */
-  private record IdentificationOutcome(String rawJson, String providerUsed) {}
+  /**
+   * rawJson is the AI response; providerUsed is the model that actually served the request.
+   * plantNetResponse is non-null only when preference==PLANTNET (carries the full ranked list).
+   */
+  private record IdentificationOutcome(
+      String rawJson, String providerUsed, PlantNetResponse plantNetResponse) {
+    IdentificationOutcome(String rawJson, String providerUsed) {
+      this(rawJson, providerUsed, null);
+    }
+  }
 
   private IdentificationOutcome runIdentification(
       VisionModelPreference preference, byte[] imageBytes, String mediaType, List<String> organs) {
     return switch (preference) {
-      case PLANTNET ->
-          new IdentificationOutcome(
-              plantNetToRawResult(
-                  plantNetClient.identify(
-                      List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
-                      organs != null ? organs : List.of("auto"))),
-              VisionModelPreference.PLANTNET.name());
+      case PLANTNET -> {
+        PlantNetResponse pnr =
+            plantNetClient.identify(
+                List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+                organs != null ? organs : List.of("auto"),
+                plantNetDefaultProject,
+                plantNetDefaultLang);
+        yield new IdentificationOutcome(
+            plantNetToRawResult(pnr), VisionModelPreference.PLANTNET.name(), pnr);
+      }
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
           new IdentificationOutcome(
               ollamaClient.identifyPlant(imageBytes, mediaType),
@@ -1034,6 +1098,71 @@ public class IdentificationServiceImpl implements IdentificationService {
       return parsed;
     } catch (Exception e) {
       log.warn("Malformed annotation regions JSON: {}", e.getMessage());
+      return List.of();
+    }
+  }
+
+  private List<PlantNetCandidateDto> mapToCandidateDtos(PlantNetResponse response) {
+    if (response == null || response.results() == null) return List.of();
+    return response.results().stream()
+        .map(
+            result -> {
+              String scientificName =
+                  result.species() != null ? result.species().scientificNameWithoutAuthor() : null;
+              String genus =
+                  result.species() != null && result.species().genus() != null
+                      ? result.species().genus().scientificNameWithoutAuthor()
+                      : null;
+              String family =
+                  result.species() != null && result.species().family() != null
+                      ? result.species().family().scientificNameWithoutAuthor()
+                      : null;
+              List<String> commonNames =
+                  result.species() != null ? result.species().commonNames() : List.of();
+              String gbifId = result.gbif() != null ? result.gbif().id() : null;
+              String powoId = result.powo() != null ? result.powo().id() : null;
+              String iucnCategory = result.iucn() != null ? result.iucn().category() : null;
+              List<PlantNetReferenceImageDto> refImages =
+                  PlantNetClient.safeReferenceImages(result).stream()
+                      .map(this::toReferenceImageDto)
+                      .toList();
+              return PlantNetCandidateDto.builder()
+                  .score(result.score())
+                  .scientificName(scientificName)
+                  .genus(genus)
+                  .family(family)
+                  .commonNames(commonNames)
+                  .gbifId(gbifId)
+                  .powoId(powoId)
+                  .iucnCategory(iucnCategory)
+                  .referenceImages(refImages)
+                  .build();
+            })
+        .toList();
+  }
+
+  private PlantNetReferenceImageDto toReferenceImageDto(PlantNetReferenceImage img) {
+    String smallUrl = img.url() != null ? img.url().s() : null;
+    String mediumUrl = img.url() != null ? img.url().m() : null;
+    return PlantNetReferenceImageDto.builder()
+        .smallUrl(smallUrl)
+        .mediumUrl(mediumUrl)
+        .author(img.author())
+        .license(img.license())
+        .citation(img.citation())
+        .build();
+  }
+
+  private List<PlantNetCandidateDto> parsePlantNetCandidates(String json) {
+    if (json == null || json.isBlank()) return List.of();
+    try {
+      return objectMapper.readValue(
+          json,
+          objectMapper
+              .getTypeFactory()
+              .constructCollectionType(List.class, PlantNetCandidateDto.class));
+    } catch (JsonProcessingException e) {
+      log.warn("Malformed plantnet_candidates JSON: {}", e.getMessage());
       return List.of();
     }
   }

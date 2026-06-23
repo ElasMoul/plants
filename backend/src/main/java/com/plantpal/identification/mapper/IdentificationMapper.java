@@ -13,8 +13,8 @@ import org.mapstruct.ReportingPolicy;
     unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IdentificationMapper {
 
-  @Mapping(target = "topResults", ignore = true)
   @Mapping(target = "carePlan", ignore = true)
   @Mapping(target = "annotationRegions", ignore = true)
+  @Mapping(target = "plantNetCandidates", ignore = true)
   IdentificationResponse toResponse(Identification identification);
 }

@@ -77,4 +77,7 @@
     <include file="db/changelog/migrations/022_add_ai_model_usage_tracking.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/023_add_plantnet_candidates.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

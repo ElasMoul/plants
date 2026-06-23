@@ -114,6 +114,9 @@ app:
     api-key: ${PLANTNET_API_KEY}
     base-url: ${PLANTNET_BASE_URL:https://my-api.plantnet.org}
     project: ${PLANTNET_PROJECT:all}
+    nb-results: ${PLANTNET_NB_RESULTS:6}
+    lang: ${PLANTNET_LANG:en}
+    always-on-candidates: ${PLANTNET_ALWAYS_ON:true}
 
 # ──── Logging (dev: verbose) ──────────────────────────────────────────────────
 logging:

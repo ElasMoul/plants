@@ -1,6 +1,5 @@
 package com.plantpal.identification.dto;
 
-import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.IdentificationStatus;
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +24,6 @@ public class IdentificationResponse {
   private String healthStatus;
   private String healthNotes;
   private IdentificationStatus status;
-  private List<PlantNetResult> topResults;
   private String photoUrl;
   private Instant createdAt;
   private CarePlanDto carePlan;
@@ -34,4 +32,9 @@ public class IdentificationResponse {
   private Integer sourceImageHeight;
   private String aiModelUsed;
   private Long speciesId;
+
+  private List<PlantNetCandidateDto> plantNetCandidates;
+  private String plantnetBestMatch;
+  private String plantnetSwitchToProject;
+  private Integer plantnetQuotaRemaining;
 }
