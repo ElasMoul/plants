@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
@@ -52,6 +53,7 @@ class TreatmentServiceTest {
   @Mock private TreatmentPlanService treatmentPlanService;
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private OllamaClient ollamaClient;
+  @Mock private AnthropicClient anthropicClient;
   @Mock private UserRepository userRepository;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -77,6 +79,7 @@ class TreatmentServiceTest {
             treatmentPlanService,
             deepSeekClient,
             ollamaClient,
+            anthropicClient,
             userRepository,
             objectMapper,
             Runnable::run);

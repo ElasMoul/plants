@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
@@ -84,6 +85,7 @@ class IdentificationServiceImplTest {
   @Mock private UserRepository userRepository;
   @Mock private PlantNetClient plantNetClient;
   @Mock private OllamaClient ollamaClient;
+  @Mock private AnthropicClient anthropicClient;
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
   @Mock private org.springframework.cache.CacheManager cacheManager;
   @Mock private org.springframework.cache.Cache plantsCache;
@@ -113,6 +115,7 @@ class IdentificationServiceImplTest {
             userRepository,
             plantNetClient,
             ollamaClient,
+            anthropicClient,
             kafkaTemplate,
             cacheManager,
             speciesRepository,

@@ -16,12 +16,14 @@
     <mat-option
       *ngFor="let opt of visionOptions"
       [value]="opt.value"
-      [matTooltip]="opt.tooltip"
+      [disabled]="!isVisionAvailable(opt.value)"
+      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >
       <mat-icon>{{ opt.icon }}</mat-icon>
-      {{ opt.label }}
+      <span class="option-label">{{ opt.label }}</span>
+      <span class="option-intent">{{ opt.intent }}</span>
     </mat-option>
   </mat-select>
 
@@ -42,12 +44,14 @@
     <mat-option
       *ngFor="let opt of reasoningOptions"
       [value]="opt.value"
-      [matTooltip]="opt.tooltip"
+      [disabled]="!isReasoningAvailable(opt.value)"
+      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >
       <mat-icon>{{ opt.icon }}</mat-icon>
-      {{ opt.label }}
+      <span class="option-label">{{ opt.label }}</span>
+      <span class="option-intent">{{ opt.intent }}</span>
     </mat-option>
   </mat-select>
 

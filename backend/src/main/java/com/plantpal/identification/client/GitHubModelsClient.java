@@ -125,14 +125,17 @@ public class GitHubModelsClient {
   private final RestClient restClient;
   private final String identificationModel;
   private final String annotationModel;
+  private final String gpt41Model;
 
   public GitHubModelsClient(
       @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl,
       @Value("${github.token}") String token,
       @Value("${github.models.identification-model:gpt-4o}") String identificationModel,
-      @Value("${github.models.annotation-model:gpt-4o-mini}") String annotationModel) {
+      @Value("${github.models.annotation-model:gpt-4o-mini}") String annotationModel,
+      @Value("${github.models.gpt41-model:gpt-4.1}") String gpt41Model) {
     this.identificationModel = identificationModel;
     this.annotationModel = annotationModel;
+    this.gpt41Model = gpt41Model;
     JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
     factory.setReadTimeout(Duration.ofMinutes(5));
     this.restClient =
@@ -144,6 +147,15 @@ public class GitHubModelsClient {
   }
 
   public String identifyPlant(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, identificationModel);
+  }
+
+  /** Same identification call as {@link #identifyPlant(byte[], String)} but forced onto gpt-4.1. */
+  public String identifyPlantWithGpt41(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, gpt41Model);
+  }
+
+  private String identifyPlant(byte[] imageBytes, String mediaType, String model) {
     String dataUrl =
         "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
 
@@ -159,7 +171,7 @@ public class GitHubModelsClient {
     Map<String, Object> requestBody =
         Map.of(
             "model",
-            identificationModel,
+            model,
             "messages",
             List.of(
                 Map.of("role", "system", "content", PLANT_IDENTIFICATION_SYSTEM_PROMPT),
@@ -192,7 +204,7 @@ public class GitHubModelsClient {
       log.info(
           "GitHubModels plant identification completed in {}ms [model={}]",
           System.currentTimeMillis() - start,
-          identificationModel);
+          model);
       log.debug("GitHubModels identification raw response: {}", raw);
       return content;
 

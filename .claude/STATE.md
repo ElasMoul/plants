@@ -1,10 +1,84 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-22 (post-T7.1-followup bugfixes: craft-plan/disease-
-> description rate-limit handling, model preference save + actual vision/
-> reasoning wiring, PlantNet restored to the picker, scan-result treatment CTA
-> scoping, species list photo fallback — see new section below; older entries
-> are from prior sessions)
+> Last updated: 2026-06-23 (T8.0 shipped — expanded vision/reasoning model menus
+> to 5 each + new AnthropicClient — see new section below; older entries are
+> from prior sessions)
+
+## T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider (2026-06-23, `feature/PP-042-model-lineup`)
+New `AnthropicClient` (`identification/client/`) — Apache HttpClient5-backed
+`RestClient` against the Anthropic Messages API, serving BOTH
+`VisionModelPreference.ANTHROPIC_CLAUDE` (identification + annotation) and
+`ReasoningModelPreference.ANTHROPIC_CLAUDE` (cure advice, disease description) —
+Claude is multimodal so one client covers both menus, unlike the GitHub-Models
+split. `anthropic.api.key` has no required default (`@Value("${anthropic.api.key:}")`)
+so the app boots without a Claude key configured; `AnthropicClient.isAvailable()`
+gates the option instead.
+
+`VisionModelPreference` grew GITHUB_GPT4O/GITHUB_GPT41/OLLAMA_GEMMA3/PLANTNET/
+ANTHROPIC_CLAUDE (5 live values); `ReasoningModelPreference` grew DEEPSEEK_R1/
+GITHUB_O4_MINI/GITHUB_GPT41_MINI/OLLAMA_GEMMA3/ANTHROPIC_CLAUDE. Both kept
+`OLLAMA_LLAVA` as a `@Deprecated` parseable alias — old stored preference rows
+still `valueOf()` fine, and every routing switch treats `OLLAMA_LLAVA` and
+`OLLAMA_GEMMA3` identically (`case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ...`). No DB
+migration needed — additive enum values on an existing VARCHAR(30) column (the
+optional migration 023 sketched in TASK_PLAN.md, changing the reasoning
+*default* + backfilling stored rows, was deliberately skipped as out of scope/
+behavior-changing).
+
+`GitHubModelsClient.identifyPlant` split into a private model-parameterized
+core + two public entry points (`identifyPlant` for gpt-4o,
+`identifyPlantWithGpt41` for gpt-4.1). `DeepSeekClient` — despite the name, now
+serves THREE Azure text models (DeepSeek-R1, o4-mini, gpt-4.1-mini) — gained a
+shared `chatCompletion()` helper plus `generateCureAdviceViaO4Mini`/
+`ViaGpt41Mini` and `generateDiseaseDescriptionViaO4Mini`/`ViaGpt41Mini`
+overloads; `chatCompletion()` detects the o4-mini model string and swaps
+`temperature` for `max_completion_tokens` (o-series models reject
+`temperature`). `IdentificationServiceImpl.runIdentification()`/
+`generateCureAdviceForPreference()` and `TreatmentServiceImpl`'s private
+`generateCureAdvice`/`generateDiseaseDescription` helpers became exhaustive
+switches over all 5 enum values instead of the old OLLAMA_LLAVA-vs-everything-
+else binary check. `OllamaClient`'s default model moved `llava-phi3` →
+`gemma3:4b` (`/api/generate`'s top-level `images` array works the same for any
+multimodal-capable Ollama model, so no request-shape changes needed).
+
+`UserPreferencesResponse` gained `visionModelAvailability`/
+`reasoningModelAvailability` (`Map<String, Boolean>`, keyed by enum name) built
+in `UserServiceImpl` — every option is hardcoded available=true except
+ANTHROPIC_CLAUDE, which reflects `anthropicClient.isAvailable()` (every other
+provider's required config is enforced at app startup, so they're always up
+once the app is running).
+
+Frontend: `ModelSelectorComponent`'s option lists relabeled by intent (Best/
+Balanced/Frontier/Specialist/Offline) with the real model name as a subtitle
+(`opt.intent`) instead of just the model name as the label — the picker is now
+the primary teaching surface for non-experts. `mat-option`s for an unavailable
+provider (`visionModelAvailability`/`reasoningModelAvailability` keyed lookup,
+missing key defaults to available so cached pre-T8.0 sessionStorage entries
+don't break) are `[disabled]` with a "Not configured on this server" tooltip.
+`user.model.ts` union types expanded to match; `OLLAMA_LLAVA` kept in the TS
+union too (type-safety for old cached/stored values) but dropped from the
+picker's option arrays.
+
+Updated 3 unit test files for the new constructor params:
+`IdentificationServiceImplTest`/`TreatmentServiceTest` (`new ...Impl(...)`
+direct construction, not `@InjectMocks`, so the new `AnthropicClient` mock had
+to be threaded through manually) and `UserServiceTest` (`@InjectMocks` — added
+the `@Mock` field so Mockito's constructor-injection can resolve it). Full
+backend unit suite green (`mvn test -Dexclude="**/*IT.java"`); frontend
+`ng build --configuration=development` clean.
+
+Config: new `github.models.gpt41-model`/`o4-mini-model`/`gpt41-mini-model` +
+a full `anthropic.*` block (`base-url`, `api.key`, `models.default`/`cheap`/
+`max`) added to `application-dev.yml` and `.env.example`
+(`application-test.yml` already had an `anthropic.api.key` placeholder from a
+prior session — its `anthropic.api.key` path, not `anthropic.api-key`, is why
+the new config nests `api.key` rather than using a flat `api-key` property).
+
+**Out of scope (left for T8.1+):** PlantNet v2 upgrade itself, ranked
+candidates, organ tagging, disease cross-check, quota telemetry — see Phase 8
+section below. Claude's `cheap`(haiku)/`max`(opus) model tiers are configured
+but not yet wired to any routing choice — `VisionModelPreference`/
+`ReasoningModelPreference` only expose one Claude option today.
 
 ## Bugfixes — T7.1 follow-up: rate limiting, model preference wiring, PlantNet, scan CTA, species photos (2026-06-22)
 Five user-reported bugs against the just-shipped T7.1/T7.2 Model Control work,

@@ -25,7 +25,8 @@ public class OllamaClient {
 
   private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
 
-  // llava-phi3 rejects high-res images; cap at this size before sending
+  // Conservative cap shared by every local vision model we've run (llava-phi3, gemma3); keeps
+  // request size + latency predictable regardless of which model is currently pulled.
   private static final int OLLAMA_MAX_IMAGE_SIDE_PX = 1024;
 
   private final RestClient restClient;
@@ -34,7 +35,7 @@ public class OllamaClient {
 
   public OllamaClient(
       @Value("${ollama.base-url:http://localhost:11434}") String baseUrl,
-      @Value("${ollama.model:llava-phi3}") String model,
+      @Value("${ollama.model:gemma3:4b}") String model,
       ObjectMapper objectMapper) {
     this.model = model;
     this.restClient = RestClient.builder().baseUrl(baseUrl).build();
@@ -176,7 +177,8 @@ public class OllamaClient {
         Base64.getEncoder()
             .encodeToString(ImageUtil.resizeAndConvertToJpeg(imageBytes, OLLAMA_MAX_IMAGE_SIDE_PX));
 
-    // llava-phi3 requires images at the TOP LEVEL of /api/generate — not nested in a chat message.
+    // /api/generate's top-level "images" array works for any multimodal-capable model (llava-phi3,
+    // gemma3, ...) — not nested in a chat message.
     String prompt =
         GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
             + "\n\nIdentify this plant and generate a complete beginner care plan.";

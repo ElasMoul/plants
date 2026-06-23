@@ -3,6 +3,7 @@ package com.plantpal.user.dto;
 import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.entity.ReasoningModelPreference;
 import com.plantpal.user.entity.VisionModelPreference;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,4 +20,10 @@ public class UserPreferencesResponse {
 
   private VisionModelPreference visionModelPreference;
   private ReasoningModelPreference reasoningModelPreference;
+
+  // Keyed by enum name (e.g. "ANTHROPIC_CLAUDE") -> whether that option is actually usable right
+  // now (provider configured with an API key/host). The frontend disables unavailable options
+  // rather than letting a user pick a model that will 401/503 on first call.
+  private Map<String, Boolean> visionModelAvailability;
+  private Map<String, Boolean> reasoningModelAvailability;
 }
