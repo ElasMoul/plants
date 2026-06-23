@@ -4,6 +4,28 @@
 > to 5 each + new AnthropicClient — see new section below; older entries are
 > from prior sessions)
 
+## Bugfix PP-044 — OllamaClient remote timeout + keep_alive (2026-06-23, `bugfix/PP-044-ollama-remote-timeout`)
+Connected the app to a dedicated LAN Ollama machine (Ryzen 5 5600G / GTX 1660 6GB / 16GB RAM)
+running gemma3:12b-it-qat. Network reachable but inference takes 60–120s vision / 30–60s text
+due to ~2–3GB CPU offload → `SocketTimeoutException` at `OllamaClient.identifyPlant`.
+
+**Changes (`bugfix/PP-044-ollama-remote-timeout`, 26096e9):**
+- `OllamaClient` constructor: replaced default `RestClient` with one backed by
+  `SimpleClientHttpRequestFactory`; read timeout now 5 min (`ollama.read-timeout-minutes`),
+  connect timeout 10s (`ollama.connect-timeout-seconds`). New `keepAlive` field.
+- Every `/api/generate` and `/api/chat` request body now includes `"keep_alive": "${ollama.keep-alive}"`
+  (default `"10m"`) so the model stays loaded between calls (avoids paying the full model-load
+  penalty on every cold call).
+- `stream: false` already present on all non-streaming calls — confirmed, no change needed.
+- `application-dev.yml`: three new `ollama.*` keys (all env-var-backed with sensible defaults).
+- `OllamaClientTest`: constructor call updated (3 args → 6); added `keep_alive` assertion.
+- `ARCHITECT.md`: OllamaClient section + model lineup table updated.
+- 198/198 unit tests pass.
+
+**Env vars required on Ollama host:** `OLLAMA_HOST=0.0.0.0:11434`, `OLLAMA_KEEP_ALIVE=10m`
+**Fallback model:** `OLLAMA_MODEL=gemma3:4b` if 12B is too slow (fits fully in VRAM).
+**Manual E2E test pending:** select OLLAMA_GEMMA3 → submit photo → confirm COMPLETED within 3 min.
+
 ## T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider (2026-06-23, `feature/PP-042-model-lineup`)
 New `AnthropicClient` (`identification/client/`) — Apache HttpClient5-backed
 `RestClient` against the Anthropic Messages API, serving BOTH
