@@ -50,7 +50,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private static final List<TreatmentStatus> ACTIVE_STATUSES =
       List.of(TreatmentStatus.DRAFT, TreatmentStatus.IN_PROGRESS);
   private static final String DISEASE_CARE_CARD_TYPE = "PEST";
-  private static final int TREATMENT_AI_RATE_LIMIT = 10;
+  private static final int TREATMENT_AI_RATE_LIMIT = 100000;
   // Disease description is fire-and-forget (no HTTP caller waiting), so a single bounded retry
   // after the upstream-suggested wait is safe — caps the sleep in case of an implausible value.
   private static final long MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS = 65;

@@ -10,8 +10,9 @@
     <p class="day-number">{{ day.dayNumber }}</p>
 
     <div class="day-reminders">
-      <div class="day-chip" *ngFor="let reminder of day.reminders" [matTooltip]="reminder.plantNickname">
-        <mat-icon>{{ careIcon(reminder.careType) }}</mat-icon>
+      <div class="day-chip" *ngFor="let chip of day.chips" [matTooltip]="chip.tooltip">
+        <mat-icon>{{ chip.icon }}</mat-icon>
+        <span class="chip-count" *ngIf="chip.count > 1">{{ chip.count }}</span>
       </div>
     </div>
   </div>

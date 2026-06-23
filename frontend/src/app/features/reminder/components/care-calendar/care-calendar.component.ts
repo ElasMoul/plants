@@ -8,6 +8,14 @@ interface CalendarDay {
   dayNumber: string;
   isToday: boolean;
   reminders: ReminderResponse[];
+  chips: DayChip[];
+}
+
+interface DayChip {
+  careType: CareType;
+  icon: string;
+  count: number;
+  tooltip: string;
 }
 
 export interface DaySelection {
@@ -39,10 +47,6 @@ export class CareCalendarComponent implements OnChanges {
     }
   }
 
-  careIcon(careType: CareType): string {
-    return getCareIcon(careType);
-  }
-
   selectDay(index: number, day: CalendarDay): void {
     if (this.selectedIndex === index) {
       this.selectedIndex = null;
@@ -67,6 +71,7 @@ export class CareCalendarComponent implements OnChanges {
         dayNumber: date.toLocaleDateString(undefined, { day: 'numeric' }),
         isToday: i === 0,
         reminders: [],
+        chips: [],
       });
     }
 
@@ -84,6 +89,31 @@ export class CareCalendarComponent implements OnChanges {
       }
     }
 
+    for (const day of days) {
+      day.chips = this.buildChips(day.reminders);
+    }
+
     this.days = days;
+  }
+
+  // Collapses same-careType reminders on a day into one icon + a count badge, instead of one
+  // icon per reminder (e.g. 3 plants due for watering today used to render 3 identical chips).
+  private buildChips(reminders: ReminderResponse[]): DayChip[] {
+    const byCareType = new Map<CareType, ReminderResponse[]>();
+    for (const reminder of reminders) {
+      const group = byCareType.get(reminder.careType);
+      if (group) {
+        group.push(reminder);
+      } else {
+        byCareType.set(reminder.careType, [reminder]);
+      }
+    }
+
+    return Array.from(byCareType.entries()).map(([careType, group]) => ({
+      careType,
+      icon: getCareIcon(careType),
+      count: group.length,
+      tooltip: group.map(r => r.plantNickname).join(', '),
+    }));
   }
 }

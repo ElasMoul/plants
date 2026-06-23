@@ -1,4 +1,7 @@
 <div class="model-selector-wrap">
+  <p class="section-hint">
+    <strong>Vision model</strong> — used for plant identification and disease annotation. 
+  </p>
   <mat-select
     class="model-select"
     panelClass="model-select-panel"
@@ -26,7 +29,10 @@
       <span class="option-intent">{{ opt.intent }}</span>
     </mat-option>
   </mat-select>
-
+  <p class="section-hint">
+    <strong>Reasoning model</strong> — used for care plans, cure advice, disease descriptions, and species enrichment.
+  </p>
+    
   <mat-select
     class="model-select"
     panelClass="model-select-panel"
