@@ -123,10 +123,14 @@ export class IdentificationService {
     ).pipe(map(res => res.data));
   }
 
-  resolveSpecies(id: number, confirmed: boolean): Observable<SpeciesMatchDto> {
+  resolveSpecies(
+    id: number,
+    confirmed: boolean,
+    chosenScientificName?: string,
+  ): Observable<SpeciesMatchDto> {
     return this.http.post<ApiResponse<SpeciesMatchDto>>(
       `${this.baseUrl}/${id}/resolve-species`,
-      { confirmed },
+      { confirmed, chosenScientificName: chosenScientificName ?? null },
     ).pipe(map(res => res.data));
   }
 

@@ -57,6 +57,15 @@ public class Species extends AuditableEntity {
   @Column(name = "care_cards", columnDefinition = "TEXT")
   private String careCards;
 
+  @Column(name = "gbif_id", length = 50)
+  private String gbifId;
+
+  @Column(name = "powo_id", length = 50)
+  private String powoId;
+
+  @Column(name = "iucn_category", length = 10)
+  private String iucnCategory;
+
   @Column(name = "external_data_source", length = 20)
   private String externalDataSource;
 

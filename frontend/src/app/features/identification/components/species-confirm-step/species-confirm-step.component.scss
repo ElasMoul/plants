@@ -1,6 +1,7 @@
 .step-container {
   max-width: 640px;
   margin: 0 auto;
+  padding-bottom: 16px;
 }
 
 .state-screen {
@@ -9,16 +10,206 @@
   padding: 48px 0;
 }
 
-.step-card {
-  border-radius: var(--radius-card);
-}
+// ── Candidate chooser ─────────────────────────────────────────────────────────
 
 .step-title {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-family: var(--font-heading);
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--color-text-primary);
+}
+
+.step-subtitle {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.switch-nudge {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-accent, rgba(var(--color-primary-rgb, 76, 175, 80), 0.08));
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+
+  .nudge-icon {
+    font-size: 16px;
+    height: 16px;
+    width: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
+
+  .nudge-link {
+    color: var(--color-primary);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.candidate-card {
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+
+  &:hover, &:focus {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    outline: none;
+  }
+
+  &:active { transform: scale(0.99); }
+
+  // Top-ranked card in auto-confirm mode gets a subtle primary accent border
+  &--top {
+    border: 2px solid var(--color-primary);
+  }
+}
+
+.candidate-content {
+  padding: 14px 16px;
+}
+
+.candidate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.candidate-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.candidate-scientific {
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.candidate-common {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.candidate-taxonomy {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.candidate-chips {
+  flex-shrink: 0;
+
+  mat-chip-set { display: flex; flex-wrap: wrap; gap: 4px; }
+}
+
+.confidence-chip {
+  font-size: 0.75rem;
+  padding: 0 8px;
+  height: 22px;
+  min-height: 22px;
+  border-radius: 11px;
+
+  &--high  { background: var(--color-success, #4caf50) !important; color: #fff !important; }
+  &--medium { background: var(--color-warning, #ff9800) !important; color: #fff !important; }
+  &--low   { background: var(--color-text-disabled, #9e9e9e) !important; color: #fff !important; }
+}
+
+.iucn-chip {
+  font-size: 0.72rem;
+  padding: 0 6px;
+  height: 20px;
+  min-height: 20px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+// ── Reference thumbnails ──────────────────────────────────────────────────────
+
+.ref-images {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.ref-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  max-width: 33%;
+}
+
+.ref-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--color-surface-secondary, #f5f5f5);
+  display: block;
+}
+
+.ref-caption {
+  font-size: 0.68rem;
+  color: var(--color-text-disabled, #9e9e9e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+// ── Action rows ───────────────────────────────────────────────────────────────
+
+.not-this-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.not-this-btn {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.rescan-row {
+  margin-top: 16px;
+}
+
+.badge-row {
+  margin-top: 20px;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}
+
+// ── Legacy single-species card ─────────────────────────────────────────────────
+
+.step-card {
+  border-radius: var(--radius-card);
 }
 
 .step-scientific-name {
@@ -34,23 +225,11 @@
   color: var(--color-text-secondary);
 }
 
-.step-subtitle {
-  margin: 8px 0 0;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-}
-
 .action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 20px;
 
-  @media (max-width: 400px) {
-    flex-direction: column;
-  }
-}
-
-.btn-pill {
-  border-radius: var(--radius-chip) !important;
+  @media (max-width: 400px) { flex-direction: column; }
 }

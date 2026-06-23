@@ -73,6 +73,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,6 +107,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final String PLANTS_CACHE = "plants";
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
+  private static final double CLOSE_RUNNER_UP_MARGIN = 0.10;
 
   @Value("${app.plantnet.always-on-candidates:true}")
   private boolean plantNetAlwaysOn;
@@ -115,6 +117,9 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Value("${app.plantnet.lang:en}")
   private String plantNetDefaultLang;
+
+  @Value("${app.plantnet.auto-confirm-score:0.90}")
+  private double autoConfirmScore;
 
   private final DeepSeekClient deepSeekClient;
   private final GitHubModelsClient gitHubModelsClient;
@@ -593,6 +598,11 @@ public class IdentificationServiceImpl implements IdentificationService {
   @Override
   public SpeciesMatchDto getSpeciesMatch(Long id, Long userId) {
     Identification identification = findOwnedIdentification(id, userId);
+    List<PlantNetCandidateDto> candidates =
+        parsePlantNetCandidates(identification.getPlantnetCandidates());
+    if (!candidates.isEmpty()) {
+      return buildSpeciesMatchFromCandidates(identification, candidates);
+    }
     return buildSpeciesMatch(identification.getScientificName(), identification.getCommonName());
   }
 
@@ -602,8 +612,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     Identification identification = findOwnedIdentification(id, userId);
 
     if (!req.isConfirmed()) {
-      // User rejected the match (or the "new species" suggestion) — leave speciesId unset.
-      // Re-scan / manual search is a frontend concern; no search endpoint exists yet.
+      // User rejected the match — leave speciesId unset; re-scan is a frontend concern.
       return SpeciesMatchDto.builder()
           .matched(false)
           .speciesId(null)
@@ -612,22 +621,41 @@ public class IdentificationServiceImpl implements IdentificationService {
           .build();
     }
 
-    if (identification.getScientificName() == null
-        || identification.getScientificName().isBlank()) {
+    // Prefer the user's explicit candidate choice; fall back to what the AI identified.
+    String scientificName =
+        req.getChosenScientificName() != null && !req.getChosenScientificName().isBlank()
+            ? req.getChosenScientificName()
+            : identification.getScientificName();
+
+    if (scientificName == null || scientificName.isBlank()) {
       throw new ValidationException(
           "Cannot save this species — the AI couldn't determine a scientific name for this scan."
               + " Please re-scan.");
     }
 
+    // Resolve the matching PlantNet candidate to obtain common name + factual taxonomy IDs.
+    PlantNetCandidateDto chosenCandidate =
+        parsePlantNetCandidates(identification.getPlantnetCandidates()).stream()
+            .filter(c -> scientificName.equals(c.getScientificName()))
+            .findFirst()
+            .orElse(null);
+
+    String commonName =
+        chosenCandidate != null
+            ? firstCommonName(chosenCandidate.getCommonNames())
+            : identification.getCommonName();
+    String gbifId = chosenCandidate != null ? chosenCandidate.getGbifId() : null;
+    String powoId = chosenCandidate != null ? chosenCandidate.getPowoId() : null;
+    String iucnCategory = chosenCandidate != null ? chosenCandidate.getIucnCategory() : null;
+
     Species species =
-        speciesRepository
-            .findByScientificName(identification.getScientificName())
-            .orElseGet(
-                () ->
-                    speciesService.findOrCreate(
-                        identification.getScientificName(),
-                        identification.getCommonName(),
-                        toLegacyReasoningPreference(loadReasoningPreference(userId))));
+        speciesService.findOrCreate(
+            scientificName,
+            commonName,
+            toLegacyReasoningPreference(loadReasoningPreference(userId)),
+            gbifId,
+            powoId,
+            iucnCategory);
 
     identification.setSpeciesId(species.getId());
     identificationRepository.save(identification);
@@ -689,6 +717,36 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     return getIdentification(id, userId);
+  }
+
+  private SpeciesMatchDto buildSpeciesMatchFromCandidates(
+      Identification identification, List<PlantNetCandidateDto> candidates) {
+    PlantNetCandidateDto top = candidates.get(0);
+    boolean autoConfirmable =
+        top.getScore() >= autoConfirmScore
+            && (candidates.size() == 1
+                || top.getScore() - candidates.get(1).getScore() > CLOSE_RUNNER_UP_MARGIN);
+
+    Optional<Species> existingSpecies =
+        top.getScientificName() != null
+            ? speciesRepository.findByScientificName(top.getScientificName())
+            : Optional.empty();
+
+    return SpeciesMatchDto.builder()
+        .matched(existingSpecies.isPresent())
+        .speciesId(existingSpecies.map(Species::getId).orElse(null))
+        .scientificName(top.getScientificName())
+        .commonName(firstCommonName(top.getCommonNames()))
+        .candidates(candidates)
+        .bestMatch(identification.getPlantnetBestMatch())
+        .switchToProject(identification.getPlantnetSwitchToProject())
+        .autoConfirmable(autoConfirmable)
+        .plantNetVersion(identification.getPlantnetVersion())
+        .build();
+  }
+
+  private static String firstCommonName(List<String> names) {
+    return names != null && !names.isEmpty() ? names.get(0) : null;
   }
 
   private SpeciesMatchDto buildSpeciesMatch(String scientificName, String commonName) {

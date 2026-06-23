@@ -121,6 +121,7 @@ app:
     nb-results: ${PLANTNET_NB_RESULTS:6}
     lang: ${PLANTNET_LANG:en}
     always-on-candidates: ${PLANTNET_ALWAYS_ON:true}
+    auto-confirm-score: ${PLANTNET_AUTO_CONFIRM_SCORE:0.90}  # Top candidate score threshold for one-tap auto-confirm
 
 # ──── Logging (dev: verbose) ──────────────────────────────────────────────────
 logging:

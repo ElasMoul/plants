@@ -148,11 +148,37 @@ export interface AnalyzeEmitPayload {
   speciesId?: number;
 }
 
+export interface PlantNetReferenceImageDto {
+  smallUrl: string;
+  mediumUrl: string;
+  author: string;
+  license: string;
+  citation: string;
+}
+
+export interface PlantNetCandidateDto {
+  score: number;
+  scientificName: string;
+  genus: string;
+  family: string;
+  commonNames: string[];
+  gbifId: string | null;
+  powoId: string | null;
+  iucnCategory: string | null;
+  referenceImages: PlantNetReferenceImageDto[];
+}
+
 export interface SpeciesMatchDto {
   matched: boolean;
   speciesId: number | null;
   scientificName: string;
   commonName: string;
+  // PlantNet v2 ranked candidates (T8.2/T8.3) — null/empty for non-PlantNet identifications
+  candidates: PlantNetCandidateDto[] | null;
+  bestMatch: string | null;
+  switchToProject: string | null;
+  autoConfirmable: boolean;
+  plantNetVersion: string | null;
 }
 
 export interface PlantSummaryDto {

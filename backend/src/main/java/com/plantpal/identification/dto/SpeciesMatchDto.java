@@ -1,5 +1,6 @@
 package com.plantpal.identification.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,4 +18,12 @@ public class SpeciesMatchDto {
   private Long speciesId;
   private String scientificName;
   private String commonName;
+
+  // PlantNet v2 ranked candidates — populated when PlantNet was called (T8.2/T8.3).
+  // Null/empty when the identification used a non-PlantNet vision model.
+  private List<PlantNetCandidateDto> candidates;
+  private String bestMatch;
+  private String switchToProject;
+  private boolean autoConfirmable;
+  private String plantNetVersion;
 }

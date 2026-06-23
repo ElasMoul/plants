@@ -1,9 +1,117 @@
 <div class="step-container">
+
+  <!-- Loading -->
   <div class="state-screen" *ngIf="loading">
     <mat-progress-spinner diameter="36" mode="indeterminate"></mat-progress-spinner>
   </div>
 
-  <mat-card class="step-card" *ngIf="!loading && match">
+  <!-- PlantNet candidate chooser -->
+  <ng-container *ngIf="!loading && match && hasCandidates">
+
+    <h2 class="step-title">What species is this?</h2>
+    <p class="step-subtitle">
+      {{ match.autoConfirmable && !showFullList
+          ? 'We\'re quite confident — confirm or choose differently.'
+          : 'Tap the species that matches your plant.' }}
+    </p>
+
+    <!-- switchToProject nudge -->
+    <div class="switch-nudge" *ngIf="match.switchToProject">
+      <mat-icon class="nudge-icon">place</mat-icon>
+      <span>
+        Better results may be available in the
+        <strong>{{ match.switchToProject }}</strong> flora — change it in
+        <a routerLink="/preferences" class="nudge-link">Preferences</a>.
+      </span>
+    </div>
+
+    <!-- Candidate cards -->
+    <div class="candidate-list">
+      <mat-card
+        *ngFor="let candidate of displayedCandidates"
+        class="candidate-card"
+        [class.candidate-card--top]="match.autoConfirmable && !showFullList"
+        (click)="!submitting && onConfirmCandidate(candidate)"
+        tabindex="0"
+        role="button"
+        [attr.aria-label]="'Confirm ' + candidate.scientificName"
+        (keydown.enter)="!submitting && onConfirmCandidate(candidate)"
+        (keydown.space)="!submitting && onConfirmCandidate(candidate)">
+
+        <mat-card-content class="candidate-content">
+          <div class="candidate-header">
+            <div class="candidate-names">
+              <span class="candidate-scientific">{{ candidate.scientificName }}</span>
+              <span class="candidate-common" *ngIf="primaryCommonName(candidate)">
+                {{ primaryCommonName(candidate) }}
+              </span>
+              <span class="candidate-taxonomy">
+                {{ candidate.family }}<ng-container *ngIf="candidate.family && candidate.genus"> · </ng-container>{{ candidate.genus }}
+              </span>
+            </div>
+            <div class="candidate-chips">
+              <mat-chip-set>
+                <mat-chip
+                  class="confidence-chip"
+                  [class.confidence-chip--high]="confidenceLevel(candidate.score) === 'HIGH'"
+                  [class.confidence-chip--medium]="confidenceLevel(candidate.score) === 'MEDIUM'"
+                  [class.confidence-chip--low]="confidenceLevel(candidate.score) === 'LOW'">
+                  {{ (candidate.score * 100).toFixed(0) }}%
+                </mat-chip>
+                <mat-chip class="iucn-chip" *ngIf="candidate.iucnCategory"
+                  [matTooltip]="'IUCN conservation status: ' + candidate.iucnCategory">
+                  {{ candidate.iucnCategory }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+          </div>
+
+          <!-- Reference thumbnails with attribution -->
+          <div class="ref-images" *ngIf="validImages(candidate).length > 0">
+            <figure
+              *ngFor="let img of validImages(candidate)"
+              class="ref-figure">
+              <img
+                [src]="img.smallUrl"
+                [alt]="candidate.scientificName"
+                loading="lazy"
+                class="ref-thumb"
+                (error)="onImageError(img.smallUrl)" />
+              <figcaption class="ref-caption">
+                {{ img.author }}<ng-container *ngIf="img.author && img.license"> · </ng-container>{{ img.license }}
+              </figcaption>
+            </figure>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- "Not this one" for auto-confirm collapsed view -->
+    <div class="not-this-row" *ngIf="match.autoConfirmable && !showFullList">
+      <button mat-button class="not-this-btn" [disabled]="submitting" (click)="onShowFullList()">
+        Not this one &rarr;
+      </button>
+    </div>
+
+    <!-- None of these / rescan — always shown -->
+    <div class="rescan-row">
+      <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
+        <mat-icon>refresh</mat-icon>
+        None of these — re-scan
+      </button>
+    </div>
+
+    <!-- PlantNet attribution badge -->
+    <div class="badge-row" *ngIf="plantNetBadgeLabel">
+      <app-model-usage-badge
+        [visionModel]="plantNetBadgeLabel"
+        prefix="Candidates from"></app-model-usage-badge>
+    </div>
+
+  </ng-container>
+
+  <!-- Legacy: no candidates (non-PlantNet vision model) -->
+  <mat-card class="step-card" *ngIf="!loading && match && !hasCandidates">
     <mat-card-content>
       <ng-container *ngIf="match.matched; else newSpecies">
         <h2 class="step-title">Is this your plant's species?</h2>
@@ -31,12 +139,10 @@
           color="primary"
           class="btn-pill"
           [disabled]="submitting"
-          (click)="onConfirm()"
-        >
+          (click)="onConfirmLegacy()">
           <mat-icon>check</mat-icon>
           {{ match.matched ? 'Yes' : 'Yes, add it' }}
         </button>
-
         <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
           <mat-icon>refresh</mat-icon>
           {{ match.matched || match.scientificName ? 'No, re-scan' : 'Re-scan' }}
@@ -44,4 +150,5 @@
       </div>
     </mat-card-content>
   </mat-card>
+
 </div>

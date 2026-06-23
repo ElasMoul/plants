@@ -12,4 +12,8 @@ import lombok.Setter;
 public class ResolveSpeciesRequest {
 
   private boolean confirmed;
+
+  // When set, the user explicitly selected this candidate from the ranked list (T8.2).
+  // Null means "use whatever scientific name the AI identified" (backward compat).
+  private String chosenScientificName;
 }
