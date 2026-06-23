@@ -163,10 +163,12 @@ public class PlantServiceImpl implements PlantService {
 
     Map<Long, String> healthByPlantId =
         latestPerPlant.stream()
+            .filter(i -> i.getHealthStatus() != null)
             .collect(Collectors.toMap(Identification::getPlantId, Identification::getHealthStatus));
 
     Map<Long, Instant> lastScanAtByPlantId =
         latestPerPlant.stream()
+            .filter(i -> i.getCreatedAt() != null)
             .collect(Collectors.toMap(Identification::getPlantId, Identification::getCreatedAt));
 
     Map<Long, Integer> nextWaterDaysByPlantId =
