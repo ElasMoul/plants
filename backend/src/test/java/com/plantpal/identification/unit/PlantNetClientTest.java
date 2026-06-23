@@ -59,7 +59,7 @@ class PlantNetClientTest {
     mockWebServer = new MockWebServer();
     mockWebServer.start();
     String baseUrl = mockWebServer.url("/").toString();
-    plantNetClient = new PlantNetClient(baseUrl, "test-api-key", "all");
+    plantNetClient = new PlantNetClient(baseUrl, "test-api-key", "all", 6, "en");
   }
 
   @AfterEach
@@ -131,7 +131,7 @@ class PlantNetClientTest {
 
       assertThatThrownBy(() -> plantNetClient.identify(List.of(validImage()), List.of("leaf")))
           .isInstanceOf(PlantPalException.class)
-          .hasMessageContaining("No species match found")
+          .hasMessageContaining("No plant species match found")
           .extracting(e -> ((PlantPalException) e).getErrorCode())
           .isEqualTo(404);
     }

@@ -80,4 +80,20 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "species_id")
   private Long speciesId;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "plantnet_candidates", columnDefinition = "jsonb")
+  private String plantnetCandidates;
+
+  @Column(name = "plantnet_version", length = 50)
+  private String plantnetVersion;
+
+  @Column(name = "plantnet_best_match", length = 255)
+  private String plantnetBestMatch;
+
+  @Column(name = "plantnet_switch_to_project", length = 50)
+  private String plantnetSwitchToProject;
+
+  @Column(name = "plantnet_quota_remaining")
+  private Integer plantnetQuotaRemaining;
 }
