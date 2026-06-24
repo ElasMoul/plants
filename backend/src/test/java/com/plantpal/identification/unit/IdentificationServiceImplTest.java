@@ -1635,4 +1635,111 @@ class IdentificationServiceImplTest {
       verify(plantRepository, never()).findByIdAndUserId(any(), any());
     }
   }
+
+  @Nested
+  @DisplayName("retryIdentification() — T8.F")
+  class RetryIdentification {
+
+    private static final Long IDENTIFICATION_ID = 42L;
+
+    private Identification buildIdentification(
+        IdentificationStatus status,
+        IdentificationStageStatus identStatus,
+        IdentificationStageStatus annotStatus,
+        IdentificationStageStatus candidateStatus) {
+      return Identification.builder()
+          .id(IDENTIFICATION_ID)
+          .userId(USER_ID)
+          .photoUrl("/photos/uuid.jpg")
+          .status(status)
+          .identificationStatus(identStatus)
+          .annotationStatus(annotStatus)
+          .candidateStatus(candidateStatus)
+          .build();
+    }
+
+    @Test
+    @DisplayName("should throw 409 when identification is already PENDING")
+    void shouldThrow409WhenPending() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.PENDING,
+              IdentificationStageStatus.PENDING,
+              IdentificationStageStatus.PENDING,
+              IdentificationStageStatus.PENDING);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+
+      assertThatThrownBy(
+              () -> identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID))
+          .isInstanceOf(com.plantpal.shared.exception.PlantPalException.class)
+          .hasMessageContaining("already in progress");
+    }
+
+    @Test
+    @DisplayName("should re-publish Kafka event when core identification has FAILED")
+    void shouldRepublishKafkaEventOnCoreFailed() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.FAILED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationRepository.save(any())).thenReturn(ident);
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.PENDING);
+      assertThat(ident.getStatus()).isEqualTo(IdentificationStatus.PENDING);
+      assertThat(ident.getFailureReason()).isNull();
+      verify(kafkaTemplate)
+          .send(
+              eq(
+                  com.plantpal.identification.config.KafkaTopicConfig
+                      .IDENTIFICATION_REQUESTED_TOPIC),
+              any());
+    }
+
+    @Test
+    @DisplayName("should fire async annotation enrichment when only annotationStatus is FAILED")
+    void shouldRetryAnnotationWhenAnnotationFailed() throws Exception {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.COMPLETED,
+              IdentificationStageStatus.COMPLETED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.COMPLETED);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationRepository.save(any())).thenReturn(ident);
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(ident.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      verify(kafkaTemplate, never()).send(any(), any());
+    }
+
+    @Test
+    @DisplayName("should throw ResourceNotFoundException when identification is not owned by user")
+    void shouldThrow403OnOwnershipMismatch() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.FAILED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      ident.setUserId(99L);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+
+      assertThatThrownBy(
+              () -> identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID))
+          .isInstanceOf(ResourceNotFoundException.class);
+    }
+  }
 }
