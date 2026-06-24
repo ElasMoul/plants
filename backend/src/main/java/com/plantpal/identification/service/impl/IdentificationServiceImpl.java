@@ -300,6 +300,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
+      boolean[] plantNetCandidateFailed = {false};
       CompletableFuture<PlantNetResponse> alwaysOnPlantNetFuture =
           (plantNetAlwaysOn && preference != VisionModelPreference.PLANTNET)
               ? CompletableFuture.supplyAsync(
@@ -314,6 +315,7 @@ public class IdentificationServiceImpl implements IdentificationService {
                       log.warn(
                           "Always-on PlantNet call failed, continuing without candidates: {}",
                           e.getMessage());
+                      plantNetCandidateFailed[0] = true;
                       return null;
                     }
                   },
@@ -351,7 +353,19 @@ public class IdentificationServiceImpl implements IdentificationService {
             : new PlantPalException("Identification failed: " + cause.getMessage(), 500);
       }
       String rawResult = outcome.rawJson();
-      String annotationJson = annotationFuture.join();
+      String annotationJson;
+      try {
+        annotationJson = annotationFuture.join();
+        identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
+        identification.setAnnotationModel("gpt-4o-mini");
+      } catch (Exception e) {
+        log.warn(
+            "Annotation stage failed for identification id={}: {}",
+            identification.getId(),
+            e.getMessage());
+        identification.setAnnotationStatus(IdentificationStageStatus.FAILED);
+        annotationJson = null;
+      }
 
       // PlantNet candidates: from the PLANTNET-primary outcome OR from the always-on parallel call
       PlantNetResponse plantNetResponse =
@@ -386,6 +400,15 @@ public class IdentificationServiceImpl implements IdentificationService {
         identification.setPlantnetQuotaRemaining(
             plantNetResponse.remainingIdentificationRequests());
       }
+      if (preference == VisionModelPreference.PLANTNET) {
+        identification.setCandidateStatus(IdentificationStageStatus.COMPLETED);
+      } else if (!plantNetAlwaysOn) {
+        identification.setCandidateStatus(IdentificationStageStatus.SKIPPED);
+      } else if (plantNetCandidateFailed[0]) {
+        identification.setCandidateStatus(IdentificationStageStatus.FAILED);
+      } else {
+        identification.setCandidateStatus(IdentificationStageStatus.COMPLETED);
+      }
       PlantNetDiseaseResponse diseaseResponse = diseaseCheckFuture.join();
       if (diseaseResponse != null && !diseaseResponse.results().isEmpty()) {
         identification.setPlantnetDiseaseResults(serializeToJson(diseaseResponse.results()));
@@ -408,6 +431,8 @@ public class IdentificationServiceImpl implements IdentificationService {
     } catch (Exception e) {
       log.error("Identification processing failed: id={}", identification.getId(), e);
       identification.setIdentificationStatus(IdentificationStageStatus.FAILED);
+      identification.setAnnotationStatus(IdentificationStageStatus.SKIPPED);
+      identification.setCandidateStatus(IdentificationStageStatus.SKIPPED);
       identification.setFailureReason(classifyFailureReason(e));
       markFailed(identification);
       publishCompletedEvent(identification.getId(), IdentificationStatus.FAILED);
