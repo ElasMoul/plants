@@ -748,3 +748,104 @@ per the "migration numbers have collided twice" lesson above.
   VARCHAR(30)). Only the optional default-change + OLLAMA_LLAVA->OLLAMA_GEMMA3
   backfill is a migration (claims 023; if used, bump the Phase 8 PlantNet migrations
   to 024/025/026).
+
+---
+
+### Architecture Decision D5 — Per-Stage Identification Status (Phase 8.5)
+> Triggered by: 5 concurrent batch identifications all surfacing as FAILED despite
+> gpt-4o returning valid care plans for 4/5. Root cause: `processIdentification()`
+> had no concept of a partial result — any exception in annotation or PlantNet
+> propagated up and failed the entire record.
+
+**Decision:** introduce three independent stage-status fields on `Identification`,
+replacing the single binary `status` as the outcome signal for each stage:
+
+| Field | Type | Values | Meaning |
+|---|---|---|---|
+| `identificationStatus` | VARCHAR(30) | PENDING / COMPLETED / FAILED | Core AI identification (gpt-4o care plan + species + health). The **only** field that drives the record's top-level `status`. |
+| `annotationStatus` | VARCHAR(30) | PENDING / COMPLETED / FAILED / SKIPPED | Polygon annotation via `analyzeRegions()`. FAILED here does NOT fail the record. |
+| `candidateStatus` | VARCHAR(30) | PENDING / COMPLETED / FAILED / SKIPPED | PlantNet candidate enrichment. Failure is non-fatal. SKIPPED when not attempted (e.g. PlantNet IS the core call, not enrichment). |
+
+Additional fields in migration 027 (next free — sequence ends at 026):
+- `identificationModel` (VARCHAR 50): `VisionModelPreference` enum name used for the core call. Already resolved in `loadVisionPreference()` (T7.1); passed through to the save.
+- `annotationModel` (VARCHAR 50): always `"gpt-4o-mini"` today (hardcoded by design — see T8.D annotation routing audit). Captured for the Phase 9 eval corpus.
+- `failureReason` (TEXT): set when `identificationStatus = FAILED` only. Tags: `RATE_LIMITED` | `PARSE_ERROR` | `PROVIDER_ERROR` | `OTHER`. Gives T8.F's retry endpoint and Phase 9's Sentry integration something structured to act on.
+
+**Top-level `status` column:** NOT dropped (too disruptive). Continues to be set as
+before, but its meaning is now "mirrors `identificationStatus`". Future code should
+prefer reading `identificationStatus` directly; `status` is the backward-compatible view.
+
+**New Java enum:** `IdentificationStageStatus { PENDING, COMPLETED, FAILED, SKIPPED }`
+in `identification/entity/`. Distinct from `IdentificationStatus` (PENDING/COMPLETED/FAILED)
+— the stage enum adds SKIPPED.
+
+**Backfill rule (migration 027):**
+- `status = 'COMPLETED'` → `identification_status='COMPLETED'`, `annotation_status='COMPLETED'`, `candidate_status='SKIPPED'` (PlantNet was broken since Phase 8 — SKIPPED is honest, not COMPLETED)
+- `status = 'FAILED'` → `identification_status='FAILED'`, `annotation_status='SKIPPED'`, `candidate_status='SKIPPED'`
+- `status = 'PENDING'` → all three = `'PENDING'`
+
+**Implementation rule:** `processIdentification()` wraps annotation and PlantNet stages in
+try/catch. Each sets its own stage status on exception and never re-throws. Only the core
+stage can set `status = 'FAILED'`. This converts partial pipeline failures into successes
+at the record level. The retry endpoint (T8.F) uses the stage statuses to decide which
+stages to re-run.
+
+---
+
+### D1 Amendment — PlantNet Candidates Deferred from Critical Path (Phase 8.5, T8.E)
+> Original D1 (Phase 8): PlantNet always-on alongside gpt-4o vs. only-when-selected.
+> Phase 8 implemented PlantNet as a synchronous concurrent call inside
+> `processIdentification()`. Phase 8.5 revises this execution model.
+
+**Finding:** N concurrent batch identifications × synchronous PlantNet calls × ~3 full-
+base64 vision calls each = rapid exhaustion of the GitHub Models 60 000-token/60s ceiling.
+The synchronous critical-path placement directly caused the observed 429 storm.
+
+**D1 ruling (amended):** PlantNet always-on IS confirmed — not gated on
+`VisionModelPreference.PLANTNET`. But the execution is deferred: PlantNet candidate
+enrichment runs as a **fire-and-forget async enrichment AFTER the core identification
+succeeds**, using the same pattern as `SpeciesEnrichmentService.enrich()`.
+- After `identificationStatus` is set to `COMPLETED` and the record saves, a
+  `CompletableFuture.runAsync(aiTaskExecutor)` launches the PlantNet call.
+- `candidateStatus` starts `PENDING` when queued, transitions to `COMPLETED`/`FAILED` async.
+- The frontend's existing 3s poll already re-fetches the full record — candidates appear
+  automatically when `candidateStatus` transitions to `COMPLETED`.
+- PlantNet quota is only consumed after the identification succeeds — no wasted quota on
+  failed identifications.
+
+**Exception:** when `VisionModelPreference.PLANTNET` is the user's explicit choice,
+PlantNet IS the core call and continues running synchronously in the critical path.
+
+---
+
+### T8.C — PlantNet DTO Regression Note (Phase 8.5)
+> Known regression introduced in Phase 8. Every PlantNet response has been silently
+> failing since Phase 8 shipped — the always-on PlantNet integration has NEVER once
+> succeeded in the live pipeline.
+
+**Root cause:** `PlantNetResponse.predictedOrgans` was typed `List<String>`, but PlantNet
+v2 actually returns a list of `{organ, score}` objects (confirmed against the swagger).
+Jackson throws `Cannot deserialize ArrayList<Object> from Object value …
+predictedOrgans[0]` on every response. The exception is caught by the "Always-on PlantNet
+call failed, continuing without candidates" wrapper, so it degrades silently — no visible
+error, no candidates populated.
+
+**Fix (T8.C):** retype to `List<PlantNetPredictedOrgan>` where `PlantNetPredictedOrgan`
+has `String organ` and `Double score`. Add a deserialization unit test with a faithful v2
+fixture (`src/test/resources/fixtures/plantnet_identify_response.json`) that must fail
+before the fix and pass after. The fixture also seeds Phase 9's T9.8 eval corpus.
+
+**T8.D — Annotation Routing Audit Findings (Phase 8.5)**
+Three facts about the identification pipeline's model routing that look like gaps but are
+deliberate. Documented here (not as code comments) to prevent future re-investigation:
+- **Annotation model deliberately pinned to gpt-4o-mini** via `GitHubModelsClient`,
+  regardless of the user's `VisionModelPreference`. This is intentional — gpt-4o-mini is
+  cheaper and sufficient for polygon-coordinate output.
+- **`DeepSeekAnnotationClient` is NOT an independent-quota fallback** — it wraps
+  `GitHubModelsClient.analyzeRegions()`, the same endpoint and same token bucket as the
+  primary vision call. Since T7.1 removed cross-model fallback, a 429 on annotation sets
+  `annotationStatus='FAILED'` immediately (T8.B). No cross-model annotation fallback is
+  planned — complexity outweighs need given annotation is now non-fatal.
+- **`ReasoningModelPreference` is NOT invoked in `processIdentification()`** — it drives
+  only the standalone cure-advice, disease-description, and species-enrichment paths, not
+  the main identification pipeline's vision or annotation calls.

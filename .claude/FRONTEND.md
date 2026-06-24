@@ -217,6 +217,25 @@ ng lint
 npx tsc --noEmit
 ```
 
+## Phase 8.5 — Incoming UI Changes
+**Identification UI must move from binary COMPLETED/FAILED to stage-aware states (T8.G).**
+Update `identification.model.ts` to add: `identificationStatus`, `annotationStatus`,
+`candidateStatus` (`'PENDING'|'COMPLETED'|'FAILED'|'SKIPPED'`), `identificationModel`,
+`annotationModel`, `failureReason: string | null` — these arrive on `IdentificationResponse`
+once T8.A ships.
+
+Display rules once fields are available:
+- `status='COMPLETED'` + `annotationStatus='FAILED'` → show care plan + inline
+  `"Overlay unavailable"` chip, NOT a red FAILED state. Optional "Retry overlay" link.
+- `status='COMPLETED'` + `annotationStatus='PENDING'` or `candidateStatus='PENDING'` →
+  continue existing 3s poll — the stages resolve async and the poll re-fetches.
+- `status='FAILED'` (`identificationStatus='FAILED'`) → show red FAILED chip as before
+  + a **Retry button** calling `POST /identifications/{id}/retry` (T8.F). On 202 response:
+  trigger `pollUntilComplete()` — no new polling loop needed. Wire `AiErrorService.handle()`
+  to the retry button's error path. Optionally surface `failureReason` as a tooltip.
+- Do NOT add Playwright tests here — T9.2 (Phase 9 E2E) will cover identification results
+  with stubbed data once that suite exists.
+
 ## Known Issues / Open Items
 - T3.3 (manual on-device testing — push notification delivery, PWA
   installability, offline reading) has never been done; needs a real phone, not

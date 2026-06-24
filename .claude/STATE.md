@@ -1,8 +1,9 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-23 (T8.0 shipped — expanded vision/reasoning model menus
-> to 5 each + new AnthropicClient — see new section below; older entries are
-> from prior sessions)
+> Last updated: 2026-06-24 (Phase 8.5 defined — Identification Pipeline Resilience
+> & Partial-Result Recovery; tasks T8.A–T8.G added to TASK_PLAN.md; D5 and D1
+> amendment recorded in ARCHITECT.md; migration 027 assigned; all .claude/ docs
+> updated. T8.0 shipped note below; older entries from prior sessions)
 
 ## Bugfix PP-044 — OllamaClient remote timeout + keep_alive (2026-06-23, `bugfix/PP-044-ollama-remote-timeout`)
 Connected the app to a dedicated LAN Ollama machine (Ryzen 5 5600G / GTX 1660 6GB / 16GB RAM)
@@ -236,11 +237,11 @@ left the field null forever — no retry, nothing re-triggers it later).
   session wants the same treatment there.
 
 ## Current Phase
-**Phases 0–4, 6, and 7 are now fully shipped, plus a pre-Phase-5 cleanup pass
-closing every gap flagged below. Phase 5 (Launch prep) is the only phase that
-hasn't started** — see TASK_PLAN.md for task breakdowns. One manual item is
-stranded from Phase 3: T3.3 (on-device push notification + PWA testing) still
-needs a real phone and hasn't been done.
+**Phases 0–4, 6, 7, and 8 (T8.0) are shipped.** Phase 8 (T8.1–T8.7) and
+Phase 8.5 (T8.A–T8.G, Pipeline Resilience) are next — in that order, both
+before Phase 9 (Quality/Testing). See TASK_PLAN.md for full task breakdowns.
+One stranded manual item from Phase 3: T3.3 (on-device push + PWA testing)
+still needs a real phone.
 
 | Phase | Status |
 |---|---|
@@ -249,9 +250,13 @@ needs a real phone and hasn't been done.
 | 2 — AI Plant Identification | ✅ Complete |
 | 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual device testing) |
 | 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
-| 5 — Launch prep | 🔲 Not started ← **current focus** |
-| 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14, incl. T6.7/T6.8 which had shipped but were previously undocumented here) |
+| 5 — Launch prep | 🔲 Not started (runs after Phase 9 — now Phase 10) |
+| 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
+| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ done (`feature/PP-042`); T8.1–T8.7 planned |
+| 8.5 — Identification Pipeline Resilience | 🔲 Not started — T8.A–T8.G planned; runs before Phase 9 |
+| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8 planned) |
+| 10 — Launch | 🔲 Not started (was Phase 5) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ## Bugfixes — batch scan: lost items, NullInjectorError, sequential trickle (2026-06-22, `feature/PP-041-batch-scan`)
