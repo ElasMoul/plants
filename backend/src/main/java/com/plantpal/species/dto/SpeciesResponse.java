@@ -26,6 +26,12 @@ public class SpeciesResponse {
 
   private String enrichmentModel;
 
+  private String gbifId;
+
+  private String powoId;
+
+  private String iucnCategory;
+
   private SpeciesStatus status;
 
   // Parsed from Species.careCards (raw JSON) in SpeciesServiceImpl -- never trust the AI
