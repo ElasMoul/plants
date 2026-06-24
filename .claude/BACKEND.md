@@ -399,9 +399,27 @@ repository/UserRepository, service/UserService(+Impl), controller/AuthController
 022_add_ai_model_usage_tracking.sql      treatments.disease_description_model /
                                           treatment_plan_model;
                                           species.enrichment_model
+023_add_plantnet_candidates.sql          [Phase 8 — T8.1] plantnet_candidates JSONB
+                                          + plantnet_version/best_match/
+                                          switch_to_project/quota_remaining on
+                                          identifications; in changelog XML, awaiting T8.1
+024_add_species_taxonomy_ids.sql         [Phase 8 — T8.2] gbif_id/powo_id/iucn_category
+                                          on species; awaiting T8.2
+025_add_plantnet_preferences.sql         [Phase 8 — T8.4] users.plantnet_project /
+                                          plantnet_lang; awaiting T8.4
+026_add_plantnet_disease_crosscheck.sql  [Phase 8 — T8.5] JSONB disease cross-check
+                                          fields on identifications; awaiting T8.5
+027_add_identification_stage_status.sql  [Phase 8.5 — T8.A] identification_status /
+                                          annotation_status / candidate_status /
+                                          identification_model / annotation_model /
+                                          failure_reason on identifications; NOT YET
+                                          WRITTEN — next task to implement
 ```
-All 22 applied, in exactly this XML-listed order in db.changelog-master.xml
-(Liquibase runs by XML order, not filename — see ARCHITECT.md before adding #023).
+Migrations 001–022 are confirmed applied. Migrations 023–026 are in db.changelog-master.xml
+(pre-written for Phase 8 tasks T8.1/T8.2/T8.4/T8.5 — added during planning). Migration 027
+is assigned to Phase 8.5 T8.A and is NOT yet written or in the changelog. Always verify
+against db.changelog-master.xml before adding; Liquibase runs in XML-listed order, NOT
+filename order (see ARCHITECT.md's Migration Sequencing section).
 
 ## Test Inventory
 Full unit suite: 198/198 passing as of the pre-Phase-5 cleanup pass (checkstyle
@@ -436,6 +454,48 @@ back-to-back in the same `-Dtest=A,B,C` invocation has caused Hikari/Lettuce
 connection-pool exhaustion** on a resource-constrained Windows dev machine
 (each spins up a full Spring context + new Testcontainers connections) — run
 them one at a time, don't batch.
+
+## Phase 8.5 — Pending Contract Changes
+The following backend changes are incoming (T8.A–T8.F). Do not build against the
+current binary `IdentificationStatus` shape — the schema is changing.
+
+**Migration 027 — per-stage status columns on `identifications` (T8.A):**
+- `identification_status VARCHAR(30)` — PENDING/COMPLETED/FAILED (core AI call only)
+- `annotation_status VARCHAR(30)` — PENDING/COMPLETED/FAILED/SKIPPED (annotation stage)
+- `candidate_status VARCHAR(30)` — PENDING/COMPLETED/FAILED/SKIPPED (PlantNet enrichment)
+- `identification_model VARCHAR(50)` — `VisionModelPreference` name used for core call
+- `annotation_model VARCHAR(50)` — always `"gpt-4o-mini"` today; captured for eval corpus
+- `failure_reason TEXT` — set only when `identification_status='FAILED'`
+- `IdentificationResponse` will expose all six. `IdentificationStageStatus` enum added:
+  `{ PENDING, COMPLETED, FAILED, SKIPPED }` (distinct from `IdentificationStatus`).
+
+**New endpoint — `POST /api/v1/identifications/{id}/retry` (T8.F):**
+Re-runs only the failed stages. Returns 202 Accepted. 409 if `status=PENDING` (already in
+flight). 403 on ownership mismatch. Applies the same per-user `ai-calls-per-hour` Bucket4j
+check as `/analyze` — a retry is a real AI call.
+
+**`PlantNetResponse.predictedOrgans` type change (T8.C):** `List<String>` →
+`List<PlantNetPredictedOrgan>` (`{ String organ; Double score; }`). Any code consuming
+this field must be updated. This fixes a Phase 8 regression — PlantNet has silently
+failed on every response since Phase 8 shipped (see ARCHITECT.md's T8.C regression note).
+
+**GitHub Models token-budget throttling (T8.D):** a new server-side Bucket4j bucket tracks
+outbound GitHub Models token spend (40 000 tokens/60s, config:
+`app.rate-limit.github-models-tokens-per-minute`). Vision fan-out under batch scans now
+queues rather than stampeding the ceiling. Backoff on GOAWAY/EOF retries replaced with
+exponential + jitter (attempt 1 immediate, attempt 2 after capped wait + jitter; 429s are
+never retried — they propagate as `RateLimitException` per T7.1).
+
+**Annotation routing — three deliberate facts (documented here per T8.D; NOT bugs):**
+- Annotation model is deliberately pinned to gpt-4o-mini regardless of the user's
+  `VisionModelPreference`. Intentional — cheaper, sufficient for polygon-coordinate output.
+- `DeepSeekAnnotationClient` wraps `GitHubModelsClient.analyzeRegions()` — same endpoint,
+  same token bucket as the primary vision call. It is NOT an independent-quota fallback.
+  Since T7.1 removed cross-model fallback, annotation failure sets `annotationStatus=
+  'FAILED'` (T8.B) — no cross-model fallback is planned for annotation.
+- `ReasoningModelPreference` is NOT invoked in `processIdentification()`. It drives only
+  standalone cure-advice, disease-description, and species-enrichment paths — not the main
+  identification pipeline's vision or annotation calls.
 
 ## Known Issues / Open Items
 - JaCoCo gate is at 55% (the unit suite's real achieved line coverage, with a

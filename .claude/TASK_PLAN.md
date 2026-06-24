@@ -317,6 +317,265 @@ BACKEND
 
 ---
 
+## PHASE 8.5 — Identification Pipeline Resilience & Partial-Result Recovery  🔲 NOT STARTED
+> **Execution order:** runs after Phase 8 (T8.0 done, T8.1–T8.7 ongoing), before Phase 9.
+> Rationale: Phase 9's E2E suite and nightly eval will test a pipeline that currently
+> cannot survive its own happy path — harden the pipeline first, then test the fixed version.
+>
+> **Triggered by:** a batch of 5 concurrent identifications all surfacing as FAILED despite
+> gpt-4o returning valid care plans for 4/5. Three root causes:
+> 1. **Partial failure treated as total** — an exception in annotation or PlantNet propagated
+>    through `processIdentification()` and failed the entire record.
+> 2. **Self-inflicted 429 storm** — 5 concurrent identifications × ~3 full-base64 vision calls
+>    each exhausted the GitHub Models 60 000-token/60s ceiling. One identification (id=2) had
+>    its core gpt-4o call 429'd — a genuine failure; the other 4 had valid care plans that were
+>    discarded because annotation threw.
+> 3. **PlantNet DTO regression (Phase 8)** — `PlantNetResponse.predictedOrgans` typed
+>    `List<String>` but v2 returns `[{organ, score}]` objects. Jackson throws on every response.
+>    The integration has NEVER succeeded in production since Phase 8 shipped.
+>
+> **Key design decisions:** D5 (per-stage status model — load-bearing, all tasks depend on it)
+> and D1 amendment (PlantNet deferred from critical path) are recorded in ARCHITECT.md.
+>
+> **Branch numbers:** T8.A–T8.G use **PP-050–PP-056**. Phase 9 branches shift to PP-057+
+> (already updated in this file).
+
+### T8.A — Architect: per-stage status model on identifications (D5)  🤝 Assisted
+**Branch:** `feature/PP-050-identification-stage-status`
+> Load-bearing design decision — all other Phase 8.5 tasks depend on it. Read D5 in
+> ARCHITECT.md before starting. Migration 027 (next free — sequence ends at 026).
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.A: add per-stage status + model tracking to identifications.
+// Migration 027 — VERIFY against db.changelog-master.xml (sequence ends at 026).
+
+BACKEND
+1. Migration 027: add to identifications:
+     identification_status VARCHAR(30) NOT NULL DEFAULT 'PENDING'
+     annotation_status     VARCHAR(30) NOT NULL DEFAULT 'PENDING'
+     candidate_status      VARCHAR(30) NOT NULL DEFAULT 'SKIPPED'
+     identification_model  VARCHAR(50)   -- VisionModelPreference name for core call
+     annotation_model      VARCHAR(50)   -- always 'gpt-4o-mini' today; for eval corpus
+     failure_reason        TEXT          -- set only when identification_status='FAILED'
+   Backfill:
+     COMPLETED → identification_status='COMPLETED', annotation_status='COMPLETED',
+       candidate_status='SKIPPED' (PlantNet broken since Phase 8 — SKIPPED is honest)
+     FAILED    → identification_status='FAILED', annotation_status='SKIPPED',
+       candidate_status='SKIPPED'
+     PENDING   → all three 'PENDING'
+   Append to db.changelog-master.xml IN ORDER. Never insert between existing entries.
+
+2. New Java enum IdentificationStageStatus { PENDING, COMPLETED, FAILED, SKIPPED }
+   in identification/entity/ (distinct from IdentificationStatus — adds SKIPPED).
+
+3. Add the 6 new JPA fields to Identification entity. Update IdentificationMapper and
+   IdentificationResponse (additive — never drop existing fields).
+
+4. processIdentification(): populate identification_model from loadVisionPreference()
+   (already resolved in T7.1; pass it through to the save). Begin dual-writing:
+     core success → identification_status='COMPLETED'
+     core failure → identification_status='FAILED',
+       failure_reason tag ('RATE_LIMITED'|'PARSE_ERROR'|'PROVIDER_ERROR'|'OTHER')
+   Annotation/candidate fields populated in T8.B. Existing status column unchanged.
+
+VERIFY: full unit suite green. IdentificationServiceImplTest updated for any new
+constructor params.
+```
+
+### T8.B — Backend: make annotation & candidate stages non-fatal  🤖 AI
+**Branch:** `feature/PP-051-non-fatal-enrichment-stages` · Depends on **T8.A**.
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.B: annotation and PlantNet exceptions must NEVER fail the
+// identification record. This single change converts 4/5 observed failures to successes.
+
+BACKEND — IdentificationServiceImpl.processIdentification()
+1. Annotation stage: wrap analyzeRegions() in try/catch.
+     success → annotation_status='COMPLETED'
+     exception → log WARN, annotation_status='FAILED'. NEVER re-throw.
+   Null/empty annotation regions already handled gracefully by the frontend.
+
+2. PlantNet candidate stage: same pattern.
+     success → candidate_status='COMPLETED'
+     exception → log WARN, candidate_status='FAILED'. NEVER re-throw.
+
+3. The existing status column set to 'COMPLETED' if and only if
+   identification_status='COMPLETED' — regardless of annotation/candidate status.
+   A record with core COMPLETED + annotation FAILED still saves as status='COMPLETED'.
+   Core failures still set status='FAILED' as before.
+
+VERIFY: IdentificationServiceImplTest — three explicit tests:
+  (a) all stages succeed → status=COMPLETED, all stage statuses COMPLETED
+  (b) core succeeds, annotation throws → status=COMPLETED, annotation_status=FAILED
+  (c) core throws → status=FAILED, identification_status=FAILED, failure_reason set
+```
+
+### T8.C — Backend: fix PlantNetResponse predictedOrgans deserialization  🤖 AI
+**Branch:** `feature/PP-052-plantnet-dto-fix`
+> Phase 8 regression — PlantNet has silently failed on every response since Phase 8
+> shipped. See T8.C regression note in ARCHITECT.md.
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.C: fix PlantNet DTO regression. predictedOrgans typed List<String>
+// but PlantNet v2 returns [{organ, score}] objects — Jackson throws on every response.
+
+BACKEND
+1. New class PlantNetPredictedOrgan { String organ; Double score; }
+   @JsonIgnoreProperties(ignoreUnknown=true). Retype
+   PlantNetResponse.predictedOrgans List<String> → List<PlantNetPredictedOrgan>.
+   @JsonIgnoreProperties(ignoreUnknown=true) on PlantNetResponse too.
+
+2. Update all downstream consumers of predictedOrgans to the new type.
+   Where it surfaces in DTOs (PlantNetCandidateDto etc.), update mapping.
+
+3. Unit test: fixture src/test/resources/fixtures/plantnet_identify_response.json
+   (faithful PlantNet v2 /identify response body with predictedOrgans as
+   [{organ,score}] objects). Assert: predictedOrgans non-empty, organ != null,
+   score > 0. @DisplayName: note this fixture also feeds Phase 9 T9.8 eval corpus.
+   This test MUST fail before the fix and pass after — confirm before submitting.
+
+4. No migration needed.
+```
+
+### T8.D — Backend: throttle AI vision fan-out + document annotation routing  🤖 AI
+**Branch:** `feature/PP-053-vision-fanout-throttle`
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.D: prevent N concurrent batch identifications from stampeding
+// the GitHub Models token ceiling. Three backpressure mechanisms. Also document
+// three annotation-routing facts that look like bugs but are deliberate.
+
+BACKEND — backpressure
+1. Server-side token-budget Bucket4j bucket on GitHub Models outbound calls:
+   Budget: 40 000 tokens/60s (lower observed ceiling). Rough heuristic: chars/4
+   for base64 image payloads — goal is backpressure, not accounting precision.
+   On exhaustion: throw RateLimitException (reuse toServiceException() from
+   DeepSeekClient). Config: app.rate-limit.github-models-tokens-per-minute=40000.
+
+2. Finite aiTaskExecutor queue capacity: set queueCapacity to 20 in AsyncConfig.
+   Submissions beyond the queue fail fast with RateLimitException BEFORE the Kafka
+   publish. The existing per-user Bucket4j check runs first; this is a global backstop.
+
+3. Exponential backoff with jitter on GOAWAY/EOF retries (DeepSeekAnnotationClient,
+   GitHubModelsClient): attempt 1 immediate, attempt 2 after min(retryAfterSeconds,5)
+   × 1.5^(attempt-1) + uniform jitter [0,1s]. 429s NOT retried (propagate as
+   RateLimitException per T7.1). Cap total retry wait at 30s.
+
+BACKEND.md documentation (write to BACKEND.md "Phase 8.5 — Pending Contract Changes",
+NOT as inline code comments — see the section already added there):
+4. Annotation model deliberately pinned to gpt-4o-mini regardless of VisionModelPreference.
+5. DeepSeekAnnotationClient is NOT an independent-quota fallback — shares the primary's
+   token bucket. 429 on annotation → annotation_status='FAILED' (T8.B), no retry.
+6. ReasoningModelPreference NOT invoked in processIdentification() — drives only
+   standalone cure-advice, disease-description, species-enrichment paths.
+
+VERIFY: unit tests for the token-budget bucket and jittered retry logic.
+```
+
+### T8.E — Architect/Backend: defer PlantNet candidates from critical path (D1 amendment)  🤝 Assisted
+**Branch:** `feature/PP-054-plantnet-async-candidates`
+> Amends Phase 8 decision D1. Read the D1 amendment in ARCHITECT.md before implementing.
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.E: move PlantNet candidate enrichment from synchronous-inside-
+// processIdentification to fire-and-forget async AFTER core identification succeeds.
+// Mirrors SpeciesEnrichmentService.enrich(). Records the D1 amendment (already in
+// ARCHITECT.md — read it).
+
+BACKEND
+1. After core stage saves as COMPLETED: CompletableFuture.runAsync(aiTaskExecutor):
+     → PlantNetClient.identify()
+     → success: save plantnet_candidates JSONB + version + candidate_status='COMPLETED'
+     → exception: candidate_status='FAILED', log WARN, no re-throw
+   Set candidate_status='PENDING' (not 'SKIPPED') when the async call is queued.
+
+2. Exception: when VisionModelPreference.PLANTNET is the user's explicit choice,
+   PlantNet IS the core call and runs synchronously unchanged. Only the always-on
+   enrichment-alongside-gpt-4o path is deferred.
+
+3. The frontend's existing 3s poll re-fetches the full record — candidates appear
+   when candidate_status transitions to COMPLETED. No new polling needed.
+
+VERIFY: test that a PlantNet failure in async enrichment does NOT change
+identification status from COMPLETED. Template: SpeciesEnrichmentServiceImplTest.
+```
+
+### T8.F — Backend: retry endpoint for failed identifications  🤖 AI
+**Branch:** `feature/PP-055-identification-retry-endpoint` · Depends on **T8.A**, **T8.B**.
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.F: POST /api/v1/identifications/{id}/retry — re-run only the
+// FAILED stages so genuine failures aren't permanent dead ends.
+
+BACKEND
+1. POST /api/v1/identifications/{id}/retry (IdentificationController):
+   - 401 if not authenticated.
+   - 404 if not found.
+   - 403 if userId mismatch (same ownership check as GET /{id}).
+   - 409 if status='PENDING' (already in flight — fail with clear error).
+   - status='COMPLETED' with failed enrichment stages: re-queue only annotation
+     (if annotation_status='FAILED') and/or candidates (if candidate_status='FAILED').
+     Set affected fields back to 'PENDING', save, fire async per T8.B/T8.E.
+   - status='FAILED' (core failed): reset identification_status='PENDING',
+     annotation_status='PENDING', candidate_status='PENDING', failure_reason=null,
+     status='PENDING'. Re-publish IdentificationRequestedEvent (reuse existing
+     submitIdentification() event-publishing path).
+   - Returns 202 Accepted with current identification state.
+
+2. Rate-limit: apply the same per-user ai-calls-per-hour Bucket4j check as /analyze.
+
+3. IdentificationService interface: add retryIdentification(Long id, Long userId).
+
+VERIFY: unit tests covering 409 (PENDING conflict), COMPLETED enrichment-only retry,
+FAILED full retry, 403 ownership mismatch.
+```
+
+### T8.G — Frontend: stage-aware partial-result UI  🤝 Assisted
+**Branch:** `feature/PP-056-stage-aware-identification-ui` · Depends on **T8.A**, **T8.B**, **T8.F**.
+
+**Claude Code prompt:**
+```
+// Phase 8.5 — T8.G: replace binary FAILED/COMPLETED with stage-aware states.
+// Check the updated IdentificationResponse shape in BACKEND.md before building.
+
+FRONTEND
+Update identification.model.ts:
+  Add identificationStatus, annotationStatus, candidateStatus
+  ('PENDING'|'COMPLETED'|'FAILED'|'SKIPPED'), identificationModel, annotationModel,
+  failureReason (string | null).
+
+Identification result / list views:
+1. status='COMPLETED' (identificationStatus='COMPLETED'):
+   - Show care plan as before.
+   - annotationStatus='FAILED': show inline chip "Overlay unavailable" (no blank
+     overlay, no hidden photo). Optional "Retry overlay" link (wires to T8.F —
+     re-queues annotation only since core is done).
+   - candidateStatus='FAILED': in Flow-1 species-confirm step (T8.3), show
+     "PlantNet candidates unavailable"; elsewhere no visible change.
+   - annotationStatus='PENDING' or candidateStatus='PENDING': continue existing 3s
+     poll — stages resolve async, poll re-fetches the full record.
+
+2. status='FAILED' (identificationStatus='FAILED'):
+   - Show red FAILED chip (unchanged).
+   - Add "Retry" button → POST /identifications/{id}/retry → on 202: trigger
+     pollUntilComplete() so UI transitions PENDING → COMPLETED automatically.
+   - Optionally surface failureReason as a tooltip or secondary text line.
+   - AiErrorService.handle() already formats 429 responses — wire it to the retry
+     button's error path too.
+
+3. status='PENDING': unchanged (existing spinner).
+
+VERIFY: ng build, ng lint, tsc --noEmit clean. Playwright tests deferred to T9.2.
+```
+
+---
+
 ## PHASE 9 — Quality, Testing & Hardening  🟡 PLANNED
 > Goal: solidify the project at enterprise standard *throughout dev*, not as a
 > launch afterthought. Closes the real gaps — the frontend has **zero tests**
@@ -345,7 +604,7 @@ BACKEND
 > interleaved with Phase 8 so PlantNet's new UI is covered as it's built.
 
 ### T9.1 — Frontend: component/unit test runner + first tests 🤝 Assisted
-**Branch:** `feature/PP-050-frontend-test-runner` (verify next free PP)
+**Branch:** `feature/PP-057-frontend-test-runner` (verify next free PP)
 
 **Claude Code prompt:**
 ```
@@ -364,7 +623,7 @@ BACKEND
 ```
 
 ### T9.2 — Frontend: Playwright E2E skeleton + critical journeys 🤝 Assisted
-**Branch:** `feature/PP-051-playwright-e2e` (verify)
+**Branch:** `feature/PP-058-playwright-e2e` (verify)
 
 **Claude Code prompt:**
 ```
@@ -388,7 +647,7 @@ BACKEND
 ```
 
 ### T9.3 — Frontend: visual regression + accessibility + performance budgets (deterministic gates) 🤝 Assisted
-**Branch:** `feature/PP-052-visual-a11y-perf` (verify)
+**Branch:** `feature/PP-059-visual-a11y-perf` (verify)
 
 **Claude Code prompt:**
 ```
@@ -406,7 +665,7 @@ BACKEND
 ```
 
 ### T9.4 — AI visual-review agent (advisory PR comment — NEVER gates) 🤝 Assisted
-**Branch:** `feature/PP-053-ai-visual-review` (verify)
+**Branch:** `feature/PP-060-ai-visual-review` (verify)
 > 👤 **Decision:** reuse the app's own vision clients (gpt-4o/Claude) or a standalone
 > dev/CI script calling a vision model directly? *Rec:* standalone script with a
 > clean boundary from product runtime AI — don't entangle dev tooling with the
@@ -428,7 +687,7 @@ BACKEND
 ```
 
 ### T9.5 — Backend: wire ITs into `mvn verify` + restore JaCoCo to 80% 🤖 AI
-**Branch:** `feature/PP-054-backend-test-gates` (verify)
+**Branch:** `feature/PP-061-backend-test-gates` (verify)
 
 **Claude Code prompt:**
 ```
@@ -445,7 +704,7 @@ BACKEND
 ```
 
 ### T9.6 — Observability: error tracking (Sentry) + correlation 🤝 Assisted
-**Branch:** `feature/PP-055-error-tracking` (verify)
+**Branch:** `feature/PP-062-error-tracking` (verify)
 
 **Claude Code prompt:**
 ```
@@ -460,7 +719,7 @@ BACKEND
 ```
 
 ### T9.7 — CI supply-chain & secret scanning 🤝 Assisted
-**Branch:** `feature/PP-056-supply-chain-scanning` (verify)
+**Branch:** `feature/PP-063-supply-chain-scanning` (verify)
 
 **Claude Code prompt:**
 ```
@@ -476,7 +735,7 @@ BACKEND
 ```
 
 ### T9.8 — AI eval suite + prompt-injection guardrails 🤝 Assisted
-**Branch:** `feature/PP-057-ai-evals` (verify)
+**Branch:** `feature/PP-064-ai-evals` (verify)
 
 **Claude Code prompt:**
 ```
@@ -505,7 +764,7 @@ BACKEND
 > hardened build. Branch numbers below are placeholders — verify next free PP.
 
 ### T10.1 — Production configuration 🤖 AI
-**Branch:** `feature/PP-058-prod-config`
+**Branch:** `feature/PP-065-prod-config`
 ```
 // Generate staging + prod Spring Boot configs.
 1. application-staging.yml + application-prod.yml: ${DATABASE_URL}, HikariCP
@@ -520,7 +779,7 @@ BACKEND
 ```
 
 ### T10.2 — Performance optimizations 🤝 Assisted
-**Branch:** `feature/PP-059-performance`
+**Branch:** `feature/PP-066-performance`
 ```
 1. Migration (VERIFY next free number against the changelog — sequence is well past
    the stale "019/020" the old prompt assumed; Phase 8 reserves 023–025/026):
@@ -536,7 +795,7 @@ BACKEND
 ```
 
 ### T10.3 — Security hardening 🤖 AI
-**Branch:** `feature/PP-059-performance` (same branch)
+**Branch:** `feature/PP-066-performance` (same branch)
 ```
 1. Security headers in SecurityConfig: X-Content-Type-Options nosniff, X-Frame-
    Options DENY, X-XSS-Protection, HSTS (prod only), basic CSP for own origins.
@@ -549,7 +808,7 @@ BACKEND
 ```
 
 ### T10.4 — Complete API documentation 🤖 AI
-**Branch:** `feature/PP-059-performance` (same branch)
+**Branch:** `feature/PP-066-performance` (same branch)
 ```
 Add @Operation/@ApiResponse/@Parameter to every controller (Plant, Identification,
 Reminder, TreatmentPlan, Chat, Auth, CareLog, Notification, Species, Treatment,
@@ -592,8 +851,9 @@ to `main`, tag `v1.0.0`, merge back to `dev`, delete release branch.
 | 6 — Species & Treatment Restructure | ✅ Done |
 | 7 — Model Control, Batch, Multi-Treatment | ✅ Done |
 | 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ done; T8.1–T8.7 planned; D1–D4 open |
-| 9 — Quality, Testing & Hardening | 🟡 Planned (T9.1–T9.8) |
-| 10 — Launch | 🟡 Not started (was Phase 5) |
+| 8.5 — Identification Pipeline Resilience | 🔲 Not started — T8.A–T8.G (PP-050–056); runs before Phase 9 |
+| 9 — Quality, Testing & Hardening | 🟡 Planned (T9.1–T9.8, PP-057–064) |
+| 10 — Launch | 🟡 Not started (was Phase 5, PP-065+) |
 
 ---
 
