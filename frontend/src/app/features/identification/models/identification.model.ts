@@ -128,6 +128,12 @@ export interface IdentificationResponse {
   healthStatus: HealthStatus | null;
   healthNotes: string | null;
   status: IdentificationStatus;
+  identificationStatus?: 'PENDING' | 'COMPLETED' | 'FAILED';
+  annotationStatus?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
+  candidateStatus?: 'PENDING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
+  identificationModel?: string | null;
+  annotationModel?: string | null;
+  failureReason?: string | null;
   topResults: PlantNetResult[];
   photoUrl: string;
   carePlan: CarePlanDto | null;

@@ -106,3 +106,54 @@
 .btn-pill {
   border-radius: var(--radius-chip) !important;
 }
+
+.failed-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  .retry-spinner {
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+}
+
+.stage-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-card);
+}
+
+.stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.retry-overlay-btn {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  min-height: unset;
+  padding: 0 8px;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin-right: 2px;
+  }
+}
