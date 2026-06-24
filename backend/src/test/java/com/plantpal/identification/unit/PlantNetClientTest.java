@@ -8,6 +8,7 @@ import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.shared.exception.PlantPalException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -134,6 +135,28 @@ class PlantNetClientTest {
           .hasMessageContaining("No plant species match found")
           .extracting(e -> ((PlantPalException) e).getErrorCode())
           .isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName(
+        "should deserialize predictedOrgans as [{organ,score}] objects (T8.C regression fix)"
+            + " — fixture also feeds Phase 9 T9.8 eval corpus")
+    void shouldDeserializePredictedOrgansAsObjects() throws Exception {
+      String fixture =
+          new String(
+              getClass()
+                  .getClassLoader()
+                  .getResourceAsStream("fixtures/plantnet_identify_response.json")
+                  .readAllBytes(),
+              StandardCharsets.UTF_8);
+      mockWebServer.enqueue(
+          new MockResponse().setBody(fixture).addHeader("Content-Type", "application/json"));
+
+      PlantNetResponse response = plantNetClient.identify(List.of(validImage()), List.of("leaf"));
+
+      assertThat(response.predictedOrgans()).isNotEmpty();
+      assertThat(response.predictedOrgans().get(0).organ()).isNotNull();
+      assertThat(response.predictedOrgans().get(0).score()).isGreaterThan(0.0);
     }
 
     @Test

@@ -8,6 +8,6 @@ public record PlantNetResponse(
     List<PlantNetResult> results,
     String bestMatch,
     String switchToProject,
-    List<String> predictedOrgans,
+    List<PlantNetPredictedOrgan> predictedOrgans,
     String version,
     int remainingIdentificationRequests) {}
