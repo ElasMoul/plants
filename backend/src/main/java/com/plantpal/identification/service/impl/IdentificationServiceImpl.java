@@ -93,6 +93,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -229,6 +230,12 @@ public class IdentificationServiceImpl implements IdentificationService {
       throw new RateLimitException(
           "AI identification rate limit reached — try again later",
           retryAfterSeconds(rateLimitProbe));
+    }
+
+    // Step 3.5: Global executor backstop — fail before Kafka publish if queue is saturated
+    if (aiTaskExecutor instanceof ThreadPoolTaskExecutor tpte
+        && tpte.getThreadPoolExecutor().getQueue().remainingCapacity() == 0) {
+      throw new RateLimitException("Server is busy — too many concurrent identifications", 60L);
     }
 
     // Step 4: Publish event for async processing by the Kafka consumer

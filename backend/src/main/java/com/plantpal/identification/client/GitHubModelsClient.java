@@ -1,10 +1,14 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.RateLimitException;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -126,16 +130,26 @@ public class GitHubModelsClient {
   private final String identificationModel;
   private final String annotationModel;
   private final String gpt41Model;
+  private final Bucket tokenBudgetBucket;
 
   public GitHubModelsClient(
       @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl,
       @Value("${github.token}") String token,
       @Value("${github.models.identification-model:gpt-4o}") String identificationModel,
       @Value("${github.models.annotation-model:gpt-4o-mini}") String annotationModel,
-      @Value("${github.models.gpt41-model:gpt-4.1}") String gpt41Model) {
+      @Value("${github.models.gpt41-model:gpt-4.1}") String gpt41Model,
+      @Value("${app.rate-limit.github-models-tokens-per-minute:40000}") int tokenBudgetPerMinute) {
     this.identificationModel = identificationModel;
     this.annotationModel = annotationModel;
     this.gpt41Model = gpt41Model;
+    this.tokenBudgetBucket =
+        Bucket.builder()
+            .addLimit(
+                Bandwidth.builder()
+                    .capacity(tokenBudgetPerMinute)
+                    .refillIntervally(tokenBudgetPerMinute, Duration.ofMinutes(1))
+                    .build())
+            .build();
     JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
     factory.setReadTimeout(Duration.ofMinutes(5));
     this.restClient =
@@ -156,6 +170,8 @@ public class GitHubModelsClient {
   }
 
   private String identifyPlant(byte[] imageBytes, String mediaType, String model) {
+    consumeTokenBudget(imageBytes);
+
     String dataUrl =
         "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
 
@@ -181,48 +197,66 @@ public class GitHubModelsClient {
             "response_format",
             Map.of("type", "json_object"));
 
-    long start = System.currentTimeMillis();
-    try {
-      GitHubModelsApiResponse response =
-          restClient
-              .post()
-              .uri("/chat/completions")
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(requestBody)
-              .retrieve()
-              .body(GitHubModelsApiResponse.class);
+    Exception lastException = null;
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      long start = System.currentTimeMillis();
+      try {
+        GitHubModelsApiResponse response =
+            restClient
+                .post()
+                .uri("/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .body(GitHubModelsApiResponse.class);
 
-      if (response == null
-          || response.choices() == null
-          || response.choices().isEmpty()
-          || response.choices().get(0).message() == null) {
-        throw new PlantPalException("Empty response from identification service", 503);
+        if (response == null
+            || response.choices() == null
+            || response.choices().isEmpty()
+            || response.choices().get(0).message() == null) {
+          throw new PlantPalException("Empty response from identification service", 503);
+        }
+
+        String raw = response.choices().get(0).message().content();
+        String content = DeepSeekClient.stripThinkTags(raw);
+        log.info(
+            "GitHubModels plant identification completed in {}ms [model={}]",
+            System.currentTimeMillis() - start,
+            model);
+        log.debug("GitHubModels identification raw response: {}", raw);
+        return content;
+
+      } catch (RestClientResponseException e) {
+        if (e.getStatusCode().value() == 429) {
+          throw new RateLimitException("GitHub Models rate limit reached — try again later", null);
+        }
+        lastException = e;
+        log.warn(
+            "GitHubModels identification attempt {} failed (status={}), {}",
+            attempt,
+            e.getStatusCode().value(),
+            attempt < 2 ? "retrying" : "giving up");
+      } catch (PlantPalException e) {
+        throw e;
+      } catch (RestClientException e) {
+        lastException = e;
+        log.warn(
+            "GitHubModels identification attempt {} failed ({}), {}",
+            attempt,
+            e.getMessage(),
+            attempt < 2 ? "retrying" : "giving up");
       }
-
-      String raw = response.choices().get(0).message().content();
-      String content = DeepSeekClient.stripThinkTags(raw);
-      log.info(
-          "GitHubModels plant identification completed in {}ms [model={}]",
-          System.currentTimeMillis() - start,
-          model);
-      log.debug("GitHubModels identification raw response: {}", raw);
-      return content;
-
-    } catch (RestClientResponseException e) {
-      log.error(
-          "GitHubModels identification error status={}, body={}",
-          e.getStatusCode().value(),
-          e.getResponseBodyAsString());
-      throw new PlantPalException("Plant identification service unavailable", 503);
-    } catch (PlantPalException e) {
-      throw e;
-    } catch (RestClientException e) {
-      log.error("Failed to reach GitHubModels identification API", e);
-      throw new PlantPalException("Plant identification service unavailable", 503);
+      if (attempt < 2) {
+        sleepWithJitter();
+      }
     }
+    throw new PlantPalException(
+        "Plant identification service unavailable after retries", 503, lastException);
   }
 
   public String analyzeRegions(byte[] imageBytes, String mediaType) {
+    consumeTokenBudget(imageBytes);
+
     String dataUrl =
         "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
 
@@ -281,6 +315,23 @@ public class GitHubModelsClient {
     } catch (RestClientException e) {
       log.error("Failed to reach GitHubModels annotation API", e);
       throw new PlantPalException("Annotation service unavailable", 503);
+    }
+  }
+
+  private void consumeTokenBudget(byte[] imageBytes) {
+    int estimatedTokens = Math.max(1, imageBytes.length / 3);
+    if (!tokenBudgetBucket.tryConsume(estimatedTokens)) {
+      throw new RateLimitException("GitHub Models token budget exhausted — try again later", 60L);
+    }
+  }
+
+  private void sleepWithJitter() {
+    long jitterMs = ThreadLocalRandom.current().nextLong(0, 1000);
+    try {
+      Thread.sleep(jitterMs);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new PlantPalException("Interrupted while retrying identification", 503);
     }
   }
 
