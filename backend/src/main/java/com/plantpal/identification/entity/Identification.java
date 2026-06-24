@@ -96,4 +96,11 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "plantnet_quota_remaining")
   private Integer plantnetQuotaRemaining;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "plantnet_disease_results", columnDefinition = "jsonb")
+  private String plantnetDiseaseResults;
+
+  @Column(name = "plantnet_disease_quota_remaining")
+  private Integer plantnetDiseaseQuotaRemaining;
 }

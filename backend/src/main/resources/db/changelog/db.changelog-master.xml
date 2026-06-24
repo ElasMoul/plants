@@ -86,4 +86,7 @@
     <include file="db/changelog/migrations/025_add_plantnet_preferences.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/026_add_plantnet_disease_crosscheck.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

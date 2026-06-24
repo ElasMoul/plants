@@ -15,7 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 /**
  * A single disease's own treatment lifecycle for one plant — NOT the same concept as {@link
@@ -65,6 +67,20 @@ public class Treatment {
 
   @Column(name = "treatment_plan_id")
   private Long treatmentPlanId;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "plantnet_second_opinion", columnDefinition = "jsonb")
+  private String plantnetSecondOpinion;
+
+  @Column(name = "plantnet_agreement")
+  private Boolean plantnetAgreement;
+
+  @Column(name = "eppo_code", length = 50)
+  private String eppoCode;
+
+  @Builder.Default
+  @Column(name = "needs_review", nullable = false)
+  private boolean needsReview = false;
 
   @Column(name = "started_at")
   private Instant startedAt;
