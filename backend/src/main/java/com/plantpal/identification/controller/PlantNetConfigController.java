@@ -2,6 +2,7 @@ package com.plantpal.identification.controller;
 
 import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
+import com.plantpal.identification.dto.plantnet.PlantNetQuotaDto;
 import com.plantpal.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -46,5 +47,12 @@ public class PlantNetConfigController {
   public ResponseEntity<ApiResponse<List<String>>> getLanguages() {
     List<String> languages = plantNetClient.getLanguages();
     return ResponseEntity.ok(ApiResponse.success(languages));
+  }
+
+  @Operation(summary = "Fetch today's remaining Pl@ntNet identify quota (cached 5 min)")
+  @GetMapping("/quota")
+  public ResponseEntity<ApiResponse<PlantNetQuotaDto>> getQuota() {
+    PlantNetQuotaDto quota = plantNetClient.getQuota();
+    return ResponseEntity.ok(ApiResponse.success(quota));
   }
 }

@@ -1,9 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { Location } from '@angular/common';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { UserService } from '../../../../core/services/user.service';
-import { PlantNetConfigService, PlantNetProject } from '../../services/plantnet-config.service';
+import {
+  PlantNetConfigService,
+  PlantNetProject,
+  PlantNetQuota,
+} from '../../services/plantnet-config.service';
 
 @Component({
   selector: 'app-preferences-page',
@@ -13,6 +18,7 @@ import { PlantNetConfigService, PlantNetProject } from '../../services/plantnet-
 export class PreferencesPageComponent implements OnInit {
   plantnetProjects: PlantNetProject[] = [];
   plantnetLanguages: string[] = [];
+  plantnetQuota: PlantNetQuota | null = null;
   selectedProject = 'all';
   selectedLang = 'en';
   plantnetSaving = false;
@@ -31,10 +37,12 @@ export class PreferencesPageComponent implements OnInit {
       prefs: this.userService.getPreferences(),
       projects: this.plantNetConfigService.getProjects(),
       languages: this.plantNetConfigService.getLanguages(),
+      quota: this.plantNetConfigService.getQuota().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ prefs, projects, languages }) => {
+      next: ({ prefs, projects, languages, quota }) => {
         this.plantnetProjects = projects;
         this.plantnetLanguages = languages;
+        this.plantnetQuota = quota;
         // Seed dropdowns from stored preferences
         this.selectedProject = prefs.data.plantnetProject ?? 'all';
         this.selectedLang = prefs.data.plantnetLang ?? 'en';

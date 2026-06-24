@@ -85,6 +85,15 @@
   height: 14px;
 }
 
+.quota-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary, rgba(0, 0, 0, 0.6));
+}
+
 .error-hint {
   color: var(--color-error, #b00020);
 }
