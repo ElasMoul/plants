@@ -19,6 +19,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
+import com.plantpal.identification.client.PlantNetDiseaseClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
 import com.plantpal.identification.dto.AddCareCardRequest;
@@ -85,6 +86,7 @@ class IdentificationServiceImplTest {
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
   @Mock private UserRepository userRepository;
   @Mock private PlantNetClient plantNetClient;
+  @Mock private PlantNetDiseaseClient plantNetDiseaseClient;
   @Mock private OllamaClient ollamaClient;
   @Mock private AnthropicClient anthropicClient;
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
@@ -115,6 +117,7 @@ class IdentificationServiceImplTest {
             gitHubModelsClient,
             userRepository,
             plantNetClient,
+            plantNetDiseaseClient,
             ollamaClient,
             anthropicClient,
             kafkaTemplate,
