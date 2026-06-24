@@ -3,7 +3,7 @@ import { Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { UserService } from '../../../../core/services/user.service';
-import { PlantNetConfigService, PlantNetLanguage, PlantNetProject } from '../../services/plantnet-config.service';
+import { PlantNetConfigService, PlantNetProject } from '../../services/plantnet-config.service';
 
 @Component({
   selector: 'app-preferences-page',
@@ -12,7 +12,7 @@ import { PlantNetConfigService, PlantNetLanguage, PlantNetProject } from '../../
 })
 export class PreferencesPageComponent implements OnInit {
   plantnetProjects: PlantNetProject[] = [];
-  plantnetLanguages: PlantNetLanguage[] = [];
+  plantnetLanguages: string[] = [];
   selectedProject = 'all';
   selectedLang = 'en';
   plantnetSaving = false;
