@@ -54,3 +54,37 @@
     background: var(--color-primary);
   }
 }
+
+.full-width {
+  width: 100%;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.plantnet-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.location-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary, rgba(0, 0, 0, 0.6));
+}
+
+.hint-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.error-hint {
+  color: var(--color-error, #b00020);
+}

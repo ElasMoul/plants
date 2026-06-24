@@ -44,4 +44,16 @@ export class UserService {
       })
       .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
   }
+
+  updatePlantNetPreferences(
+    plantnetProject: string,
+    plantnetLang: string,
+  ): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, {
+        plantnetProject,
+        plantnetLang,
+      })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
 }

@@ -1,6 +1,8 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.identification.dto.plantnet.PlantNetImageUrls;
+import com.plantpal.identification.dto.plantnet.PlantNetLanguageDto;
+import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
 import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
@@ -14,9 +16,12 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -205,6 +210,75 @@ public class PlantNetClient {
     }
 
     return body;
+  }
+
+  /**
+   * Fetch available PlantNet floras (projects) for the given language. Results are cached 24h — the
+   * project list changes rarely. Pass lat/lon to get a location-ranked list; omit both for the
+   * global, unranked list (ship without geo first per T8.4 task prompt).
+   */
+  @Cacheable(value = "plantnet-projects", key = "#lang")
+  public List<PlantNetProjectDto> getProjects(
+      @Nullable Double lat, @Nullable Double lon, String lang) {
+    try {
+      List<PlantNetProjectDto> projects =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder -> {
+                    var builder =
+                        uriBuilder
+                            .path("/v2/projects")
+                            .queryParam("api-key", apiKey)
+                            .queryParam("type", "kt")
+                            .queryParam("lang", lang != null && !lang.isBlank() ? lang : "en");
+                    if (lat != null && lon != null) {
+                      builder = builder.queryParam("lat", lat).queryParam("lon", lon);
+                    }
+                    return builder.build();
+                  })
+              .retrieve()
+              .onStatus(
+                  status -> status.isError(),
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "Failed to fetch PlantNet project list: " + res.getStatusCode(), 502);
+                  })
+              .body(new ParameterizedTypeReference<List<PlantNetProjectDto>>() {});
+      return projects != null ? projects : List.of();
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach PlantNet /v2/projects", e);
+      throw new PlantPalException("PlantNet service unavailable", 503);
+    }
+  }
+
+  /** Fetch all PlantNet supported languages. Results are cached 24h. */
+  @Cacheable("plantnet-languages")
+  public List<PlantNetLanguageDto> getLanguages() {
+    try {
+      List<PlantNetLanguageDto> langs =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder ->
+                      uriBuilder.path("/v2/languages").queryParam("api-key", apiKey).build())
+              .retrieve()
+              .onStatus(
+                  status -> status.isError(),
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "Failed to fetch PlantNet language list: " + res.getStatusCode(), 502);
+                  })
+              .body(new ParameterizedTypeReference<List<PlantNetLanguageDto>>() {});
+      return langs != null ? langs : List.of();
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach PlantNet /v2/languages", e);
+      throw new PlantPalException("PlantNet service unavailable", 503);
+    }
   }
 
   /** Cap reference image list and discard entries with no usable URL. */

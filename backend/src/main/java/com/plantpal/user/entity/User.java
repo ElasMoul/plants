@@ -66,6 +66,14 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "reasoning_model_preference", nullable = false, length = 30)
   private ReasoningModelPreference reasoningModelPreference = ReasoningModelPreference.DEEPSEEK_R1;
 
+  @Builder.Default
+  @Column(name = "plantnet_project", length = 50)
+  private String plantnetProject = "all";
+
+  @Builder.Default
+  @Column(name = "plantnet_lang", length = 10)
+  private String plantnetLang = "en";
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_USER"));
