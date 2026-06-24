@@ -33,6 +33,7 @@ import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
@@ -243,6 +244,8 @@ class IdentificationServiceImplTest {
       assertThat(saved.getConfidence()).isEqualTo(0.9);
       assertThat(saved.getHealthStatus()).isEqualTo("HEALTHY");
       assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
+      assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(saved.getIdentificationModel()).isEqualTo("GITHUB_GPT4O");
 
       verify(fileStorageService).savePhoto(any());
       verify(gitHubModelsClient).identifyPlant(any(), any());
@@ -272,7 +275,11 @@ class IdentificationServiceImplTest {
 
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository, times(2)).save(captor.capture());
-      assertThat(captor.getAllValues().get(1).getStatus()).isEqualTo(IdentificationStatus.FAILED);
+      Identification failedEntity = captor.getAllValues().get(1);
+      assertThat(failedEntity.getStatus()).isEqualTo(IdentificationStatus.FAILED);
+      assertThat(failedEntity.getIdentificationStatus())
+          .isEqualTo(IdentificationStageStatus.FAILED);
+      assertThat(failedEntity.getFailureReason()).isEqualTo("PROVIDER_ERROR");
     }
 
     @Test
@@ -908,7 +915,10 @@ class IdentificationServiceImplTest {
 
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository).save(captor.capture());
-      assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
+      Identification saved = captor.getValue();
+      assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.FAILED);
+      assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.FAILED);
+      assertThat(saved.getFailureReason()).isEqualTo("PROVIDER_ERROR");
 
       verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
     }

@@ -33,6 +33,7 @@ import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.event.DuplicateCareCardRemovedEvent;
 import com.plantpal.identification.event.IdentificationCompletedEvent;
@@ -215,6 +216,9 @@ public class IdentificationServiceImpl implements IdentificationService {
             .speciesId(speciesId)
             .photoUrl(photoUrls.get(0))
             .status(IdentificationStatus.PENDING)
+            .identificationStatus(IdentificationStageStatus.PENDING)
+            .annotationStatus(IdentificationStageStatus.PENDING)
+            .candidateStatus(IdentificationStageStatus.PENDING)
             .build();
     identification = identificationRepository.save(identification);
     log.info("Identification submitted: id={}, userId={}", identification.getId(), userId);
@@ -270,6 +274,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       int[] dims = ImageUtil.readDimensions(imageBytes);
       identification.setSourceImageWidth(dims[0]);
       identification.setSourceImageHeight(dims[1]);
+      identification.setIdentificationModel(preference.name());
 
       // Load user's PlantNet flora + lang preferences (T8.4). Falls back to app-level defaults
       // so the always-on call and PLANTNET-primary path both respect the per-user choice.
@@ -371,6 +376,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identification.setCarePlan(serializeToJson(carePlan));
       identification.setAnnotationRegions(annotationJson);
       identification.setAiModelUsed(outcome.providerUsed());
+      identification.setIdentificationStatus(IdentificationStageStatus.COMPLETED);
       identification.setStatus(IdentificationStatus.COMPLETED);
       if (plantNetResponse != null) {
         identification.setPlantnetCandidates(serializeToJson(mapToCandidateDtos(plantNetResponse)));
@@ -401,6 +407,8 @@ public class IdentificationServiceImpl implements IdentificationService {
 
     } catch (Exception e) {
       log.error("Identification processing failed: id={}", identification.getId(), e);
+      identification.setIdentificationStatus(IdentificationStageStatus.FAILED);
+      identification.setFailureReason(classifyFailureReason(e));
       markFailed(identification);
       publishCompletedEvent(identification.getId(), IdentificationStatus.FAILED);
     }
@@ -1186,6 +1194,13 @@ public class IdentificationServiceImpl implements IdentificationService {
         throw new ValidationException("Images must be JPEG, PNG, or WebP");
       }
     }
+  }
+
+  private static String classifyFailureReason(Exception e) {
+    if (e instanceof RateLimitException) return "RATE_LIMITED";
+    if (e instanceof JsonProcessingException) return "PARSE_ERROR";
+    if (e instanceof PlantPalException) return "PROVIDER_ERROR";
+    return "OTHER";
   }
 
   private void markFailed(Identification identification) {
