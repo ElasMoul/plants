@@ -246,6 +246,11 @@ class IdentificationServiceImplTest {
       assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
       assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
       assertThat(saved.getIdentificationModel()).isEqualTo("GITHUB_GPT4O");
+      // annotation mock returns null (no exception) → COMPLETED; plantNetAlwaysOn=false in unit
+      // tests → SKIPPED
+      assertThat(saved.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(saved.getAnnotationModel()).isEqualTo("gpt-4o-mini");
+      assertThat(saved.getCandidateStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
 
       verify(fileStorageService).savePhoto(any());
       verify(gitHubModelsClient).identifyPlant(any(), any());
@@ -280,6 +285,45 @@ class IdentificationServiceImplTest {
       assertThat(failedEntity.getIdentificationStatus())
           .isEqualTo(IdentificationStageStatus.FAILED);
       assertThat(failedEntity.getFailureReason()).isEqualTo("PROVIDER_ERROR");
+      assertThat(failedEntity.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
+      assertThat(failedEntity.getCandidateStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
+    }
+
+    @Test
+    @DisplayName(
+        "should keep status COMPLETED but set annotationStatus FAILED when annotation throws")
+    void shouldMarkAnnotationFailedWithoutFailingIdentification() throws Exception {
+      List<MultipartFile> images = List.of(validImage());
+
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any()))
+          .thenThrow(new PlantPalException("Annotation service unavailable", 503));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .identificationStatus(IdentificationStageStatus.PENDING)
+              .annotationStatus(IdentificationStageStatus.PENDING)
+              .candidateStatus(IdentificationStageStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
+      assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(saved.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.FAILED);
+      assertThat(saved.getCandidateStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
     }
 
     @Test
