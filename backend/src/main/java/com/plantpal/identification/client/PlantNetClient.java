@@ -1,7 +1,6 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.identification.dto.plantnet.PlantNetImageUrls;
-import com.plantpal.identification.dto.plantnet.PlantNetLanguageDto;
 import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
 import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
@@ -254,11 +253,14 @@ public class PlantNetClient {
     }
   }
 
-  /** Fetch all PlantNet supported languages. Results are cached 24h. */
+  /**
+   * Fetch all PlantNet supported language codes. Results are cached 24h. The API returns a plain
+   * {@code List<String>} (language codes like "en", "fr") — not objects.
+   */
   @Cacheable("plantnet-languages")
-  public List<PlantNetLanguageDto> getLanguages() {
+  public List<String> getLanguages() {
     try {
-      List<PlantNetLanguageDto> langs =
+      List<String> langs =
           restClient
               .get()
               .uri(
@@ -271,7 +273,7 @@ public class PlantNetClient {
                     throw new PlantPalException(
                         "Failed to fetch PlantNet language list: " + res.getStatusCode(), 502);
                   })
-              .body(new ParameterizedTypeReference<List<PlantNetLanguageDto>>() {});
+              .body(new ParameterizedTypeReference<List<String>>() {});
       return langs != null ? langs : List.of();
     } catch (PlantPalException e) {
       throw e;

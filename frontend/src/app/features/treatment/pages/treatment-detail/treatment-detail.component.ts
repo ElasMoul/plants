@@ -156,7 +156,7 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
           if (this.treatment.treatmentPlanId) {
             this.loadPlan(this.treatment.treatmentPlanId);
           }
-          if (this.treatment.status === 'DRAFT' && this.treatment.diseaseDescription == null) {
+          if (this.treatment.diseaseDescription == null) {
             this.pollForDescription(this.treatment.id);
           }
         },
@@ -176,8 +176,8 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
     interval(DESCRIPTION_POLL_INTERVAL_MS).pipe(
       switchMap(() => this.treatmentService.getTreatment(treatmentId)),
       map(res => res.data),
-      takeWhile(t => t.status === 'DRAFT' && t.diseaseDescription == null, true),
-      filter(t => !(t.status === 'DRAFT' && t.diseaseDescription == null)),
+      takeWhile(t => t.diseaseDescription == null, true),
+      filter(t => t.diseaseDescription != null),
       take(1),
       timeout(DESCRIPTION_POLL_TIMEOUT_MS),
       takeUntil(this.destroy$),

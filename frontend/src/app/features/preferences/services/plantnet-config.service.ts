@@ -12,11 +12,6 @@ export interface PlantNetProject {
   languages?: string[];
 }
 
-export interface PlantNetLanguage {
-  code: string;
-  label: string;
-}
-
 @Injectable()
 export class PlantNetConfigService {
   private readonly baseUrl = `${environment.apiUrl}/plantnet`;
@@ -31,9 +26,10 @@ export class PlantNetConfigService {
       .pipe(map(res => res.data ?? []));
   }
 
-  getLanguages(): Observable<PlantNetLanguage[]> {
+  /** Returns plain language codes (e.g. "en", "fr") — PlantNet /v2/languages is a List<String>. */
+  getLanguages(): Observable<string[]> {
     return this.http
-      .get<ApiResponse<PlantNetLanguage[]>>(`${this.baseUrl}/languages`)
+      .get<ApiResponse<string[]>>(`${this.baseUrl}/languages`)
       .pipe(map(res => res.data ?? []));
   }
 }

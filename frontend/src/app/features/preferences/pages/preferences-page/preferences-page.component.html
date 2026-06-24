@@ -37,10 +37,10 @@
       <mat-form-field appearance="outline" class="full-width mt-12">
         <mat-label>Common-name language</mat-label>
         <mat-select [(ngModel)]="selectedLang" (ngModelChange)="plantnetSaved = false">
-          <mat-option *ngFor="let l of plantnetLanguages" [value]="l.code">
-            {{ l.label }}
+          <mat-option *ngFor="let l of plantnetLanguages" [value]="l">
+            {{ l | uppercase }}
           </mat-option>
-          <mat-option *ngIf="plantnetLanguages.length === 0" value="en">English</mat-option>
+          <mat-option *ngIf="plantnetLanguages.length === 0" value="en">EN</mat-option>
         </mat-select>
         <mat-hint>Language used for common plant names in the candidate list.</mat-hint>
       </mat-form-field>

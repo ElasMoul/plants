@@ -1,7 +1,6 @@
 package com.plantpal.identification.controller;
 
 import com.plantpal.identification.client.PlantNetClient;
-import com.plantpal.identification.dto.plantnet.PlantNetLanguageDto;
 import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
 import com.plantpal.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,10 +41,10 @@ public class PlantNetConfigController {
     return ResponseEntity.ok(ApiResponse.success(projects));
   }
 
-  @Operation(summary = "List all languages supported by PlantNet common-name responses")
+  @Operation(summary = "List all language codes supported by PlantNet common-name responses")
   @GetMapping("/languages")
-  public ResponseEntity<ApiResponse<List<PlantNetLanguageDto>>> getLanguages() {
-    List<PlantNetLanguageDto> languages = plantNetClient.getLanguages();
+  public ResponseEntity<ApiResponse<List<String>>> getLanguages() {
+    List<String> languages = plantNetClient.getLanguages();
     return ResponseEntity.ok(ApiResponse.success(languages));
   }
 }
