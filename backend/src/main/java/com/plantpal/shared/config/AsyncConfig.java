@@ -16,10 +16,9 @@ public class AsyncConfig {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setCorePoolSize(2);
     executor.setMaxPoolSize(5);
-    executor.setQueueCapacity(100);
+    executor.setQueueCapacity(20);
     executor.setThreadNamePrefix("ai-task-");
-    // If queue is full and max threads reached, caller runs the task (avoids silent drops)
-    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
     executor.initialize();
     return executor;
   }

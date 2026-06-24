@@ -1,6 +1,7 @@
 package com.plantpal.identification.client;
 
 import com.plantpal.shared.exception.PlantPalException;
+import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
@@ -36,13 +37,27 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
         lastException = e;
         if (attempt < 2) {
           log.debug(
+              "DeepSeek annotation attempt {} failed (status={}), retrying",
+              attempt,
+              e.getStatusCode().value());
+          sleepWithJitter();
+        }
+      } catch (PlantPalException e) {
+        if (e.getErrorCode() == 429) {
+          throw e;
+        }
+        lastException = e;
+        if (attempt < 2) {
+          log.debug(
               "DeepSeek annotation attempt {} failed ({}), retrying", attempt, e.getMessage());
+          sleepWithJitter();
         }
       } catch (Exception e) {
         lastException = e;
         if (attempt < 2) {
           log.debug(
               "DeepSeek annotation attempt {} failed ({}), retrying", attempt, e.getMessage());
+          sleepWithJitter();
         }
       }
     }
@@ -51,5 +66,15 @@ public class DeepSeekAnnotationClient implements VisionAnnotationClient {
             + (lastException != null ? lastException.getMessage() : "unknown"),
         500,
         lastException);
+  }
+
+  private void sleepWithJitter() {
+    long jitterMs = ThreadLocalRandom.current().nextLong(0, 1000);
+    try {
+      Thread.sleep(jitterMs);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new PlantPalException("Interrupted while retrying annotation", 503);
+    }
   }
 }
