@@ -153,6 +153,13 @@ public class TreatmentServiceImpl implements TreatmentService {
         treatmentPlanService.createFromActionPlan(
             plant.getId(), userId, treatment.getDiseaseName(), DISEASE_CARE_CARD_TYPE, actionPlan);
 
+    // Re-fetch after the slow AI call so any diseaseDescription written concurrently by
+    // fireDiseaseDescriptionGeneration() is preserved — without this, the stale snapshot
+    // loaded at the start of craftPlan() would overwrite it with null on save.
+    treatment =
+        treatmentRepository
+            .findByIdAndUserId(id, userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Treatment not found"));
     treatment.setTreatmentPlanId(plan.getId());
     treatment.setTreatmentPlanModel(preference.name());
     treatment.setStatus(TreatmentStatus.IN_PROGRESS);

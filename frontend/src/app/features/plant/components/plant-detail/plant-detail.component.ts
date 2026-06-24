@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { map, switchMap, takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -170,17 +170,18 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     const scan = this.selectedScan;
     if (!plant || !region || !scan || this.startingTreatment) return;
 
-    // Stop at DRAFT and let the user trigger "Craft Treatment Plan" on the treatment page
-    // themselves — matches the Overview flow, where the disease description (kicked off async by
-    // createTreatment()) has time to finish before craft-plan's own AI call starts, instead of
-    // racing it.
     this.startingTreatment = true;
     this.treatmentService.createTreatment(plant.id, scan.id, region.label)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        switchMap(created => this.treatmentService.craftPlan(created.data.id).pipe(
+          map(crafted => crafted.data.id),
+        )),
+        takeUntil(this.destroy$),
+      )
       .subscribe({
-        next: created => {
+        next: treatmentId => {
           this.startingTreatment = false;
-          this.router.navigate(['/treatment', created.data.id]);
+          this.router.navigate(['/treatment', treatmentId]);
         },
         error: () => {
           this.startingTreatment = false;
