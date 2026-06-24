@@ -103,4 +103,30 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "plantnet_disease_quota_remaining")
   private Integer plantnetDiseaseQuotaRemaining;
+
+  // Phase 8.5 T8.A — per-stage status + model tracking (migration 027)
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "identification_status", nullable = false, length = 30)
+  private IdentificationStageStatus identificationStatus;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "annotation_status", nullable = false, length = 30)
+  private IdentificationStageStatus annotationStatus;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "candidate_status", nullable = false, length = 30)
+  private IdentificationStageStatus candidateStatus;
+
+  /** The VisionModelPreference enum name used for the core identification call. */
+  @Column(name = "identification_model", length = 50)
+  private String identificationModel;
+
+  /** Always "gpt-4o-mini" today; captured for the Phase 9 eval corpus. */
+  @Column(name = "annotation_model", length = 50)
+  private String annotationModel;
+
+  /** Structured failure tag when identification_status = FAILED: RATE_LIMITED | PARSE_ERROR | PROVIDER_ERROR | OTHER. */
+  @Column(name = "failure_reason", columnDefinition = "TEXT")
+  private String failureReason;
 }

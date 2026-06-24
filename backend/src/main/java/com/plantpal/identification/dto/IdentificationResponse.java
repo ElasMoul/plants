@@ -1,5 +1,6 @@
 package com.plantpal.identification.dto;
 
+import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import java.time.Instant;
 import java.util.List;
@@ -37,4 +38,12 @@ public class IdentificationResponse {
   private String plantnetBestMatch;
   private String plantnetSwitchToProject;
   private Integer plantnetQuotaRemaining;
+
+  // Phase 8.5 T8.A — per-stage status + model tracking
+  private IdentificationStageStatus identificationStatus;
+  private IdentificationStageStatus annotationStatus;
+  private IdentificationStageStatus candidateStatus;
+  private String identificationModel;
+  private String annotationModel;
+  private String failureReason;
 }

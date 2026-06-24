@@ -89,4 +89,7 @@
     <include file="db/changelog/migrations/026_add_plantnet_disease_crosscheck.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/027_add_identification_stage_status.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
