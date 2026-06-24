@@ -289,10 +289,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       final String userPlantNetProject = pnPrefs[0];
       final String userPlantNetLang = pnPrefs[1];
 
-      // Fire identification + annotation (+ optional always-on PlantNet) in parallel.
-      // The always-on PlantNet call runs even when the primary model is not PLANTNET so that
-      // the species-confirm step (T8.2) always has a ranked candidate list to show. It swallows
-      // its own exceptions — a PlantNet failure must never fail the main identification.
+      // Fire identification + annotation in parallel. PlantNet candidate enrichment is deferred
+      // to a fire-and-forget async call AFTER the core result saves (D1 amendment, T8.E) —
+      // running it synchronously here caused self-inflicted 429 storms on batch scans.
       final List<String> organsForParallelCall = event.getOrgans();
       CompletableFuture<IdentificationOutcome> identificationFuture =
           CompletableFuture.supplyAsync(
@@ -307,27 +306,6 @@ public class IdentificationServiceImpl implements IdentificationService {
       CompletableFuture<String> annotationFuture =
           CompletableFuture.supplyAsync(
               () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
-      boolean[] plantNetCandidateFailed = {false};
-      CompletableFuture<PlantNetResponse> alwaysOnPlantNetFuture =
-          (plantNetAlwaysOn && preference != VisionModelPreference.PLANTNET)
-              ? CompletableFuture.supplyAsync(
-                  () -> {
-                    try {
-                      return plantNetClient.identify(
-                          List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
-                          organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
-                          userPlantNetProject,
-                          userPlantNetLang);
-                    } catch (Exception e) {
-                      log.warn(
-                          "Always-on PlantNet call failed, continuing without candidates: {}",
-                          e.getMessage());
-                      plantNetCandidateFailed[0] = true;
-                      return null;
-                    }
-                  },
-                  aiTaskExecutor)
-              : CompletableFuture.completedFuture(null);
 
       // Disease cross-check (Flow 3 only — health scan for an existing plant). Runs in parallel;
       // all exceptions are swallowed so a PlantNet outage never fails the main identification.
@@ -374,11 +352,9 @@ public class IdentificationServiceImpl implements IdentificationService {
         annotationJson = null;
       }
 
-      // PlantNet candidates: from the PLANTNET-primary outcome OR from the always-on parallel call
-      PlantNetResponse plantNetResponse =
-          outcome.plantNetResponse() != null
-              ? outcome.plantNetResponse()
-              : alwaysOnPlantNetFuture.join();
+      // PlantNet candidates only from the PLANTNET-primary outcome (always-on enrichment is
+      // deferred to fire-and-forget after the core save — see enrichWithPlantNetCandidates).
+      PlantNetResponse plantNetResponse = outcome.plantNetResponse();
 
       // Parse combined result; fall back gracefully if AI JSON is malformed
       DeepSeekPlantResult result = parseIdentificationResult(rawResult);
@@ -408,13 +384,13 @@ public class IdentificationServiceImpl implements IdentificationService {
             plantNetResponse.remainingIdentificationRequests());
       }
       if (preference == VisionModelPreference.PLANTNET) {
+        // PlantNet WAS the core call — result is already in the outcome.
         identification.setCandidateStatus(IdentificationStageStatus.COMPLETED);
       } else if (!plantNetAlwaysOn) {
         identification.setCandidateStatus(IdentificationStageStatus.SKIPPED);
-      } else if (plantNetCandidateFailed[0]) {
-        identification.setCandidateStatus(IdentificationStageStatus.FAILED);
       } else {
-        identification.setCandidateStatus(IdentificationStageStatus.COMPLETED);
+        // Always-on enrichment is deferred async — mark PENDING until it completes.
+        identification.setCandidateStatus(IdentificationStageStatus.PENDING);
       }
       PlantNetDiseaseResponse diseaseResponse = diseaseCheckFuture.join();
       if (diseaseResponse != null && !diseaseResponse.results().isEmpty()) {
@@ -424,6 +400,23 @@ public class IdentificationServiceImpl implements IdentificationService {
       }
       identification = identificationRepository.save(identification);
       evictPlantsCache();
+
+      // Fire deferred PlantNet candidate enrichment AFTER the core result is saved (D1 amendment).
+      // Candidates appear in the frontend when candidateStatus transitions PENDING → COMPLETED via
+      // the existing 3s poll — no new polling needed.
+      if (plantNetAlwaysOn && preference != VisionModelPreference.PLANTNET) {
+        final long savedId = identification.getId();
+        final byte[] finalImageBytes = imageBytes;
+        final String finalMediaType = mediaType;
+        final List<String> finalOrgans = organsForParallelCall;
+        final String finalProject = userPlantNetProject;
+        final String finalLang = userPlantNetLang;
+        CompletableFuture.runAsync(
+            () ->
+                enrichWithPlantNetCandidates(
+                    savedId, finalImageBytes, finalMediaType, finalOrgans, finalProject, finalLang),
+            aiTaskExecutor);
+      }
 
       // Update linked plant and auto-create reminders
       if (plantId != null && plantRepository.existsByIdAndUserId(plantId, userId)) {
@@ -571,6 +564,55 @@ public class IdentificationServiceImpl implements IdentificationService {
    * uses the raw executor directly rather than {@code @Async} (the Spring proxy has no effect on
    * self-invocation).
    */
+  /**
+   * Fire-and-forget PlantNet candidate enrichment run after the core identification saves as
+   * COMPLETED. Mirrors SpeciesEnrichmentServiceImpl.enrich() — never throws, always updates
+   * candidateStatus. Same-class self-invocation: uses the raw executor, not @Async.
+   */
+  private void enrichWithPlantNetCandidates(
+      Long identificationId,
+      byte[] imageBytes,
+      String mediaType,
+      List<String> organs,
+      String project,
+      String lang) {
+    try {
+      PlantNetResponse response =
+          plantNetClient.identify(
+              List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+              organs != null ? organs : List.of("auto"),
+              project,
+              lang);
+      identificationRepository
+          .findById(identificationId)
+          .ifPresent(
+              ident -> {
+                ident.setPlantnetCandidates(serializeToJson(mapToCandidateDtos(response)));
+                ident.setPlantnetVersion(response.version());
+                ident.setPlantnetBestMatch(response.bestMatch());
+                ident.setPlantnetSwitchToProject(response.switchToProject());
+                ident.setPlantnetQuotaRemaining(response.remainingIdentificationRequests());
+                ident.setCandidateStatus(IdentificationStageStatus.COMPLETED);
+                identificationRepository.save(ident);
+                log.info(
+                    "PlantNet candidate enrichment completed: identificationId={}",
+                    identificationId);
+              });
+    } catch (Exception e) {
+      log.warn(
+          "PlantNet candidate enrichment failed: identificationId={}, error={}",
+          identificationId,
+          e.getMessage());
+      identificationRepository
+          .findById(identificationId)
+          .ifPresent(
+              ident -> {
+                ident.setCandidateStatus(IdentificationStageStatus.FAILED);
+                identificationRepository.save(ident);
+              });
+    }
+  }
+
   private void fireDuplicateCareCardCheck(Long plantId, Long userId) {
     if (plantId == null) return;
     CompletableFuture.runAsync(() -> verifyNoDuplicateCareCards(plantId, userId), aiTaskExecutor);
