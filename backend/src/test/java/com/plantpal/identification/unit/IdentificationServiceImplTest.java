@@ -353,6 +353,43 @@ class IdentificationServiceImplTest {
       verify(plantRepository, never()).save(any(Plant.class));
       verify(reminderRepository, never()).save(any(Reminder.class));
     }
+
+    @Test
+    @DisplayName("T8.E: identificationStatus stays COMPLETED when async PlantNet enrichment fails")
+    void shouldNotFailIdentificationWhenPlantNetEnrichmentFails() throws Exception {
+      org.springframework.test.util.ReflectionTestUtils.setField(
+          identificationService, "plantNetAlwaysOn", true);
+
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(plantNetClient.identify(any(), any(), any(), any()))
+          .thenThrow(new PlantPalException("PlantNet unavailable", 503));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .identificationStatus(IdentificationStageStatus.PENDING)
+              .annotationStatus(IdentificationStageStatus.PENDING)
+              .candidateStatus(IdentificationStageStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      // Core identification must remain COMPLETED despite the enrichment failure
+      assertThat(pendingEntity.getIdentificationStatus())
+          .isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(pendingEntity.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
+      // Enrichment catches the exception and marks FAILED — never propagates to the core status
+      assertThat(pendingEntity.getCandidateStatus()).isEqualTo(IdentificationStageStatus.FAILED);
+      verify(plantNetClient).identify(any(), any(), any(), any());
+    }
   }
 
   @Nested
