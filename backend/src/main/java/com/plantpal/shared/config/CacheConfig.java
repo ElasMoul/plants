@@ -82,12 +82,16 @@ public class CacheConfig implements CachingConfigurer {
                     new GenericJackson2JsonRedisSerializer(redisMapper)));
 
     // PlantNet flora / language lists are stable — cache for 24h so metadata calls never burn
-    // identify quota. All other caches use the 10-minute default above.
+    // identify quota. Quota endpoint is refreshed every 5 min (short enough to stay useful,
+    // long enough not to burn requests just checking the counter). All other caches use the
+    // 10-minute default above.
     RedisCacheConfiguration longLivedConfig = config.entryTtl(Duration.ofHours(24));
+    RedisCacheConfiguration quotaConfig = config.entryTtl(Duration.ofMinutes(5));
     return RedisCacheManager.builder(connectionFactory)
         .cacheDefaults(config)
         .withCacheConfiguration("plantnet-projects", longLivedConfig)
         .withCacheConfiguration("plantnet-languages", longLivedConfig)
+        .withCacheConfiguration("plantnet-quota", quotaConfig)
         .build();
   }
 

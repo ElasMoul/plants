@@ -12,6 +12,11 @@ export interface PlantNetProject {
   languages?: string[];
 }
 
+export interface PlantNetQuota {
+  remaining: number;
+  total: number;
+}
+
 @Injectable()
 export class PlantNetConfigService {
   private readonly baseUrl = `${environment.apiUrl}/plantnet`;
@@ -31,5 +36,12 @@ export class PlantNetConfigService {
     return this.http
       .get<ApiResponse<string[]>>(`${this.baseUrl}/languages`)
       .pipe(map(res => res.data ?? []));
+  }
+
+  /** Returns today's remaining Pl@ntNet identify quota (cached 5 min server-side). */
+  getQuota(): Observable<PlantNetQuota | null> {
+    return this.http
+      .get<ApiResponse<PlantNetQuota>>(`${this.baseUrl}/quota`)
+      .pipe(map(res => res.data ?? null));
   }
 }

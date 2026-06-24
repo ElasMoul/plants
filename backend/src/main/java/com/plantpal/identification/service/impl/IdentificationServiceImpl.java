@@ -8,6 +8,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
+import com.plantpal.identification.client.PlantNetDiseaseClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
 import com.plantpal.identification.dto.ActionPlanDto;
@@ -27,6 +28,7 @@ import com.plantpal.identification.dto.PlantSummaryDto;
 import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
+import com.plantpal.identification.dto.plantnet.PlantNetDiseaseResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
@@ -132,6 +134,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final ObjectMapper objectMapper;
   private final UserRepository userRepository;
   private final PlantNetClient plantNetClient;
+  private final PlantNetDiseaseClient plantNetDiseaseClient;
   private final OllamaClient ollamaClient;
   private final AnthropicClient anthropicClient;
   private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -157,6 +160,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       GitHubModelsClient gitHubModelsClient,
       UserRepository userRepository,
       PlantNetClient plantNetClient,
+      PlantNetDiseaseClient plantNetDiseaseClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
       KafkaTemplate<String, Object> kafkaTemplate,
@@ -177,6 +181,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.objectMapper = objectMapper;
     this.userRepository = userRepository;
     this.plantNetClient = plantNetClient;
+    this.plantNetDiseaseClient = plantNetDiseaseClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
     this.kafkaTemplate = kafkaTemplate;
@@ -310,6 +315,27 @@ public class IdentificationServiceImpl implements IdentificationService {
                   aiTaskExecutor)
               : CompletableFuture.completedFuture(null);
 
+      // Disease cross-check (Flow 3 only — health scan for an existing plant). Runs in parallel;
+      // all exceptions are swallowed so a PlantNet outage never fails the main identification.
+      CompletableFuture<PlantNetDiseaseResponse> diseaseCheckFuture =
+          (plantId != null)
+              ? CompletableFuture.supplyAsync(
+                  () -> {
+                    try {
+                      return plantNetDiseaseClient.identifyDisease(
+                          List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
+                          organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
+                          userPlantNetLang);
+                    } catch (Exception e) {
+                      log.warn(
+                          "PlantNet disease cross-check failed, continuing without it: {}",
+                          e.getMessage());
+                      return new PlantNetDiseaseResponse(List.of(), 0);
+                    }
+                  },
+                  aiTaskExecutor)
+              : CompletableFuture.completedFuture(null);
+
       IdentificationOutcome outcome;
       try {
         outcome = identificationFuture.join();
@@ -353,6 +379,12 @@ public class IdentificationServiceImpl implements IdentificationService {
         identification.setPlantnetSwitchToProject(plantNetResponse.switchToProject());
         identification.setPlantnetQuotaRemaining(
             plantNetResponse.remainingIdentificationRequests());
+      }
+      PlantNetDiseaseResponse diseaseResponse = diseaseCheckFuture.join();
+      if (diseaseResponse != null && !diseaseResponse.results().isEmpty()) {
+        identification.setPlantnetDiseaseResults(serializeToJson(diseaseResponse.results()));
+        identification.setPlantnetDiseaseQuotaRemaining(
+            diseaseResponse.remainingIdentificationRequests());
       }
       identification = identificationRepository.save(identification);
       evictPlantsCache();

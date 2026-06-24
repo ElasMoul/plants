@@ -1,12 +1,15 @@
 package com.plantpal.treatment.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
+import com.plantpal.identification.dto.plantnet.PlantNetDiseaseResult;
+import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.util.ActionPlanValidator;
 import com.plantpal.identification.util.LenientJsonParser;
 import com.plantpal.plant.entity.Plant;
@@ -51,6 +54,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       List.of(TreatmentStatus.DRAFT, TreatmentStatus.IN_PROGRESS);
   private static final String DISEASE_CARE_CARD_TYPE = "PEST";
   private static final int TREATMENT_AI_RATE_LIMIT = 100000;
+  private static final double PLANTNET_DISEASE_AGREEMENT_THRESHOLD = 0.50;
   // Disease description is fire-and-forget (no HTTP caller waiting), so a single bounded retry
   // after the upstream-suggested wait is safe — caps the sleep in case of an implausible value.
   private static final long MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS = 65;
@@ -58,6 +62,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private final TreatmentRepository treatmentRepository;
   private final PlantRepository plantRepository;
   private final TreatmentPlanService treatmentPlanService;
+  private final IdentificationRepository identificationRepository;
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
   private final AnthropicClient anthropicClient;
@@ -71,6 +76,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       TreatmentRepository treatmentRepository,
       PlantRepository plantRepository,
       TreatmentPlanService treatmentPlanService,
+      IdentificationRepository identificationRepository,
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
@@ -80,6 +86,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     this.treatmentRepository = treatmentRepository;
     this.plantRepository = plantRepository;
     this.treatmentPlanService = treatmentPlanService;
+    this.identificationRepository = identificationRepository;
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
@@ -106,22 +113,41 @@ public class TreatmentServiceImpl implements TreatmentService {
           "An active treatment already exists for this plant and disease");
     }
 
-    Treatment treatment =
-        treatmentRepository.save(
-            Treatment.builder()
-                .plantId(plant.getId())
-                .userId(userId)
-                .identificationId(request.getIdentificationId())
-                .diseaseName(request.getDiseaseName())
-                .status(TreatmentStatus.DRAFT)
-                .build());
+    // T8.5: seed description + metadata from PlantNet disease cross-check if available
+    PlantNetSeedResult seed = resolvePlantNetSeed(request.getIdentificationId());
+
+    Treatment.TreatmentBuilder builder =
+        Treatment.builder()
+            .plantId(plant.getId())
+            .userId(userId)
+            .identificationId(request.getIdentificationId())
+            .diseaseName(request.getDiseaseName())
+            .status(TreatmentStatus.DRAFT);
+
+    if (seed != null) {
+      builder.plantnetAgreement(seed.agreement());
+      if (seed.agreement()) {
+        builder.diseaseDescription(seed.description());
+        builder.diseaseDescriptionModel("PLANTNET");
+        builder.eppoCode(seed.eppoCode());
+      } else {
+        builder.needsReview(true);
+        builder.plantnetSecondOpinion(seed.secondOpinionJson());
+      }
+    }
+
+    Treatment treatment = treatmentRepository.save(builder.build());
     log.info(
-        "Treatment created: id={}, plantId={}, diseaseName={}",
+        "Treatment created: id={}, plantId={}, diseaseName={}, plantnetAgreement={}",
         treatment.getId(),
         plant.getId(),
-        request.getDiseaseName());
+        request.getDiseaseName(),
+        treatment.getPlantnetAgreement());
 
-    fireDiseaseDescriptionGeneration(treatment.getId(), plant, request.getDiseaseName(), userId);
+    // Skip AI description generation when PlantNet already seeded a factual description
+    if (seed == null || !seed.agreement()) {
+      fireDiseaseDescriptionGeneration(treatment.getId(), plant, request.getDiseaseName(), userId);
+    }
 
     return toResponse(treatment);
   }
@@ -436,8 +462,50 @@ public class TreatmentServiceImpl implements TreatmentService {
         .treatmentPlanId(treatment.getTreatmentPlanId())
         .startedAt(treatment.getStartedAt())
         .completedAt(treatment.getCompletedAt())
+        .plantnetAgreement(treatment.getPlantnetAgreement())
+        .eppoCode(treatment.getEppoCode())
+        .needsReview(treatment.isNeedsReview())
         .build();
   }
+
+  /**
+   * Reads stored PlantNet disease results from a prior identification and returns seeding data. A
+   * top-result score >= 0.5 counts as agreement — PlantNet corroborates gpt-4o's disease label.
+   * Returns null when the identification has no stored results (no-op for callers).
+   */
+  private PlantNetSeedResult resolvePlantNetSeed(Long identificationId) {
+    if (identificationId == null) return null;
+    return identificationRepository
+        .findById(identificationId)
+        .filter(id -> id.getPlantnetDiseaseResults() != null)
+        .map(
+            id -> {
+              try {
+                List<PlantNetDiseaseResult> results =
+                    objectMapper.readValue(
+                        id.getPlantnetDiseaseResults(),
+                        new TypeReference<List<PlantNetDiseaseResult>>() {});
+                if (results.isEmpty()) return null;
+                PlantNetDiseaseResult top = results.get(0);
+                boolean agreement = top.score() >= PLANTNET_DISEASE_AGREEMENT_THRESHOLD;
+                if (agreement) {
+                  return new PlantNetSeedResult(true, top.description(), top.eppo(), null);
+                }
+                return new PlantNetSeedResult(
+                    false, null, null, objectMapper.writeValueAsString(results));
+              } catch (JsonProcessingException e) {
+                log.warn(
+                    "Could not parse PlantNet disease results for identification {}: {}",
+                    identificationId,
+                    e.getMessage());
+                return null;
+              }
+            })
+        .orElse(null);
+  }
+
+  private record PlantNetSeedResult(
+      boolean agreement, String description, String eppoCode, String secondOpinionJson) {}
 
   /**
    * Wire shape returned by {@link DeepSeekClient#generateCureAdvice} — same as {@code

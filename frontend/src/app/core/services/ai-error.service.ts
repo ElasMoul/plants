@@ -40,7 +40,12 @@ export class AiErrorService {
   }
 
   private rateLimitMessage(err: HttpErrorResponse): string {
-    const retryAfterSeconds = (err.error as ApiResponse<unknown> | undefined)?.retryAfterSeconds;
+    const body = err.error as ApiResponse<unknown> | undefined;
+    const message = body?.message ?? '';
+    if (message.toLowerCase().includes('plantnet')) {
+      return "Pl@ntNet daily quota reached — try again tomorrow, or switch to a different model in Settings";
+    }
+    const retryAfterSeconds = body?.retryAfterSeconds;
     const timeText = retryAfterSeconds ? this.formatRetryTime(retryAfterSeconds) : 'a bit';
     return `Rate limit reached — try again in ${timeText}, or switch your AI model in Settings`;
   }

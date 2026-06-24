@@ -2,6 +2,7 @@ package com.plantpal.identification.client;
 
 import com.plantpal.identification.dto.plantnet.PlantNetImageUrls;
 import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
+import com.plantpal.identification.dto.plantnet.PlantNetQuotaDto;
 import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
@@ -280,6 +281,37 @@ public class PlantNetClient {
     } catch (RestClientException e) {
       log.error("Failed to reach PlantNet /v2/languages", e);
       throw new PlantPalException("PlantNet service unavailable", 503);
+    }
+  }
+
+  /**
+   * Fetch today's remaining identify quota. Cached 5 min (short TTL so the display stays reasonably
+   * fresh). Returns a fallback with -1/-1 when the endpoint is unreachable so the UI can show
+   * "unavailable" rather than breaking.
+   */
+  @Cacheable("plantnet-quota")
+  public PlantNetQuotaDto getQuota() {
+    try {
+      PlantNetQuotaDto quota =
+          restClient
+              .get()
+              .uri(
+                  uriBuilder ->
+                      uriBuilder.path("/v2/quota/daily").queryParam("api-key", apiKey).build())
+              .retrieve()
+              .onStatus(
+                  status -> status.isError(),
+                  (req, res) -> {
+                    throw new PlantPalException(
+                        "Failed to fetch PlantNet quota: " + res.getStatusCode(), 502);
+                  })
+              .body(PlantNetQuotaDto.class);
+      return quota != null ? quota : new PlantNetQuotaDto(-1, -1);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.warn("Failed to reach PlantNet /v2/quota/daily: {}", e.getMessage());
+      return new PlantNetQuotaDto(-1, -1);
     }
   }
 

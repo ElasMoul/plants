@@ -24,4 +24,7 @@ public class TreatmentResponse {
   private Long treatmentPlanId;
   private Instant startedAt;
   private Instant completedAt;
+  private Boolean plantnetAgreement;
+  private String eppoCode;
+  private boolean needsReview;
 }

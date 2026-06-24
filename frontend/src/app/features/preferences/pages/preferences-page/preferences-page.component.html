@@ -22,6 +22,11 @@
       common names. Changes apply to every scan that uses the Pl@ntNet provider.
     </p>
 
+    <p class="quota-hint" *ngIf="plantnetQuota && plantnetQuota.remaining >= 0">
+      <mat-icon class="hint-icon">data_usage</mat-icon>
+      Daily quota: <strong>{{ plantnetQuota.remaining }}</strong> / {{ plantnetQuota.total }} identifications remaining today
+    </p>
+
     <ng-container *ngIf="!plantnetLoadError; else plantnetError">
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Flora / region</mat-label>

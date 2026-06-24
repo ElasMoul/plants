@@ -16,6 +16,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.TreatmentStepDto;
+import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.dto.TreatmentPlanResponse;
@@ -51,6 +52,7 @@ class TreatmentServiceTest {
   @Mock private TreatmentRepository treatmentRepository;
   @Mock private PlantRepository plantRepository;
   @Mock private TreatmentPlanService treatmentPlanService;
+  @Mock private IdentificationRepository identificationRepository;
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private OllamaClient ollamaClient;
   @Mock private AnthropicClient anthropicClient;
@@ -77,6 +79,7 @@ class TreatmentServiceTest {
             treatmentRepository,
             plantRepository,
             treatmentPlanService,
+            identificationRepository,
             deepSeekClient,
             ollamaClient,
             anthropicClient,
