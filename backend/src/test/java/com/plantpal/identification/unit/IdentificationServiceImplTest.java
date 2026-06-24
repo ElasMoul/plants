@@ -277,7 +277,8 @@ class IdentificationServiceImplTest {
       verify(identificationRepository, times(2)).save(captor.capture());
       Identification failedEntity = captor.getAllValues().get(1);
       assertThat(failedEntity.getStatus()).isEqualTo(IdentificationStatus.FAILED);
-      assertThat(failedEntity.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.FAILED);
+      assertThat(failedEntity.getIdentificationStatus())
+          .isEqualTo(IdentificationStageStatus.FAILED);
       assertThat(failedEntity.getFailureReason()).isEqualTo("PROVIDER_ERROR");
     }
 

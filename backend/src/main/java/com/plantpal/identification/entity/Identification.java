@@ -126,7 +126,10 @@ public class Identification extends AuditableEntity {
   @Column(name = "annotation_model", length = 50)
   private String annotationModel;
 
-  /** Structured failure tag when identification_status = FAILED: RATE_LIMITED | PARSE_ERROR | PROVIDER_ERROR | OTHER. */
+  /**
+   * Structured failure tag when identification_status = FAILED: RATE_LIMITED | PARSE_ERROR |
+   * PROVIDER_ERROR | OTHER.
+   */
   @Column(name = "failure_reason", columnDefinition = "TEXT")
   private String failureReason;
 }
