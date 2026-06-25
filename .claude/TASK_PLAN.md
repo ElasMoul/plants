@@ -573,7 +573,7 @@ VERIFY: ng build, ng lint, tsc --noEmit clean. Playwright tests deferred to T9.2
 
 ---
 
-## PHASE 9 — Quality, Testing & Hardening  🟡 PLANNED
+## PHASE 9 — Quality, Testing & Hardening  ✅ COMPLETE (code, 2026-06-25 — pending CI + merge to dev)
 > Goal: solidify the project at enterprise standard *throughout dev*, not as a
 > launch afterthought. Closes the real gaps — the frontend has **zero tests**
 > (ships on `ng build`/`lint`/`tsc` alone), JaCoCo is at **55%** not 80%, there's
