@@ -77,7 +77,7 @@ identification flow. Durable domain model + lifecycle in ARCHITECT.md. (T6.1–T
 
 ---
 
-## PHASE 8 — PlantNet as a First-Class Identification Provider  🟡 PLANNED
+## PHASE 8 — PlantNet as a First-Class Identification Provider  ✅ COMPLETE
 > Goal: stop treating PlantNet as a degraded, species-only vision option
 > (today: single guess, `healthStatus: UNKNOWN`, no care plan, no organ tags,
 > `project=all`, no reference images, quota invisible) and turn it into the
@@ -172,8 +172,8 @@ FRONTEND
    Update TS union types. "powered by {model}" badge already records the real model.
 ```
 
-### T8.1 — Backend: PlantNet v2 client — ranked candidates, organs, reference images, quota 🤖 AI
-**Branch:** `feature/PP-043-plantnet-v2-client` · Depends on **D1**, **D2**.
+### T8.1 — Backend: PlantNet v2 client — ranked candidates, organs, reference images, quota ✅ Complete
+**Branch:** `feature/PP-043-plantnet-v2-client` (merged PR #60)
 
 **Claude Code prompt:**
 ```
@@ -199,8 +199,8 @@ FRONTEND
 6. Config: app.plantnet.nb-results (6), .lang (app default); project from prefs (T8.4).
 ```
 
-### T8.2 — Backend: ranked-candidate species matching (Flow 1) wired to PlantNet 🤖 AI
-**Branch:** `feature/PP-044-plantnet-species-match`
+### T8.2 — Backend: ranked-candidate species matching (Flow 1) wired to PlantNet ✅ Complete
+**Branch:** `feature/PP-044-plantnet-species-match` (merged PR #61)
 
 **Claude Code prompt:**
 ```
@@ -216,8 +216,8 @@ FRONTEND
 3. Flow-1 ONLY (Flows 2/3 untouched). Extend SpeciesMatchDto (additive).
 ```
 
-### T8.3 — Frontend: multi-candidate species confirmation UI (confidence + reference images) 🤝 Assisted
-**Branch:** `feature/PP-045-species-confirm-candidates`
+### T8.3 — Frontend: multi-candidate species confirmation UI (confidence + reference images) ✅ Complete
+**Branch:** `feature/PP-045-species-confirm-candidates` (merged PR #62)
 
 **Claude Code prompt:**
 ```
@@ -231,8 +231,8 @@ FRONTEND
    + AiErrorService (404 -> "not a plant"). Broken thumbnail never blocks confirm.
 ```
 
-### T8.4 — Both: organ tagging + geolocation-ranked flora & common-name language 🤝 Assisted
-**Branch:** `feature/PP-046-plantnet-organs-projects`
+### T8.4 — Both: organ tagging + geolocation-ranked flora & common-name language ✅ Complete
+**Branch:** `feature/PP-046-plantnet-organs-projects` (merged PR #63)
 
 **Claude Code prompt:**
 ```
@@ -252,8 +252,8 @@ BACKEND
    (@Cacheable 24h, type=kt upstream).
 ```
 
-### T8.5 — Backend: PlantNet disease/pest cross-check feeding the Treatment flow 🤖 AI
-**Branch:** `feature/PP-047-plantnet-disease-crosscheck` · Depends on **D4**. Heaviest — sequence last.
+### T8.5 — Backend: PlantNet disease/pest cross-check feeding the Treatment flow ✅ Complete
+**Branch:** `feature/PP-047-plantnet-disease-crosscheck` (merged PR #65)
 
 **Claude Code prompt:**
 ```
@@ -275,8 +275,8 @@ BACKEND
    surface remaining; 429 -> existing RateLimit UX, never swallow.
 ```
 
-### T8.6 — Backend: factual species enrichment (IUCN/POWO free; GBIF deeper) 🤖 AI — secondary
-**Branch:** `feature/PP-048-factual-species-enrichment` · Depends on **D3**.
+### T8.6 — Backend: factual species enrichment (IUCN/POWO free; GBIF deeper) ✅ Complete
+**Branch:** factual enrichment shipped (GBIF/POWO/IUCN free layer; deeper GBIF deferred)
 
 **Claude Code prompt:**
 ```
@@ -290,8 +290,8 @@ BACKEND
 3. Add new externalDataSource values (migration only if column is constrained).
 ```
 
-### T8.7 — Frontend: PlantNet quota + provider telemetry 🤝 Assisted — small
-**Branch:** `feature/PP-049-plantnet-quota`
+### T8.7 — Frontend: PlantNet quota + provider telemetry ✅ Complete
+**Branch:** quota telemetry shipped in /preferences PlantNet subsection
 
 **Claude Code prompt:**
 ```
@@ -317,7 +317,7 @@ BACKEND
 
 ---
 
-## PHASE 8.5 — Identification Pipeline Resilience & Partial-Result Recovery  🔲 NOT STARTED
+## PHASE 8.5 — Identification Pipeline Resilience & Partial-Result Recovery  ✅ COMPLETE
 > **Execution order:** runs after Phase 8 (T8.0 done, T8.1–T8.7 ongoing), before Phase 9.
 > Rationale: Phase 9's E2E suite and nightly eval will test a pipeline that currently
 > cannot survive its own happy path — harden the pipeline first, then test the fixed version.
@@ -340,10 +340,9 @@ BACKEND
 > **Branch numbers:** T8.A–T8.G use **PP-050–PP-056**. Phase 9 branches shift to PP-057+
 > (already updated in this file).
 
-### T8.A — Architect: per-stage status model on identifications (D5)  🤝 Assisted
-**Branch:** `feature/PP-050-identification-stage-status`
-> Load-bearing design decision — all other Phase 8.5 tasks depend on it. Read D5 in
-> ARCHITECT.md before starting. Migration 027 (next free — sequence ends at 026).
+### T8.A — Architect: per-stage status model on identifications (D5)  ✅ Complete
+**Branch:** `feature/PP-050-identification-stage-status` (merged PR #67)
+> Migration 027 applied. D5 recorded in ARCHITECT.md.
 
 **Claude Code prompt:**
 ```
@@ -383,8 +382,8 @@ VERIFY: full unit suite green. IdentificationServiceImplTest updated for any new
 constructor params.
 ```
 
-### T8.B — Backend: make annotation & candidate stages non-fatal  🤖 AI
-**Branch:** `feature/PP-051-non-fatal-enrichment-stages` · Depends on **T8.A**.
+### T8.B — Backend: make annotation & candidate stages non-fatal  ✅ Complete
+**Branch:** `feature/PP-051-non-fatal-enrichment-stages` (merged PR #68)
 
 **Claude Code prompt:**
 ```
@@ -412,10 +411,8 @@ VERIFY: IdentificationServiceImplTest — three explicit tests:
   (c) core throws → status=FAILED, identification_status=FAILED, failure_reason set
 ```
 
-### T8.C — Backend: fix PlantNetResponse predictedOrgans deserialization  🤖 AI
-**Branch:** `feature/PP-052-plantnet-dto-fix`
-> Phase 8 regression — PlantNet has silently failed on every response since Phase 8
-> shipped. See T8.C regression note in ARCHITECT.md.
+### T8.C — Backend: fix PlantNetResponse predictedOrgans deserialization  ✅ Complete
+> PlantNetPredictedOrgan inner class added; deserialization unit test with v2 fixture added.
 
 **Claude Code prompt:**
 ```
@@ -440,8 +437,8 @@ BACKEND
 4. No migration needed.
 ```
 
-### T8.D — Backend: throttle AI vision fan-out + document annotation routing  🤖 AI
-**Branch:** `feature/PP-053-vision-fanout-throttle`
+### T8.D — Backend: throttle AI vision fan-out + document annotation routing  ✅ Complete
+**Branch:** `feature/PP-053-vision-fanout-throttle` (merged PR #69)
 
 **Claude Code prompt:**
 ```
@@ -476,9 +473,9 @@ NOT as inline code comments — see the section already added there):
 VERIFY: unit tests for the token-budget bucket and jittered retry logic.
 ```
 
-### T8.E — Architect/Backend: defer PlantNet candidates from critical path (D1 amendment)  🤝 Assisted
-**Branch:** `feature/PP-054-plantnet-async-candidates`
-> Amends Phase 8 decision D1. Read the D1 amendment in ARCHITECT.md before implementing.
+### T8.E — Architect/Backend: defer PlantNet candidates from critical path (D1 amendment)  ✅ Complete
+**Branch:** `feature/PP-054-plantnet-async-candidates` (merged PR #71)
+> D1 amendment recorded in ARCHITECT.md.
 
 **Claude Code prompt:**
 ```
@@ -505,8 +502,8 @@ VERIFY: test that a PlantNet failure in async enrichment does NOT change
 identification status from COMPLETED. Template: SpeciesEnrichmentServiceImplTest.
 ```
 
-### T8.F — Backend: retry endpoint for failed identifications  🤖 AI
-**Branch:** `feature/PP-055-identification-retry-endpoint` · Depends on **T8.A**, **T8.B**.
+### T8.F — Backend: retry endpoint for failed identifications  ✅ Complete
+**Branch:** `feature/PP-055-identification-retry-endpoint` (merged PR #72)
 
 **Claude Code prompt:**
 ```
@@ -536,8 +533,8 @@ VERIFY: unit tests covering 409 (PENDING conflict), COMPLETED enrichment-only re
 FAILED full retry, 403 ownership mismatch.
 ```
 
-### T8.G — Frontend: stage-aware partial-result UI  🤝 Assisted
-**Branch:** `feature/PP-056-stage-aware-identification-ui` · Depends on **T8.A**, **T8.B**, **T8.F**.
+### T8.G — Frontend: stage-aware partial-result UI  ✅ Complete
+**Branch:** `feature/PP-056-stage-aware-identification-ui` (merged PR #70)
 
 **Claude Code prompt:**
 ```
@@ -850,10 +847,10 @@ to `main`, tag `v1.0.0`, merge back to `dev`, delete release branch.
 | 4 — Chat | ✅ Done (streaming + history shipped) |
 | 6 — Species & Treatment Restructure | ✅ Done |
 | 7 — Model Control, Batch, Multi-Treatment | ✅ Done |
-| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ done; T8.1–T8.7 planned; D1–D4 open |
-| 8.5 — Identification Pipeline Resilience | 🔲 Not started — T8.A–T8.G (PP-050–056); runs before Phase 9 |
-| 9 — Quality, Testing & Hardening | 🟡 Planned (T9.1–T9.8, PP-057–064) |
-| 10 — Launch | 🟡 Not started (was Phase 5, PP-065+) |
+| 8 — PlantNet First-Class Provider | ✅ Done — T8.0–T8.7 all merged to dev |
+| 8.5 — Identification Pipeline Resilience | ✅ Done — T8.A–T8.G all merged to dev |
+| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8, PP-057–064) |
+| 10 — Launch | 🔲 Not started (was Phase 5, PP-065+) |
 
 ---
 
