@@ -215,6 +215,8 @@ class TreatmentControllerIT extends AbstractIntegrationTest {
             .photoUrl("/photos/test.jpg")
             .status(IdentificationStatus.COMPLETED)
             .identificationStatus(IdentificationStageStatus.COMPLETED)
+            .annotationStatus(IdentificationStageStatus.SKIPPED)
+            .candidateStatus(IdentificationStageStatus.SKIPPED)
             .scientificName("Monstera deliciosa")
             .build();
     return identificationRepository.save(identification).getId();

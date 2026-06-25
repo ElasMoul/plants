@@ -127,6 +127,8 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
             .photoUrl("/photos/test.jpg")
             .status(IdentificationStatus.COMPLETED)
             .identificationStatus(IdentificationStageStatus.COMPLETED)
+            .annotationStatus(IdentificationStageStatus.SKIPPED)
+            .candidateStatus(IdentificationStageStatus.SKIPPED)
             .scientificName("Monstera deliciosa")
             .commonName("Swiss cheese plant")
             .build();
