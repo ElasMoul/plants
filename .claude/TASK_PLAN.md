@@ -1122,6 +1122,161 @@ Per decision D6, log the 5 decisions above (with real D-IDs) in **both** `ARCHIT
 `STATE.md` and `TASK_PLAN.md` when the block is scheduled.
 
 
+# Phase 9.5 — Addendum: T9.E (Task Step page) + T9.F (plant-edit back-button)
+
+> Paste these into the Phase 9.5 section of TASK_PLAN.md: two new decisions under
+> "Decisions needed", two new task blocks after T9.D, and the updated sequencing note.
+> Same house rules as the rest of 9.5 apply (constructor injection, `ApiResponse<T>`,
+> design tokens from DESIGN_PROGRESS.md, no `@Data` on entities, etc.).
+
+---
+
+## Decisions needed (additions)
+
+**Decision 6 — How are plan steps addressed? (confirm-first, shapes the route)**
+The Task Step page needs a stable URL. Do the steps of a care/treatment plan have
+durable IDs, or are they a JSONB array addressed by index inside the plan?
+→ **No recommendation — this is a fact to confirm, not a preference.** The agent must
+grep the `TreatmentPlan` model first. If steps are JSONB-index-addressed, the route is
+`.../steps/:stepIndex` and "mark done"/deep-links key off index; if they're entities
+with IDs, it's `.../steps/:stepId`. **Everything in T9.E depends on this answer** — do
+not let the agent guess.
+
+**Decision 7 — Scope of "AI on the Mermaid".**
+You described three AI entry points. Splitting them by risk:
+(a) **Free question about the task** → existing chat with task context pre-injected. Ship in T9.E.
+(b) **Tap a diagram node → ask AI about that substep** → seed a chat question from the node
+label. Ship in T9.E (node labels are our own generated content, low injection risk, but
+still sanitize before seeding).
+(c) **AI regenerates / "improves" the Mermaid diagram** → **defer to Phase 10 beta, gated
+on T9.8.** Mermaid generation is precisely the malformed-output failure the T9.8 eval suite
+exists to catch; auto-replacing a working diagram with an unvalidated AI one before that
+suite is trustworthy is backwards. When it does ship, it's *preview-then-apply*, never
+auto-replace — a bad response shows an error, it never corrupts the stored step.
+→ **Recommend (a)+(b) now, (c) deferred.** Logged below as a Phase 10 item.
+
+---
+
+## Tasks (additions)
+
+### T9.E — Dedicated Task Step page (replaces the cramped popup) + AI deep-links 🤝 Assisted
+**Branch:** `feature/PP-0NN-task-step-page`
+**Depends on:** Decision 6 confirmed first. Reuses the sticky-hero + icon-bar page pattern
+(T6.12 Plant/Treatment detail), the existing Mermaid renderer, and chat context injection (T4).
+Independent of T9.A–T9.D — can land in parallel.
+
+**Frontend Claude Code prompt:**
+```
+// T9.E — Move task/step detail out of the modal into a dedicated page.
+// The popup is too small for the instructions + Mermaid; the diagram renders tiny.
+// Both the Treatment detail page AND the Reminders flow open this popup today.
+
+STEP 0 — confirm, don't assume (Decision 6):
+- Grep TreatmentPlan (com.plantpal.reminder) + the care-plan JSONB shape. Determine
+  whether steps have stable IDs or are JSONB array indices. REPORT before picking a route.
+- Find the CURRENT popup component (likely a mat-dialog opened from treatment-detail AND
+  from reminders). Note both call sites — both must be switched to navigation in step 5.
+- Find the EXISTING Mermaid render component/directive used by care plans today — reuse it,
+  do NOT add a second Mermaid integration.
+
+1. New route + standalone component for a single plan step. Route keyed off plan + step ref
+   per Decision 6 (e.g. /plans/:planId/steps/:stepRef). The page must work regardless of
+   whether you arrived from a Treatment or a Reminder — load the plan by id, resolve the step
+   by ref on ngOnInit from the route param (NOT from transient router state — see T9.F).
+   Accept an optional ?returnUrl= so "back" returns to the originating screen deterministically.
+
+2. Layout — use the sticky-hero + content pattern (consistent with Plant/Treatment detail,
+   NOT a dialog), existing design tokens only:
+   - Hero: step title + step number / "step N of M" + status chip.
+   - Full instructions / description (the cramped part of the popup — give it room).
+   - Mermaid diagram FULL-WIDTH (the whole point). For tall/wide diagrams add pan/zoom or
+     horizontal scroll so it's legible on a 390px viewport. This is the fix for "tiny in the modal".
+   - The step's mark-done / status action (must keep working — it was in the popup).
+
+3. Tappable Mermaid nodes (Decision 7b): render nodes as tappable. Mermaid supports click
+   bindings (securityLevel 'loose'); SANITIZE the node label before using it as a seed. Tapping
+   a node opens the AI seeded with that node's content (step 4, node variant). If wiring node
+   clicks proves brittle for a given diagram, degrade gracefully to a plain "Ask about a step"
+   entry — never let a click-binding failure break diagram rendering.
+
+4. AI access (Decision 7a/7b) — two entry points, both reuse existing chat:
+   - "Ask about this task" → deep-link to chat with the plant context (?plantId=, existing T4
+     mechanism) AND a pre-filled seed referencing this step's text. Lightweight: pre-fill the
+     input + pass context, do NOT rebuild the chat context system.
+   - Per-node "Ask about this step" → same, seeded with the tapped node's label.
+   If the chat context injection can't yet carry a step reference, pass it as the seed message
+   text rather than extending the backend context builder in this task (flag it if you think
+   the backend seed is worth a follow-up).
+
+5. Retire the popup: switch BOTH call sites (treatment-detail + reminders) from opening the
+   dialog to router.navigate to the new page, passing returnUrl. Remove the dialog component
+   if nothing else uses it; otherwise leave it unreferenced and note it for cleanup. Confirm
+   no other caller depends on it before deleting.
+
+6. ng build + ng lint + tsc --noEmit clean. Add a Vitest component test (T9.1 harness now
+   exists): step page renders title + instructions + a mermaid container; mark-done calls the
+   service; "Ask about this task" navigates to chat with the seed + plantId.
+
+OUT OF SCOPE (Decision 7c — Phase 10): AI regenerating/replacing the diagram. Do not build a
+"suggest a better diagram" action in this task.
+```
+
+**Verify:** Click a task in **both** the Treatment page and the Reminders flow → both open the
+full page (no modal). The Mermaid is full-width and legible on a phone. Tapping a node opens the
+AI seeded with that step. Mark-done still works. Back returns to where you came from.
+
+---
+
+### T9.F — Fix: plant edit → back → empty page 🤖 AI
+**Branch:** `feature/PP-0NN-plant-edit-back-nav`
+**Depends on:** nothing. Tiny, standalone — good warm-up task. Independent of all other 9.5 tasks.
+
+**Frontend Claude Code prompt:**
+```
+// T9.F — Bug: editing a plant, then pressing Back, lands on an empty page.
+
+1. Reproduce + diagnose (report findings before fixing):
+   - What does the plant-edit component do on SAVE and on CANCEL? (router.navigate(['/plants', id])
+     vs location.back() vs a navigate target missing the id.)
+   - Does plant-detail load its data from the ROUTE PARAM on ngOnInit / paramMap, or does it rely
+     on router state / nav extras that are lost when re-entered via Back?
+   - Is the "empty page" the plant-detail route rendering with no data (failed/absent fetch,
+     undefined id), or a genuinely different blank route in the history stack?
+   - Is there a resolver/guard on plant-detail that silently no-ops on Back re-entry?
+
+2. Fix (likely combination):
+   - After a successful edit, navigate to the concrete /plants/:id route with { replaceUrl: true }
+     so the edit page is removed from history and Back skips it, landing on detail.
+   - Ensure plant-detail fetches from the route param (paramMap subscription or ngOnInit by id),
+     not from transient state — so it populates correctly however it's reached, including via Back.
+
+3. Regression test (T9.1 Vitest harness): navigate edit → save → assert lands on a populated
+   plant-detail (data fetched by id), and that Back does not surface a blank route.
+```
+
+**Verify:** Edit a plant → save → press Back → you land on a populated plant detail page, never a
+blank one. Cancel behaves the same.
+
+---
+
+## Sequencing (updated)
+
+- **T9.F** is standalone and trivial — land it first as a warm-up; it touches only plant routing.
+- **T9.E** depends only on Decision 6 (confirm step addressing) + reuse of the existing Mermaid
+  renderer and chat deep-link. It's independent of the backend tasks T9.A–T9.D and can run in
+  parallel with them.
+- No new migrations and no backend changes for T9.E/T9.F (unless you choose to extend the chat
+  context builder to carry a step reference — flagged as optional inside T9.E step 4). Pure
+  frontend + routing.
+
+## Deferred to Phase 10 (beta) — logged here so it isn't lost
+- **AI-improved diagrams (Decision 7c).** A *preview-then-apply* "suggest a clearer diagram"
+  action on the Task Step page: fire a vision/reasoning call, render the candidate Mermaid in a
+  preview, let the user accept or discard — never auto-replace, malformed output shows an error
+  only. **Gated on T9.8** (the AI eval suite + ActionPlanValidator-style output validation must be
+  in place first, since this is the exact malformed-Mermaid failure mode that suite targets).
+  Add as a Phase 10 task when scheduled.
+
 
 ## PHASE 10 — Launch Preparation  🟡 NOT STARTED (was Phase 5)
 > Goal: deploy to production, beta test, release v1.0.0. **Runs last** — after

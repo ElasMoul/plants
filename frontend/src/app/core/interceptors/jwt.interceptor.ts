@@ -21,7 +21,12 @@ export class JwtInterceptor implements HttpInterceptor {
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
-    const correlationId = crypto.randomUUID();
+    // crypto.randomUUID() requires a secure context (HTTPS/localhost); fall back
+    // to a timestamp+random id so LAN HTTP access (192.168.x.x) still works.
+    const correlationId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
     // Tag the active Sentry scope so frontend errors link to the backend trace
     Sentry.setTag('correlationId', correlationId);
