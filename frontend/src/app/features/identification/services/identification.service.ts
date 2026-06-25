@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, interval } from 'rxjs';
-import { filter, map, startWith, switchMap, take, takeWhile, timeout } from 'rxjs/operators';
+import { filter, map, startWith, switchMap, takeWhile, timeout } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
 import {
@@ -53,17 +53,20 @@ export class IdentificationService {
       startWith(0),
       switchMap(() => this.getById(id)),
       map(res => res.data),
-      takeWhile(result => result.status === 'PENDING', true),
+      takeWhile(
+        result =>
+          result.status === 'PENDING' ||
+          result.annotationStatus === 'PENDING' ||
+          result.candidateStatus === 'PENDING',
+        true,
+      ),
       filter(result => result.status !== 'PENDING'),
-      map(result => {
-        if (result.status === 'FAILED') {
-          throw new Error('Identification failed');
-        }
-        return result;
-      }),
-      take(1),
       timeout(POLL_TIMEOUT_MS),
     );
+  }
+
+  retryIdentification(id: number): Observable<ApiResponse<IdentificationResponse>> {
+    return this.http.post<ApiResponse<IdentificationResponse>>(`${this.baseUrl}/${id}/retry`, {});
   }
 
   getUserIdentifications(

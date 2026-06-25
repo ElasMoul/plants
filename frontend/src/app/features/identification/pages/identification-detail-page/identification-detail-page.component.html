@@ -25,11 +25,28 @@
   <div class="state-screen" *ngIf="state === 'failed'">
     <mat-icon class="state-icon error-icon">hide_image</mat-icon>
     <h2 class="state-title">We couldn't identify this plant</h2>
-    <p class="state-subtitle">Something went wrong during analysis — please try uploading again.</p>
-    <button mat-stroked-button type="button" class="btn-pill" routerLink="/identify">
-      <mat-icon>add_photo_alternate</mat-icon>
-      Back to upload
-    </button>
+    <p class="state-subtitle" *ngIf="result?.failureReason; else defaultSubtitle">{{ result!.failureReason }}</p>
+    <ng-template #defaultSubtitle>
+      <p class="state-subtitle">Something went wrong during analysis — please try uploading again.</p>
+    </ng-template>
+    <div class="failed-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        class="btn-pill"
+        [disabled]="isRetrying"
+        (click)="onRetry()"
+      >
+        <mat-progress-spinner *ngIf="isRetrying" diameter="18" mode="indeterminate" class="retry-spinner"></mat-progress-spinner>
+        <mat-icon *ngIf="!isRetrying">refresh</mat-icon>
+        {{ isRetrying ? 'Retrying…' : 'Retry' }}
+      </button>
+      <button mat-stroked-button type="button" class="btn-pill" routerLink="/identify">
+        <mat-icon>add_photo_alternate</mat-icon>
+        Back to upload
+      </button>
+    </div>
   </div>
 
   <!-- not found -->
@@ -57,12 +74,23 @@
   ></app-plant-select-step>
 
   <!-- ready -->
-  <app-identification-preview-section
-    *ngIf="state === 'ready' && result"
-    [result]="result"
-    (saved)="onSaved($event)"
-    (editBeforeSave)="onEditBeforeSave($event)"
-    (discard)="onDiscard()"
-  ></app-identification-preview-section>
+  <div *ngIf="state === 'ready' && result">
+    <div *ngIf="result.annotationStatus === 'FAILED'" class="stage-notice">
+      <span class="stage-chip">
+        <mat-icon>layers_clear</mat-icon>
+        Overlay unavailable
+      </span>
+      <button mat-button class="retry-overlay-btn" (click)="onRetry()">
+        <mat-icon>refresh</mat-icon>
+        Retry overlay
+      </button>
+    </div>
+    <app-identification-preview-section
+      [result]="result"
+      (saved)="onSaved($event)"
+      (editBeforeSave)="onEditBeforeSave($event)"
+      (discard)="onDiscard()"
+    ></app-identification-preview-section>
+  </div>
 
 </div>

@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IdentificationService } from '../../services/identification.service';
 import {
@@ -11,6 +12,7 @@ import {
 } from '../../models/identification.model';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
 
 type DetailState =
   | 'loading'
@@ -30,6 +32,7 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;
   state: DetailState = 'loading';
   result: IdentificationResponse | null = null;
+  isRetrying = false;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -38,6 +41,7 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly identificationService: IdentificationService,
     private readonly snackBar: MatSnackBar,
+    private readonly aiErrorService: AiErrorService,
   ) {}
 
   ngOnInit(): void {
@@ -83,6 +87,25 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
     this.router.navigate(['/identify']);
   }
 
+  onRetry(): void {
+    if (!this.result || this.isRetrying) return;
+    this.isRetrying = true;
+    const id = this.result.id;
+    this.identificationService.retryIdentification(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isRetrying = false;
+          this.state = 'pending';
+          this.pollForCompletion(id);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isRetrying = false;
+          this.aiErrorService.notify(err);
+        },
+      });
+  }
+
   private loadIdentification(id: number): void {
     this.identificationService.getById(id)
       .pipe(takeUntil(this.destroy$))
@@ -94,6 +117,11 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
 
   private handleResult(data: IdentificationResponse): void {
     this.result = data;
+
+    // If already in a resolved state, just update the data in place — enrichment stage resolved.
+    if (this.state !== 'loading' && this.state !== 'pending') {
+      return;
+    }
 
     if (data.status === 'PENDING') {
       this.state = 'pending';
