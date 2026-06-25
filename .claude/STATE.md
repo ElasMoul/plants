@@ -1,9 +1,34 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-24 (Phase 8.5 defined — Identification Pipeline Resilience
-> & Partial-Result Recovery; tasks T8.A–T8.G added to TASK_PLAN.md; D5 and D1
-> amendment recorded in ARCHITECT.md; migration 027 assigned; all .claude/ docs
-> updated. T8.0 shipped note below; older entries from prior sessions)
+> Last updated: 2026-06-25 (Phase 8 complete — T8.1–T8.7 all merged to dev;
+> Phase 8.5 complete — T8.A–T8.G all merged to dev; Phase 9 is next.
+> "obz" PR #73 added T8.D annotation-routing and stage-status docs to
+> ARCHITECT.md + CLAUDE.md. Prior: Phase 8.5 defined 2026-06-24.)
+
+## Phase 8 + Phase 8.5 — COMPLETE (2026-06-25)
+All tasks shipped and merged to `dev`:
+
+**Phase 8 — PlantNet First-Class Provider (T8.1–T8.7):**
+- T8.1 (PP-043): PlantNet v2 client — ranked candidates, organs, quota (PR #60)
+- T8.2+T8.3 (PP-044+045): ranked species-match + candidate chooser UI with attribution (PRs #61, #62)
+- T8.4 (PP-046): organ tagging + geolocation-ranked flora/lang prefs (PR #63)
+- T8.5 (PP-047): PlantNet disease/pest cross-check as second opinion in Flow 3 (PR #65)
+- T8.6: GBIF/POWO/IUCN factual enrichment on Species (commit 51e7b0e)
+- T8.7: PlantNet quota telemetry in /preferences (commit 822d06d)
+
+**Phase 8.5 — Identification Pipeline Resilience (T8.A–T8.G):**
+- T8.A (PP-050): per-stage status + model tracking on identifications, migration 027 (PR #67)
+- T8.B (PP-051): annotation + PlantNet stages made non-fatal; only core stage can fail the record (PR #68)
+- T8.C: PlantNetResponse.predictedOrgans retyped to List<PlantNetPredictedOrgan>; deserialization unit test (commit fe2e914)
+- T8.D (PP-053): GitHub Models token-budget Bucket4j bucket; finite aiTaskExecutor queue; jittered GOAWAY retry; annotation-routing documented in ARCHITECT.md (PR #69)
+- T8.E (PP-054): PlantNet candidate enrichment deferred from critical path to async fire-and-forget (PR #71)
+- T8.F (PP-055): POST /identifications/{id}/retry endpoint for failed/partial records (PR #72)
+- T8.G (PP-056): stage-aware partial-result UI — "Overlay unavailable" chip, Retry button, failureReason tooltip (PR #70)
+
+**"obz" (PR #73):** Documentation-only — added T8.D annotation-routing audit and stage-status model sections to ARCHITECT.md + CLAUDE.md.
+
+**Migration sequence is now at 027** (027 was migration 027 in T8.A). Phase 9 migrations start at 028.
+**Next free PP branch number: PP-057** (Phase 9 starts here).
 
 ## Bugfix PP-044 — OllamaClient remote timeout + keep_alive (2026-06-23, `bugfix/PP-044-ollama-remote-timeout`)
 Connected the app to a dedicated LAN Ollama machine (Ryzen 5 5600G / GTX 1660 6GB / 16GB RAM)
@@ -237,11 +262,10 @@ left the field null forever — no retry, nothing re-triggers it later).
   session wants the same treatment there.
 
 ## Current Phase
-**Phases 0–4, 6, 7, and 8 (T8.0) are shipped.** Phase 8 (T8.1–T8.7) and
-Phase 8.5 (T8.A–T8.G, Pipeline Resilience) are next — in that order, both
-before Phase 9 (Quality/Testing). See TASK_PLAN.md for full task breakdowns.
-One stranded manual item from Phase 3: T3.3 (on-device push + PWA testing)
-still needs a real phone.
+**Phases 0–4, 6, 7, 8, and 8.5 are all shipped.** Phase 9 (Quality, Testing &
+Hardening — T9.1–T9.8) is next. One stranded manual item from Phase 3: T3.3
+(on-device push + PWA testing) still needs a real phone (folds into T9.2 PWA
+journey + T10.6 beta).
 
 | Phase | Status |
 |---|---|
@@ -253,10 +277,10 @@ still needs a real phone.
 | 5 — Launch prep | 🔲 Not started (runs after Phase 9 — now Phase 10) |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
-| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ done (`feature/PP-042`); T8.1–T8.7 planned |
-| 8.5 — Identification Pipeline Resilience | 🔲 Not started — T8.A–T8.G planned; runs before Phase 9 |
-| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8 planned) |
-| 10 — Launch | 🔲 Not started (was Phase 5) |
+| 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
+| 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
+| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8, PP-057–064) |
+| 10 — Launch | 🔲 Not started (was Phase 5, PP-065+) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ## Bugfixes — batch scan: lost items, NullInjectorError, sequential trickle (2026-06-22, `feature/PP-041-batch-scan`)
@@ -569,38 +593,20 @@ lives in ARCHITECT.md as a permanent reference — read that, not this list, bef
 extending any of this.
 
 ## Active Branches
-Current branch: **`feature/PP-038-pre-phase5-cleanup`** — see the cleanup pass
-section above for what it carries. Not yet merged to `dev`/`master` — needs a PR.
+Current branch: **`dev`** — all Phase 8 and Phase 8.5 work is merged. Clean.
 
-`feature/PP-030-treatment-entity` (T6.2 + T6.14) was already merged to `dev`
-via PR #50 (confirmed in git log) — superseded, the old "open a PR for it"
-task below is stale and removed.
-
-All other Phase 6 feature branches (`PP-029`, `031`–`037`) are already merged to
-`dev` via PR (confirmed in git log). Phases 0–2's feature branches
-(`PP-001`–`PP-027`, `AddChooseAi`, `chatfix`, etc.) are long-merged and still
-sitting locally/remotely — safe cleanup candidate whenever convenient, not
-urgent.
+All feature branches PP-038 through PP-056 are merged to `dev`. Older branches
+(`PP-001`–`PP-037`) are long-merged — safe cleanup candidate whenever convenient.
 
 ## Next Tasks (in order)
-1. Open a PR / merge `feature/PP-038-pre-phase5-cleanup` to `dev`.
-2. **Phase 7 — Model Control, Batch Scanning, Multi-Treatment UX** (TASK_PLAN.md
-   T7.1–T7.4) — planned 2026-06-22, not yet started. Sequencing vs. Phase 5 is
-   an open decision (see below).
-3. **Phase 5 — Launch prep** (TASK_PLAN.md T5.1–T5.8): prod config, performance,
-   security hardening, API docs, deploy to Railway/Vercel, beta test, release
-   v1.0.0.
-4. 👤 **Decide Phase 5 vs. Phase 7 ordering** — Phase 7 is real feature work
-   (model control, batch scanning, multi-treatment UX), Phase 5 is launch
-   infra; neither blocks the other technically.
-5. T5.5 needs a decision on Kafka/Zookeeper's production story (managed add-on,
-   or fall back to synchronous identification for v1.0.0) — not yet decided, see
-   ARCHITECT.md's Kafka pattern note.
-6. T3.3 — manual on-device testing (push notifications, PWA installability,
-   offline reading) — needs a real phone, can happen any time before launch.
-7. Live-verify chat SSE streaming against a real Docker stack (written and
-   passes locally but never confirmed end-to-end this session — see
-   FRONTEND.md's Open Items).
+1. **Phase 9 — Quality, Testing & Hardening** (TASK_PLAN.md T9.1–T9.8, PP-057+).
+   Recommended start: T9.1 (frontend test runner) → T9.2 (Playwright E2E) →
+   T9.3 (visual/a11y/perf gates) → T9.5 (backend IT wiring + JaCoCo 80%).
+2. T3.3 — manual on-device testing (push, PWA installability, offline reading) —
+   needs a real phone. Folds into T9.2 PWA journey + T10.6 beta.
+3. Live-verify chat SSE streaming against a real Docker stack (written and
+   passes locally but never confirmed end-to-end — see FRONTEND.md Open Items).
+4. Kafka/Zookeeper production story must be decided before T10.5 (Railway deploy).
 
 ## Phase 7 — Planning Session (2026-06-22)
 Not started, planned only. Full task breakdown in TASK_PLAN.md (T7.1–T7.4).

@@ -471,7 +471,9 @@ open backend/target/site/jacoco/index.html
 | 5 — Launch Preparation | 🔲 Not started |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
-| 8 — PlantNet First-Class Provider | 🟡 In progress — T8.0 ✅ Complete (`feature/PP-042-model-lineup`); T8.1–T8.7 not started |
+| 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
+| 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
+| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8, PP-057–064) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
 
 ---
