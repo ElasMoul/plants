@@ -491,3 +491,19 @@ open backend/target/site/jacoco/index.html
   (Hibernate's lazy loading breaks with Lombok `@Data`)
 - **No new direct cross-package injection that creates a cycle** — go through a Spring
   application event instead (see ARCHITECT.md's Treatment/Reminder completion-sync example)
+
+---
+
+## Knowledge Vault
+Path: `../plants-vault`
+
+When you need project history or decision context not in `.claude/`:
+1. Read `../plants-vault/wiki/hot.md` first (recent context cache)
+2. If not enough, read `../plants-vault/wiki/index.md`
+3. Drill into the relevant `wiki/decisions/`, `wiki/phases/`, or `wiki/learnings/` page
+
+Rules:
+- Do NOT read the vault for general coding tasks
+- The `.claude/` files (STATE.md, TASK_PLAN.md, etc.) remain the authoritative
+  coordination layer — the vault is for exploration and history only
+- Only the Architect writes to the vault; Backend and Frontend agents read only

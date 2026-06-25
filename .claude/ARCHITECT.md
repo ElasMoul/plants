@@ -849,3 +849,24 @@ deliberate. Documented here (not as code comments) to prevent future re-investig
 - **`ReasoningModelPreference` is NOT invoked in `processIdentification()`** — it drives
   only the standalone cure-advice, disease-description, and species-enrichment paths, not
   the main identification pipeline's vision or annotation calls.
+
+---
+
+## Knowledge Vault
+
+The Obsidian knowledge vault lives at `../plants-vault` (relative to the project root).
+
+**The Architect maintains it in step with `.claude/` files:**
+- When a new decision is logged in this file (`ARCHITECT.md`) → create or update `wiki/decisions/` in the vault.
+- When a phase completes in `STATE.md` → update `wiki/phases/` in the vault.
+- When a hard-won debugging insight is found → add a `wiki/learnings/` page.
+- The vault `wiki/hot.md` is updated alongside every major `.claude/` sync.
+
+**Backend and Frontend agents read the vault but do not write to it.** Reading path:
+1. `../plants-vault/wiki/hot.md` (recent context cache — always start here)
+2. `../plants-vault/wiki/index.md` (master catalog)
+3. `wiki/decisions/` / `wiki/phases/` / `wiki/learnings/` (drill-down)
+
+**D6** is the decision record for why the vault was added — see `../plants-vault/wiki/decisions/d6-knowledge-vault-setup.md`.
+
+The `.claude/` files (this file, STATE.md, TASK_PLAN.md, BACKEND.md, FRONTEND.md) remain the **authoritative coordination layer** for task execution. The vault is for long-term history and exploration only — do not duplicate authoritative state there.
