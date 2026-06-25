@@ -257,6 +257,23 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+                <configuration>
+                    <!-- Shared by report + check executions. DTOs, config, the main class,
+                         MapStruct-generated mappers, enum-only types, event data-carriers. -->
+                    <excludes>
+                        <exclude>com/plantpal/**/dto/**</exclude>
+                        <exclude>com/plantpal/**/*Request.class</exclude>
+                        <exclude>com/plantpal/**/*Response.class</exclude>
+                        <exclude>com/plantpal/**/*Dto.class</exclude>
+                        <exclude>com/plantpal/**/config/**</exclude>
+                        <exclude>com/plantpal/PlantPalApplication.class</exclude>
+                        <exclude>com/plantpal/**/*MapperImpl.class</exclude>
+                        <exclude>com/plantpal/**/*Status.class</exclude>
+                        <exclude>com/plantpal/**/*Type.class</exclude>
+                        <exclude>com/plantpal/**/*Preference.class</exclude>
+                        <exclude>com/plantpal/**/event/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -270,23 +287,6 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
-                        <configuration>
-                            <excludes>
-                                <exclude>com/plantpal/**/dto/**</exclude>
-                                <exclude>com/plantpal/**/*Request.class</exclude>
-                                <exclude>com/plantpal/**/*Response.class</exclude>
-                                <exclude>com/plantpal/**/*Dto.class</exclude>
-                                <exclude>com/plantpal/**/config/**</exclude>
-                                <exclude>com/plantpal/PlantPalApplication.class</exclude>
-                                <exclude>com/plantpal/**/*MapperImpl.class</exclude>
-                                <exclude>com/plantpal/**/entity/*Status.class</exclude>
-                                <exclude>com/plantpal/**/entity/*Type.class</exclude>
-                                <exclude>com/plantpal/**/*Status.class</exclude>
-                                <exclude>com/plantpal/**/*Type.class</exclude>
-                                <exclude>com/plantpal/**/*Preference.class</exclude>
-                                <exclude>com/plantpal/**/event/**</exclude>
-                            </excludes>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
@@ -297,27 +297,6 @@
                         <configuration>
                             <!--suppress UnresolvedMavenProperty -->
                             <skip>${skipTests}</skip>
-                            <excludes>
-                                <!-- DTOs / request+response records — trivial getters/setters, not logic -->
-                                <exclude>com/plantpal/**/dto/**</exclude>
-                                <exclude>com/plantpal/**/*Request.class</exclude>
-                                <exclude>com/plantpal/**/*Response.class</exclude>
-                                <exclude>com/plantpal/**/*Dto.class</exclude>
-                                <!-- Config classes — Spring wiring, not logic -->
-                                <exclude>com/plantpal/**/config/**</exclude>
-                                <!-- Application bootstrap -->
-                                <exclude>com/plantpal/PlantPalApplication.class</exclude>
-                                <!-- MapStruct generated mappers — not hand-written logic -->
-                                <exclude>com/plantpal/**/*MapperImpl.class</exclude>
-                                <!-- Simple enums with no logic (values only) -->
-                                <exclude>com/plantpal/**/entity/*Status.class</exclude>
-                                <exclude>com/plantpal/**/entity/*Type.class</exclude>
-                                <exclude>com/plantpal/**/*Status.class</exclude>
-                                <exclude>com/plantpal/**/*Type.class</exclude>
-                                <exclude>com/plantpal/**/*Preference.class</exclude>
-                                <!-- Event classes — plain data carriers -->
-                                <exclude>com/plantpal/**/event/**</exclude>
-                            </excludes>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
