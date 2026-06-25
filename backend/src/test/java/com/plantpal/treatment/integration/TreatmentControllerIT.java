@@ -9,6 +9,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.repository.IdentificationRepository;
 import java.util.Map;
@@ -213,6 +214,7 @@ class TreatmentControllerIT extends AbstractIntegrationTest {
             .userId(1L)
             .photoUrl("/photos/test.jpg")
             .status(IdentificationStatus.COMPLETED)
+            .identificationStatus(IdentificationStageStatus.COMPLETED)
             .scientificName("Monstera deliciosa")
             .build();
     return identificationRepository.save(identification).getId();
