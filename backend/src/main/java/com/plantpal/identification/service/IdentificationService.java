@@ -42,4 +42,6 @@ public interface IdentificationService {
   PlantMatchDto getPlantMatch(Long id, Long userId);
 
   IdentificationResponse resolvePlant(Long id, ResolvePlantRequest req, Long userId);
+
+  IdentificationResponse retryIdentification(Long id, Long userId);
 }

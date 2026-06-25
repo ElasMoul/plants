@@ -846,6 +846,133 @@ public class IdentificationServiceImpl implements IdentificationService {
     return getIdentification(id, userId);
   }
 
+  @Override
+  @Transactional
+  public IdentificationResponse retryIdentification(Long id, Long userId) {
+    Identification identification = findOwnedIdentification(id, userId);
+
+    if (identification.getIdentificationStatus() == IdentificationStageStatus.PENDING) {
+      throw new PlantPalException("Identification is already in progress", 409);
+    }
+
+    ConsumptionProbe probe = consumeRateLimit(userId);
+    if (!probe.isConsumed()) {
+      throw new RateLimitException(
+          "AI identification rate limit reached — try again later", retryAfterSeconds(probe));
+    }
+
+    if (identification.getIdentificationStatus() == IdentificationStageStatus.FAILED) {
+      // Core failed — reset all stages and re-publish to Kafka so processIdentification re-runs.
+      identification.setIdentificationStatus(IdentificationStageStatus.PENDING);
+      identification.setAnnotationStatus(IdentificationStageStatus.PENDING);
+      identification.setCandidateStatus(IdentificationStageStatus.PENDING);
+      identification.setStatus(IdentificationStatus.PENDING);
+      identification.setFailureReason(null);
+      identification = identificationRepository.save(identification);
+
+      VisionModelPreference preference = loadVisionPreference(userId);
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(identification.getId())
+              .userId(userId)
+              .photoUrl(identification.getPhotoUrl())
+              .aiModelPreference(preference.name())
+              .organs(null)
+              .requestedAt(Instant.now())
+              .build();
+      kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC, event);
+      log.info("Retried failed identification (core): id={}", identification.getId());
+    } else {
+      // Core COMPLETED — re-queue only the failed enrichment stages.
+      boolean annotationNeeded =
+          identification.getAnnotationStatus() == IdentificationStageStatus.FAILED;
+      boolean candidateNeeded =
+          identification.getCandidateStatus() == IdentificationStageStatus.FAILED;
+
+      if (annotationNeeded) identification.setAnnotationStatus(IdentificationStageStatus.PENDING);
+      if (candidateNeeded) identification.setCandidateStatus(IdentificationStageStatus.PENDING);
+
+      if (annotationNeeded || candidateNeeded) {
+        identification = identificationRepository.save(identification);
+        final long savedId = identification.getId();
+        if (annotationNeeded) {
+          CompletableFuture.runAsync(() -> enrichAnnotationForRetry(savedId), aiTaskExecutor);
+        }
+        if (candidateNeeded) {
+          String[] pnPrefs = loadPlantNetPreferences(userId);
+          final String project = pnPrefs[0];
+          final String lang = pnPrefs[1];
+          final String photoUrl = identification.getPhotoUrl();
+          CompletableFuture.runAsync(
+              () -> {
+                try {
+                  byte[] rawBytes = fileStorageService.loadPhotoBytes(photoUrl);
+                  String mediaType = resolveMediaType(photoUrl);
+                  byte[] imageBytes =
+                      ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
+                  enrichWithPlantNetCandidates(savedId, imageBytes, mediaType, null, project, lang);
+                } catch (Exception e) {
+                  log.warn(
+                      "PlantNet candidate retry load failed: identificationId={}, error={}",
+                      savedId,
+                      e.getMessage());
+                  identificationRepository
+                      .findById(savedId)
+                      .ifPresent(
+                          ident -> {
+                            ident.setCandidateStatus(IdentificationStageStatus.FAILED);
+                            identificationRepository.save(ident);
+                          });
+                }
+              },
+              aiTaskExecutor);
+        }
+        log.info(
+            "Retried enrichment stages: id={}, annotation={}, candidates={}",
+            savedId,
+            annotationNeeded,
+            candidateNeeded);
+      }
+    }
+
+    return getIdentification(id, userId);
+  }
+
+  /**
+   * Fire-and-forget annotation enrichment for the retry path. Mirrors enrichWithPlantNetCandidates
+   * — loads the photo from storage, re-runs annotation, and updates annotationStatus. Never throws.
+   */
+  private void enrichAnnotationForRetry(Long identificationId) {
+    try {
+      Identification ident =
+          identificationRepository
+              .findById(identificationId)
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Identification not found for retry"));
+      byte[] rawBytes = fileStorageService.loadPhotoBytes(ident.getPhotoUrl());
+      String mediaType = resolveMediaType(ident.getPhotoUrl());
+      byte[] imageBytes = ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
+      String annotationJson = visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+      ident.setAnnotationRegions(annotationJson);
+      ident.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
+      ident.setAnnotationModel("gpt-4o-mini");
+      identificationRepository.save(ident);
+      log.info("Annotation retry completed: identificationId={}", identificationId);
+    } catch (Exception e) {
+      log.warn(
+          "Annotation retry failed: identificationId={}, error={}",
+          identificationId,
+          e.getMessage());
+      identificationRepository
+          .findById(identificationId)
+          .ifPresent(
+              ident -> {
+                ident.setAnnotationStatus(IdentificationStageStatus.FAILED);
+                identificationRepository.save(ident);
+              });
+    }
+  }
+
   private SpeciesMatchDto buildSpeciesMatchFromCandidates(
       Identification identification, List<PlantNetCandidateDto> candidates) {
     PlantNetCandidateDto top = candidates.get(0);

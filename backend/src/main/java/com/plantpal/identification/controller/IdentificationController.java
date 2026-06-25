@@ -178,6 +178,22 @@ public class IdentificationController {
     return ResponseEntity.ok(ApiResponse.success(response));
   }
 
+  @Operation(
+      summary = "Retry a failed or partially-failed identification",
+      description =
+          "Re-runs only the stages that failed. Core-FAILED: resets all stages and re-queues"
+              + " processing via Kafka. Enrichment-only failures (annotation/candidates):"
+              + " re-fires just the failed async stages. Returns 409 if already PENDING.")
+  @PostMapping("/{id}/retry")
+  public ResponseEntity<ApiResponse<IdentificationResponse>> retryIdentification(
+      @PathVariable Long id) {
+    Long userId = getCurrentUserId();
+    log.info("Identification retry requested: userId={}, identificationId={}", userId, id);
+    IdentificationResponse response = identificationService.retryIdentification(id, userId);
+    return ResponseEntity.status(HttpStatus.ACCEPTED)
+        .body(ApiResponse.success(response, "Retry queued"));
+  }
+
   @Operation(summary = "Attach an identification to an existing plant, or create a new one")
   @PostMapping("/{id}/resolve-plant")
   public ResponseEntity<ApiResponse<IdentificationResponse>> resolvePlant(
