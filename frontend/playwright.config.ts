@@ -12,6 +12,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // Visual regression: ignore 2% pixel difference for anti-aliasing
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
