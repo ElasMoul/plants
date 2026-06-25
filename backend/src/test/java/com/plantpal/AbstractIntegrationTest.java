@@ -22,8 +22,7 @@ public abstract class AbstractIntegrationTest {
           .withUsername("test")
           .withPassword("test");
 
-  static final RedisContainer redis =
-      new RedisContainer(DockerImageName.parse("redis:7-alpine"));
+  static final RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
 
   static {
     postgres.start();
