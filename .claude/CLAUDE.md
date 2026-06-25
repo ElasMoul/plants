@@ -388,13 +388,12 @@ class PlantServiceTest {
 }
 ```
 
-**JaCoCo coverage gate:** 55% (the unit suite's real achieved ~58.9% line coverage, with a small
-margin) as of the pre-Phase-5 cleanup pass — was a never-achieved 10%/80% placeholder before.
-`*IT.java` integration tests exist but aren't wired into `mvn verify` (no failsafe plugin —
-Surefire's default pattern never picks them up); run one at a time via
-`mvn test -Dtest=SomeControllerIT`, never batched (Testcontainers connection-pool contention on a
-resource-constrained dev machine). 100% is a vanity metric; the goal is testing critical paths
-without wasting time on trivial getters.
+**JaCoCo coverage gate:** Updated in T9.5 (was 55%). See BACKEND.md for current value.
+`*IT.java` integration tests are now wired into `mvn verify` via maven-failsafe-plugin (T9.5).
+`AbstractIntegrationTest` uses the **Singleton Container Pattern** — containers start once in a
+`static {}` block, never restarted between classes, so Spring's context cache stays valid.
+`application-test.yml` has `spring.kafka.listener.auto-startup: false` (no Kafka in CI).
+100% is a vanity metric; the goal is testing critical paths without wasting time on trivial getters.
 
 ---
 
@@ -473,7 +472,8 @@ open backend/target/site/jacoco/index.html
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
 | 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
 | 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
-| 9 — Quality, Testing & Hardening | 🔲 Not started (T9.1–T9.8, PP-057–064) |
+| 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch) — pending CI + merge to dev |
+| 9.5 — Species Card Harvest + Async-Description Reliability | 🔲 Planned (T9.A–T9.D) — decisions 1–5 gate start |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
 
 ---

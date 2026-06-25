@@ -573,7 +573,7 @@ VERIFY: ng build, ng lint, tsc --noEmit clean. Playwright tests deferred to T9.2
 
 ---
 
-## PHASE 9 — Quality, Testing & Hardening  🟡 PLANNED
+## PHASE 9 — Quality, Testing & Hardening  ✅ COMPLETE (code, 2026-06-25 — pending CI + merge to dev)
 > Goal: solidify the project at enterprise standard *throughout dev*, not as a
 > launch afterthought. Closes the real gaps — the frontend has **zero tests**
 > (ships on `ng build`/`lint`/`tsc` alone), JaCoCo is at **55%** not 80%, there's
@@ -754,6 +754,374 @@ VERIFY: ng build, ng lint, tsc --noEmit clean. Playwright tests deferred to T9.2
 ```
 
 ---
+
+# Phase 9.5 — Species Card Harvest + Async-Description Reliability
+
+> **Inserted block.** Runs AFTER Phase 9 (Quality/Testing/Hardening) and BEFORE Phase 10 (Launch).
+> Letter-suffix tasks (T9.A–T9.D) per the inserted-sub-phase convention (same shape as the
+> Phase 8.5 / T8.A–T8.G block).
+> ⚠️ **Numbering is provisional.** Confirm the phase label and renumber the decisions below to
+> your current `ARCHITECT.md` D-series high-water mark before logging — the snapshot I worked
+> from disagrees with itself on the current D-number (files show D5/D6, the running log shows
+> D1–D4 still open). Migration numbers below are `NNN` placeholders — use the next free numbers
+> and treat `db.changelog-master.xml` as source of truth, per existing practice.
+
+---
+
+## Why this phase exists
+
+Two bugs from the latest scan-through, **with one shared root cause** plus one wasted-data
+problem on top.
+
+The shared root cause: **every async AI-text field in this app is a fire-and-forget call that
+degrades to `null` on failure, and the frontend renders `null` as "still generating" with no
+terminal state and no retry.** So a single transient failure — very plausibly a DeepSeek-R1
+`1-call/60s` upstream rate-limit when two of these fire close together — leaves a permanent
+spinner. This bites two different screens identically:
+
+- `Treatment.diseaseDescription` (fired fire-and-forget from `createTreatment()` via
+  `CompletableFuture.runAsync`, failures → null) → **Image 1: "Generating a description for this
+  disease…" stuck under an IN_PROGRESS treatment.**
+- `Species.description` / `careOverview` (T6.4 `SpeciesEnrichmentService.enrich()`, failures →
+  `NEEDS_REVIEW` + null fields) → **Image 3: "Gathering info about this species…" on an
+  otherwise-blank `/garden/species/4`.**
+
+The wasted-data problem (Image 2): the PlantNet candidate card is **excellent** — confirmed
+scientific + common name, family · genus, a real photo per candidate with attribution + license,
+a confidence score, provenance (`Pl@ntNet 2026-03-20 (7.4)`). **None of it is persisted onto the
+Species.** `findOrCreate()` only copies `scientificName` + `commonName`; image, taxonomy, and the
+candidate photos are thrown away the moment the user leaves the preview. So the Species page has
+nothing real to show and is left waiting on the separate, failure-prone AI enrichment call for
+data we *already had in hand*.
+
+The fix is two moves:
+1. **Stop discarding PlantNet data.** Harvest the confirmed candidate (image, family, genus,
+   attribution) onto the Species at resolve time, and persist the full candidate list for the
+   strip. The overview is then never empty — it has a real photo and taxonomy instantly,
+   independent of any AI call.
+2. **Make async text honest.** Add a per-field generation status (PENDING / READY / FAILED) to
+   both `Species` and `Treatment`, poll while PENDING, and expose a Retry on FAILED. Same
+   per-stage-status philosophy already formalized as D5.
+
+---
+
+## Diagnosed problems
+
+### P1 — Treatment description lost / perpetual spinner (Image 1)
+`createTreatment()` fires `DeepSeekClient.generateDiseaseDescription(species, diseaseName)`
+fire-and-forget; any failure degrades `diseaseDescription` to `null` with no persisted status, no
+retry, and no poll. The user then crafts the plan (→ IN_PROGRESS), but the description never
+arrives. `TreatmentDetailComponent` renders `diseaseDescription == null` as the
+"Generating a description for this disease…" pending state — which never resolves because nothing
+will ever set it. The treatment itself is fine; only the description is lost.
+
+### P2 — Species overview empty; PlantNet card data discarded (Images 2 & 3)
+`SpeciesService.findOrCreate(scientificName, commonName)` persists a Species with
+`description=null, careOverview=null, imageUrl=null` and relies entirely on
+`SpeciesEnrichmentService.enrich()` to fill them. When enrichment fails or hasn't completed, the
+page is blank with "Gathering info…". Meanwhile the rich PlantNet candidate data that produced
+Image 2 — image, family, genus, attribution, the full candidate list — is never written anywhere
+durable, so even a successful page load has no photo or taxonomy to fall back on.
+
+---
+
+## Decisions needed (your ruling gates the prompts)
+
+> Assign real sequential D-IDs from your `ARCHITECT.md` high-water mark when you log these; I've
+> numbered them 1–5 here only for reference.
+
+**Decision 1 — Species identity/image source: PlantNet candidate (recommended) vs AI enrichment.**
+Should the Species' `imageUrl` + taxonomy (`family`, `genus`) come from the confirmed PlantNet
+candidate we already have, harvested at resolve time?
+→ **Recommend YES.** It's botanical ground truth, already in hand, comes with a real photo +
+attribution, and makes the overview non-empty *immediately* regardless of any AI call. This is the
+core of the request.
+
+**Decision 2 — Candidate storage shape (resolves the still-open D2).**
+Where do the full PlantNet candidates live?
+(a) Full candidate list as **JSONB on the Identification row** (provenance + the candidate strip)
++ confirmed candidate's flat fields **denormalized onto Species** (display). ← **Recommend.**
+Mirrors the existing `annotation_regions` / `care_plan` JSONB precedent exactly.
+(b) Only on Species. (c) New `species_candidates` table.
+→ **Recommend (a).** First confirm whether candidates are *already* persisted on Identification
+before adding the column — don't assume.
+
+**Decision 3 — Fate of the AI species enrichment (T6.4).**
+Now that PlantNet supplies identity + image + taxonomy, what does `SpeciesEnrichmentService` do?
+(a) Retire it. (b) **Narrow it to `description` + `careOverview` prose only** (the care-guidance
+PlantNet does *not* provide). (c) Leave as-is.
+→ **Recommend (b).** Keeps the useful prose, drops the redundant image-fetch, and — combined with
+Decision 1 — means a failed enrichment only costs the prose paragraph, never the whole page.
+
+**Decision 4 — Async-text reliability pattern (the shared fix for P1 + P2).**
+Adopt a per-field generation-status enum (`PENDING | READY | FAILED`) on both `Species`
+(covers description/careOverview) and `Treatment` (covers diseaseDescription); frontend polls
+while PENDING and shows a Retry on FAILED; add `regenerate` endpoints.
+→ **Recommend YES.** Same per-stage-status model as D5. Without this, every async-text field in
+the app can silently strand on a spinner.
+
+**Decision 5 — Phase number + Launch ordering.**
+Provisional **Phase 9.5**, tasks **T9.A–T9.D**, inserted between Phase 9 and Phase 10.
+Confirm Launch stays Phase 10 (last). If you'd rather this be a full numbered phase that pushes
+Launch, say so and I'll relabel.
+
+---
+
+## Tasks
+
+> Standing rules (unchanged): constructor injection only, no `@Autowired`; controllers return
+> `ApiResponse<T>`; no `null` returns from services; `Pageable` on all lists; soft-delete only;
+> no `@Data` on JPA entities; never block the request on an async AI call; degrade gracefully,
+> never throw out of an `@Async`/`runAsync` body. `Species` is **shared** (no ownership check on
+> the row); `Treatment` is **ownership-checked** via `plantId → Plant.userId`.
+> ⚠️ Do not conflate `Treatment` (disease lifecycle, `com.plantpal.treatment`) with `TreatmentPlan`
+> (generic action plan, `com.plantpal.reminder`) — see ARCHITECT.md's "Two Treatment concepts".
+
+---
+
+### T9.A — Harvest PlantNet candidate → Species; persist candidate list 🤖 AI
+**Branch:** `feature/PP-0NN-species-card-harvest`
+**Depends on:** confirms Decisions 1 & 2 first. Builds on T6.1 (Species), T6.9 (resolve-species).
+
+**Backend Claude Code prompt:**
+```
+// T9.A — Persist PlantNet candidates + harvest the confirmed candidate onto Species
+
+Read ARCHITECT.md (Species entity + the identification resolve-species flow), STATE.md's T6.9
+entries, SpeciesServiceImpl.findOrCreate(), the resolve-species endpoint in
+IdentificationServiceImpl, and the current PlantNet response DTOs
+(dto/plantnet/PlantNetResponse + PlantNetResult + PlantNetSpecies + PlantNetTaxon) before starting.
+
+STEP 0 — confirm, don't assume:
+- Grep for where the PlantNet candidate list currently lives after identify. If the full
+  candidate list is ALREADY persisted (e.g. a JSONB column on identifications), DO NOT add a new
+  column — reuse it and skip step 1. Report what you find before writing the migration.
+
+1. Migration NNN_add_identification_candidates.sql (only if step 0 shows it's not already stored):
+   ALTER TABLE identifications ADD COLUMN candidates JSONB;  -- nullable
+   Stores the full PlantNet candidate array as returned: each element
+   { scientificName, commonName, family, genus, score, imageUrl, imageAuthor, imageLicense }.
+   Register as the next entry in db.changelog-master.xml (append, never insert between shipped ones).
+
+2. Migration NNN+1_add_species_botanical_fields.sql:
+   ALTER TABLE species ADD COLUMN family VARCHAR(255);          -- nullable
+   ALTER TABLE species ADD COLUMN genus VARCHAR(255);           -- nullable
+   ALTER TABLE species ADD COLUMN image_attribution VARCHAR(255);
+   ALTER TABLE species ADD COLUMN image_license VARCHAR(64);
+   ALTER TABLE species ADD COLUMN identity_source VARCHAR(20);  -- "PLANTNET" | "AI" | "MANUAL"
+   (imageUrl already exists on species — reuse it, do NOT add a second image column.)
+
+3. Species entity + SpeciesResponse + SpeciesMapper: add the 5 new fields. Keep @Getter/@Setter/
+   @Builder (NOT @Data).
+
+4. Persist candidates: when the PlantNet identification completes, write the full candidate list
+   to identifications.candidates (or the existing column from step 0). Add a DTO
+   IdentificationCandidateDto mirroring the element shape above; expose candidates on
+   IdentificationResponse so the frontend strip (T9.C) can read it. Do not change the existing
+   preview behaviour — this is purely making the data durable.
+
+5. Harvest at resolve time — the important change:
+   In resolveSpecies(identificationId, confirmed=true), extend the findOrCreate path so the
+   CONFIRMED candidate's fields are copied onto the Species row:
+   - Overload SpeciesService.findOrCreate(scientificName, commonName, family, genus, imageUrl,
+     imageAttribution, imageLicense). On CREATE: set all of them + identitySource="PLANTNET".
+     On MATCH of an existing species that still has imageUrl == null: backfill image+taxonomy from
+     this candidate (one-time fill; never overwrite a non-null existing image).
+   - The confirmed candidate is the one the user accepted in the preview — pass its index/identity
+     through resolveSpecies' request, don't re-guess "highest score" on the backend if the user
+     could have picked "Not this one → choose differently".
+
+6. Plant attachment (verify, fix only if broken): confirm resolvePlant() / saveFromIdentification
+   sets plant.speciesId to the resolved species. If a plant created from this scan ends up with
+   speciesId == null, fix that wiring here. This is what makes the species' "Plants" tab populate.
+
+7. Tests (SpeciesServiceTest + the resolve-species test class):
+   - findOrCreate(new) → species created with family/genus/imageUrl/attribution/license +
+     identitySource="PLANTNET"
+   - findOrCreate(existing, imageUrl already set) → image NOT overwritten
+   - findOrCreate(existing, imageUrl null) → image backfilled once
+   - resolveSpecies(confirmed) → confirmed candidate's fields land on the species; plant.speciesId set
+```
+
+**Verify:** Scan → confirm a brand-new species → `GET /api/v1/species/{id}` returns a real
+`imageUrl`, `family`, `genus`, `identitySource:"PLANTNET"` **immediately**, before any enrichment
+runs. The species' "Plants" tab lists the plant created from that scan. `mvn clean compile` + unit
+suite green.
+
+---
+
+### T9.B — Per-field generation status + regenerate endpoints; narrow enrichment 🤖 AI
+**Branch:** `feature/PP-0NN-async-text-status`
+**Depends on:** T9.A (so enrichment can be narrowed to prose only). Confirms Decisions 3 & 4.
+
+**Backend Claude Code prompt:**
+```
+// T9.B — Generation-status enum for async text + regenerate endpoints
+
+Read SpeciesEnrichmentServiceImpl (T6.4), TreatmentServiceImpl.createTreatment() +
+generateDiseaseDescription wiring, and the existing aiTaskExecutor config before starting.
+
+1. New enum GenerationStatus { PENDING, READY, FAILED } (place in a shared package — both
+   species and treatment use it).
+
+2. Migration NNN+2_add_generation_status.sql:
+   ALTER TABLE species   ADD COLUMN description_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+   ALTER TABLE treatments ADD COLUMN description_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+   (Existing rows default to PENDING; a one-off data step may set already-populated rows to READY —
+   include it as a Liquibase <update> or leave PENDING and let regenerate sort them out. Your call;
+   note which you chose in STATE.md.)
+
+3. Species enrichment — rewrite enrich() per Decision 3 + 4:
+   - Set description_status=PENDING at start (it already is, by default, on a fresh row).
+   - SCOPE NARROWED: generate ONLY description + careOverview. Do NOT fetch imageUrl here anymore —
+     identity+image now come from PlantNet (T9.A). Remove imageUrl from the enrichment prompt/holder.
+   - On success: set fields + description_status=READY. (Stop using NEEDS_REVIEW as the failure
+     signal for this — keep the SpeciesStatus enum for its existing meaning, but description
+     liveness is now tracked by description_status.)
+   - On ANY failure (single broad catch, still must never propagate): description_status=FAILED,
+     fields stay null.
+
+4. Treatment description — same treatment for generateDiseaseDescription:
+   - Set description_status=PENDING when the Treatment is created.
+   - On success: diseaseDescription set + description_status=READY.
+   - On failure: description_status=FAILED, diseaseDescription stays null.
+
+5. Expose description_status on SpeciesResponse and TreatmentResponse.
+
+6. Regenerate endpoints (re-fire the async generation, flip status back to PENDING):
+   - POST /api/v1/species/{id}/regenerate-description  → 202, SpeciesResponse
+       Species is SHARED — no ownership check. Add a modest Bucket4j bucket (e.g. 5/hour) keyed by
+       userId to stop a refresh-spam loop; reuse the existing per-user limiter pattern, do not add
+       a global one. Returns immediately; status goes PENDING and the async job runs.
+   - POST /api/v1/treatments/{id}/regenerate-description → 202, TreatmentResponse
+       Ownership-checked (load Treatment → Plant → verify userId). Same fire-and-forget +
+       PENDING flip.
+
+7. Tests:
+   - enrich success → description_status READY, fields set, imageUrl untouched (no longer fetched)
+   - enrich AI-throws / malformed → description_status FAILED, no exception
+   - regenerate-species → status PENDING, async fired; rate-limited path returns 429-style handling
+   - treatment description failure → FAILED; regenerate-treatment ownership check (wrong user → 404)
+```
+
+**Verify:** Force an enrichment failure (e.g. point the text model at a bad key briefly) →
+`GET /api/v1/species/{id}` shows `descriptionStatus:"FAILED"`, not a silent null pretending to be
+pending. `POST .../regenerate-description` flips it back to PENDING and, on a good run, to READY.
+Same for a treatment.
+
+---
+
+### T9.C — Species overview redesign: PlantNet hero + taxonomy + candidate strip + status-driven prose 🤖 AI
+**Branch:** `feature/PP-0NN-species-overview-redesign`
+**Depends on:** T9.A + T9.B backend merged & verified first.
+
+**Frontend Claude Code prompt:**
+```
+// T9.C — Rebuild the Species detail Overview tab around real PlantNet data
+
+Read species-detail.component.ts/html/scss (T6.6), species.model.ts, identification.service.ts,
+and DESIGN_PROGRESS.md (use existing tokens — --radius-card, --shadow-card, mint/coral chips,
+font-heading serif — do NOT invent new tokens) before starting.
+
+1. species.model.ts: extend SpeciesResponse with family, genus, imageUrl, imageAttribution,
+   imageLicense, identitySource, descriptionStatus. Add an IdentificationCandidate type and a
+   getter for the source scan's candidate list (via IdentificationService — the candidates the
+   species was resolved from, for the strip).
+
+2. Hero: replace the empty gradient placeholder (current blank state in the screenshot) with the
+   species imageUrl when present (real PlantNet photo), falling back to the existing illustrated
+   placeholder ONLY when imageUrl is null. Show "family · genus" under the scientific/common name.
+   Small attribution caption under the hero: "{imageAttribution} · {imageLicense}" when present
+   (matches the cc-by-sa credit style already shown on the candidate card).
+
+3. Candidate strip: render the candidate list as a horizontal photo row (same visual language as
+   the identification preview card — thumbnail + author credit), so the "card that was very good"
+   now lives on the species page too. Read-only here (no re-pick on the species page).
+
+4. Description / careOverview — drive purely off descriptionStatus, NOT off null:
+   - PENDING  → spinner + "Gathering care info for this species…", AND poll
+     GET /api/v1/species/{id} every 3s (reuse the existing pollUntilComplete pattern from
+     identification.service.ts — takeWhile status==='PENDING' inclusive, stop on READY/FAILED,
+     timeout ~32s) so it resolves without a manual refresh.
+   - READY    → render description + careOverview prose.
+   - FAILED   → a small inline "Couldn't generate care info." + a "Retry" button calling
+     POST /api/v1/species/{id}/regenerate-description, which flips back to PENDING (re-start poll).
+   The key behavioural change: the PAGE is never blank — hero, taxonomy, and candidate strip are
+   all present from PlantNet data immediately; only the prose paragraph has a loading/failed state.
+
+5. Plants tab: unchanged data path (getPlants filtered by speciesId, T6.6), but confirm it now
+   actually shows the plant(s) attached in T9.A. If empty when it shouldn't be, flag back to T9.A
+   rather than papering over it on the frontend.
+
+6. ng build + ng lint clean. Keep mat-tab-group (this page's existing pattern — the icon-button-bar
+   is Plant/Treatment-page-only).
+```
+
+**Verify:** `/garden/species/:id` for a freshly-confirmed species shows a real photo, family ·
+genus, and the candidate strip on first paint — no "Gathering info…" blocking the whole page.
+Prose fills in via poll a few seconds later; if generation failed, a Retry button appears and works.
+
+---
+
+### T9.D — Treatment description: status-driven state + poll + retry 🤖 AI
+**Branch:** `feature/PP-0NN-treatment-description-state`
+**Depends on:** T9.B backend merged & verified first.
+
+**Frontend Claude Code prompt:**
+```
+// T9.D — Make the treatment disease-description honest (fixes the stuck "Generating…" spinner)
+
+Read treatment-detail.component.ts/html/scss (T6.12), treatment.model.ts, and
+identification.service.ts's pollUntilComplete pattern before starting.
+
+1. treatment.model.ts: add descriptionStatus to TreatmentResponse.
+
+2. Overview section — drive the diseaseDescription block off descriptionStatus, not off null:
+   - PENDING → keep the "Generating a description for this disease…" spinner, AND poll
+     GET /api/v1/treatments/{id} every 3s (same takeWhile/stop/timeout shape as identification
+     polling) so it actually resolves. This alone fixes the perpetual spinner for the common case
+     where generation simply hadn't finished.
+   - READY   → render diseaseDescription.
+   - FAILED  → "Couldn't generate a description." + a "Retry" button calling
+     POST /api/v1/treatments/{id}/regenerate-description → flips to PENDING → restart poll.
+
+3. Do not touch the craft-plan / plan-section logic — only the description block changes.
+
+4. ng build + ng lint clean.
+```
+
+**Verify:** Open the Black-Spot treatment from Image 1: if the description is mid-generation it now
+fills in within seconds via poll; if it had failed, a Retry button appears and produces the
+description. No path leaves a spinner running forever.
+
+---
+
+## Blast radius & sequencing
+
+- **Order:** T9.A → T9.B (backend, can land in either order but B's enrichment-narrowing assumes
+  A's PlantNet harvest exists) → then T9.C + T9.D (frontend, independent of each other, each needs
+  its backend half merged first).
+- **Migrations:** 3–4 new files (one conditional). All pure `ADD COLUMN` / nullable or
+  defaulted — no rewrites of shipped tables, no data loss risk. Append to changelog-master.xml.
+- **Touch list:** `com.plantpal.species` (entity/DTO/mapper/service/enrichment/controller),
+  `com.plantpal.treatment` (service/controller/DTO), `com.plantpal.identification` (resolve-species
+  + candidate persistence + IdentificationResponse), frontend `features/species` + `features/treatment`
+  + the shared poll helper. No change to the Kafka pipeline, auth, or reminders.
+- **Watch:** the DeepSeek-R1 `1-call/60s` cap is the most likely real cause of the original
+  failures. Narrowing species enrichment to prose-only (T9.B) halves the AI calls per new species
+  (no more image fetch), and the regenerate + status work means a transient 429 is now recoverable
+  instead of permanent. If failures persist after this phase, that's the signal to switch the
+  enrichment/description text model to `gpt-4.1-mini` (config-only) per the standing recommendation.
+- **Test-coverage interaction with Phase 9:** these add new backend branches (status transitions,
+  regenerate endpoints). Write their unit tests in-phase so they count toward the JaCoCo-80%
+  restoration Phase 9 is doing, rather than landing as uncovered code right after it.
+
+## Dual-maintenance reminder
+Per decision D6, log the 5 decisions above (with real D-IDs) in **both** `ARCHITECT.md` and the
+`plants-vault` (the relevant phase/decision pages), and add a Phase 9.5 page to the vault. Update
+`STATE.md` and `TASK_PLAN.md` when the block is scheduled.
+
+
 
 ## PHASE 10 — Launch Preparation  🟡 NOT STARTED (was Phase 5)
 > Goal: deploy to production, beta test, release v1.0.0. **Runs last** — after

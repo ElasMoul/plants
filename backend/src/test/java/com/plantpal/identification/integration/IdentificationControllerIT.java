@@ -7,6 +7,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
+import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.repository.IdentificationRepository;
 import java.util.Map;
@@ -125,6 +126,9 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
             .userId(userId)
             .photoUrl("/photos/test.jpg")
             .status(IdentificationStatus.COMPLETED)
+            .identificationStatus(IdentificationStageStatus.COMPLETED)
+            .annotationStatus(IdentificationStageStatus.SKIPPED)
+            .candidateStatus(IdentificationStageStatus.SKIPPED)
             .scientificName("Monstera deliciosa")
             .commonName("Swiss cheese plant")
             .build();

@@ -935,7 +935,6 @@ class IdentificationServiceImplTest {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(ollamaClient.identifyPlant(any(), any()))
           .thenThrow(new PlantPalException("Ollama unavailable", 503));
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
 
       Identification pendingEntity =
           Identification.builder()

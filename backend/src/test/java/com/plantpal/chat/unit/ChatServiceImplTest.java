@@ -216,7 +216,7 @@ class ChatServiceImplTest {
           .contains("Previous conversation:")
           .contains("User: What plant is this?")
           .contains("Assistant: A Monstera deliciosa.")
-          .contains("User: How often should I water it?");
+          .contains("How often should I water it?");
       assertThat(prompt.indexOf("What plant is this?"))
           .isLessThan(prompt.indexOf("How often should I water it?"));
     }

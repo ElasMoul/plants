@@ -137,6 +137,13 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- ── Observability – Sentry ────────────────────────────────────── -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>7.14.0</version>
+        </dependency>
+
         <!-- ── Test Dependencies ──────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -246,22 +253,34 @@
             </plugin>
 
             <!-- ── JaCoCo: line-coverage gate ─────────────────────────────── -->
-            <!-- NOTE: 'mvn verify' only runs unit tests (Surefire's default  -->
-            <!--       include pattern is **/*Test.java, not **/*IT.java —    -->
-            <!--       no failsafe plugin is configured). The 6 *IT.java      -->
-            <!--       integration tests under src/test/.../integration/ are  -->
-            <!--       run manually via 'mvn test -Dtest=SomeControllerIT'    -->
-            <!--       (each boots a full Testcontainers Postgres+Redis       -->
-            <!--       context; running several back-to-back in one JVM has   -->
-            <!--       caused connection-pool exhaustion on a resource-       -->
-            <!--       constrained dev machine — run them one at a time).     -->
-            <!--       58.9% achieved from the unit suite alone as of the     -->
-            <!--       pre-Phase-5 cleanup pass; minimum set with a margin    -->
-            <!--       below that, not the unearned original 80%.            -->
+            <!-- Gate: 80% line coverage on non-trivial production code.      -->
+            <!-- Exclusions: DTOs, config, main class, MapStruct generated    -->
+            <!-- code, enum-only types, and event data-carriers (see T9.5).   -->
+            <!-- mvn clean verify runs both unit tests (Surefire) AND         -->
+            <!-- integration tests (Failsafe, *IT.java) in one JVM            -->
+            <!-- (forkCount=1) to avoid Testcontainers connection-pool        -->
+            <!-- contention.                                                   -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+                <configuration>
+                    <!-- Shared by report + check executions. DTOs, config, the main class,
+                         MapStruct-generated mappers, enum-only types, event data-carriers. -->
+                    <excludes>
+                        <exclude>com/plantpal/**/dto/**</exclude>
+                        <exclude>com/plantpal/**/*Request.class</exclude>
+                        <exclude>com/plantpal/**/*Response.class</exclude>
+                        <exclude>com/plantpal/**/*Dto.class</exclude>
+                        <exclude>com/plantpal/**/config/**</exclude>
+                        <exclude>com/plantpal/PlantPalApplication.class</exclude>
+                        <exclude>com/plantpal/**/*MapperImpl.class</exclude>
+                        <exclude>com/plantpal/**/*Status.class</exclude>
+                        <exclude>com/plantpal/**/*Type.class</exclude>
+                        <exclude>com/plantpal/**/*Preference.class</exclude>
+                        <exclude>com/plantpal/**/event/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -283,7 +302,6 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <!-- Skip coverage gate when tests are skipped (-DskipTests=true) -->
                             <!--suppress UnresolvedMavenProperty -->
                             <skip>${skipTests}</skip>
                             <rules>
@@ -299,6 +317,35 @@
                                 </rule>
                             </rules>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ── Failsafe: run *IT.java integration tests in mvn verify ─── -->
+            <!-- forkCount=1/reuseForks=true: all ITs run in one JVM to avoid  -->
+            <!-- the known Testcontainers connection-pool contention on a       -->
+            <!-- resource-constrained dev machine (documented in ARCHITECT.md  -->
+            <!-- T9.5).                                                         -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <!-- Explicit include so the pattern is obvious -->
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <!-- ITs need the same JVM args as Surefire for JaCoCo agent -->
+                    <argLine>${argLine}</argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -351,6 +398,28 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- ── OWASP Dependency-Check: fail on CVSS ≥ 7 ─────────────── -->
+            <!-- Requires NVD_API_KEY env var for fast NVD data download.     -->
+            <!-- Without the key it still works but data fetch is throttled.  
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.4</version>
+                <configuration>
+                    <skip>${dependency.check.skip}</skip>
+                    <failBuildOnCVSS>7</failBuildOnCVSS>
+                    <suppressionFile>owasp-suppressions.xml</suppressionFile>
+                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>-->
 
         </plugins>
     </build>
