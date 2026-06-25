@@ -96,6 +96,14 @@ public class TreatmentController {
     return ResponseEntity.ok(ApiResponse.success(response, "Treatment completed"));
   }
 
+  @Operation(summary = "Re-fire async disease description generation (T9.B)")
+  @PostMapping("/treatments/{id}/regenerate-description")
+  public ResponseEntity<ApiResponse<TreatmentResponse>> regenerateDescription(
+      @PathVariable Long id) {
+    TreatmentResponse response = treatmentService.regenerateDescription(id, getCurrentUserId());
+    return ResponseEntity.accepted().body(ApiResponse.success(response));
+  }
+
   private Long getCurrentUserId() {
     User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return user.getId();

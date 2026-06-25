@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.CareCardDto;
+import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.species.entity.Species;
-import com.plantpal.species.entity.SpeciesStatus;
 import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.user.entity.AiModelPreference;
@@ -19,15 +19,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Fire-and-forget — called from {@code SpeciesServiceImpl.findOrCreate()} with no caller waiting on
- * the result, so {@link #enrich} must never throw and must never block the identification flow that
+ * Fire-and-forget — called from {@code SpeciesServiceImpl.findOrCreate()} with no caller waiting.
+ * T9.B narrowed scope: generates ONLY description + careOverview prose. imageUrl is no longer
+ * fetched here — identity + image come from the confirmed PlantNet candidate at resolve time
+ * (T9.A). {@link #enrich} must never throw and must never block the identification flow that
  * triggered it.
  */
 @Service
 public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
   private static final Logger log = LoggerFactory.getLogger(SpeciesEnrichmentServiceImpl.class);
-
   private static final String AI_SOURCE = "AI";
 
   private final SpeciesRepository speciesRepository;
@@ -68,36 +69,34 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
       species.setDescription(parsed.getDescription());
       species.setCareOverview(parsed.getCareOverview());
-      species.setImageUrl(parsed.getImageUrl());
+      // imageUrl is intentionally NOT set here — image identity comes from PlantNet (T9.A).
       species.setCareCards(
           parsed.getCareCards() != null && !parsed.getCareCards().isEmpty()
               ? objectMapper.writeValueAsString(parsed.getCareCards())
               : null);
-      species.setExternalDataSource(AI_SOURCE);
+      if (species.getExternalDataSource() == null) {
+        species.setExternalDataSource(AI_SOURCE);
+      }
       species.setEnrichmentModel(
           (useOllama ? ReasoningModelPreference.OLLAMA_LLAVA : ReasoningModelPreference.DEEPSEEK_R1)
               .name());
       species.setExternalDataFetchedAt(Instant.now());
+      species.setDescriptionStatus(GenerationStatus.READY);
       speciesRepository.save(species);
       log.info("Species enrichment succeeded: id={}", speciesId);
 
     } catch (Exception e) {
-      log.warn(
-          "Species enrichment failed, flipping to NEEDS_REVIEW: id={}, error={}",
-          speciesId,
-          e.getMessage());
-      species.setStatus(SpeciesStatus.NEEDS_REVIEW);
+      log.warn("Species enrichment failed: id={}, error={}", speciesId, e.getMessage());
+      species.setDescriptionStatus(GenerationStatus.FAILED);
       speciesRepository.save(species);
     }
   }
 
   /**
-   * Wire shape returned by {@link DeepSeekClient#generateSpeciesEnrichment}. {@code source} is part
-   * of the AI response schema but deliberately unused — {@link #enrich} always hardcodes {@link
-   * #AI_SOURCE} on success rather than trusting the model's echoed value; the field is still
-   * declared so deserialization doesn't depend on the caller's {@link ObjectMapper} having {@code
-   * FAIL_ON_UNKNOWN_PROPERTIES} disabled (Spring Boot's auto-configured bean disables it, but a
-   * bare {@code new ObjectMapper()} — e.g. in a unit test — does not).
+   * Wire shape returned by {@link DeepSeekClient#generateSpeciesEnrichment}. {@code source} and
+   * {@code imageUrl} are part of the AI response schema but deliberately unused here — imageUrl
+   * comes from PlantNet (T9.A); source is hardcoded to "AI" on success rather than trusting the
+   * model's echoed value.
    */
   private static final class SpeciesEnrichmentJson {
     private String description;

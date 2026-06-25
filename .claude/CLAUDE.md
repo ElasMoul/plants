@@ -493,6 +493,10 @@ open backend/target/site/jacoco/index.html
   (Hibernate's lazy loading breaks with Lombok `@Data`)
 - **No new direct cross-package injection that creates a cycle** — go through a Spring
   application event instead (see ARCHITECT.md's Treatment/Reminder completion-sync example)
+- **Vault sync is the last step of every phase implementation — always, automatically.**
+  After the final code commit, execute `.claude/VAULT_SYNC_TEMPLATE.md` steps (phase page,
+  decisions, learnings, hot.md, index.md, STATE.md, CLAUDE.md build table, TASK_PLAN.md).
+  The user does not need to ask. "Start Phase N" and "implement all" both include the vault sync.
 
 ---
 

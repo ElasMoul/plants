@@ -234,6 +234,19 @@
   gap: 8px;
 }
 
+.description-failed {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.failed-text {
+  margin: 0;
+  color: var(--color-warn, #f44336);
+  font-size: 0.9rem;
+}
+
 // ── Plan section ─────────────────────────────────────────────
 .plan-loading {
   display: flex;

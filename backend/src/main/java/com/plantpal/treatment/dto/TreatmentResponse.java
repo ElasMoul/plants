@@ -1,5 +1,6 @@
 package com.plantpal.treatment.dto;
 
+import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.treatment.entity.TreatmentStatus;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -27,4 +28,6 @@ public class TreatmentResponse {
   private Boolean plantnetAgreement;
   private String eppoCode;
   private boolean needsReview;
+  // Status of async AI disease-description generation (T9.B). Frontend polls while PENDING.
+  private GenerationStatus descriptionStatus;
 }

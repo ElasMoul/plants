@@ -59,13 +59,24 @@
         </span>
 
         <div class="description-block">
-          <p *ngIf="treatment.diseaseDescription">{{ treatment.diseaseDescription }}</p>
-          <p class="description-pending" *ngIf="!treatment.diseaseDescription">
+          <!-- READY -->
+          <p *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription">{{ treatment.diseaseDescription }}</p>
+          <!-- PENDING -->
+          <p class="description-pending" *ngIf="!treatment.descriptionStatus || treatment.descriptionStatus === 'PENDING'">
             <mat-spinner diameter="16"></mat-spinner>
             Generating a description for this disease&hellip;
           </p>
+          <!-- FAILED -->
+          <div class="description-failed" *ngIf="treatment.descriptionStatus === 'FAILED'">
+            <p class="failed-text">Description generation failed.</p>
+            <button mat-stroked-button color="warn" (click)="retryDescription()" [disabled]="retryingDescription" class="btn-pill">
+              <mat-spinner *ngIf="retryingDescription" diameter="16"></mat-spinner>
+              <mat-icon *ngIf="!retryingDescription">refresh</mat-icon>
+              {{ retryingDescription ? 'Retrying…' : 'Retry' }}
+            </button>
+          </div>
           <app-model-usage-badge
-            *ngIf="treatment.diseaseDescription"
+            *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription"
             [reasoningModel]="treatment.diseaseDescriptionModel"
             prefix="Description generated using"
           ></app-model-usage-badge>

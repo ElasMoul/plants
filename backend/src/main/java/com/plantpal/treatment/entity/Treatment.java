@@ -1,5 +1,6 @@
 package com.plantpal.treatment.entity;
 
+import com.plantpal.shared.entity.GenerationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -81,6 +82,12 @@ public class Treatment {
   @Builder.Default
   @Column(name = "needs_review", nullable = false)
   private boolean needsReview = false;
+
+  // Status of the async AI disease-description generation (T9.B).
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "description_status", nullable = false, length = 20)
+  private GenerationStatus descriptionStatus = GenerationStatus.PENDING;
 
   @Column(name = "started_at")
   private Instant startedAt;

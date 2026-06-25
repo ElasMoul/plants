@@ -624,6 +624,13 @@ Scan initiated from...
   any of them — that's what the Archive is for.
 - **Output SESSION SUMMARY block** (format defined in AGENTS.md) at end of every response
   so the user can paste it back and trigger a .claude/ sync
+- **Vault sync is AUTOMATIC after every phase completion — never wait to be told.**
+  Once the final code commit lands, immediately execute all steps in
+  `.claude/VAULT_SYNC_TEMPLATE.md` as part of the same session. The user does NOT need
+  to say "update the vault" or "do the vault update" — it is always the last step of
+  "start Phase N" / "implement all". The sync covers: phase page, decision pages,
+  learnings pages, hot.md, index.md, STATE.md, CLAUDE.md build table, TASK_PLAN.md header.
+  Read VAULT_SYNC_TEMPLATE.md for the exact 6-step checklist.
 
 
 

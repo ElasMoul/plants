@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
+import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.entity.SpeciesStatus;
@@ -61,7 +62,7 @@ class SpeciesEnrichmentServiceImplTest {
   class Enrich {
 
     @Test
-    @DisplayName("should populate all fields and keep status ACTIVE on a successful AI response")
+    @DisplayName("should populate prose fields and keep status ACTIVE on a successful AI response")
     void shouldPopulateFieldsOnSuccess() {
       when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
       when(deepSeekClient.generateSpeciesEnrichment("Monstera deliciosa", "Swiss Cheese Plant"))
@@ -81,14 +82,15 @@ class SpeciesEnrichmentServiceImplTest {
       Species saved = captor.getValue();
       assertThat(saved.getDescription()).isEqualTo("A climbing tropical plant.");
       assertThat(saved.getCareOverview()).isEqualTo("Bright indirect light, water weekly.");
-      assertThat(saved.getImageUrl()).isEqualTo("https://example.com/monstera.jpg");
+      // AI enrichment intentionally does NOT set imageUrl (T9.B decision: only PlantNet sets it)
+      assertThat(saved.getImageUrl()).isNull();
       assertThat(saved.getExternalDataSource()).isEqualTo("AI");
       assertThat(saved.getExternalDataFetchedAt()).isNotNull();
       assertThat(saved.getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
     }
 
     @Test
-    @DisplayName("should flip to NEEDS_REVIEW and leave fields null on malformed JSON")
+    @DisplayName("should set descriptionStatus=FAILED and leave prose null on malformed JSON")
     void shouldFlipToNeedsReviewOnMalformedJson() {
       when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
       when(deepSeekClient.generateSpeciesEnrichment(any(), any())).thenReturn("not valid json {{{");
@@ -100,14 +102,16 @@ class SpeciesEnrichmentServiceImplTest {
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
       verify(speciesRepository).save(captor.capture());
       Species saved = captor.getValue();
-      assertThat(saved.getStatus()).isEqualTo(SpeciesStatus.NEEDS_REVIEW);
+      assertThat(saved.getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
+      assertThat(saved.getDescriptionStatus()).isEqualTo(GenerationStatus.FAILED);
       assertThat(saved.getDescription()).isNull();
       assertThat(saved.getCareOverview()).isNull();
       assertThat(saved.getImageUrl()).isNull();
     }
 
     @Test
-    @DisplayName("should flip to NEEDS_REVIEW and never propagate when the AI client throws")
+    @DisplayName(
+        "should set descriptionStatus=FAILED and never propagate when the AI client throws")
     void shouldFlipToNeedsReviewWhenAiClientThrows() {
       when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
       when(deepSeekClient.generateSpeciesEnrichment(any(), any()))
@@ -119,7 +123,8 @@ class SpeciesEnrichmentServiceImplTest {
 
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
       verify(speciesRepository).save(captor.capture());
-      assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.NEEDS_REVIEW);
+      assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
+      assertThat(captor.getValue().getDescriptionStatus()).isEqualTo(GenerationStatus.FAILED);
     }
 
     @Test

@@ -104,7 +104,7 @@ export class PlantFormComponent implements OnInit {
       this.plantService.updatePlant(this.editId ?? 0, request).subscribe({
         next: () => {
           this.snackBar.open('Plant updated.', undefined, { duration: 3000 });
-          this.router.navigate(['/plants', this.editId]);
+          this.router.navigate(['/plants', this.editId], { replaceUrl: true });
         },
         error: () => {
           this.snackBar.open('Could not update plant.', 'Dismiss', { duration: 4000 });
@@ -123,7 +123,7 @@ export class PlantFormComponent implements OnInit {
       this.plantService.createPlant(request).subscribe({
         next: (res) => {
           this.snackBar.open('Plant added!', undefined, { duration: 3000 });
-          this.router.navigate(['/plants', res.data.id]);
+          this.router.navigate(['/plants', res.data.id], { replaceUrl: true });
         },
         error: () => {
           this.snackBar.open('Could not save plant.', 'Dismiss', { duration: 4000 });
@@ -134,7 +134,7 @@ export class PlantFormComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate([this.isEdit ? ['/plants', this.editId] : ['/garden']]);
+    this.router.navigate(this.isEdit ? ['/plants', this.editId] : ['/garden']);
   }
 
   private toDateString(date: Date): string {

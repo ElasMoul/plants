@@ -19,7 +19,18 @@
       <div class="hero-text">
         <h1 class="species-name">{{ species.scientificName }}</h1>
         <p class="species-common-name">{{ species.commonName || 'Common name unknown' }}</p>
+        <p *ngIf="species.family || species.genus" class="species-taxonomy">
+          <span *ngIf="species.family">Family: <em>{{ species.family }}</em></span>
+          <span *ngIf="species.family && species.genus"> · </span>
+          <span *ngIf="species.genus">Genus: <em>{{ species.genus }}</em></span>
+        </p>
       </div>
+    </div>
+
+    <!-- Image attribution (PlantNet) -->
+    <div *ngIf="species.imageAttribution" class="image-attribution">
+      <mat-icon class="attr-icon">photo_camera</mat-icon>
+      <span>{{ species.imageAttribution }}<span *ngIf="species.imageLicense"> · {{ species.imageLicense }}</span></span>
     </div>
 
     <mat-tab-group class="species-tabs" animationDuration="0ms">
@@ -34,15 +45,27 @@
             {{ species.externalDataSource === 'AI' ? 'AI' : species.externalDataSource }}
           </span>
 
-          <div *ngIf="species.description; else pendingDescription" class="info-block">
+          <!-- Description: READY -->
+          <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
             <h2 class="info-heading">About</h2>
             <p class="info-text">{{ species.description }}</p>
           </div>
-          <ng-template #pendingDescription>
-            <div class="info-block pending-block">
-              <p class="pending-text">Gathering info about this species…</p>
-            </div>
-          </ng-template>
+
+          <!-- Description: PENDING — polling in background -->
+          <div *ngIf="!species.descriptionStatus || species.descriptionStatus === 'PENDING'" class="info-block pending-block">
+            <mat-spinner diameter="20" class="pending-spinner"></mat-spinner>
+            <p class="pending-text">Generating species description…</p>
+          </div>
+
+          <!-- Description: FAILED — offer retry -->
+          <div *ngIf="species.descriptionStatus === 'FAILED'" class="info-block failed-block">
+            <p class="failed-text">Description generation failed.</p>
+            <button mat-stroked-button color="warn" (click)="retryDescription()" [disabled]="retrying" class="retry-btn">
+              <mat-spinner *ngIf="retrying" diameter="16" class="btn-spinner"></mat-spinner>
+              <mat-icon *ngIf="!retrying">refresh</mat-icon>
+              {{ retrying ? 'Retrying…' : 'Retry' }}
+            </button>
+          </div>
 
           <div *ngIf="species.careOverview" class="info-block">
             <h2 class="info-heading">Care overview</h2>
@@ -50,7 +73,7 @@
           </div>
 
           <app-model-usage-badge
-            *ngIf="species.description"
+            *ngIf="species.descriptionStatus === 'READY' && species.description"
             [reasoningModel]="species.enrichmentModel"
             prefix="Enriched using"
           ></app-model-usage-badge>

@@ -19,4 +19,11 @@ export class SpeciesService {
   getSpecies(id: number): Observable<ApiResponse<SpeciesResponse>> {
     return this.http.get<ApiResponse<SpeciesResponse>>(`${this.baseUrl}/${id}`);
   }
+
+  regenerateDescription(id: number): Observable<ApiResponse<SpeciesResponse>> {
+    return this.http.post<ApiResponse<SpeciesResponse>>(
+      `${this.baseUrl}/${id}/regenerate-description`,
+      {},
+    );
+  }
 }

@@ -11,6 +11,7 @@ export interface SpeciesSummaryDto {
 }
 
 export type SpeciesStatus = 'ACTIVE' | 'NEEDS_REVIEW';
+export type GenerationStatus = 'PENDING' | 'READY' | 'FAILED';
 
 export interface SpeciesResponse {
   id: number;
@@ -24,4 +25,12 @@ export interface SpeciesResponse {
   careCards: CareCardDto[];
   // Reasoning model that generated description/careOverview enrichment (T7.2 "powered by" badge).
   enrichmentModel?: string | null;
+  // Botanical identity fields harvested from the confirmed PlantNet candidate (T9.A).
+  family?: string | null;
+  genus?: string | null;
+  identitySource?: string | null;
+  imageAttribution?: string | null;
+  imageLicense?: string | null;
+  // Status of async AI prose generation (T9.B). Frontend polls while PENDING, shows Retry on FAILED.
+  descriptionStatus?: GenerationStatus | null;
 }

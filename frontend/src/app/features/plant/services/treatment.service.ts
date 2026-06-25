@@ -46,4 +46,11 @@ export class TreatmentService {
       {},
     );
   }
+
+  regenerateDescription(id: number): Observable<ApiResponse<TreatmentResponse>> {
+    return this.http.post<ApiResponse<TreatmentResponse>>(
+      `${this.baseUrl}/treatments/${id}/regenerate-description`,
+      {},
+    );
+  }
 }

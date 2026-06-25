@@ -1,6 +1,7 @@
 package com.plantpal.species.dto;
 
 import com.plantpal.identification.dto.CareCardDto;
+import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.species.entity.SpeciesStatus;
 import java.util.List;
 import lombok.Builder;
@@ -33,6 +34,21 @@ public class SpeciesResponse {
   private String iucnCategory;
 
   private SpeciesStatus status;
+
+  // Botanical identity fields harvested from the confirmed PlantNet candidate (T9.A).
+  private String family;
+
+  private String genus;
+
+  private String identitySource;
+
+  private String imageAttribution;
+
+  private String imageLicense;
+
+  // Status of async AI prose generation (T9.B). Frontend polls while PENDING, shows Retry on
+  // FAILED.
+  private GenerationStatus descriptionStatus;
 
   // Parsed from Species.careCards (raw JSON) in SpeciesServiceImpl -- never trust the AI
   // response shape directly, same defensive-parse philosophy as IdentificationServiceImpl's

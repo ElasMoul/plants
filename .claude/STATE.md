@@ -294,8 +294,9 @@ left the field null forever — no retry, nothing re-triggers it later).
 
 ## Current Phase
 **Phases 0–4, 6, 7, 8, 8.5, and 9 are all shipped.** Phase 9 code is complete on
-`PHASE9` branch — pending CI green + merge to `dev`. Phase 9.5 (Species Card Harvest
-+ Async-Description Reliability, T9.A–T9.D) is next before Phase 10 (Launch).
+`PHASE9` branch — pending CI green + merge to `dev`. Phase 9.5 is also complete on
+`PHASE9.5` branch (T9.A–T9.F, committed 2026-06-25). Merge order: PHASE9 → dev first,
+then PHASE9.5 → dev. Next: Phase 10 (Launch).
 
 | Phase | Status |
 |---|---|
@@ -310,7 +311,7 @@ left the field null forever — no retry, nothing re-triggers it later).
 | 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
 | 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
 | 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch), pending CI + merge |
-| 9.5 — Species Card Harvest + Async-Description Reliability | 🔲 Planned (T9.A–T9.D, TASK_PLAN.md) |
+| 9.5 — Species Card Harvest + Async-Description Reliability | ✅ Complete (T9.A–T9.F on PHASE9.5 branch) |
 | 10 — Launch | 🔲 Not started (was Phase 5, PP-065+) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
@@ -631,9 +632,10 @@ All feature branches PP-038 through PP-056 are merged to `dev`. Older branches
 
 ## Next Tasks (in order)
 1. **Merge PHASE9 → dev** once CI green (last fix: `4f1bbb3`).
-2. **Phase 9.5 — Species Card Harvest + Async-Description Reliability** (TASK_PLAN.md T9.A–T9.D). Human decisions 1–5 gate the task prompts — see TASK_PLAN.md for the decision block. Start: T9.A (backend) → T9.B (backend) → T9.C + T9.D (frontend, parallel).
-3. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs, or a test-only Angular build served statically.
-4. **Re-enable Lighthouse CI** — fix dist path from `dist/frontend` → `dist/plantpal`.
+2. **Merge PHASE9.5 → dev** after PHASE9 lands (T9.A–T9.F, migrations 028+029).
+3. **Phase 10 — Launch** — production config, Railway/Vercel deploy, beta, v1.0.0.
+4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs, or a test-only Angular build served statically.
+5. **Re-enable Lighthouse CI** — fix dist path from `dist/frontend` → `dist/plantpal`.
 5. T3.3 — manual on-device testing (push, PWA installability, offline reading) — needs a real phone. Folds into Phase 10 beta.
 6. Kafka/Zookeeper production story must be decided before T10.5 (Railway deploy).
 
