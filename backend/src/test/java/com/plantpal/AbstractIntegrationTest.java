@@ -7,24 +7,28 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Testcontainers
 public abstract class AbstractIntegrationTest {
 
-  @Container
+  // Singleton pattern: containers start once per JVM and stay running.
+  // Spring context caching requires stable ports across test classes — @Container + @Testcontainers
+  // restarts containers between classes, which invalidates the cached ApplicationContext.
   static final PostgreSQLContainer<?> postgres =
       new PostgreSQLContainer<>("postgres:15-alpine")
           .withDatabaseName("plantpal_test")
           .withUsername("test")
           .withPassword("test");
 
-  @Container
-  static final RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
+  static final RedisContainer redis =
+      new RedisContainer(DockerImageName.parse("redis:7-alpine"));
+
+  static {
+    postgres.start();
+    redis.start();
+  }
 
   @DynamicPropertySource
   static void overrideConnectionProperties(DynamicPropertyRegistry registry) {

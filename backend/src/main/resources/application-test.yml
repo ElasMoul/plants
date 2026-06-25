@@ -6,8 +6,6 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 spring:
-  datasource:
-    url: jdbc:tc:postgresql:15:///plantpal_test
   # ── Liquibase ────────────────────────────────────────────────────────────────
   liquibase:
     enabled: true
