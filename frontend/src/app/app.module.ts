@@ -1,4 +1,4 @@
-import { APP_INITIALIZER, ErrorHandler, NgModule, isDevMode } from '@angular/core';
+import { APP_INITIALIZER, ErrorHandler, NgModule, isDevMode, noop } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
@@ -43,7 +43,7 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
     { provide: Sentry.TraceService, deps: [Router] },
     {
       provide: APP_INITIALIZER,
-      useFactory: () => () => {},
+      useFactory: () => noop,
       deps: [Sentry.TraceService],
       multi: true,
     },

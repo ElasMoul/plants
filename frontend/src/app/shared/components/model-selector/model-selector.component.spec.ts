@@ -60,7 +60,7 @@ describe('ModelSelectorComponent logic', () => {
   });
 
   it('selectedVisionOption returns undefined for an unrecognised value', () => {
-    (component as any).selectedVision = 'UNKNOWN_MODEL';
+    (component as unknown as { selectedVision: string }).selectedVision = 'UNKNOWN_MODEL';
     expect(component.selectedVisionOption).toBeUndefined();
   });
 });
