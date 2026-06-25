@@ -1504,6 +1504,11 @@ class IdentificationServiceImplTest {
               any(AiModelPreference.class),
               isNull(),
               isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
               isNull()))
           .thenReturn(species);
 
@@ -1521,11 +1526,16 @@ class IdentificationServiceImplTest {
               any(AiModelPreference.class),
               isNull(),
               isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
               isNull());
     }
 
     @Test
-    @DisplayName("resolve-species: confirmed=true on new species calls findOrCreate(6-arg)")
+    @DisplayName("resolve-species: confirmed=true on new species calls findOrCreate(11-arg)")
     void resolveSpeciesConfirmedCreatesNewSpecies() {
       Identification identification = identificationWithSpecies("Ficus lyrata", null);
       when(identificationRepository.findById(IDENTIFICATION_ID))
@@ -1540,6 +1550,11 @@ class IdentificationServiceImplTest {
               eq("Ficus lyrata"),
               any(),
               any(AiModelPreference.class),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
+              isNull(),
               isNull(),
               isNull(),
               isNull()))
