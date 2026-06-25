@@ -774,6 +774,21 @@ public class IdentificationServiceImpl implements IdentificationService {
     String gbifId = chosenCandidate != null ? chosenCandidate.getGbifId() : null;
     String powoId = chosenCandidate != null ? chosenCandidate.getPowoId() : null;
     String iucnCategory = chosenCandidate != null ? chosenCandidate.getIucnCategory() : null;
+    String family = chosenCandidate != null ? chosenCandidate.getFamily() : null;
+    String genus = chosenCandidate != null ? chosenCandidate.getGenus() : null;
+
+    // Harvest the confirmed candidate's reference image onto Species (T9.A).
+    String imageUrl = null;
+    String imageAttribution = null;
+    String imageLicense = null;
+    if (chosenCandidate != null
+        && chosenCandidate.getReferenceImages() != null
+        && !chosenCandidate.getReferenceImages().isEmpty()) {
+      var refImage = chosenCandidate.getReferenceImages().get(0);
+      imageUrl = refImage.getSmallUrl() != null ? refImage.getSmallUrl() : refImage.getMediumUrl();
+      imageAttribution = refImage.getAuthor();
+      imageLicense = refImage.getLicense();
+    }
 
     Species species =
         speciesService.findOrCreate(
@@ -782,7 +797,12 @@ public class IdentificationServiceImpl implements IdentificationService {
             toLegacyReasoningPreference(loadReasoningPreference(userId)),
             gbifId,
             powoId,
-            iucnCategory);
+            iucnCategory,
+            family,
+            genus,
+            imageUrl,
+            imageAttribution,
+            imageLicense);
 
     identification.setSpeciesId(species.getId());
     identificationRepository.save(identification);

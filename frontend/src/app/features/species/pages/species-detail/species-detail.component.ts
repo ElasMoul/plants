@@ -3,8 +3,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject, interval } from 'rxjs';
+import { filter, map, switchMap, take, takeUntil, takeWhile, timeout } from 'rxjs/operators';
 import { SpeciesService } from '../../services/species.service';
 import { SpeciesResponse } from '../../models/species.model';
 import { PlantService } from '../../../plant/services/plant.service';
@@ -13,6 +13,9 @@ import { IdentificationService } from '../../../identification/services/identifi
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
+
+const DESCRIPTION_POLL_INTERVAL_MS = 3000;
+const DESCRIPTION_POLL_TIMEOUT_MS = 32000;
 
 @Component({
   selector: 'app-species-detail',
@@ -24,6 +27,7 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];
   loading = true;
   plantsLoading = true;
+  retrying = false;
 
   readonly placeholderImage = PLACEHOLDER_IMAGE;
 
@@ -49,6 +53,9 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
         next: res => {
           this.species = res.data;
           this.loading = false;
+          if (this.species.descriptionStatus === 'PENDING') {
+            this.pollForDescription(this.speciesId);
+          }
         },
         error: () => {
           this.snackBar.open('Species not found.', 'Dismiss', { duration: 4000 });
@@ -75,6 +82,24 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  retryDescription(): void {
+    if (this.retrying || !this.species) return;
+    this.retrying = true;
+    this.speciesService.regenerateDescription(this.speciesId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.species = res.data;
+          this.retrying = false;
+          this.pollForDescription(this.speciesId);
+        },
+        error: () => {
+          this.retrying = false;
+          this.snackBar.open('Could not retry description generation.', 'Dismiss', { duration: 4000 });
+        },
+      });
+  }
+
   openAddPlantDialog(): void {
     if (!this.species) return;
     const dialogRef = this.dialog.open(IdentificationUploadDialogComponent, {
@@ -91,6 +116,21 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
           this.submitIdentification(payload);
         }
       });
+  }
+
+  private pollForDescription(speciesId: number): void {
+    interval(DESCRIPTION_POLL_INTERVAL_MS).pipe(
+      switchMap(() => this.speciesService.getSpecies(speciesId)),
+      map(res => res.data),
+      takeWhile(s => s.descriptionStatus === 'PENDING', true),
+      filter(s => s.descriptionStatus !== 'PENDING'),
+      take(1),
+      timeout(DESCRIPTION_POLL_TIMEOUT_MS),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: s => { this.species = s; },
+      error: () => { /* timed out — leave current state; user can retry */ },
+    });
   }
 
   private submitIdentification(payload: AnalyzeEmitPayload): void {

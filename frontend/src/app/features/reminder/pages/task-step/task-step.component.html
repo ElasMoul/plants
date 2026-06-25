@@ -1,0 +1,74 @@
+<div class="step-page">
+
+  <!-- Loading -->
+  <div *ngIf="state === 'loading'" class="center-state">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="state === 'error'" class="center-state error-state">
+    <mat-icon class="error-icon">report_problem</mat-icon>
+    <p>Step not found.</p>
+    <button mat-stroked-button type="button" class="btn-pill" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Go back
+    </button>
+  </div>
+
+  <!-- Ready -->
+  <ng-container *ngIf="state === 'ready' && step">
+
+    <div class="step-header">
+      <button mat-icon-button type="button" class="back-btn" (click)="goBack()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="step-title-block">
+        <p class="step-order" *ngIf="step.stepOrder">Step {{ step.stepOrder }}</p>
+        <h1 class="step-instruction">{{ step.instruction || step.careType }}</h1>
+      </div>
+    </div>
+
+    <!-- Full-width Mermaid diagram -->
+    <div class="diagram-section" *ngIf="step.stepDiagramContent">
+      <app-mermaid-diagram [definition]="step.stepDiagramContent"></app-mermaid-diagram>
+    </div>
+
+    <!-- Step detail text -->
+    <div class="detail-section" *ngIf="step.stepDetail">
+      <ng-container *ngIf="detailList; else plainDetail">
+        <p *ngIf="detailList.intro" class="detail-intro">{{ detailList.intro }}</p>
+        <ol class="detail-list">
+          <li *ngFor="let item of detailList.items">{{ item }}</li>
+        </ol>
+      </ng-container>
+      <ng-template #plainDetail>
+        <p class="detail-text">{{ step.stepDetail }}</p>
+      </ng-template>
+    </div>
+
+    <!-- Due status -->
+    <div class="step-meta">
+      <mat-icon class="meta-icon">{{ step.enabled ? 'schedule' : 'check_circle' }}</mat-icon>
+      <span *ngIf="!step.enabled">Completed {{ step.completedAt | date:'MMMM d, y' }}</span>
+      <span *ngIf="step.enabled && step.nextDueAt">Due {{ step.nextDueAt | date:'MMMM d, y' }}</span>
+    </div>
+
+    <!-- Mark done -->
+    <div class="actions" *ngIf="step.enabled">
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        class="btn-pill mark-done-btn"
+        [disabled]="markingDone"
+        (click)="markDone()"
+      >
+        <mat-spinner *ngIf="markingDone" diameter="18" class="btn-spinner"></mat-spinner>
+        <mat-icon *ngIf="!markingDone">check</mat-icon>
+        {{ markingDone ? 'Marking done…' : 'Mark done' }}
+      </button>
+    </div>
+
+  </ng-container>
+
+</div>

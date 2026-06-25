@@ -1,6 +1,7 @@
 package com.plantpal.species.entity;
 
 import com.plantpal.shared.audit.AuditableEntity;
+import com.plantpal.shared.entity.GenerationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -80,4 +81,27 @@ public class Species extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
   private SpeciesStatus status = SpeciesStatus.ACTIVE;
+
+  // Botanical identity fields harvested from the confirmed PlantNet candidate at resolve time.
+  @Column(name = "family", length = 255)
+  private String family;
+
+  @Column(name = "genus", length = 255)
+  private String genus;
+
+  // Tracks where the primary image and taxonomy came from ("PLANTNET" | "AI" | "MANUAL").
+  @Column(name = "identity_source", length = 20)
+  private String identitySource;
+
+  @Column(name = "image_attribution", length = 255)
+  private String imageAttribution;
+
+  @Column(name = "image_license", length = 64)
+  private String imageLicense;
+
+  // Status of the async AI prose generation (description + careOverview).
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "description_status", nullable = false, length = 20)
+  private GenerationStatus descriptionStatus = GenerationStatus.PENDING;
 }

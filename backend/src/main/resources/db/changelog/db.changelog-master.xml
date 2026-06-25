@@ -92,4 +92,10 @@
     <include file="db/changelog/migrations/027_add_identification_stage_status.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/028_add_species_botanical_fields.sql"
+             relativeToChangelogFile="false"/>
+
+    <include file="db/changelog/migrations/029_add_generation_status.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

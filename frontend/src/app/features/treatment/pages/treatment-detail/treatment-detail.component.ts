@@ -56,6 +56,7 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
   plan: TreatmentPlanResponse | null = null;
   planLoading = false;
   craftingPlan = false;
+  retryingDescription = false;
 
   private sentinelObserver?: IntersectionObserver;
   private readonly destroy$ = new Subject<void>();
@@ -156,7 +157,7 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
           if (this.treatment.treatmentPlanId) {
             this.loadPlan(this.treatment.treatmentPlanId);
           }
-          if (this.treatment.diseaseDescription == null) {
+          if (!this.treatment.descriptionStatus || this.treatment.descriptionStatus === 'PENDING') {
             this.pollForDescription(this.treatment.id);
           }
         },
@@ -166,24 +167,36 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  // The disease description is generated async server-side after createTreatment() returns —
-  // ngOnInit's single loadTreatment() fetch can land before it's written, and without this poll
-  // the page would show "Generating…" forever even once the backend finishes (T7.4). Stops once
-  // diseaseDescription is non-null or status leaves DRAFT, or after a bounded timeout if
-  // generation silently failed server-side (see TreatmentServiceImpl's catch-and-log-null path) —
-  // mirrors IdentificationService.pollUntilComplete()'s stop condition.
+  retryDescription(): void {
+    if (this.retryingDescription || !this.treatment) return;
+    this.retryingDescription = true;
+    this.treatmentService.regenerateDescription(this.treatment.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.treatment = res.data;
+          this.retryingDescription = false;
+          this.pollForDescription(this.treatment!.id);
+        },
+        error: () => {
+          this.retryingDescription = false;
+        },
+      });
+  }
+
+  // Polls on descriptionStatus (T9.B) — stops when status leaves PENDING (READY or FAILED).
   private pollForDescription(treatmentId: number): void {
     interval(DESCRIPTION_POLL_INTERVAL_MS).pipe(
       switchMap(() => this.treatmentService.getTreatment(treatmentId)),
       map(res => res.data),
-      takeWhile(t => t.diseaseDescription == null, true),
-      filter(t => t.diseaseDescription != null),
+      takeWhile(t => !t.descriptionStatus || t.descriptionStatus === 'PENDING', true),
+      filter(t => t.descriptionStatus !== 'PENDING'),
       take(1),
       timeout(DESCRIPTION_POLL_TIMEOUT_MS),
       takeUntil(this.destroy$),
     ).subscribe({
       next: t => { this.treatment = t; },
-      error: () => { /* timed out — leave the pending state showing, nothing more to do */ },
+      error: () => { /* timed out — backend will eventually set FAILED; user can retry */ },
     });
   }
 

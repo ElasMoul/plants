@@ -7,6 +7,7 @@ import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
+import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
@@ -76,13 +77,38 @@ public class SpeciesServiceImpl implements SpeciesService {
       String gbifId,
       String powoId,
       String iucnCategory) {
+    return findOrCreate(
+        scientificName, commonName, preference, gbifId, powoId, iucnCategory,
+        null, null, null, null, null);
+  }
+
+  @Override
+  @Transactional
+  public Species findOrCreate(
+      String scientificName,
+      String commonName,
+      AiModelPreference preference,
+      String gbifId,
+      String powoId,
+      String iucnCategory,
+      String family,
+      String genus,
+      String imageUrl,
+      String imageAttribution,
+      String imageLicense) {
     return speciesRepository
         .findByScientificName(scientificName)
-        .map(existing -> patchFactualFields(existing, gbifId, powoId, iucnCategory))
+        .map(
+            existing ->
+                patchFactualFields(
+                    existing, gbifId, powoId, iucnCategory, family, genus,
+                    imageUrl, imageAttribution, imageLicense))
         .orElseGet(
             () ->
                 createSpecies(
-                    scientificName, commonName, preference, gbifId, powoId, iucnCategory));
+                    scientificName, commonName, preference,
+                    gbifId, powoId, iucnCategory,
+                    family, genus, imageUrl, imageAttribution, imageLicense));
   }
 
   @Override
@@ -206,8 +232,37 @@ public class SpeciesServiceImpl implements SpeciesService {
         .orElse(null);
   }
 
+  @Override
+  @Transactional
+  public SpeciesResponse regenerateDescription(Long speciesId, Long userId) {
+    Species species =
+        speciesRepository
+            .findById(speciesId)
+            .orElseThrow(() -> new ResourceNotFoundException("Species", speciesId));
+    species.setDescriptionStatus(GenerationStatus.PENDING);
+    speciesRepository.save(species);
+
+    // Re-fire enrichment; the preference used here is DEEPSEEK (default AI) since we don't have
+    // the triggering user's preference in this path — pass the legacy DEEPSEEK enum value.
+    Long id = species.getId();
+    speciesEnrichmentService.ifPresent(
+        service -> service.enrich(id, AiModelPreference.DEEPSEEK));
+
+    return speciesMapper.toResponse(species).toBuilder()
+        .careCards(parseCareCards(species.getCareCards()))
+        .build();
+  }
+
   private Species patchFactualFields(
-      Species species, String gbifId, String powoId, String iucnCategory) {
+      Species species,
+      String gbifId,
+      String powoId,
+      String iucnCategory,
+      String family,
+      String genus,
+      String imageUrl,
+      String imageAttribution,
+      String imageLicense) {
     boolean changed = false;
     if (gbifId != null && species.getGbifId() == null) {
       species.setGbifId(gbifId);
@@ -221,10 +276,28 @@ public class SpeciesServiceImpl implements SpeciesService {
       species.setIucnCategory(iucnCategory);
       changed = true;
     }
+    if (family != null && species.getFamily() == null) {
+      species.setFamily(family);
+      changed = true;
+    }
+    if (genus != null && species.getGenus() == null) {
+      species.setGenus(genus);
+      changed = true;
+    }
+    // Never overwrite a non-null imageUrl — one-time fill only.
+    if (imageUrl != null && species.getImageUrl() == null) {
+      species.setImageUrl(imageUrl);
+      species.setImageAttribution(imageAttribution);
+      species.setImageLicense(imageLicense);
+      if (species.getIdentitySource() == null) {
+        species.setIdentitySource("PLANTNET");
+      }
+      changed = true;
+    }
     if (changed) {
       species = speciesRepository.save(species);
       log.info(
-          "Patched taxonomy IDs on existing species: id={}, scientificName={}",
+          "Patched botanical fields on existing species: id={}, scientificName={}",
           species.getId(),
           species.getScientificName());
     }
@@ -237,7 +310,12 @@ public class SpeciesServiceImpl implements SpeciesService {
       AiModelPreference preference,
       String gbifId,
       String powoId,
-      String iucnCategory) {
+      String iucnCategory,
+      String family,
+      String genus,
+      String imageUrl,
+      String imageAttribution,
+      String imageLicense) {
     Species species =
         speciesRepository.save(
             Species.builder()
@@ -246,6 +324,12 @@ public class SpeciesServiceImpl implements SpeciesService {
                 .gbifId(gbifId)
                 .powoId(powoId)
                 .iucnCategory(iucnCategory)
+                .family(family)
+                .genus(genus)
+                .imageUrl(imageUrl)
+                .imageAttribution(imageAttribution)
+                .imageLicense(imageLicense)
+                .identitySource(imageUrl != null ? "PLANTNET" : null)
                 .status(SpeciesStatus.ACTIVE)
                 .build());
     log.info("Species created: id={}, scientificName={}", species.getId(), scientificName);

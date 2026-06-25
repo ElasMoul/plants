@@ -117,10 +117,65 @@
   line-height: 1.5;
 }
 
+.pending-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .pending-block .pending-text {
   margin: 0;
   color: var(--color-text-secondary);
   font-style: italic;
+}
+
+.failed-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.failed-text {
+  margin: 0;
+  color: var(--color-warn, #f44336);
+  font-size: 0.9rem;
+}
+
+.retry-btn {
+  border-radius: var(--radius-chip) !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-spinner {
+  display: inline-block;
+}
+
+// ── Image attribution ─────────────────────────────────────────
+.image-attribution {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.attr-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+// ── Hero taxonomy ─────────────────────────────────────────────
+.species-taxonomy {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.75);
 }
 
 .care-cards-grid {

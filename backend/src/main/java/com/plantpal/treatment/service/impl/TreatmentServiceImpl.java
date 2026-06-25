@@ -130,6 +130,8 @@ public class TreatmentServiceImpl implements TreatmentService {
         builder.diseaseDescription(seed.description());
         builder.diseaseDescriptionModel("PLANTNET");
         builder.eppoCode(seed.eppoCode());
+        // PlantNet seeded the description — it's already READY (T9.B).
+        builder.descriptionStatus(com.plantpal.shared.entity.GenerationStatus.READY);
       } else {
         builder.needsReview(true);
         builder.plantnetSecondOpinion(seed.secondOpinionJson());
@@ -285,6 +287,20 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
   }
 
+  @Override
+  @Transactional
+  public TreatmentResponse regenerateDescription(Long id, Long userId) {
+    Treatment treatment = findOwnedTreatment(id, userId);
+    Plant plant =
+        plantRepository
+            .findById(treatment.getPlantId())
+            .orElseThrow(() -> new ResourceNotFoundException("Plant not found"));
+    treatment.setDescriptionStatus(com.plantpal.shared.entity.GenerationStatus.PENDING);
+    treatmentRepository.save(treatment);
+    fireDiseaseDescriptionGeneration(treatment.getId(), plant, treatment.getDiseaseName(), userId);
+    return toResponse(treatment);
+  }
+
   /** Shared by {@link #completeTreatment} and {@link #syncFromTreatmentPlanCompletion}. */
   private Treatment markCompleted(Treatment treatment, Optional<Plant> plant) {
     treatment.setStatus(TreatmentStatus.COMPLETED);
@@ -330,6 +346,7 @@ public class TreatmentServiceImpl implements TreatmentService {
    * Fire-and-forget, so a single bounded retry after an upstream 429's suggested wait is safe here
    * (unlike {@link #craftPlan}, no HTTP caller is blocked on this) — this is what actually fixes
    * "description never generated" rather than just logging the failure once and giving up.
+   * Sets descriptionStatus=FAILED when all attempts are exhausted (T9.B).
    */
   private void generateAndSaveDiseaseDescription(
       Long treatmentId, ReasoningModelPreference preference, String species, String diseaseName) {
@@ -351,17 +368,20 @@ public class TreatmentServiceImpl implements TreatmentService {
             treatmentId, generateDiseaseDescription(preference, species, diseaseName), preference);
       } catch (InterruptedException ie) {
         Thread.currentThread().interrupt();
+        markDescriptionFailed(treatmentId);
       } catch (PlantPalException retryFailure) {
         log.warn(
-            "Disease description retry also failed, leaving null: treatmentId={}, error={}",
+            "Disease description retry also failed: treatmentId={}, error={}",
             treatmentId,
             retryFailure.getMessage());
+        markDescriptionFailed(treatmentId);
       }
     } catch (PlantPalException e) {
       log.warn(
-          "Disease description generation failed, leaving null: treatmentId={}, error={}",
+          "Disease description generation failed: treatmentId={}, error={}",
           treatmentId,
           e.getMessage());
+      markDescriptionFailed(treatmentId);
     }
   }
 
@@ -373,8 +393,19 @@ public class TreatmentServiceImpl implements TreatmentService {
             t -> {
               t.setDiseaseDescription(description);
               t.setDiseaseDescriptionModel(preference.name());
+              t.setDescriptionStatus(com.plantpal.shared.entity.GenerationStatus.READY);
               treatmentRepository.save(t);
               log.info("Disease description saved: treatmentId={}", treatmentId);
+            });
+  }
+
+  private void markDescriptionFailed(Long treatmentId) {
+    treatmentRepository
+        .findById(treatmentId)
+        .ifPresent(
+            t -> {
+              t.setDescriptionStatus(com.plantpal.shared.entity.GenerationStatus.FAILED);
+              treatmentRepository.save(t);
             });
   }
 
@@ -465,6 +496,7 @@ public class TreatmentServiceImpl implements TreatmentService {
         .plantnetAgreement(treatment.getPlantnetAgreement())
         .eppoCode(treatment.getEppoCode())
         .needsReview(treatment.isNeedsReview())
+        .descriptionStatus(treatment.getDescriptionStatus())
         .build();
   }
 

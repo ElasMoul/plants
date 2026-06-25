@@ -45,4 +45,7 @@ public interface TreatmentService {
    * TreatmentPlans that aren't wrapped by a Treatment at all.
    */
   void syncFromTreatmentPlanCompletion(Long treatmentPlanId);
+
+  /** T9.B: re-fire async disease description generation; flips descriptionStatus back to PENDING. */
+  TreatmentResponse regenerateDescription(Long id, Long userId);
 }

@@ -1,14 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ReminderResponse } from '../../../features/reminder/models/reminder.model';
 import { ReminderService } from '../../../features/reminder/services/reminder.service';
-import { StepDetailDialogComponent } from '../step-detail-dialog/step-detail-dialog.component';
 
 // Shared step-list + diagram block used by both the generic TreatmentPlan page
 // (reminder/pages/treatment-plan-detail) and the disease-level Treatment page
 // (treatment/pages/treatment-detail) — extracted in T6.12 since both pages render
-// the same diagram/step-list/mark-done/step-detail-dialog UI for a TreatmentPlan's steps.
+// the same diagram/step-list/mark-done/step-detail UI for a TreatmentPlan's steps.
 @Component({
   selector: 'app-treatment-step-list',
   templateUrl: './treatment-step-list.component.html',
@@ -24,7 +23,7 @@ export class TreatmentStepListComponent {
   markingDoneId: number | null = null;
 
   constructor(
-    private readonly dialog: MatDialog,
+    private readonly router: Router,
     private readonly reminderService: ReminderService,
   ) {}
 
@@ -45,14 +44,8 @@ export class TreatmentStepListComponent {
   }
 
   openStepDetail(step: ReminderResponse): void {
-    this.dialog.open(StepDetailDialogComponent, {
-      width: '420px',
-      data: {
-        instruction: this.stepInstruction(step),
-        stepDetail: step.stepDetail ?? null,
-        stepDiagramContent: step.stepDiagramContent ?? null,
-      },
-    });
+    if (!step.treatmentPlanId) return;
+    this.router.navigate(['/plans', step.treatmentPlanId, 'steps', step.id]);
   }
 
   dueLabel(step: ReminderResponse): string {

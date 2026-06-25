@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,6 +48,15 @@ public class SpeciesController {
     Long userId = getCurrentUserId();
     Page<SpeciesSummaryDto> species = speciesService.getUserSpecies(userId, pageable);
     return ResponseEntity.ok(ApiResponse.success(species));
+  }
+
+  @Operation(summary = "Re-fire async prose description generation (T9.B)")
+  @PostMapping("/{id}/regenerate-description")
+  public ResponseEntity<ApiResponse<SpeciesResponse>> regenerateDescription(
+      @PathVariable Long id) {
+    Long userId = getCurrentUserId();
+    return ResponseEntity.accepted()
+        .body(ApiResponse.success(speciesService.regenerateDescription(id, userId)));
   }
 
   private Long getCurrentUserId() {
