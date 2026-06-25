@@ -78,7 +78,7 @@ jobs:
 
       - name: E2E tests
         working-directory: frontend
-        run: npm run e2e -- --ignore=e2e/journeys/visual.spec.ts
+        run: npm run e2e
         env:
           CI: true
 
