@@ -110,7 +110,8 @@ class SpeciesEnrichmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("should set descriptionStatus=FAILED and never propagate when the AI client throws")
+    @DisplayName(
+        "should set descriptionStatus=FAILED and never propagate when the AI client throws")
     void shouldFlipToNeedsReviewWhenAiClientThrows() {
       when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
       when(deepSeekClient.generateSpeciesEnrichment(any(), any()))

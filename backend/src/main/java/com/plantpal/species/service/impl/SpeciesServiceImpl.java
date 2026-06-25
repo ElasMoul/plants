@@ -78,8 +78,17 @@ public class SpeciesServiceImpl implements SpeciesService {
       String powoId,
       String iucnCategory) {
     return findOrCreate(
-        scientificName, commonName, preference, gbifId, powoId, iucnCategory,
-        null, null, null, null, null);
+        scientificName,
+        commonName,
+        preference,
+        gbifId,
+        powoId,
+        iucnCategory,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   @Override
@@ -101,14 +110,29 @@ public class SpeciesServiceImpl implements SpeciesService {
         .map(
             existing ->
                 patchFactualFields(
-                    existing, gbifId, powoId, iucnCategory, family, genus,
-                    imageUrl, imageAttribution, imageLicense))
+                    existing,
+                    gbifId,
+                    powoId,
+                    iucnCategory,
+                    family,
+                    genus,
+                    imageUrl,
+                    imageAttribution,
+                    imageLicense))
         .orElseGet(
             () ->
                 createSpecies(
-                    scientificName, commonName, preference,
-                    gbifId, powoId, iucnCategory,
-                    family, genus, imageUrl, imageAttribution, imageLicense));
+                    scientificName,
+                    commonName,
+                    preference,
+                    gbifId,
+                    powoId,
+                    iucnCategory,
+                    family,
+                    genus,
+                    imageUrl,
+                    imageAttribution,
+                    imageLicense));
   }
 
   @Override
@@ -245,8 +269,7 @@ public class SpeciesServiceImpl implements SpeciesService {
     // Re-fire enrichment; the preference used here is DEEPSEEK (default AI) since we don't have
     // the triggering user's preference in this path — pass the legacy DEEPSEEK enum value.
     Long id = species.getId();
-    speciesEnrichmentService.ifPresent(
-        service -> service.enrich(id, AiModelPreference.DEEPSEEK));
+    speciesEnrichmentService.ifPresent(service -> service.enrich(id, AiModelPreference.DEEPSEEK));
 
     return speciesMapper.toResponse(species).toBuilder()
         .careCards(parseCareCards(species.getCareCards()))

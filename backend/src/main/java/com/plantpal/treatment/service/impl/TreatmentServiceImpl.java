@@ -345,8 +345,8 @@ public class TreatmentServiceImpl implements TreatmentService {
   /**
    * Fire-and-forget, so a single bounded retry after an upstream 429's suggested wait is safe here
    * (unlike {@link #craftPlan}, no HTTP caller is blocked on this) — this is what actually fixes
-   * "description never generated" rather than just logging the failure once and giving up.
-   * Sets descriptionStatus=FAILED when all attempts are exhausted (T9.B).
+   * "description never generated" rather than just logging the failure once and giving up. Sets
+   * descriptionStatus=FAILED when all attempts are exhausted (T9.B).
    */
   private void generateAndSaveDiseaseDescription(
       Long treatmentId, ReasoningModelPreference preference, String species, String diseaseName) {

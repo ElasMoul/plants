@@ -19,7 +19,9 @@ public interface SpeciesService {
       String powoId,
       String iucnCategory);
 
-  /** T9.A: also accepts botanical identity fields harvested from the confirmed PlantNet candidate. */
+  /**
+   * T9.A: also accepts botanical identity fields harvested from the confirmed PlantNet candidate.
+   */
   Species findOrCreate(
       String scientificName,
       String commonName,

@@ -52,8 +52,7 @@ public class SpeciesController {
 
   @Operation(summary = "Re-fire async prose description generation (T9.B)")
   @PostMapping("/{id}/regenerate-description")
-  public ResponseEntity<ApiResponse<SpeciesResponse>> regenerateDescription(
-      @PathVariable Long id) {
+  public ResponseEntity<ApiResponse<SpeciesResponse>> regenerateDescription(@PathVariable Long id) {
     Long userId = getCurrentUserId();
     return ResponseEntity.accepted()
         .body(ApiResponse.success(speciesService.regenerateDescription(id, userId)));

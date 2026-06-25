@@ -46,7 +46,8 @@ public class SpeciesResponse {
 
   private String imageLicense;
 
-  // Status of async AI prose generation (T9.B). Frontend polls while PENDING, shows Retry on FAILED.
+  // Status of async AI prose generation (T9.B). Frontend polls while PENDING, shows Retry on
+  // FAILED.
   private GenerationStatus descriptionStatus;
 
   // Parsed from Species.careCards (raw JSON) in SpeciesServiceImpl -- never trust the AI

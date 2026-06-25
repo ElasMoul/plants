@@ -21,8 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Fire-and-forget — called from {@code SpeciesServiceImpl.findOrCreate()} with no caller waiting.
  * T9.B narrowed scope: generates ONLY description + careOverview prose. imageUrl is no longer
- * fetched here — identity + image come from the confirmed PlantNet candidate at resolve time (T9.A).
- * {@link #enrich} must never throw and must never block the identification flow that triggered it.
+ * fetched here — identity + image come from the confirmed PlantNet candidate at resolve time
+ * (T9.A). {@link #enrich} must never throw and must never block the identification flow that
+ * triggered it.
  */
 @Service
 public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
