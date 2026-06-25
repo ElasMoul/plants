@@ -1,4 +1,5 @@
-import { APP_INITIALIZER, ErrorHandler, NgModule, isDevMode, noop } from '@angular/core';
+import { APP_INITIALIZER, ErrorHandler, NgModule, isDevMode } from '@angular/core';
+import { noop } from 'rxjs';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
