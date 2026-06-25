@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import { healthBadgeClass } from './health-badge.util';
 
 describe('healthBadgeClass()', () => {

@@ -3,21 +3,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EMPTY } from 'rxjs';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AiErrorService } from './ai-error.service';
 
 describe('AiErrorService', () => {
   let service: AiErrorService;
-  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
+  let snackBarOpenSpy: jest.Mock;
 
   beforeEach(() => {
-    snackBarOpenSpy = vi.fn().mockReturnValue({ onAction: () => EMPTY });
+    snackBarOpenSpy = jest.fn().mockReturnValue({ onAction: () => EMPTY });
 
     TestBed.configureTestingModule({
       providers: [
         AiErrorService,
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
-        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: Router, useValue: { navigate: jest.fn() } },
       ],
     });
     service = TestBed.inject(AiErrorService);

@@ -2,7 +2,6 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserService } from '../../../core/services/user.service';
 import { ModelSelectorComponent } from './model-selector.component';
 
@@ -27,19 +26,19 @@ describe('ModelSelectorComponent logic', () => {
         {
           provide: UserService,
           useValue: {
-            getPreferences: vi.fn().mockReturnValue(of(mockPreferences)),
-            updateModelPreferences: vi.fn().mockReturnValue(of({})),
+            getPreferences: jest.fn().mockReturnValue(of(mockPreferences)),
+            updateModelPreferences: jest.fn().mockReturnValue(of({})),
           },
         },
         {
           provide: MatSnackBar,
-          useValue: { open: vi.fn().mockReturnValue({ onAction: () => ({ subscribe: vi.fn() }) }) },
+          useValue: { open: jest.fn().mockReturnValue({ onAction: () => ({ subscribe: jest.fn() }) }) },
         },
       ],
     });
     fixture = TestBed.createComponent(ModelSelectorComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges(); // triggers ngOnInit → populates visionAvailability from mock
+    fixture.detectChanges();
   });
 
   it('returns true for an available vision model', () => {
