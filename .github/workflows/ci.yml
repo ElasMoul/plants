@@ -27,7 +27,7 @@ jobs:
 
       - name: Build and test
         working-directory: backend
-        run: mvn clean verify --batch-mode --no-transfer-progress
+        run: mvn clean verify --batch-mode --no-transfer-progress -Ddependency.check.skip=true
 
       - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master

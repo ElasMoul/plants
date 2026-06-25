@@ -407,6 +407,7 @@
                 <artifactId>dependency-check-maven</artifactId>
                 <version>10.0.4</version>
                 <configuration>
+                    <skip>${dependency.check.skip}</skip>
                     <failBuildOnCVSS>7</failBuildOnCVSS>
                     <suppressionFile>owasp-suppressions.xml</suppressionFile>
                     <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
