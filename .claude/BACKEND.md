@@ -446,14 +446,13 @@ testdata/{PlantTestDataBuilder, UserTestDataBuilder}.java
 (Identify, CarePlanParsing, AnnotationRegions, Kafka, CureAdvice, AddCareCard,
 species-matching). Constructed manually in `@BeforeEach` (15+ param constructor).
 
-**Running ITs:** no failsafe plugin is wired in — Surefire's default include
-pattern (`**/*Test.java`) never picks up `*IT.java` files, so `mvn verify` only
-ever runs the unit suite. Run an IT explicitly: `mvn test -Dtest=SomeControllerIT`.
-Each one passes cleanly alone but **running several `*IT.java` classes
-back-to-back in the same `-Dtest=A,B,C` invocation has caused Hikari/Lettuce
-connection-pool exhaustion** on a resource-constrained Windows dev machine
-(each spins up a full Spring context + new Testcontainers connections) — run
-them one at a time, don't batch.
+**Running ITs:** `mvn clean verify` now runs all `*IT.java` tests via
+`maven-failsafe-plugin` (3.2.5) with `forkCount=1 / reuseForks=true` so all ITs
+share one JVM — this avoids the known Hikari/Lettuce connection-pool exhaustion
+that occurs when multiple Testcontainers contexts start back-to-back on a
+resource-constrained Windows dev machine (T9.5). Unit tests (Surefire,
+`**/*Test.java`) and integration tests (Failsafe, `**/*IT.java`) both contribute
+to JaCoCo coverage. To run a single IT explicitly: `mvn test -Dtest=SomeControllerIT`.
 
 ## Phase 8.5 — Pending Contract Changes
 The following backend changes are incoming (T8.A–T8.F). Do not build against the
@@ -498,11 +497,10 @@ never retried — they propagate as `RateLimitException` per T7.1).
   identification pipeline's vision or annotation calls.
 
 ## Known Issues / Open Items
-- JaCoCo gate is at 55% (the unit suite's real achieved line coverage, with a
-  small margin) — was a hardcoded, never-achieved 10%/80% before the
-  pre-Phase-5 cleanup pass. Still doesn't include IT coverage since ITs aren't
-  wired into `verify` (see Test Inventory above) — raise further only once
-  that's solved.
+- JaCoCo gate raised to 80% (T9.5) with exclusions covering DTOs, config,
+  the main class, MapStruct-generated mappers, enum-only types, and event
+  data-carriers. Both unit tests (Surefire) and integration tests (Failsafe,
+  `*IT.java`) now contribute to coverage under `mvn clean verify`.
 - **GITHUB_TOKEN must be rotated before prod** — was shared in chat sessions during dev
 - PlantNetClient is live again (not dead code) — restored to `VisionModelPreference` and the
   model-selector picker 2026-06-22 (see STATE.md/ARCHITECT.md). `PlantNetAnnotationClient`
