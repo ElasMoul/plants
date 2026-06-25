@@ -137,6 +137,13 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- ── Observability – Sentry ────────────────────────────────────── -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>7.14.0</version>
+        </dependency>
+
         <!-- ── Test Dependencies ──────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

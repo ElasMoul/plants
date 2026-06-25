@@ -57,6 +57,13 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
+# ──── Sentry ──────────────────────────────────────────────────────────────────
+# Empty DSN disables Sentry. Set SENTRY_DSN in production environment.
+sentry:
+  dsn: ${SENTRY_DSN:}
+  traces-sample-rate: 0.1
+  environment: ${SPRING_PROFILES_ACTIVE:dev}
+
 # ──── SpringDoc / Swagger ─────────────────────────────────────────────────────
 springdoc:
   swagger-ui:
