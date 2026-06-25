@@ -10,6 +10,7 @@ import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
+import com.plantpal.shared.ai.PromptSanitizer;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.treatment.entity.Treatment;
@@ -106,7 +107,7 @@ public class ChatServiceImpl implements ChatService {
     return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)
         + historyBlock
         + "\n\nUser: "
-        + request.getMessage();
+        + PromptSanitizer.delimit(request.getMessage());
   }
 
   private String buildHistoryBlock(List<ChatMessageDto> history) {

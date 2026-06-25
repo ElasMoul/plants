@@ -9,6 +9,7 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import * as Sentry from '@sentry/angular';
 import { AuthService } from '../services/auth.service';
 
 @Injectable()
@@ -20,12 +21,17 @@ export class JwtInterceptor implements HttpInterceptor {
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
+    const correlationId = crypto.randomUUID();
 
+    // Tag the active Sentry scope so frontend errors link to the backend trace
+    Sentry.setTag('correlationId', correlationId);
+
+    const headers: Record<string, string> = { 'X-Correlation-ID': correlationId };
     if (token) {
-      request = request.clone({
-        setHeaders: { Authorization: `Bearer ${token}` },
-      });
+      headers['Authorization'] = `Bearer ${token}`;
     }
+
+    request = request.clone({ setHeaders: headers });
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {

@@ -29,6 +29,15 @@ jobs:
         working-directory: backend
         run: mvn clean verify --batch-mode --no-transfer-progress
 
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: backend
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          format: table
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Frontend — Node 18, Angular build + lint
   # ─────────────────────────────────────────────────────────────────────────────
