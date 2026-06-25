@@ -24,7 +24,7 @@
   </div>
 
   <!-- Messages -->
-  <div class="chat-messages">
+  <div class="chat-messages" data-testid="chat-messages">
     <div *ngFor="let message of messages" class="message-row" [class.row-user]="message.sender === 'user'">
 
       <div class="ai-avatar" *ngIf="message.sender === 'ai'">
@@ -68,9 +68,10 @@
       [(ngModel)]="draft"
       [disabled]="sending"
       (keydown.enter)="sendMessage()"
+      data-testid="chat-input"
     />
 
-    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" aria-label="Send message">
+    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" aria-label="Send message" data-testid="chat-send-btn">
       <mat-icon>arrow_upward</mat-icon>
     </button>
   </div>

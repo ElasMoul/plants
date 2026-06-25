@@ -71,3 +71,13 @@ jobs:
       - name: Unit tests
         working-directory: frontend
         run: npm test
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: E2E tests
+        working-directory: frontend
+        run: npm run e2e
+        env:
+          CI: true
