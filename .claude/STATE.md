@@ -1,708 +1,99 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-25 (Phase 9 complete — T9.1–T9.8 committed on PHASE9 branch;
-> CI fixes applied; awaiting CI green + merge to dev. Vault synced.)
+> Last updated: 2026-06-27 (Phase 10 designed; files cleaned up + archived)
+> Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
-## Phase 9 — Quality, Testing & Hardening (CODE COMPLETE 2026-06-25, pending CI merge)
+---
 
-All T9.1–T9.8 tasks shipped on `PHASE9` branch. Multiple CI bug fixes required — see below.
+## Current State
 
-**Delivered:**
-- T9.1 (PP-057): jest-preset-angular + 16 unit tests; `npm test` CI gate added (note: Angular 16 → jest-preset-angular, not Vitest)
-- T9.2 (PP-058): Playwright E2E skeleton — chromium + webkit, Page Objects, AI calls stubbed via `page.route`, `testIgnore: ['**/visual.spec.ts']`; **E2E disabled in CI** (no running server)
-- T9.3 (PP-059): `toHaveScreenshot()` visual regression, axe a11y, Lighthouse CI config; **Lighthouse CI disabled** (dist path was `dist/frontend`, must be `dist/plantpal`)
-- T9.4 (PP-060): `scripts/ai-visual-review.mjs` — advisory AI PR comment, `continue-on-error: true` throughout
-- T9.5 (PP-061): maven-failsafe-plugin wires `*IT.java` into `mvn verify`; `AbstractIntegrationTest` rewritten to Singleton Container Pattern; `application-test.yml` cleaned (removed `jdbc:tc:` URL, added Kafka `auto-startup: false`)
-- T9.6 (PP-062): Sentry Angular + Spring Boot; `X-Correlation-ID` propagates frontend→backend→Sentry
-- T9.7 (PP-063): gitleaks + Trivy + OWASP Dependency-Check + Dependabot in CI
-- T9.8 (PP-064): `IdentificationEvalIT` nightly eval suite + `ActionPlanValidator` + prompt-injection guardrails
+| Branch | Status |
+|---|---|
+| `dev` | Clean — all phases 0–8.5 merged |
+| `PHASE9` | T9.1–T9.8 code complete — **pending CI green + merge to dev** |
+| `PHASE9.5` | T9.A–T9.F code complete — **pending merge after PHASE9** |
 
-**CI bugs fixed during Phase 9 (not in original task prompts):**
-- `noop` import: `@angular/core` → `rxjs` (Angular 16 doesn't export `noop`)
-- Jest `testPathIgnorePatterns: ['/e2e/']` — Jest was picking up Playwright specs
-- Mockito `UnnecessaryStubbingException` in `IdentificationServiceImplTest:938` — unused stub removed
-- Playwright `--ignore` CLI flag doesn't exist — use `testIgnore` in config
-- `spring.kafka.listener.auto-startup: false` — CI has no Kafka broker
-- Singleton Container Pattern in `AbstractIntegrationTest` — `@Testcontainers`+`@Container` restarts containers between IT classes, breaking Spring's context cache (Lettuce/HikariPool connecting to stale ports)
-- Removed `jdbc:tc:` datasource URL from `application-test.yml` — was spinning up a redundant second PostgreSQL container alongside `@DynamicPropertySource`
-- Added `.identificationStatus(COMPLETED).annotationStatus(SKIPPED).candidateStatus(SKIPPED)` to IT seed builders in `IdentificationControllerIT` + `TreatmentControllerIT` — T8.A added 3 NOT NULL columns not reflected in test fixtures
+**Migration sequence:** 001–029 applied. Next free: **030** (reserved T10.A `user_context`).
+**Next free PP branch number:** PP-071 (PP-057–070 used by Phases 9 and 9.5).
 
-**Key commits on PHASE9:**
-- `4c77204` — fix(test): AbstractIntegrationTest Singleton Container Pattern
-- `2ff6736` — fix(test): set identificationStatus in IT seedIdentification builders
-- `4f1bbb3` — fix(test): add annotationStatus + candidateStatus to IT seed builders
+---
 
-**Deferred:**
-- E2E in CI: disabled pending `ng serve + wait-on` setup
-- Lighthouse CI: disabled — fix dist path to `dist/plantpal` when re-enabling
-
-## Phase 8 + Phase 8.5 — COMPLETE (2026-06-25)
-All tasks shipped and merged to `dev`:
-
-**Phase 8 — PlantNet First-Class Provider (T8.1–T8.7):**
-- T8.1 (PP-043): PlantNet v2 client — ranked candidates, organs, quota (PR #60)
-- T8.2+T8.3 (PP-044+045): ranked species-match + candidate chooser UI with attribution (PRs #61, #62)
-- T8.4 (PP-046): organ tagging + geolocation-ranked flora/lang prefs (PR #63)
-- T8.5 (PP-047): PlantNet disease/pest cross-check as second opinion in Flow 3 (PR #65)
-- T8.6: GBIF/POWO/IUCN factual enrichment on Species (commit 51e7b0e)
-- T8.7: PlantNet quota telemetry in /preferences (commit 822d06d)
-
-**Phase 8.5 — Identification Pipeline Resilience (T8.A–T8.G):**
-- T8.A (PP-050): per-stage status + model tracking on identifications, migration 027 (PR #67)
-- T8.B (PP-051): annotation + PlantNet stages made non-fatal; only core stage can fail the record (PR #68)
-- T8.C: PlantNetResponse.predictedOrgans retyped to List<PlantNetPredictedOrgan>; deserialization unit test (commit fe2e914)
-- T8.D (PP-053): GitHub Models token-budget Bucket4j bucket; finite aiTaskExecutor queue; jittered GOAWAY retry; annotation-routing documented in ARCHITECT.md (PR #69)
-- T8.E (PP-054): PlantNet candidate enrichment deferred from critical path to async fire-and-forget (PR #71)
-- T8.F (PP-055): POST /identifications/{id}/retry endpoint for failed/partial records (PR #72)
-- T8.G (PP-056): stage-aware partial-result UI — "Overlay unavailable" chip, Retry button, failureReason tooltip (PR #70)
-
-**"obz" (PR #73):** Documentation-only — added T8.D annotation-routing audit and stage-status model sections to ARCHITECT.md + CLAUDE.md.
-
-**Migration sequence is now at 027** (027 was migration 027 in T8.A). Phase 9 migrations start at 028.
-**Next free PP branch number: PP-057** (Phase 9 starts here).
-
-## Bugfix PP-044 — OllamaClient remote timeout + keep_alive (2026-06-23, `bugfix/PP-044-ollama-remote-timeout`)
-Connected the app to a dedicated LAN Ollama machine (Ryzen 5 5600G / GTX 1660 6GB / 16GB RAM)
-running gemma3:12b-it-qat. Network reachable but inference takes 60–120s vision / 30–60s text
-due to ~2–3GB CPU offload → `SocketTimeoutException` at `OllamaClient.identifyPlant`.
-
-**Changes (`bugfix/PP-044-ollama-remote-timeout`, 26096e9):**
-- `OllamaClient` constructor: replaced default `RestClient` with one backed by
-  `SimpleClientHttpRequestFactory`; read timeout now 5 min (`ollama.read-timeout-minutes`),
-  connect timeout 10s (`ollama.connect-timeout-seconds`). New `keepAlive` field.
-- Every `/api/generate` and `/api/chat` request body now includes `"keep_alive": "${ollama.keep-alive}"`
-  (default `"10m"`) so the model stays loaded between calls (avoids paying the full model-load
-  penalty on every cold call).
-- `stream: false` already present on all non-streaming calls — confirmed, no change needed.
-- `application-dev.yml`: three new `ollama.*` keys (all env-var-backed with sensible defaults).
-- `OllamaClientTest`: constructor call updated (3 args → 6); added `keep_alive` assertion.
-- `ARCHITECT.md`: OllamaClient section + model lineup table updated.
-- 198/198 unit tests pass.
-
-**Env vars required on Ollama host:** `OLLAMA_HOST=0.0.0.0:11434`, `OLLAMA_KEEP_ALIVE=10m`
-**Fallback model:** `OLLAMA_MODEL=gemma3:4b` if 12B is too slow (fits fully in VRAM).
-**Manual E2E test pending:** select OLLAMA_GEMMA3 → submit photo → confirm COMPLETED within 3 min.
-
-## T8.0 — Both: expand vision/reasoning model menus to 5 each + add Claude provider (2026-06-23, `feature/PP-042-model-lineup`)
-New `AnthropicClient` (`identification/client/`) — Apache HttpClient5-backed
-`RestClient` against the Anthropic Messages API, serving BOTH
-`VisionModelPreference.ANTHROPIC_CLAUDE` (identification + annotation) and
-`ReasoningModelPreference.ANTHROPIC_CLAUDE` (cure advice, disease description) —
-Claude is multimodal so one client covers both menus, unlike the GitHub-Models
-split. `anthropic.api.key` has no required default (`@Value("${anthropic.api.key:}")`)
-so the app boots without a Claude key configured; `AnthropicClient.isAvailable()`
-gates the option instead.
-
-`VisionModelPreference` grew GITHUB_GPT4O/GITHUB_GPT41/OLLAMA_GEMMA3/PLANTNET/
-ANTHROPIC_CLAUDE (5 live values); `ReasoningModelPreference` grew DEEPSEEK_R1/
-GITHUB_O4_MINI/GITHUB_GPT41_MINI/OLLAMA_GEMMA3/ANTHROPIC_CLAUDE. Both kept
-`OLLAMA_LLAVA` as a `@Deprecated` parseable alias — old stored preference rows
-still `valueOf()` fine, and every routing switch treats `OLLAMA_LLAVA` and
-`OLLAMA_GEMMA3` identically (`case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ...`). No DB
-migration needed — additive enum values on an existing VARCHAR(30) column (the
-optional migration 023 sketched in TASK_PLAN.md, changing the reasoning
-*default* + backfilling stored rows, was deliberately skipped as out of scope/
-behavior-changing).
-
-`GitHubModelsClient.identifyPlant` split into a private model-parameterized
-core + two public entry points (`identifyPlant` for gpt-4o,
-`identifyPlantWithGpt41` for gpt-4.1). `DeepSeekClient` — despite the name, now
-serves THREE Azure text models (DeepSeek-R1, o4-mini, gpt-4.1-mini) — gained a
-shared `chatCompletion()` helper plus `generateCureAdviceViaO4Mini`/
-`ViaGpt41Mini` and `generateDiseaseDescriptionViaO4Mini`/`ViaGpt41Mini`
-overloads; `chatCompletion()` detects the o4-mini model string and swaps
-`temperature` for `max_completion_tokens` (o-series models reject
-`temperature`). `IdentificationServiceImpl.runIdentification()`/
-`generateCureAdviceForPreference()` and `TreatmentServiceImpl`'s private
-`generateCureAdvice`/`generateDiseaseDescription` helpers became exhaustive
-switches over all 5 enum values instead of the old OLLAMA_LLAVA-vs-everything-
-else binary check. `OllamaClient`'s default model moved `llava-phi3` →
-`gemma3:4b` (`/api/generate`'s top-level `images` array works the same for any
-multimodal-capable Ollama model, so no request-shape changes needed).
-
-`UserPreferencesResponse` gained `visionModelAvailability`/
-`reasoningModelAvailability` (`Map<String, Boolean>`, keyed by enum name) built
-in `UserServiceImpl` — every option is hardcoded available=true except
-ANTHROPIC_CLAUDE, which reflects `anthropicClient.isAvailable()` (every other
-provider's required config is enforced at app startup, so they're always up
-once the app is running).
-
-Frontend: `ModelSelectorComponent`'s option lists relabeled by intent (Best/
-Balanced/Frontier/Specialist/Offline) with the real model name as a subtitle
-(`opt.intent`) instead of just the model name as the label — the picker is now
-the primary teaching surface for non-experts. `mat-option`s for an unavailable
-provider (`visionModelAvailability`/`reasoningModelAvailability` keyed lookup,
-missing key defaults to available so cached pre-T8.0 sessionStorage entries
-don't break) are `[disabled]` with a "Not configured on this server" tooltip.
-`user.model.ts` union types expanded to match; `OLLAMA_LLAVA` kept in the TS
-union too (type-safety for old cached/stored values) but dropped from the
-picker's option arrays.
-
-Updated 3 unit test files for the new constructor params:
-`IdentificationServiceImplTest`/`TreatmentServiceTest` (`new ...Impl(...)`
-direct construction, not `@InjectMocks`, so the new `AnthropicClient` mock had
-to be threaded through manually) and `UserServiceTest` (`@InjectMocks` — added
-the `@Mock` field so Mockito's constructor-injection can resolve it). Full
-backend unit suite green (`mvn test -Dexclude="**/*IT.java"`); frontend
-`ng build --configuration=development` clean.
-
-Config: new `github.models.gpt41-model`/`o4-mini-model`/`gpt41-mini-model` +
-a full `anthropic.*` block (`base-url`, `api.key`, `models.default`/`cheap`/
-`max`) added to `application-dev.yml` and `.env.example`
-(`application-test.yml` already had an `anthropic.api.key` placeholder from a
-prior session — its `anthropic.api.key` path, not `anthropic.api-key`, is why
-the new config nests `api.key` rather than using a flat `api-key` property).
-
-**Out of scope (left for T8.1+):** PlantNet v2 upgrade itself, ranked
-candidates, organ tagging, disease cross-check, quota telemetry — see Phase 8
-section below. Claude's `cheap`(haiku)/`max`(opus) model tiers are configured
-but not yet wired to any routing choice — `VisionModelPreference`/
-`ReasoningModelPreference` only expose one Claude option today.
-
-## Bugfixes — T7.1 follow-up: rate limiting, model preference wiring, PlantNet, scan CTA, species photos (2026-06-22)
-Five user-reported bugs against the just-shipped T7.1/T7.2 Model Control work,
-fixed in one session. **Uncommitted** — currently sitting on
-`feature/PP-041-batch-scan` (the batch-scan branch from the prior session);
-these are unrelated to batch scanning and need their own branch before
-committing, not yet done as of this writing. All backend unit tests (71
-classes/nested groups, 0 failures) and `ng build`/`ng lint`/`tsc --noEmit`
-pass clean.
-
-**1. Craft-plan failing + disease description never generating.** Root cause
-was the SAME upstream constraint hitting two different code paths:
-GitHub Models/Azure enforces "1 DeepSeek-R1 call per 60s per user per model"
-— `Treatment.createTreatment()` fires disease-description generation
-immediately, so clicking "Craft Treatment Plan" within ~60s of creating the
-treatment collided with that cap. `DeepSeekClient` laundered every upstream
-429 into a generic 503 with zero retry, so the collision was unrecoverable
-and silent (the async disease-description path just logged a warning and
-left the field null forever — no retry, nothing re-triggers it later).
-  - Fix: `DeepSeekClient` now classifies a 429 specifically — parses
-    `Retry-After` header or the "wait N seconds" text in the error body
-    (`extractRetryAfterSeconds()`), falls back to 60s — and throws the
-    existing `RateLimitException` (carries `retryAfterSeconds`) instead of a
-    generic 503. This reuses T7.2's already-built frontend rate-limit UX
-    (actionable snackbar with accurate wait time) for free; new shared
-    `toServiceException()` helper collapses the 5 near-identical catch blocks
-    that used to exist across `generateCureAdvice`/`generateDiseaseDescription`/
-    `generateSpeciesEnrichment`/`generateCarePlan`/`detectDuplicateCareCards`.
-  - `craftPlan()` stays fail-fast (no retry) since its controller blocks the
-    HTTP thread on `.get()` — sleeping there would hang the request for up to
-    a minute. `generateAndSaveDiseaseDescription()` (genuinely fire-and-forget,
-    no caller waiting) now does ONE bounded retry after the suggested wait
-    (capped at 65s) on `RateLimitException` specifically — this is what
-    actually fixes "description never generated".
-- **2 & 3. Model preference save 400'ing + vision/reasoning choice doing
-  nothing.** `UserPreferencesRequest.aiModelPreference` still had `@NotNull`
-  from before the T7.1 vision/reasoning split, but the current frontend
-  (`UserService.updateModelPreferences()`) only ever sends
-  `visionModelPreference`/`reasoningModelPreference` — every save 400'd
-  (`ne doit pas être nul`). Separately, T7.1 had left both new preference
-  fields storage-only: `IdentificationServiceImpl.runIdentification()` still
-  branched exclusively on the legacy `AiModelPreference`, and nothing read
-  `reasoningModelPreference` anywhere — switching the picker visibly saved
-  but never changed which model actually ran.
-  - Fix: dropped `@NotNull` from the deprecated field +
-    `UserServiceImpl.updatePreferences()` now only overwrites it when present
-    (matches the pattern already used for the two new fields). `Identification
-    ServiceImpl` now has separate `loadVisionPreference()`/
-    `loadReasoningPreference()` reading the real columns;
-    `runIdentification()`'s switch is retyped from `AiModelPreference` to
-    `VisionModelPreference` (with a defensive `parseVisionPreference()`
-    fallback to GITHUB_GPT4O for stale/legacy event payloads, e.g. the old
-    "DEEPSEEK" value, which was never a real vision model anyway).
-    `getCureAdvice()`, `TreatmentServiceImpl.craftPlan()`, and
-    `fireDiseaseDescriptionGeneration()` all now branch on
-    `ReasoningModelPreference` between `deepSeekClient`/`ollamaClient` — added
-    `OllamaClient.generateCureAdvice()`/`generateDiseaseDescription()` (same
-    reuse-DeepSeekClient's-prompt-constant pattern as the pre-existing
-    `generateSpeciesEnrichment()`) to give Ollama parity. Species enrichment's
-    `AiModelPreference` parameter was deliberately left alone (no signature
-    change, avoids rippling through tests) — `resolveSpecies()` now just maps
-    the real `ReasoningModelPreference` onto it via a tiny
-    `toLegacyReasoningPreference()` helper instead of reading the stale field.
-    `TreatmentServiceImpl` gained `UserRepository`+`OllamaClient`
-    constructor dependencies (test file updated to match).
-- **4. PlantNet missing from the vision picker.** Was never actually deleted
-  backend-side (`PlantNetClient` is still a live `@Component`, still wired
-  into `runIdentification()`'s `PLANTNET` case) — T7.1 just narrowed the new
-  `VisionModelPreference` enum/picker to GITHUB_GPT4O/OLLAMA_LLAVA without
-  carrying it forward. Re-added `PLANTNET` to the backend enum, the frontend
-  `VisionModelPreference` type, and `model-selector.component.ts`'s
-  `VISION_OPTIONS` (tooltip notes it's species-ID-only — PlantNet's result
-  always sets `healthStatus: UNKNOWN` and has no care plan).
-- **5. "Start treatment plan" removed from the scan result, kept on Plant/
-  Species pages.** The button lives in the *shared* `care-card.component`
-  (used by the scan-result preview, Plant Detail's Care section, AND Species
-  Detail) — a blanket removal there would have silently removed it from the
-  other two pages too, which the user didn't ask for and which are the
-  Plant page's only "start a treatment" entry points outside its separate
-  Scans-tab CTA. Added `CarePlanComponent`/`CareCardComponent` `@Input()
-  showTreatmentCta = true` (default preserves existing behavior everywhere),
-  threaded through to the button's `*ngIf` and to skip the now-pointless
-  `checkActiveTreatment()` HTTP call when hidden; `preview-card.component.html`
-  (the scan-result page) is the only caller passing `[showTreatmentCta]="false"`.
-  "Add to care plan" (`disease-detail-panel.component`) is a separate
-  component, untouched, still on the scan-result page.
-- **Follow-up correction:** the scan-result "Start treatment plan" removal (item 5) was reverted
-  same-session — `preview-card.component.html` no longer passes `[showTreatmentCta]="false"`, so
-  the button is back on the scan-result care-card too. The `showTreatmentCta` `@Input` plumbing
-  itself was left in place (harmless default-`true`, no current caller sets it `false`) in case a
-  future ask is scoped more precisely.
-- **Follow-up bug found via live testing: cure-advice "powered by" badge always said DeepSeek,
-  even when Ollama actually generated it.** `IdentificationServiceImpl.addCareCard()` hardcoded
-  `actionPlanModel(ReasoningModelPreference.DEEPSEEK_R1.name())` unconditionally — no way to know
-  which model the earlier `/cure-advice` call actually used. Fixed by threading it through end to
-  end: `CureAdviceResponse.reasoningModelUsed` (set from the real `ReasoningModelPreference` in
-  `getCureAdvice()`/`parseCureAdvice()`); `AddCareCardRequest.reasoningModelUsed` (nullable, falls
-  back to DEEPSEEK_R1 for older/direct API callers); `IdentificationService.addCareCard()` gained a
-  5th param; `DiseaseDetailPanelComponent.addToCarePlan()` passes its already-cached
-  `reasoningModelUsed` (the frontend's `getCureAdvice()` return type had `reasoningModelUsed?:
-  string | null` typed the whole time, just never populated backend-side until now). **Session
-  note:** this was built, reverted on user feedback ("you made it worse"), then explicitly
-  re-requested ("keep model used to generate description") and re-applied unchanged in the same
-  session — the revert wasn't about this fix being wrong, just a moment of back-and-forth: keep
-  this fix as a real, intentional fix in any future session, not as one in question.
-- **Root cause of the "revert" confusion, found via live testing: cure advice showing raw JSON
-  instead of clean text, only for Ollama.** Ollama/llava-phi3 doesn't reliably emit the single
-  combined JSON object `CURE_ADVICE_SYSTEM_PROMPT` asks for — observed emitting TWO sibling
-  top-level objects back to back instead: `{"advice":"..."}{"actionPlan":{...}}}`. GitHub
-  Models/DeepSeek-R1 always emits the correct single-object shape, so this was never hit before
-  the reasoning-preference wiring above made Ollama actually reachable for cure advice — it's a
-  latent bug this session's other fix exposed, not something the model-badge fix itself caused
-  (the user's "abort" request named the wrong commit; the actual regression was the JSON shape).
-  `objectMapper.readValue(raw, CureAdviceJson.class)` throws on that shape, and the existing
-  fallback dumped the still-JSON-ish raw text as "advice" — ugly and exactly what was reported.
-  Fix: new `com.plantpal.identification.util.LenientJsonParser.mergeConcatenatedObjects()` —
-  reads a SEQUENCE of root-level JSON values from the raw text via
-  `objectMapper.readValues(parser, JsonNode.class)` (a real Jackson feature for exactly this:
-  multiple concatenated top-level values) and merges their fields into one node. Wired into both
-  `IdentificationServiceImpl.parseCureAdvice()` (cure-advice display) AND
-  `TreatmentServiceImpl.parseActionPlan()` (craft-plan) — same prompt, same vulnerability, same
-  fix, both call sites can now route to Ollama. Only engages on the existing
-  `JsonProcessingException` catch path (zero behavior change for the normal single-object case);
-  if the merge itself fails to produce a parseable result, both call sites fall back to their
-  original behavior unchanged (raw text / null actionPlan).
-- **Bonus: species list images.** `SpeciesSummaryDto.imageUrl` only ever came
-  from AI enrichment (`Species.imageUrl`, frequently null). `SpeciesServiceImpl
-  .toSummary()` now falls back to the first non-null `photoUrl` among that
-  species' plants — zero new queries, the plant list was already batch-fetched
-  for health/count. Scoped to `/species/mine` only (already viewer-owned, no
-  cross-user query/privacy question); `/species/{id}` (the public single-
-  species endpoint) still shows only the species' own `imageUrl` if a future
-  session wants the same treatment there.
-
-## Current Phase
-**Phases 0–4, 6, 7, 8, 8.5, and 9 are all shipped.** Phase 9 code is complete on
-`PHASE9` branch — pending CI green + merge to `dev`. Phase 9.5 is also complete on
-`PHASE9.5` branch (T9.A–T9.F, committed 2026-06-25). Merge order: PHASE9 → dev first,
-then PHASE9.5 → dev. Next: Phase 10 (Launch).
+## Phase Status
 
 | Phase | Status |
 |---|---|
 | 0 — Setup | ✅ Complete |
 | 1 — Auth + Plant Management | ✅ Complete |
 | 2 — AI Plant Identification | ✅ Complete |
-| 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual device testing) |
-| 4 — AI Chat | ✅ Complete, incl. streaming + conversation history |
-| 5 — Launch prep | 🔲 Renamed Phase 10 (runs last) |
-| 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
-| 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
-| 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
-| 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
-| 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch), pending CI + merge |
-| 9.5 — Species Card Harvest + Async-Description Reliability | ✅ Complete (T9.A–T9.F on PHASE9.5 branch) |
-| 10 — Launch | 🔲 Not started (was Phase 5, PP-065+) |
-| — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
+| 3 — Reminders + Care Plans | ✅ Complete (T3.3 manual device testing → Phase DEPLOY beta) |
+| 4 — AI Chat | ✅ Complete (streaming + history) |
+| 5 — Launch prep | 🔲 Renamed Phase DEPLOY, runs last |
+| 6 — Species & Treatment Restructure | ✅ Complete (T6.1–T6.14) |
+| 7 — Model Control, Batch, Multi-Treatment | ✅ Complete (T7.1–T7.4) |
+| 8 — PlantNet First-Class Provider | ✅ Complete (T8.0–T8.7) |
+| 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
+| 9 — Quality, Testing & Hardening | 🟡 Code complete on PHASE9 branch — pending CI + merge |
+| 9.5 — Species Card Harvest + Async Reliability | 🟡 Code complete on PHASE9.5 branch — pending merge |
+| 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
+| DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
-## Bugfixes — batch scan: lost items, NullInjectorError, sequential trickle (2026-06-22, `feature/PP-041-batch-scan`)
-Three user-reported issues against T7.3's just-shipped batch scan, found via
-live testing, all fixed in the same session:
+---
 
-**1. Lost items on dialog close/navigation.** Clicking Cancel mid-batch (or
-navigating away) only completed the one item already in flight — every other
-queued item was silently abandoned. Root cause: `runBatchQueue()` lived
-directly in `IdentificationUploadDialogComponent`, piped through
-`takeUntil(this.destroy$)` — closing the dialog destroyed the component,
-unsubscribing the chain and killing both the in-flight HTTP call and every
-not-yet-started item. Fix: moved the entire queue into a new
-`BatchScanService` (`features/identification/services/batch-scan.service.ts`)
-with no `takeUntil` tied to the dialog at all. `BatchItem` uses a stable
-numeric `id` (not object identity) for its immutable `BehaviorSubject`
-patches, since identity-based matching breaks the moment an item is replaced
-by a new object reference on its first patch.
+## What Was Built (brief per phase)
 
-**2. `NullInjectorError` opening the dialog from Garden/Home/Plant pages.**
-`BatchScanService` was initially only listed in `identification.module.ts`'s
-`providers:`. Since `IdentificationUploadDialogComponent` is opened from 3
-*other* lazy modules too (`plant`/`species`/`dashboard`) without a
-`viewContainerRef`, and a module-scoped provider only resolves within the
-injector subtree of modules that explicitly list it, any entry point routed
-through those other modules hit a hard crash the instant the dialog tried to
-construct. **This also disproved an earlier (wrong) assumption written into
-FRONTEND.md** that Angular resolves a dialog's DI from its *declaring*
-module — it never did; `IdentificationService` only ever worked across all 4
-entry points by coincidence, because every one of those modules already
-independently provides it for its own unrelated needs. Fix: added
-`BatchScanService` to the `providers:` array of all 4 modules
-(`identification`/`plant`/`species`/`dashboard`) — corrected FRONTEND.md
-accordingly. (A `providedIn: 'root'` service would not have fixed this
-either — it'd be constructed via the root injector alone, with no path to
-its own module-scoped `IdentificationService` dependency.)
+**Phase 0–1:** Spring Boot + Angular skeletons, Docker Compose (Postgres 15 + Redis 7), CI/CD, JWT auth, Plant CRUD.
 
-**3. Items only appeared one at a time, in sequence.** The queue was
-deliberately sequential — submit one file, wait for its full poll-to-
-completion, only then submit the next — reasoning at the time was "avoid
-wasting calls if a 429 hits partway through." In practice this meant the 2nd
-identification didn't even exist on the backend (so couldn't show up
-PENDING anywhere it's listed, e.g. the identify page) until the 1st had
-fully resolved. Fix: all N items' `/analyze` calls now fire concurrently at
-batch start; each is polled to completion independently. Safe given the
-5-image batch cap vs. the 20/hour identification rate limit — a 429 on any
-one item still just fails that item via `AiErrorService`, same as before.
+**Phase 2:** Async Kafka identification pipeline (POST /analyze → 202 → poll), gpt-4o vision + DeepSeek-R1 text, polygon disease annotation, Redis photo storage with SHA-256 dedup, image-dimension locking.
 
-`IdentificationUploadDialogComponent` is now a thin view over
-`BatchScanService`: `batchActive` (`items.length > 0`) drives the view,
-covering "batch finished but the user reopened the dialog" too — reopening
-shows the same Done/Failed rows instead of a blank upload form. Buttons:
-"Run in background" while running (does NOT cancel — no abort affordance
-exists, by design), "Close"/"Retry remaining"/"Scan more"/"Done" once
-finished. `BatchScanService.notifyIfDone()` shows a snackbar with the final
-tally ("3 added, 1 failed") and a "View" action to `/identify`, regardless of
-whether the dialog is even open when the batch finishes.
-`ng build`, `ng lint`, `tsc --noEmit` all clean.
+**Phase 3:** Reminder CRUD + scheduler (one daily push per user), web-push VAPID, actionable care plans with ROUTINE reminders and multi-step TREATMENT plans, Mermaid diagrams.
 
-## T7.4 — Frontend: multi-treatment picker + disease-description poll fix (2026-06-22, `feature/PP-041-batch-scan`)
-Full detail in FRONTEND.md — summary here for cross-session context. Built in
-the same branch as T7.3 (per session instruction), not its own
-`feature/PP-042-multi-treatment-picker` branch from the original task plan.
-- **Discovery before building:** the multi-treatment picker (item 1 of the
-  task prompt) and its wiring into `plant-detail.component.ts`'s icon-bar
-  "treatment" CTA (item 2's first call site) had *already shipped* — in the
-  `c38d1da "cleaning ..."` commit, which predates this Phase 7 work and
-  predates the T7.1 investigation notes that assumed neither existed yet.
-  `ActiveTreatmentSelectSheetComponent` and `goToActiveTreatment()` (plural
-  `getActiveTreatments()`, picker on >1 result) were already correct and
-  unchanged in this task — did not rebuild or rename them.
-- What was actually still broken and got fixed:
-  - `care-card.component.ts`'s `checkActiveTreatment()` (task prompt's second
-    named call site) still used the singular `getActiveTreatment()` matched
-    against a single most-recent treatment — switched to
-    `getActiveTreatments()` + `.find(t => t.diseaseName === card.title)`. No
-    picker needed here (the card's disease name already disambiguates which
-    treatment it's about); just correct lookup logic.
-  - `plant-detail.component.ts`'s *other* active-treatment check,
-    `checkActiveTreatment(diseaseName)` (drives the disease-detail-panel's
-    "Treatment in Progress" state) — same singular-vs-plural bug, not named
-    explicitly in the task prompt but identical root cause sitting right next
-    to the call site that was named; fixed the same way for consistency
-    rather than leaving a known-buggy sibling unfixed.
-  - `TreatmentService.getActiveTreatment()` (singular) deleted — confirmed
-    zero remaining callers after the two fixes above.
-- Enhanced `ActiveTreatmentSelectSheetComponent` to match the task prompt's
-  fuller spec (it pre-existed but was simpler): added a real status chip
-  (same `.status-chip`/`.status-{draft,in_progress,completed,dismissed}` CSS
-  as `treatment-detail.component.scss`, duplicated locally per the app's
-  existing per-page-chip-CSS convention, not extracted into a shared
-  component), `startedAt` date, and a scan thumbnail fetched per-row via
-  `IdentificationService.getById(identificationId)` when present (falls back
-  to the placeholder image).
-- `TreatmentDetailComponent` now polls after `loadTreatment()` when
-  `status === 'DRAFT' && diseaseDescription == null` — `pollForDescription()`
-  mirrors `IdentificationService.pollUntilComplete()`'s convention (3s
-  interval via `takeWhile`+`filter`+`take(1)`, `timeout()` bound at 30s so a
-  silently-failed generation — see `TreatmentServiceImpl`'s
-  catch-and-log-null path — doesn't poll forever; the pending UI just stays
-  showing if it times out, no error state).
-- `ng build`, `ng lint`, `tsc --noEmit` all clean.
+**Phase 4:** AI chat (Ollama/GitHub Models), plant-context injection, SSE streaming, conversation history.
 
-## T7.3 — Frontend: multi-select batch scan mode (2026-06-22, `feature/PP-041-batch-scan`)
-Full detail in FRONTEND.md — summary here for cross-session context. No
-backend changes — `POST /analyze` was already async (Kafka) and already
-rate-limited per user before publish, so batch mode is just N independent
-calls to the existing endpoint from the frontend.
-- `PhotoUploadComponent` gained a "Scan multiple plants" checkbox and a new
-  `lockedSpeciesId` input (parity with the existing `lockedPlantId`) —
-  checkbox only renders when `batchModeAvailable` (`lockedPlantId == null &&
-  lockedSpeciesId == null`), gating on *context*, not on which page opened
-  the dialog. In practice the plain Garden FAB is the main case this affects,
-  but other no-context entry points (Home's quick-action, the legacy
-  `/plants` list page) get it too — a deliberate generalization of the task
-  prompt's "Garden entry point only" framing to the actual condition it was
-  describing, not a literal page allowlist.
-- When batch mode is on: the per-entry organ select and the "link to existing
-  plant" dropdown are hidden (don't apply to N independent new plants).
-- `IdentificationUploadDialogComponent` now injects `IdentificationService`
-  and `AiErrorService` directly (works because both are provided in
-  `identification.module.ts`, where this dialog is declared — confirmed
-  empirically via the pre-existing `PhotoUploadComponent`→`PlantService`
-  injection already working the same way across all 6 entry-point modules
-  that open this dialog without passing a `viewContainerRef`). In batch mode,
-  `startIdentification()` no longer emits a single combined payload; it
-  drives its own sequential queue (`runBatchQueue()`) — one `/analyze` call
-  per file, `pollUntilComplete()` per item (reusing T2's polling), a status
-  row per item (Pending/Scanning/Done/Failed) using `AiErrorService.handle()`
-  for the failure message. A 429 partway through does not halt the queue —
-  every item is still attempted and gets its own status, with a "Retry
-  remaining" button once the batch finishes if any failed. The dialog stays
-  open until every item resolves or the user cancels; closing unsubscribes
-  the in-flight chain via the component's own `destroy$`.
-- `ng build`, `ng lint`, `tsc --noEmit` all clean.
-- **Not done in T7.3**: no "view results" deep-link after a batch finishes —
-  closing just closes the dialog; the new plants show up wherever
-  identifications/plants normally appear (garden list, identify list) on
-  their own. Out of scope per the task prompt's minimal ask.
+**Pre-Phase-5 cleanup:** Reminder double-completion fix, duplicate treatment fix, species care cards, chat history/SSE, 4 controller ITs, JaCoCo gate 55%.
 
-## T7.2 — Frontend: model picker, error + rate-limit UX, "powered by" badges (2026-06-22, `feature/PP-040-model-control-frontend`)
-Full detail in FRONTEND.md — summary here for cross-session context. Built
-directly against T7.1's already-merged backend contract (verified field names
-against the actual DTOs before wiring, not assumed from the task prompt).
-- `ModelSelectorComponent` now renders two dropdowns (vision/reasoning) bound
-  to `visionModelPreference`/`reasoningModelPreference`; `UserService` gained
-  `updateModelPreferences()` replacing the old single-field updater.
-- New `AiErrorService` (core, root-provided like `UserService`) is the one
-  place that turns an `HttpErrorResponse` into UI: a 429 reads
-  `retryAfterSeconds` off the response body and shows an actionable snackbar
-  ("Rate limit reached — try again in {time}, or switch your AI model in
-  Settings") routing to the new `/preferences` page; anything else surfaces
-  the real backend `message`. Wired into identification submit, cure advice,
-  treatment create+craft-plan, and chat send — replacing four different
-  hand-rolled `mapError()`/generic-toast patterns.
-- New `/preferences` route (`features/preferences/`) — **didn't exist
-  before**; the model picker was toolbar-only. Linked from the user account
-  menu ("AI Model Settings"). This is also where the rate-limit snackbar's
-  action button routes to.
-- New shared `ModelUsageBadgeComponent` ("powered by" caption, renders
-  nothing if both inputs are null/undefined — safe to drop in ahead of data)
-  wired into 5 surfaces reading T7.1's migration-022 fields: identification
-  preview (`visionModelUsed ?? aiModelUsed` + `reasoningModelUsed`),
-  disease-detail-panel cure advice, care-card (`actionPlanModel`),
-  treatment-detail (`diseaseDescriptionModel` + `treatmentPlanModel`),
-  species-detail (`enrichmentModel`).
-- `ng build`, `ng lint`, `tsc --noEmit` all clean.
-- **Not done in T7.2**: cure-advice's backend response (`CureAdviceResponse`)
-  has no model-usage field yet — the disease-detail-panel badge is wired and
-  will light up once one's added, but won't show anything today. Also still
-  open from T7.1: no service actually reads
-  `visionModelPreference`/`reasoningModelPreference` to pick an AI client —
-  the new `/preferences` page lets a user set them, but until that wiring
-  exists, switching models there doesn't change which model actually runs.
+**Phase 6:** Species entity (shared, not per-user), Treatment entity (disease lifecycle wrapping TreatmentPlan), 5-tab bottom nav, Home page, species-first Garden, Plant page icon-bar, 3-path identification flow (Flow 1/2/3), event-driven Treatment→TreatmentPlan completion sync.
 
-## T7.1 — Backend: Model Control + Structured AI Errors (2026-06-22, `feature/PP-039-model-control-backend`)
-Full detail in BACKEND.md's "T7.1" section — summary here for cross-session
-context. Landed on its own branch, merging straight to `dev` (no frontend
-coupling needed for this part — T7.2 reads the new preference fields and
-`retryAfterSeconds`/model-usage fields independently).
-- Split AI model choice into `visionModelPreference`/`reasoningModelPreference`
-  (migration 021, additive — old `aiModelPreference` kept, deprecated).
-- Removed every silent cross-model fallback: `IdentificationServiceImpl`'s
-  OLLAMA_LLAVA→GITHUB_GPT4O retry, and `DeepSeekAnnotationClient`'s
-  429→Ollama fallback + empty-regions-on-exhaustion swallow. Both now
-  propagate a real `PlantPalException`/429 instead.
-- `GlobalExceptionHandler` now resolves the actual HTTP status from
-  `PlantPalException.getErrorCode()` (was hardcoded to 500) — existing 429s
-  reach the frontend correctly for the first time.
-- New `RateLimitException` (carries `retryAfterSeconds` via Bucket4j's
-  `ConsumptionProbe`) wired at 3 sites, including `TreatmentServiceImpl
-  .craftPlan()` which had no rate limit at all before this.
-- Model-usage tracking fields added across `CarePlanDto`, `CareCardDto`,
-  `TreatmentResponse`, `SpeciesResponse` (migration 022) — these are what
-  T7.2's "powered by" badges read.
-- 198/198 unit tests pass (one test rewritten to match the no-fallback
-  behavior); `mvn spotless:apply` clean.
-- **Not done in T7.1**: no service yet actually reads
-  `visionModelPreference`/`reasoningModelPreference` to pick a client — they're
-  readable/writable via the API but not yet load-bearing. That wiring is
-  follow-up work, naturally sequenced after T7.2 ships a UI to set them.
+**Phase 7:** VisionModelPreference + ReasoningModelPreference split, silent-fallback removal, RateLimitException + retryAfterSeconds, model-usage badges, batch scan (BatchScanService), multi-treatment picker, disease-description poll fix, LenientJsonParser.
 
-## Pre-Phase-5 Cleanup Pass (2026-06-21)
-Closed every gap BACKEND.md/FRONTEND.md had flagged as open, plus three bugs
-found via live testing, on one branch (`feature/PP-038-pre-phase5-cleanup`,
-backend and frontend changes kept in separate commits):
-- **Reminder double-completion**: a one-time reminder (e.g. a treatment step)
-  could be completed more than once — backend guard
-  (`ReminderServiceImpl.applyCompletionToReminder()` throws on a disabled
-  non-recurring reminder) + frontend synchronous in-flight/done guard (see
-  FRONTEND.md's new Established Pattern).
-- **Duplicate treatment creation**: `DiseaseDetailPanelComponent` and
-  `CareCardComponent` each used to call `TreatmentPlanService` directly,
-  bypassing the `Treatment` entity's one-active-per-disease protection —
-  consolidated onto `CareCardComponent` → `TreatmentService` as the sole path.
-- **Species AI-preference routing**: `SpeciesEnrichmentServiceImpl` was
-  hardcoded to DeepSeek regardless of the user's saved AI model choice — now
-  threads `AiModelPreference` through from `IdentificationServiceImpl.
-  resolveSpecies()`.
-- **Structured species care cards**: species enrichment now also generates a
-  small AI `careCards` array (migration 020), rendered on the Species
-  Overview tab via the existing `CarePlanModule`.
-- **Plant page care cards moved to Overview** (were previously buried in the
-  Scans section, alongside scan-specific UI that has nothing to do with them).
-- **Chat conversation history + SSE streaming**: backend `chatStream()` +
-  `POST /chat/stream` (SseEmitter), frontend incremental rendering via
-  Angular's `HttpDownloadProgressEvent.partialText` (keeps the JWT
-  interceptor working, unlike a raw `fetch()` bypass) — closes out the Phase 4
-  polish item that had been open since T4.2.
-- **Species "recently scanned" filter** now works (`lastScanAt` added).
-- **Dead code removed**: `IdentificationResultComponent`.
-- **4 missing controller integration tests written**
-  (`IdentificationControllerIT`, `TreatmentPlanControllerIT`,
-  `TreatmentControllerIT`, `SpeciesControllerIT`) — in writing them, discovered
-  the ApplicationContext had *never* successfully booted under the test
-  profile at all (`application-test.yml` was missing placeholders for
-  `app.plantnet.api-key`/`github.token`, and the VAPID web-push keys were
-  non-EC placeholder strings that fail real EC-point decoding) — fixed, so
-  these and the pre-existing `PlantControllerIT`/`AuthControllerIT` can now
-  actually run. See BACKEND.md's Test Inventory for the "run one at a time,
-  not batched" caveat (Testcontainers connection-pool contention observed on
-  this dev machine when running 4 in one JVM).
-- **JaCoCo gate set to a real number**: 55%, just under the unit suite's
-  actual ~58.9% line coverage — was a hardcoded, never-achieved 10% before.
-- 198/198 unit tests passing, all 4 new ITs pass individually, `mvn clean
-  verify` is BUILD SUCCESS (spotless clean, checkstyle clean, coverage gate
-  met).
+**Phase 8:** PlantNet v2 (ranked candidates, organs, attribution, geolocation flora), disease cross-check (second opinion for Flow 3), GBIF/POWO/IUCN enrichment, quota telemetry, Claude (AnthropicClient) as 5th model option for both vision and reasoning.
 
-## What's Built
+**Phase 8.5:** Per-stage status model on Identification (identificationStatus/annotationStatus/candidateStatus, D5), non-fatal annotation + PlantNet stages, predictedOrgans fix, token-budget Bucket4j + finite executor queue + jittered retry, PlantNet enrichment moved to async fire-and-forget (D1 amendment), retry endpoint, stage-aware UI.
 
-### Phases 0–1 — Setup, Auth, Plant CRUD
-Spring Boot + Angular skeletons, Docker Compose (Postgres 15 + Redis 7), CI/CD,
-JWT auth (Spring Security 6), full Plant CRUD with Redis caching. Stable, no open
-items.
+**Phase 9:** Frontend unit tests (Jest), Playwright E2E (Chromium + WebKit, AI calls stubbed), visual regression + a11y (axe) + Lighthouse CI, AI visual review (advisory), Testcontainers ITs wired into mvn verify + JaCoCo 80%, Sentry + X-Correlation-ID, gitleaks + Trivy + OWASP + Dependabot, nightly AI eval suite + prompt-injection guardrails.
 
-### Phase 2 — AI Plant Identification
-Photo → AI identification pipeline, now fully async: `POST /analyze` publishes to
-Kafka and returns 202 immediately, a consumer runs the AI calls off the HTTP
-thread, the frontend polls `GET /{id}` every 3s. Identification uses
-`GitHubModelsClient` (gpt-4o vision) with `DeepSeekClient` (DeepSeek-R1 text) for
-care plans/cure advice; `OllamaClient` (llava-phi3) is the local-dev/fallback
-option. Visual annotation draws polygon overlays (disease/plant/healthy-area
-regions) on the photo, with a disease detail panel offering AI cure advice.
-Photos are stored on disk with a Redis cache + SHA-256 dedup layer. A garden
-health dashboard (now folded into the Home page, see Phase 6) aggregates
-overdue/today reminders and health trends. See ARCHITECT.md for the Kafka, Redis
-photo, and image-dimension-locking patterns in full — they're durable
-architecture, not session history.
+**Phase 9.5:** PlantNet candidate data harvested onto Species at resolve time (family, genus, imageUrl, attribution), GenerationStatus (PENDING/READY/FAILED) on Species.descriptionStatus + Treatment.descriptionStatus, regenerate endpoints, Species overview redesigned with real PlantNet hero + candidate strip + status-driven prose, Treatment description poll + retry, dedicated Task Step page (full-width Mermaid, AI deep-links), plant-edit back-nav fix.
 
-### Phase 3 — Reminders + Care Plans
-Full reminder CRUD + scheduler (one daily push per user, not per reminder) +
-web-push (VAPID). Care plan cards generated by AI can carry an `actionPlan`:
-either a ROUTINE recurring reminder or a multi-step TREATMENT plan (backed by
-one-time `Reminder` rows under a `TreatmentPlan`), with optional Mermaid-diagram
-illustrations. `ReminderService.applyCompletionToReminder()` is the single place
-"mark done" logic lives — see ARCHITECT.md. **Open:** T3.3, on-device manual
-testing of push delivery and PWA installability — needs a human with a phone,
-never completed.
+---
 
-### Phase 4 — AI Chat
-Single-turn chat wired to Ollama with full garden context, later extended (T6.13)
-to accept an optional `plantId` for plant-specific context (last scan health,
-active treatment). Streaming responses and conversation history are known,
-unstarted polish — not blocking launch.
+## Next Tasks (ordered)
 
-### Phase 6 — Species & Treatment Domain Restructure
-Restructured the domain from plant-centric to species-centric. All 14 tasks
-shipped:
+1. **Merge PHASE9 → dev** once CI green (last fix commit: 4f1bbb3).
+2. **Merge PHASE9.5 → dev** after PHASE9 lands.
+3. **Phase 10 tasks** (T10.A–T10.F) — contextual scanning, scan redesign, treatment polish.
+4. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
+5. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
+6. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
+7. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
+8. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
 
-| Task | What it added |
-|---|---|
-| T6.1 | `Species` entity (shared across users) + `GET /species/{id}`, `GET /species/mine` |
-| T6.2 | `Treatment` entity (per-plant disease lifecycle) — wraps `TreatmentPlan`, doesn't duplicate it |
-| T6.3 | `Plant.speciesId/lastScanId/activeTreatmentId`, `Identification.speciesId` FK columns |
-| T6.4 | Async AI species enrichment (description/careOverview/imageUrl) |
-| T6.5 | Garden page restructured to species-first cards (`/garden`) |
-| T6.6 | Species detail page (`/garden/species/:id`, Overview + Plants tabs) |
-| T6.7 | Home page (`/home`) — greeting, quick stats, needs-attention, recent scans |
-| T6.8 | Bottom nav expanded to 5 items: Home / Garden / Identify / Reminders / Chat |
-| T6.9 | Identification 3-path species/plant matching flow (Garden vs. Species vs. Plant entry points) |
-| T6.10 | Plant page rebuilt: sticky header + icon button bar (replaces `mat-tab-group`) |
-| T6.11 | Plant page Scans section + "Start Treatment Plan" CTA |
-| T6.12 | Treatment page (`/treatment/:id`) |
-| T6.13 | Chat plant-context injection (`?plantId=` query param) |
-| T6.14 | Backend event-driven sync: `TreatmentPlan` completion now flips the wrapping `Treatment` to COMPLETED automatically |
+---
 
-The full domain model (Species/Treatment shapes, the "two Treatment concepts"
-disambiguation, the identification decision tree, the lifecycle state machine) now
-lives in ARCHITECT.md as a permanent reference — read that, not this list, before
-extending any of this.
+## Key Open Decisions
 
-## Active Branches
-Current branch: **`dev`** — all Phase 8 and Phase 8.5 work is merged. Clean.
+- **D10.1 — Annotation strategy:** merge annotation into identification prompt (single gpt-4o call, simpler, user's recommendation) **vs.** skip annotation call when healthStatus ≠ ISSUES_DETECTED (conservative, preserves per-stage architecture). Confirm before T10.A.
+- **D10.2 — Health-scan card draft state:** client-side presentation only (no DB changes) vs. persisted draft flag. Recommend client-side.
+- **D10.3 — Treatment auto-progression root cause:** must be diagnosed (read TreatmentServiceImpl + CareCardComponent + TreatmentDetailComponent) before T10.C is coded.
+- **Kafka prod story:** still open, blocks T-DEPLOY.5.
 
-All feature branches PP-038 through PP-056 are merged to `dev`. Older branches
-(`PP-001`–`PP-037`) are long-merged — safe cleanup candidate whenever convenient.
-
-## Next Tasks (in order)
-1. **Merge PHASE9 → dev** once CI green (last fix: `4f1bbb3`).
-2. **Merge PHASE9.5 → dev** after PHASE9 lands (T9.A–T9.F, migrations 028+029).
-3. **Phase 10 — Launch** — production config, Railway/Vercel deploy, beta, v1.0.0.
-4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs, or a test-only Angular build served statically.
-5. **Re-enable Lighthouse CI** — fix dist path from `dist/frontend` → `dist/plantpal`.
-5. T3.3 — manual on-device testing (push, PWA installability, offline reading) — needs a real phone. Folds into Phase 10 beta.
-6. Kafka/Zookeeper production story must be decided before T10.5 (Railway deploy).
-
-## Phase 7 — Planning Session (2026-06-22)
-Not started, planned only. Full task breakdown in TASK_PLAN.md (T7.1–T7.4).
-Three asks, all grounded against the real code before planning (see
-TASK_PLAN.md's Phase 7 investigation notes for the full detail — not
-duplicated here):
-- **Model control:** split the single `AiModelPreference` into independent
-  vision/reasoning choices, remove silent cross-model fallback (found in
-  `IdentificationServiceImpl.runIdentification()`'s OLLAMA_LLAVA→GITHUB_GPT4O
-  catch and `DeepSeekAnnotationClient`'s 429→Ollama fallback +
-  empty-regions-on-exhaustion swallow), and fix a real bug:
-  `GlobalExceptionHandler.handlePlantPal()` hardcodes HTTP 500 for every
-  `PlantPalException`, so the 429s already thrown by `IdentificationServiceImpl`/
-  `TreatmentServiceImpl` arrive at the frontend mislabeled as 500 today — there
-  is no working rate-limit UX yet because the status code itself is wrong.
-- **Batch scanning:** frontend-only — `POST /analyze` is already async/Kafka
-  and already rate-limited per user, so queuing N independent scans is N calls
-  to the existing endpoint, not a new batch endpoint.
-- **Multi-treatment picker:** the backend is mostly already shipped and
-  unused — `TreatmentService.getActiveTreatmentsForPlant()` (plural),
-  `GET /plants/{id}/active-treatments`, and even
-  `TreatmentService.getActiveTreatments()` on the Angular service all exist
-  and work; no component calls them. Also found and scoped a real bug:
-  `TreatmentDetailComponent` fetches the treatment once in `ngOnInit` and
-  never again, so the async-generated `diseaseDescription` (which the backend
-  does correctly generate and save within seconds) never appears on-screen —
-  not a generation bug, a missing-poll bug.
-
-## Phase 8 — Planned (PlantNet v2 deep integration) — NOT STARTED
-Planned this session, no code yet. Full task breakdown + Claude Code prompts in
-TASK_PLAN.md (T8.1–T8.7). Reframes PlantNet from a degraded species-only vision
-option into the app's botanical ground-truth layer. Contract validated against the
-real swagger (My Pl@ntNet API 2.2.2).
-
-Surface we start using: ranked candidate list (score + reference images +
-gbif/powo/iucn per result), `type=kt` engine, organ-tagged multi-image accuracy,
-geolocation-ranked floras (`/v2/projects?lat&lon`), `switchToProject` hint, a
-dedicated cultivated-plant disease classifier (`/v2/diseases/identify`, results
-carry a description + EPPO code via `/v2/diseases`), and real quota endpoints
-(`/v2/quota/daily` + `/history`).
-
-Core slice: **T8.1 (v2 client) → T8.2 (ranked species-match) → T8.3 (candidate
-confirm UI, with reference-image attribution)** — ship together. Then T8.4
-(organs + location-ranked flora/lang), T8.5 (disease cross-check, heaviest), T8.6
-(factual enrichment — cheap IUCN/POWO/gbifId layer is near-free; GBIF fetch
-optional), T8.7 (quota telemetry, small).
-
-**Blocked on human rulings before starting:**
-- **D1** (blocks T8.1): PlantNet always-on alongside gpt-4o vs. only-when-selected.
-  Architect rec: always-on for Flow-1 candidates behind a feature flag.
-- **D2** (blocks T8.1): candidate storage = JSONB on `identifications` (rec) vs. side table.
-- **D3** (shapes T8.6): cheap factual layer (gbif/powo/iucn off the response) ships
-  regardless; defer the deeper GBIF fetch unless distribution data is a launch need.
-- **D4** (blocks T8.5): disease cross-check authority on gpt-4o↔PlantNet disagreement.
-  Architect rec: keep gpt-4o's label, seed diseaseDescription from PlantNet's
-  `description` on agreement, attach PlantNet as flagged second opinion + mark
-  Treatment NEEDS_REVIEW on disagreement.
-- **D-location** (shapes T8.4, non-blocking): location-ranked floras need a user
-  lat/lon source that may not exist yet — ship manual dropdown first.
-
-Migration numbers reserved: 023/024/025 (verify before use). Sequencing vs. Phase 5
-launch still undecided — feature work, not launch infra.
+---
 
 ## Known Tech Debt
-See BACKEND.md and FRONTEND.md's own "Open Items" sections for the current,
-maintained list (JaCoCo gate at 55% not 80%, ITs not wired into `mvn verify`,
-PlantNetClient dead-code cleanup, GITHUB_TOKEN rotation before prod, etc.) —
-not duplicated here to avoid the two copies drifting apart.
+
+- JaCoCo gate at 80% (restored in T9.5 — verify still holds after Phase 9.5 additions).
+- E2E disabled in CI (needs `ng serve + wait-on` setup).
+- Lighthouse CI disabled (dist path issue).
+- GITHUB_TOKEN: rotate before prod (T9.7 reminder).
+- `generateCarePlan()` in DeepSeekClient is dead code (never called — safe to remove in a cleanup pass).
+- `PlantNetClient` PLANTNET enum: if a future cleanup removes it, remove from both backend enum and frontend type simultaneously.
+- SSE streaming (chat): written and unit-tested but never confirmed against a live Docker stack with actual incremental token delivery — re-verify before DEPLOY.
+- DeepSeekAnnotationClient 429 shape differs from DeepSeekClient's RateLimitException — noted in ARCHITECT.md, not yet unified.

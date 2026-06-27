@@ -877,3 +877,79 @@ The Obsidian knowledge vault lives at `../plants-vault` (relative to the project
 **D6** is the decision record for why the vault was added — see `../plants-vault/wiki/decisions/d6-knowledge-vault-setup.md`.
 
 The `.claude/` files (this file, STATE.md, TASK_PLAN.md, BACKEND.md, FRONTEND.md) remain the **authoritative coordination layer** for task execution. The vault is for long-term history and exploration only — do not duplicate authoritative state there.
+
+---
+
+## Phase 10 — Contextual Scanning & Scan Redesign (patterns, 2026-06-27)
+
+### Scan User Context Pattern
+`identifications.user_context TEXT` (migration 030, nullable) captures the user's optional
+"what I want to know" text before scanning ("this leaf is yellow, I put it in the bathroom…").
+
+- Flows through `SubmitIdentificationRequest` → `IdentificationEvent` → `processIdentification()`.
+- Threaded into the AI prompt as **user-message content** (NOT system prompt — it is user input,
+  not a system instruction). Phrasing: `"The user wants to know: {userContext}. Consider this…"`
+- `IdentificationResponse.userContext` exposed so the scan detail page can display it.
+- Frontend: `PhotoUploadComponent` shows a collapsible textarea + mic button (Web Speech API,
+  client-side transcription, no backend audio). Mic hidden if `SpeechRecognition` unavailable.
+
+### Annotation Skip Condition (D10.1 — conservative implementation)
+`processIdentification()` skips the `analyzeRegions()` call when `healthStatus == HEALTHY || UNKNOWN`.
+Sets `annotationStatus = SKIPPED` and logs the reason. Only calls annotation when `healthStatus == ISSUES_DETECTED`.
+This halves annotation API calls for healthy scans at zero structural complexity.
+**If a future session wants to merge annotation into the identification prompt (single call),**
+extend `PLANT_IDENTIFICATION_SYSTEM_PROMPT` to return `annotation_regions` in the core JSON
+and remove the separate `analyzeRegions()` call — do NOT add another stage, just remove the
+conditional skip and parse the merged response. That migration was not taken in Phase 10
+(conservative option chosen). The merged approach is cleaner but requires prompt engineering
+validation and larger fixture updates.
+
+### Scan Detail Page Navigation Pattern
+`/plants/:plantId/scans/:scanId` — the dedicated scan detail page.
+- Sticky header (same IntersectionObserver + `.collapsed` pattern as Plant/Treatment pages).
+- Back button navigates to `/plants/:plantId?section=scans` (query param, NOT router state or
+  `location.back()`) — `plant-detail` reads `?section=` on init to activate the right section.
+- Same pattern used for step-detail back-nav (`?section=plan` on the Treatment detail page).
+- **All "return to section" navigation uses query params**, never router state. Router state is
+  lost on page refresh and confuses the browser's own back button history.
+
+### Health-Scan Card Draft State Pattern (D10.2 — client-side only)
+Cards from health scans (Flow 3) start in a "draft" presentation state — not yet added to the
+plant's care plan. This is **client-side state only** (no new DB column):
+- `CareCardComponent` gains `@Input() isDraft = false` and `@Input() treatmentActive = false`.
+- `isDraft=true` → show "Add to care plan" CTA; gate `checkActiveTreatment()` call behind `!isDraft`.
+- On "Add to care plan" success → flip `isDraft=false` locally (no reload needed).
+- Disease/pest card with `!isDraft` → show "Initiate treatment" CTA.
+- `treatmentActive=true` → show "Treatment in progress" tag (derived from `getActiveTreatments(plantId)`).
+- Cards from first-identification scans (Flow 1/2): `isDraft=false` by default, "Initiate treatment"
+  directly (no "Ask for cure" intermediate step), informational cards have no CTA.
+
+### Scan CTA by Flow Type
+Determines which CTAs appear on a scan detail page's care cards:
+| Scan type | Card type | CTA |
+|---|---|---|
+| Flow 1/2 (first identification) | Disease/pest | "Initiate treatment" → POST /treatments → navigate /treatment/:id |
+| Flow 1/2 | Other (watering, light…) | None (informational only) |
+| Flow 3 (health scan, plant known) | Any card, draft | "Add to care plan" → addCareCard() → isDraft=false |
+| Flow 3 | Disease card, after added | "Initiate treatment" |
+| Flow 3 | Disease card, treatment in progress | "Treatment in progress" tag (no action) |
+
+### Treatment Auto-Progression Rule (D10.3)
+**`createTreatment()` must never call `craftPlan()`.** Period.
+- `createTreatment()` only: persist Treatment in DRAFT + fire disease-description async.
+- `craftPlan()` only on explicit user action (POST /treatments/:id/craft-plan).
+- `CareCardComponent` navigates to `/treatment/:id` after `createTreatment()` — never chains to `craftPlan()`.
+- `TreatmentDetailComponent` description poll checks `status === 'DRAFT' && descriptionStatus === 'PENDING'`
+  — must never change status as a side effect.
+- `craftPlan()` transition DRAFT → IN_PROGRESS: must NOT overwrite `diseaseDescription`.
+  The description is generated independently; the plan adds steps only.
+
+### Mobile Mermaid Constraint (added to all AI system prompts with Mermaid output)
+```
+Mermaid diagrams must be optimized for mobile screens:
+- Use flowchart TD (vertical). Never flowchart LR on mobile.
+- Maximum 5 nodes. Node labels max 15 characters (abbreviate).
+- No subgraphs, no click events, no style blocks, no double quotes in labels.
+- Simple linear flows; branching at most 2 levels deep.
+```
+Frontend: `MermaidDiagramComponent` must have `width:100%; overflow-x:auto` on its host element.
