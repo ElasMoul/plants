@@ -345,7 +345,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
 
   private submitAddScan(payload: AnalyzeEmitPayload): void {
     this.identificationService
-      .analyze(payload.images, payload.organs, payload.plantId ?? this.plant?.id)
+      .analyze(payload.images, payload.organs, payload.plantId ?? this.plant?.id, undefined, payload.userContext)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {

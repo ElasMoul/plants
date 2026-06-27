@@ -61,7 +61,7 @@ export class IdentificationPageComponent implements OnDestroy {
     this.submitting = true;
 
     this.identificationService
-      .analyze(payload.images, payload.organs, payload.plantId)
+      .analyze(payload.images, payload.organs, payload.plantId, undefined, payload.userContext)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
