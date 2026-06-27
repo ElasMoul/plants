@@ -46,4 +46,5 @@ public class IdentificationResponse {
   private String identificationModel;
   private String annotationModel;
   private String failureReason;
+  private String userContext;
 }

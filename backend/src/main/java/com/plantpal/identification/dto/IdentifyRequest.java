@@ -18,4 +18,6 @@ public class IdentifyRequest {
   private List<String> organs;
 
   private Long plantId;
+
+  private String userContext;
 }

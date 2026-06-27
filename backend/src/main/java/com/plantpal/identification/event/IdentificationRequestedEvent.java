@@ -21,4 +21,5 @@ public class IdentificationRequestedEvent {
   private String aiModelPreference;
   private List<String> organs;
   private Instant requestedAt;
+  private String userContext;
 }
