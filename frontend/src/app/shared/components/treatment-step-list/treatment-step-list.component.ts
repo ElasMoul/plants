@@ -16,6 +16,7 @@ import { ReminderService } from '../../../features/reminder/services/reminder.se
 export class TreatmentStepListComponent {
   @Input() steps: ReminderResponse[] = [];
   @Input() diagramContent: string | null = null;
+  @Input() returnUrl?: string;
 
   // Fired after a step is successfully marked done — the parent owns reloading the plan.
   @Output() stepCompleted = new EventEmitter<void>();
@@ -45,7 +46,8 @@ export class TreatmentStepListComponent {
 
   openStepDetail(step: ReminderResponse): void {
     if (!step.treatmentPlanId) return;
-    this.router.navigate(['/plans', step.treatmentPlanId, 'steps', step.id]);
+    const extras = this.returnUrl ? { queryParams: { returnUrl: this.returnUrl } } : {};
+    this.router.navigate(['/plans', step.treatmentPlanId, 'steps', step.id], extras);
   }
 
   dueLabel(step: ReminderResponse): string {

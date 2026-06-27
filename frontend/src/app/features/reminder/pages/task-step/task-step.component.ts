@@ -45,7 +45,12 @@ export class TaskStepComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.location.back();
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    if (returnUrl) {
+      this.router.navigateByUrl(returnUrl);
+    } else {
+      this.location.back();
+    }
   }
 
   markDone(): void {
@@ -56,12 +61,12 @@ export class TaskStepComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.markingDone = false;
-          this.location.back();
+          this.goBack();
         },
         error: (err: { status: number }) => {
           this.markingDone = false;
           if (err.status === 400) {
-            this.location.back();
+            this.goBack();
           }
         },
       });

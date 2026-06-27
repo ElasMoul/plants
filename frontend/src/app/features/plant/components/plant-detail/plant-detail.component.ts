@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { map, switchMap, takeUntil } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -88,6 +88,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    const section = this.route.snapshot.queryParamMap.get('section') as typeof this.activeSection | null;
+    if (section && ['overview', 'careLog', 'scans'].includes(section)) {
+      this.activeSection = section;
+    }
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
     this.plantService.getPlant(id).subscribe({
@@ -172,16 +177,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
 
     this.startingTreatment = true;
     this.treatmentService.createTreatment(plant.id, scan.id, region.label)
-      .pipe(
-        switchMap(created => this.treatmentService.craftPlan(created.data.id).pipe(
-          map(crafted => crafted.data.id),
-        )),
-        takeUntil(this.destroy$),
-      )
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: treatmentId => {
+        next: created => {
           this.startingTreatment = false;
-          this.router.navigate(['/treatment', treatmentId]);
+          this.router.navigate(['/treatment', created.data.id]);
         },
         error: () => {
           this.startingTreatment = false;

@@ -89,7 +89,8 @@ public class GitHubModelsClient {
       - ROUTINE actionPlan is valid only for: WATERING, FERTILIZING, REPOTTING, PRUNING.
       - TREATMENT actionPlan is valid only for: PEST, and WATERING/FERTILIZING when issues are
         detected.
-      - Mermaid diagrams must use only "flowchart LR" or "flowchart TD". Never use subgraph,
+      - Mermaid diagrams must use only "flowchart TD" (never LR). Limit to 5 nodes max.
+        Node labels must be 15 characters or fewer — use abbreviations. Never use subgraph,
         click events, or style blocks. Node labels must not contain double quotes — use single
         quotes or backticks only.
       """;
