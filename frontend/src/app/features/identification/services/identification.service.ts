@@ -27,6 +27,7 @@ export class IdentificationService {
     organs: string[],
     plantId?: number,
     speciesId?: number,
+    userContext?: string,
   ): Observable<ApiResponse<IdentificationPendingResponse>> {
     const form = new FormData();
     // Append each image and organ as separate multipart parts (not arrays)
@@ -37,6 +38,9 @@ export class IdentificationService {
     }
     if (speciesId != null) {
       form.append('speciesId', String(speciesId));
+    }
+    if (userContext?.trim()) {
+      form.append('userContext', userContext.trim());
     }
     return this.http.post<ApiResponse<IdentificationPendingResponse>>(
       `${this.baseUrl}/analyze`,

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angu
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { PlantService } from '../../../plant/services/plant.service';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
@@ -9,6 +10,11 @@ import { AnalyzeEmitPayload } from '../../models/identification.model';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 5;
+const MAX_CONTEXT_CHARS = 500;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SpeechRecognitionAPI: any =
+  (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 interface ImageEntry {
   file: File;
@@ -23,9 +29,6 @@ interface ImageEntry {
 })
 export class PhotoUploadComponent implements OnInit, OnDestroy {
   @Input() lockedPlantId?: number;
-  // Species-seeded context (Flow 2) — same "this entry point already knows its single plant"
-  // case as lockedPlantId for batch-mode eligibility, just not threaded into the analyze
-  // payload here (the dialog adds speciesId itself, see IdentificationUploadDialogComponent).
   @Input() lockedSpeciesId?: number;
   @Output() readonly analyze = new EventEmitter<AnalyzeEmitPayload>();
 
@@ -36,13 +39,29 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   validationErrors: string[] = [];
   batchMode = false;
 
+  contextExpanded = false;
+  contextText = '';
+  readonly maxContextChars = MAX_CONTEXT_CHARS;
+  readonly speechSupported = !!SpeechRecognitionAPI;
+  listening = false;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private recognition: any = null;
+
   get batchModeAvailable(): boolean {
     return this.lockedPlantId == null && this.lockedSpeciesId == null;
   }
 
+  get contextCharsLeft(): number {
+    return MAX_CONTEXT_CHARS - this.contextText.length;
+  }
+
   private readonly destroy$ = new Subject<void>();
 
-  constructor(private readonly plantService: PlantService) {}
+  constructor(
+    private readonly plantService: PlantService,
+    private readonly snackBar: MatSnackBar,
+  ) {}
 
   ngOnInit(): void {
     if (this.lockedPlantId != null) {
@@ -64,8 +83,24 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopListening();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  toggleContext(): void {
+    this.contextExpanded = !this.contextExpanded;
+    if (!this.contextExpanded) {
+      this.stopListening();
+    }
+  }
+
+  toggleListening(): void {
+    if (this.listening) {
+      this.stopListening();
+      return;
+    }
+    this.startListening();
   }
 
   onDragOver(event: DragEvent): void {
@@ -101,8 +136,6 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   onBatchModeChange(checked: boolean): void {
     this.batchMode = checked;
     if (checked) {
-      // Batch entries are independent new plants — an existing-plant link or a
-      // multi-angle organ hint don't apply to any single one of them.
       this.selectedPlantId = undefined;
       this.entries = this.entries.map(e => ({ ...e, organ: 'auto' }));
     }
@@ -114,11 +147,53 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   }
 
   onAnalyze(): void {
+    const trimmed = this.contextText.trim();
     this.analyze.emit({
       images: this.entries.map(e => e.file),
       organs: this.entries.map(e => e.organ),
       plantId: this.selectedPlantId,
+      userContext: trimmed || undefined,
     });
+  }
+
+  private startListening(): void {
+    if (!SpeechRecognitionAPI) return;
+    try {
+      this.recognition = new SpeechRecognitionAPI();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.lang = navigator.language;
+
+      this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const transcript: string = event.results[0][0].transcript;
+        this.contextText = transcript.substring(0, MAX_CONTEXT_CHARS);
+        this.listening = false;
+      };
+
+      this.recognition.onerror = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        this.listening = false;
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+        }
+      };
+
+      this.recognition.onend = () => {
+        this.listening = false;
+      };
+
+      this.recognition.start();
+      this.listening = true;
+    } catch {
+      this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+    }
+  }
+
+  private stopListening(): void {
+    if (this.recognition) {
+      try { this.recognition.stop(); } catch { /* already stopped */ }
+      this.recognition = null;
+    }
+    this.listening = false;
   }
 
   private processFiles(fileList: FileList | null): void {

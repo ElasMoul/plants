@@ -94,4 +94,56 @@
     </mat-select>
   </mat-form-field>
 
+  <!-- Optional context input -->
+  <div class="context-section">
+    <button
+      mat-button
+      type="button"
+      class="context-toggle"
+      (click)="toggleContext()"
+      [attr.aria-expanded]="contextExpanded"
+    >
+      <mat-icon>{{ contextExpanded ? 'expand_less' : 'chat_bubble_outline' }}</mat-icon>
+      Add context <span class="context-optional">(optional)</span>
+    </button>
+
+    <div class="context-body" *ngIf="contextExpanded">
+      <p class="context-helper">Tell the AI what to look for.</p>
+      <p class="context-batch-hint" *ngIf="batchMode && contextText.trim()">
+        Context applies to all scans in this batch.
+      </p>
+      <div class="context-input-row">
+        <mat-form-field appearance="outline" class="context-field">
+          <mat-label>What do you want to know?</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="contextText"
+            [maxlength]="maxContextChars"
+            rows="3"
+            placeholder="e.g. This leaf is very yellow — is there a problem?"
+          ></textarea>
+          <mat-hint align="end">{{ contextCharsLeft }} chars remaining</mat-hint>
+        </mat-form-field>
+
+        <button
+          *ngIf="speechSupported"
+          mat-icon-button
+          type="button"
+          class="mic-btn"
+          [class.listening]="listening"
+          (click)="toggleListening()"
+          [attr.aria-label]="listening ? 'Stop listening' : 'Start voice input'"
+          [matTooltip]="listening ? 'Stop' : 'Speak'"
+        >
+          <mat-icon>{{ listening ? 'mic_off' : 'mic' }}</mat-icon>
+        </button>
+      </div>
+
+      <div class="listening-chip" *ngIf="listening">
+        <mat-icon>mic</mat-icon>
+        Listening…
+      </div>
+    </div>
+  </div>
+
 </div>

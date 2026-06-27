@@ -152,6 +152,7 @@ export interface AnalyzeEmitPayload {
   organs: string[];
   plantId?: number;
   speciesId?: number;
+  userContext?: string;
 }
 
 export interface PlantNetReferenceImageDto {
