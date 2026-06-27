@@ -37,6 +37,8 @@ export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() identificationId: number | null = null;
   @Input() existingCareTypes: CareType[] = [];
   @Input() showTreatmentCta = true;
+  @Input() isDraft = false;
+  @Input() treatmentActive = false;
 
   expanded = false;
   detailList: ParsedDetail | null = null;
@@ -70,10 +72,15 @@ export class CareCardComponent implements OnChanges, OnDestroy {
     }
     if (
       this.showTreatmentCta &&
-      (changes['card'] || changes['plantId']) &&
+      !this.isDraft &&
+      (changes['card'] || changes['plantId'] || changes['treatmentActive']) &&
       this.card?.actionPlan?.type === 'TREATMENT'
     ) {
-      this.checkActiveTreatment();
+      if (this.treatmentActive) {
+        this.treatmentStarted = true;
+      } else {
+        this.checkActiveTreatment();
+      }
     }
   }
 

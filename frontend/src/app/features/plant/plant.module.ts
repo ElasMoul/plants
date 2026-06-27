@@ -38,6 +38,7 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
 import { PlantActionsSheetComponent } from './components/plant-actions-sheet/plant-actions-sheet.component';
 import { PlantScanHistorySheetComponent } from './components/plant-scan-history-sheet/plant-scan-history-sheet.component';
 import { ActiveTreatmentSelectSheetComponent } from './components/active-treatment-select-sheet/active-treatment-select-sheet.component';
+import { ScanDetailComponent } from './components/scan-detail/scan-detail.component';
 
 @NgModule({
   declarations: [
@@ -49,6 +50,7 @@ import { ActiveTreatmentSelectSheetComponent } from './components/active-treatme
     PlantActionsSheetComponent,
     PlantScanHistorySheetComponent,
     ActiveTreatmentSelectSheetComponent,
+    ScanDetailComponent,
   ],
   imports: [
     CommonModule,
