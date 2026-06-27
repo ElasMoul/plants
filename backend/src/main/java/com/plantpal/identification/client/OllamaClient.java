@@ -185,15 +185,26 @@ public class OllamaClient {
   }
 
   public String identifyPlant(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, null);
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType, String userContext) {
     String base64 =
         Base64.getEncoder()
             .encodeToString(ImageUtil.resizeAndConvertToJpeg(imageBytes, OLLAMA_MAX_IMAGE_SIDE_PX));
 
     // /api/generate's top-level "images" array works for any multimodal-capable model (llava-phi3,
     // gemma3, ...) — not nested in a chat message.
-    String prompt =
-        GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT
-            + "\n\nIdentify this plant and generate a complete beginner care plan.";
+    String baseRequest = "Identify this plant and generate a complete beginner care plan.";
+    String userRequest =
+        (userContext != null && !userContext.isBlank())
+            ? baseRequest
+                + " The user wants to know: "
+                + userContext
+                + ". Consider this when assessing health and generating care advice"
+                + " — address their specific concern directly."
+            : baseRequest;
+    String prompt = GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT + "\n\n" + userRequest;
     Map<String, Object> requestBody =
         Map.of(
             "model", model,

@@ -132,4 +132,8 @@ public class Identification extends AuditableEntity {
    */
   @Column(name = "failure_reason", columnDefinition = "TEXT")
   private String failureReason;
+
+  /** Phase 10 T10.A — optional free-text the user typed/spoke before scanning (migration 030). */
+  @Column(name = "user_context", columnDefinition = "TEXT")
+  private String userContext;
 }

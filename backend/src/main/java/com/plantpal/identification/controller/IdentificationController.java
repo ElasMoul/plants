@@ -61,7 +61,8 @@ public class IdentificationController {
       @RequestPart("images") List<MultipartFile> images,
       @RequestParam(value = "organs", required = false) List<String> organs,
       @RequestParam(required = false) Long plantId,
-      @RequestParam(required = false) Long speciesId) {
+      @RequestParam(required = false) Long speciesId,
+      @RequestParam(required = false) String userContext) {
 
     Long userId = getCurrentUserId();
     log.info(
@@ -74,7 +75,7 @@ public class IdentificationController {
     try {
       IdentificationPendingResponse response =
           identificationService
-              .submitIdentification(images, plantId, speciesId, userId, organs)
+              .submitIdentification(images, plantId, speciesId, userId, organs, userContext)
               .get();
       return ResponseEntity.status(HttpStatus.ACCEPTED)
           .body(ApiResponse.success(response, "Analysis started — poll for result"));

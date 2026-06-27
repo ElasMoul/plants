@@ -197,7 +197,12 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Override
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
-      List<MultipartFile> images, Long plantId, Long speciesId, Long userId, List<String> organs) {
+      List<MultipartFile> images,
+      Long plantId,
+      Long speciesId,
+      Long userId,
+      List<String> organs,
+      String userContext) {
 
     validateImages(images);
 
@@ -210,12 +215,15 @@ public class IdentificationServiceImpl implements IdentificationService {
     // Step 2: Persist with PENDING status (no AI call yet)
     // speciesId is only ever passed by Flow 2 (scan from a Species page) — Flow 1 (Garden FAB)
     // leaves it null and resolves species after the AI result comes back (see resolveSpecies()).
+    String trimmedContext =
+        (userContext != null && !userContext.isBlank()) ? userContext.trim() : null;
     Identification identification =
         Identification.builder()
             .userId(userId)
             .plantId(plantId)
             .speciesId(speciesId)
             .photoUrl(photoUrls.get(0))
+            .userContext(trimmedContext)
             .status(IdentificationStatus.PENDING)
             .identificationStatus(IdentificationStageStatus.PENDING)
             .annotationStatus(IdentificationStageStatus.PENDING)
@@ -248,6 +256,7 @@ public class IdentificationServiceImpl implements IdentificationService {
             .aiModelPreference(preference.name())
             .organs(organs)
             .requestedAt(Instant.now())
+            .userContext(trimmedContext)
             .build();
     kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC, event);
     log.info("Published IdentificationRequestedEvent: id={}", identification.getId());
@@ -289,10 +298,11 @@ public class IdentificationServiceImpl implements IdentificationService {
       final String userPlantNetProject = pnPrefs[0];
       final String userPlantNetLang = pnPrefs[1];
 
-      // Fire identification + annotation in parallel. PlantNet candidate enrichment is deferred
-      // to a fire-and-forget async call AFTER the core result saves (D1 amendment, T8.E) —
-      // running it synchronously here caused self-inflicted 429 storms on batch scans.
+      // Fire identification and disease cross-check in parallel. Annotation is deferred until
+      // after we know healthStatus — D10.1 (conservative): skip annotation entirely when the
+      // plant is HEALTHY or UNKNOWN, halving annotation API calls for healthy scans.
       final List<String> organsForParallelCall = event.getOrgans();
+      final String userContext = event.getUserContext();
       CompletableFuture<IdentificationOutcome> identificationFuture =
           CompletableFuture.supplyAsync(
               () ->
@@ -302,10 +312,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                       mediaType,
                       event.getOrgans(),
                       userPlantNetProject,
-                      userPlantNetLang));
-      CompletableFuture<String> annotationFuture =
-          CompletableFuture.supplyAsync(
-              () -> visionAnnotationClient.analyzeRegions(imageBytes, mediaType));
+                      userPlantNetLang,
+                      userContext));
 
       // Disease cross-check (Flow 3 only — health scan for an existing plant). Runs in parallel;
       // all exceptions are swallowed so a PlantNet outage never fails the main identification.
@@ -338,17 +346,32 @@ public class IdentificationServiceImpl implements IdentificationService {
             : new PlantPalException("Identification failed: " + cause.getMessage(), 500);
       }
       String rawResult = outcome.rawJson();
+
+      // D10.1 — run annotation only when disease/pest issues were detected; skip for healthy
+      // or unknown health (saves ~50% of annotation API calls). Annotation failure remains
+      // non-fatal: sets annotationStatus=FAILED and continues.
+      DeepSeekPlantResult resultForAnnotationCheck = parseIdentificationResult(rawResult);
+      String healthStatusForAnnotation = resultForAnnotationCheck.getHealthStatus();
       String annotationJson;
-      try {
-        annotationJson = annotationFuture.join();
-        identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
-        identification.setAnnotationModel("gpt-4o-mini");
-      } catch (Exception e) {
-        log.warn(
-            "Annotation stage failed for identification id={}: {}",
+      if ("ISSUES_DETECTED".equals(healthStatusForAnnotation)) {
+        try {
+          annotationJson = visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+          identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
+          identification.setAnnotationModel("gpt-4o-mini");
+        } catch (Exception e) {
+          log.warn(
+              "Annotation stage failed for identification id={}: {}",
+              identification.getId(),
+              e.getMessage());
+          identification.setAnnotationStatus(IdentificationStageStatus.FAILED);
+          annotationJson = null;
+        }
+      } else {
+        log.info(
+            "Annotation skipped for identification id={}: healthStatus={} (D10.1)",
             identification.getId(),
-            e.getMessage());
-        identification.setAnnotationStatus(IdentificationStageStatus.FAILED);
+            healthStatusForAnnotation);
+        identification.setAnnotationStatus(IdentificationStageStatus.SKIPPED);
         annotationJson = null;
       }
 
@@ -356,8 +379,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       // deferred to fire-and-forget after the core save — see enrichWithPlantNetCandidates).
       PlantNetResponse plantNetResponse = outcome.plantNetResponse();
 
-      // Parse combined result; fall back gracefully if AI JSON is malformed
-      DeepSeekPlantResult result = parseIdentificationResult(rawResult);
+      // Reuse the result already parsed for the annotation-skip check above.
+      DeepSeekPlantResult result = resultForAnnotationCheck;
       CarePlanDto carePlan =
           result.getCarePlan() != null ? result.getCarePlan() : fallbackCarePlan();
       carePlan.setGeneratedByModel(outcome.providerUsed());
@@ -1333,7 +1356,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       String mediaType,
       List<String> organs,
       String plantNetProject,
-      String plantNetLang) {
+      String plantNetLang,
+      String userContext) {
     return switch (preference) {
       case PLANTNET -> {
         PlantNetResponse pnr =
@@ -1347,19 +1371,19 @@ public class IdentificationServiceImpl implements IdentificationService {
       }
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
           new IdentificationOutcome(
-              ollamaClient.identifyPlant(imageBytes, mediaType),
+              ollamaClient.identifyPlant(imageBytes, mediaType, userContext),
               VisionModelPreference.OLLAMA_GEMMA3.name());
       case GITHUB_GPT4O ->
           new IdentificationOutcome(
-              gitHubModelsClient.identifyPlant(imageBytes, mediaType),
+              gitHubModelsClient.identifyPlant(imageBytes, mediaType, userContext),
               VisionModelPreference.GITHUB_GPT4O.name());
       case GITHUB_GPT41 ->
           new IdentificationOutcome(
-              gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType),
+              gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType, userContext),
               VisionModelPreference.GITHUB_GPT41.name());
       case ANTHROPIC_CLAUDE ->
           new IdentificationOutcome(
-              anthropicClient.identifyPlant(imageBytes, mediaType),
+              anthropicClient.identifyPlant(imageBytes, mediaType, userContext),
               VisionModelPreference.ANTHROPIC_CLAUDE.name());
     };
   }

@@ -161,28 +161,43 @@ public class GitHubModelsClient {
   }
 
   public String identifyPlant(byte[] imageBytes, String mediaType) {
-    return identifyPlant(imageBytes, mediaType, identificationModel);
+    return identifyPlant(imageBytes, mediaType, identificationModel, null);
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType, String userContext) {
+    return identifyPlant(imageBytes, mediaType, identificationModel, userContext);
   }
 
   /** Same identification call as {@link #identifyPlant(byte[], String)} but forced onto gpt-4.1. */
   public String identifyPlantWithGpt41(byte[] imageBytes, String mediaType) {
-    return identifyPlant(imageBytes, mediaType, gpt41Model);
+    return identifyPlant(imageBytes, mediaType, gpt41Model, null);
   }
 
-  private String identifyPlant(byte[] imageBytes, String mediaType, String model) {
+  public String identifyPlantWithGpt41(byte[] imageBytes, String mediaType, String userContext) {
+    return identifyPlant(imageBytes, mediaType, gpt41Model, userContext);
+  }
+
+  private String identifyPlant(
+      byte[] imageBytes, String mediaType, String model, String userContext) {
     consumeTokenBudget(imageBytes);
 
     String dataUrl =
         "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
 
+    String basePrompt = "Identify this plant and generate a complete beginner care plan.";
+    String promptText =
+        (userContext != null && !userContext.isBlank())
+            ? basePrompt
+                + " The user wants to know: "
+                + userContext
+                + ". Consider this when assessing health and generating care advice"
+                + " — address their specific concern directly."
+            : basePrompt;
+
     List<Map<String, Object>> userContent =
         List.of(
             Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "high")),
-            Map.of(
-                "type",
-                "text",
-                "text",
-                "Identify this plant and generate a complete beginner care plan."));
+            Map.of("type", "text", "text", promptText));
 
     Map<String, Object> requestBody =
         Map.of(
