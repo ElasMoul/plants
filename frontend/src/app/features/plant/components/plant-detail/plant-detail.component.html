@@ -130,7 +130,7 @@
                   {{ scanHealthLabel(scan) }}
                 </span>
                 <span class="care-count-chip" *ngIf="scan.carePlan?.careCards?.length">
-                  {{ scan.carePlan.careCards.length }} tip{{ scan.carePlan.careCards.length !== 1 ? 's' : '' }}
+                  {{ scan.carePlan!.careCards.length }} tip{{ scan.carePlan!.careCards.length !== 1 ? 's' : '' }}
                 </span>
               </div>
               <div class="scan-context" *ngIf="scan.userContext">

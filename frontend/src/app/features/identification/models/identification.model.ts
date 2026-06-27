@@ -145,6 +145,7 @@ export interface IdentificationResponse {
   visionModelUsed?: string | null;
   reasoningModelUsed?: string | null;
   speciesId: number | null;
+  userContext?: string | null;
 }
 
 export interface AnalyzeEmitPayload {
