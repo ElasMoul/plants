@@ -135,6 +135,25 @@ class IdentificationServiceImplTest {
         "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[] {1, 2, 3});
   }
 
+  private String issuesDetectedJson() {
+    return """
+        {
+          "species": "Monstera deliciosa",
+          "commonName": "Swiss cheese plant",
+          "confidence": "HIGH",
+          "healthStatus": "ISSUES_DETECTED",
+          "healthNotes": "Yellow leaves detected.",
+          "carePlan": {
+            "wateringFrequencyDays": 7,
+            "fertilizingFrequencyDays": 30,
+            "repottingFrequencyMonths": 12,
+            "careCards": [],
+            "beginnerWarnings": []
+          }
+        }
+        """;
+  }
+
   private String validIdentificationJson() {
     return """
         {
@@ -167,7 +186,7 @@ class IdentificationServiceImplTest {
   /** Submits the identification request and captures the event published to Kafka. */
   private IdentificationRequestedEvent submitAndCaptureEvent(
       List<MultipartFile> images, List<String> organs, Long plantId, Long userId) throws Exception {
-    identificationService.submitIdentification(images, plantId, null, userId, organs).get();
+    identificationService.submitIdentification(images, plantId, null, userId, organs, null).get();
     ArgumentCaptor<IdentificationRequestedEvent> captor =
         ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
     verify(kafkaTemplate)
@@ -212,7 +231,8 @@ class IdentificationServiceImplTest {
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -246,14 +266,12 @@ class IdentificationServiceImplTest {
       assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.COMPLETED);
       assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
       assertThat(saved.getIdentificationModel()).isEqualTo("GITHUB_GPT4O");
-      // annotation mock returns null (no exception) → COMPLETED; plantNetAlwaysOn=false in unit
-      // tests → SKIPPED
-      assertThat(saved.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
-      assertThat(saved.getAnnotationModel()).isEqualTo("gpt-4o-mini");
+      // D10.1: annotation is SKIPPED for HEALTHY plants; plantNetAlwaysOn=false → SKIPPED
+      assertThat(saved.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
       assertThat(saved.getCandidateStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
 
       verify(fileStorageService).savePhoto(any());
-      verify(gitHubModelsClient).identifyPlant(any(), any());
+      verify(gitHubModelsClient).identifyPlant(any(), any(), any());
       verify(plantRepository).save(any(Plant.class));
     }
 
@@ -272,7 +290,7 @@ class IdentificationServiceImplTest {
               .build();
       when(identificationRepository.save(any())).thenReturn(pendingEntity);
       when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
-      when(gitHubModelsClient.identifyPlant(any(), any()))
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
       IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
@@ -297,7 +315,9 @@ class IdentificationServiceImplTest {
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED — use disease JSON so annotation is
+      // attempted
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any()))
           .thenThrow(new PlantPalException("Annotation service unavailable", 503));
 
@@ -334,7 +354,8 @@ class IdentificationServiceImplTest {
 
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
       Identification pendingEntity =
           Identification.builder()
               .id(1L)
@@ -363,7 +384,8 @@ class IdentificationServiceImplTest {
       List<MultipartFile> images = List.of(validImage());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
       when(plantNetClient.identify(any(), any(), any(), any()))
           .thenThrow(new PlantPalException("PlantNet unavailable", 503));
 
@@ -393,6 +415,119 @@ class IdentificationServiceImplTest {
   }
 
   @Nested
+  @DisplayName("T10.A — userContext + annotation skip (D10.1)")
+  class UserContextAndAnnotationSkip {
+
+    @Test
+    @DisplayName(
+        "submitIdentification stores non-blank userContext on entity and includes it in the Kafka event")
+    void shouldStoreUserContextOnEntityAndEvent() throws Exception {
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      identificationService
+          .submitIdentification(images, null, null, USER_ID, null, "Why is this leaf yellow?")
+          .get();
+
+      ArgumentCaptor<Identification> entityCaptor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(entityCaptor.capture());
+      assertThat(entityCaptor.getValue().getUserContext()).isEqualTo("Why is this leaf yellow?");
+
+      ArgumentCaptor<IdentificationRequestedEvent> eventCaptor =
+          ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
+      verify(kafkaTemplate)
+          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), eventCaptor.capture());
+      assertThat(eventCaptor.getValue().getUserContext()).isEqualTo("Why is this leaf yellow?");
+    }
+
+    @Test
+    @DisplayName("submitIdentification trims blank userContext to null before storing")
+    void shouldTrimBlankUserContextToNull() throws Exception {
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      identificationService.submitIdentification(images, null, null, USER_ID, null, "   ").get();
+
+      ArgumentCaptor<Identification> entityCaptor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(entityCaptor.capture());
+      assertThat(entityCaptor.getValue().getUserContext()).isNull();
+    }
+
+    @Test
+    @DisplayName("D10.1: annotationStatus=SKIPPED when healthStatus=HEALTHY (saves an API call)")
+    void shouldSkipAnnotationForHealthyPlant() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .identificationStatus(IdentificationStageStatus.PENDING)
+              .annotationStatus(IdentificationStageStatus.PENDING)
+              .candidateStatus(IdentificationStageStatus.PENDING)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      assertThat(pendingEntity.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.SKIPPED);
+      verify(visionAnnotationClient, never()).analyzeRegions(any(), any());
+    }
+
+    @Test
+    @DisplayName("D10.1: annotation runs normally when healthStatus=ISSUES_DETECTED")
+    void shouldRunAnnotationForIssuesDetectedPlant() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .identificationStatus(IdentificationStageStatus.PENDING)
+              .annotationStatus(IdentificationStageStatus.PENDING)
+              .candidateStatus(IdentificationStageStatus.PENDING)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      assertThat(pendingEntity.getAnnotationStatus())
+          .isEqualTo(IdentificationStageStatus.COMPLETED);
+      verify(visionAnnotationClient).analyzeRegions(any(), any());
+    }
+  }
+
+  @Nested
   @DisplayName("care plan parsing")
   class CarePlanParsing {
 
@@ -401,7 +536,8 @@ class IdentificationServiceImplTest {
     void shouldParseValidCarePlan() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -435,7 +571,7 @@ class IdentificationServiceImplTest {
     void shouldReturnFallbackOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("not valid json {{{");
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn("not valid json {{{");
 
       Identification pendingEntity =
           Identification.builder()
@@ -476,7 +612,7 @@ class IdentificationServiceImplTest {
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(jsonWithNullCarePlan);
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(jsonWithNullCarePlan);
 
       Identification pendingEntity =
           Identification.builder()
@@ -505,7 +641,7 @@ class IdentificationServiceImplTest {
     void fallbackCareCardNeverNull() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn("{}");
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn("{}");
 
       Identification pendingEntity =
           Identification.builder()
@@ -546,7 +682,8 @@ class IdentificationServiceImplTest {
     void shouldReturnEmptyRegionsOnMalformedJson() throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("not valid json {{{");
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
       when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
@@ -581,7 +718,8 @@ class IdentificationServiceImplTest {
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
       when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
@@ -616,7 +754,8 @@ class IdentificationServiceImplTest {
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
       when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
@@ -648,7 +787,8 @@ class IdentificationServiceImplTest {
           """;
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn(annotationJson);
       when(identificationRepository.save(any())).thenReturn(pendingEntity());
       when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity()));
@@ -712,7 +852,9 @@ class IdentificationServiceImplTest {
     private IdentificationRequestedEvent stubHappyPath(String identificationJson) throws Exception {
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(identificationJson);
+      // identificationJsonWithFertilizing/NoFertilizing both have HEALTHY status → D10.1 skips
+      // annotation
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(identificationJson);
 
       Identification pendingEntity =
           Identification.builder()
@@ -810,7 +952,7 @@ class IdentificationServiceImplTest {
 
       IdentificationPendingResponse response =
           identificationService
-              .submitIdentification(images, PLANT_ID, null, USER_ID, List.of("leaf"))
+              .submitIdentification(images, PLANT_ID, null, USER_ID, List.of("leaf"), null)
               .get();
 
       assertThat(response.getIdentificationId()).isEqualTo(1L);
@@ -842,11 +984,13 @@ class IdentificationServiceImplTest {
       when(identificationRepository.save(any())).thenReturn(pendingEntity);
 
       for (int i = 0; i < 20; i++) {
-        identificationService.submitIdentification(images, null, null, USER_ID, null);
+        identificationService.submitIdentification(images, null, null, USER_ID, null, null);
       }
 
       assertThatThrownBy(
-              () -> identificationService.submitIdentification(images, null, null, USER_ID, null))
+              () ->
+                  identificationService.submitIdentification(
+                      images, null, null, USER_ID, null, null))
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
@@ -859,7 +1003,8 @@ class IdentificationServiceImplTest {
         "processIdentification happy path: marks entity COMPLETED and saves annotation regions")
     void shouldCompleteAndSaveAnnotations() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
+      // D10.1: annotation only runs for ISSUES_DETECTED — use disease JSON so annotation is saved
+      when(gitHubModelsClient.identifyPlant(any(), any(), any())).thenReturn(issuesDetectedJson());
       when(visionAnnotationClient.analyzeRegions(any(), any()))
           .thenReturn(
               "{\"regions\":[{\"label\":\"Monstera\",\"type\":\"PLANT\",\"confidence\":\"HIGH\"}]}");
@@ -898,8 +1043,9 @@ class IdentificationServiceImplTest {
     @DisplayName("processIdentification: persists aiModelUsed matching the requested preference")
     void shouldPersistAiModelUsed() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      // HEALTHY JSON — D10.1 skips annotation, no stub needed for analyzeRegions
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -933,7 +1079,7 @@ class IdentificationServiceImplTest {
             + " GITHUB_GPT4O")
     void shouldMarkFailedWithoutFallbackWhenOllamaFails() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(ollamaClient.identifyPlant(any(), any()))
+      when(ollamaClient.identifyPlant(any(), any(), any()))
           .thenThrow(new PlantPalException("Ollama unavailable", 503));
 
       Identification pendingEntity =
@@ -957,7 +1103,7 @@ class IdentificationServiceImplTest {
 
       identificationService.processIdentification(event);
 
-      verify(gitHubModelsClient, never()).identifyPlant(any(), any());
+      verify(gitHubModelsClient, never()).identifyPlant(any(), any(), any());
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository).save(captor.capture());
       assertThat(captor.getValue().getStatus()).isEqualTo(IdentificationStatus.FAILED);
@@ -968,7 +1114,7 @@ class IdentificationServiceImplTest {
         "processIdentification AI failure: marks entity FAILED without propagating exception")
     void shouldMarkFailedWithoutThrowing() {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any()))
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
       Identification pendingEntity =
@@ -1007,8 +1153,9 @@ class IdentificationServiceImplTest {
     @DisplayName("processIdentification: stores source image dimensions read from the photo")
     void shouldStoreSourceImageDimensions() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(testJpegBytes(100, 75));
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      // HEALTHY JSON — D10.1 skips annotation, no stub needed for analyzeRegions
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -1042,8 +1189,9 @@ class IdentificationServiceImplTest {
     @DisplayName("processIdentification COMPLETED path evicts the plants cache")
     void shouldEvictPlantsCacheOnCompleted() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      // HEALTHY JSON — D10.1 skips annotation
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
       when(cacheManager.getCache("plants")).thenReturn(plantsCache);
 
       Identification pendingEntity =
@@ -1075,7 +1223,7 @@ class IdentificationServiceImplTest {
     @DisplayName("processIdentification FAILED path does not evict the plants cache")
     void shouldNotEvictPlantsCacheOnFailure() {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any()))
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
           .thenThrow(new PlantPalException("Plant identification service unavailable", 503));
 
       Identification pendingEntity =
@@ -1109,8 +1257,9 @@ class IdentificationServiceImplTest {
             + " new identification's id")
     void shouldUpdatePlantLastScanIdWhenLinkedToPlant() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      // HEALTHY JSON — D10.1 skips annotation
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()
@@ -1149,8 +1298,9 @@ class IdentificationServiceImplTest {
             + " exception")
     void shouldSkipPlantLookupWhenPlantIdNull() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
-      when(gitHubModelsClient.identifyPlant(any(), any())).thenReturn(validIdentificationJson());
-      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      // HEALTHY JSON — D10.1 skips annotation
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
 
       Identification pendingEntity =
           Identification.builder()

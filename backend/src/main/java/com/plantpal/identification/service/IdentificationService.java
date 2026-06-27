@@ -20,7 +20,12 @@ import org.springframework.web.multipart.MultipartFile;
 public interface IdentificationService {
 
   CompletableFuture<IdentificationPendingResponse> submitIdentification(
-      List<MultipartFile> images, Long plantId, Long speciesId, Long userId, List<String> organs);
+      List<MultipartFile> images,
+      Long plantId,
+      Long speciesId,
+      Long userId,
+      List<String> organs,
+      String userContext);
 
   void processIdentification(IdentificationRequestedEvent event);
 

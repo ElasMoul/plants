@@ -72,6 +72,10 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    const section = this.route.snapshot.queryParamMap.get('section') as Section | null;
+    if (section === 'overview' || section === 'plan') {
+      this.activeSection = section;
+    }
     this.loadTreatment();
   }
 

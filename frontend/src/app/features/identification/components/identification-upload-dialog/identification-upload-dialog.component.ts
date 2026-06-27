@@ -51,7 +51,11 @@ export class IdentificationUploadDialogComponent {
   startIdentification(): void {
     if (!this.photoUpload) return;
     if (this.photoUpload.batchMode) {
-      this.batchScan.start(this.photoUpload.entries.map(e => ({ file: e.file, preview: e.preview })));
+      const userContext = this.photoUpload.contextText.trim() || undefined;
+      this.batchScan.start(
+        this.photoUpload.entries.map(e => ({ file: e.file, preview: e.preview })),
+        userContext,
+      );
       return;
     }
     this.photoUpload.onAnalyze();

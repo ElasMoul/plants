@@ -145,6 +145,7 @@ export interface IdentificationResponse {
   visionModelUsed?: string | null;
   reasoningModelUsed?: string | null;
   speciesId: number | null;
+  userContext?: string | null;
 }
 
 export interface AnalyzeEmitPayload {
@@ -152,6 +153,7 @@ export interface AnalyzeEmitPayload {
   organs: string[];
   plantId?: number;
   speciesId?: number;
+  userContext?: string;
 }
 
 export interface PlantNetReferenceImageDto {

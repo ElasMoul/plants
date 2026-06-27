@@ -296,32 +296,130 @@ mat-divider {
 }
 
 // ── Scans tab ────────────────────────────────────────────────
-.scans-header {
+.scans-tab {
+  position: relative;
+  padding-bottom: 80px;
+}
+
+.scans-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.scan-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scan-history-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-divider);
+  transition: background-color 150ms ease;
 
-  .scans-subheading {
-    margin: 0;
+  &:hover {
+    background: var(--color-surface-secondary);
   }
 
-  .btn-pill {
-    flex-shrink: 0;
+  &:last-child {
+    border-bottom: none;
   }
 }
 
-.scans-subheading {
-  margin: 0 0 12px;
-  font-family: var(--font-heading);
-  font-size: 1rem;
-  font-weight: 600;
+.scan-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--color-surface-secondary);
+}
+
+.scan-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.scan-date {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--color-text-primary);
+  margin-bottom: 4px;
 }
 
-.scans-divider {
-  margin: 24px 0;
+.scan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.health-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  &.health-healthy {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &.health-issues {
+    background: #fbe9e7;
+    color: #bf360c;
+  }
+
+  &.health-unknown {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+}
+
+.care-count-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+
+.scan-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.context-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.context-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-chevron {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
 }
 
 .new-scan-fab {

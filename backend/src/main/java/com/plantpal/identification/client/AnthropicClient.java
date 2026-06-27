@@ -79,14 +79,21 @@ public class AnthropicClient {
   }
 
   public String identifyPlant(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, null);
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType, String userContext) {
+    String basePrompt = "Identify this plant and generate a complete beginner care plan.";
+    String promptText =
+        (userContext != null && !userContext.isBlank())
+            ? basePrompt
+                + " The user wants to know: "
+                + userContext
+                + ". Consider this when assessing health and generating care advice"
+                + " — address their specific concern directly."
+            : basePrompt;
     List<Map<String, Object>> userContent =
-        List.of(
-            imageBlock(imageBytes, mediaType),
-            Map.of(
-                "type",
-                "text",
-                "text",
-                "Identify this plant and generate a complete beginner care" + " plan."));
+        List.of(imageBlock(imageBytes, mediaType), Map.of("type", "text", "text", promptText));
     return call(
         defaultModel,
         GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT,

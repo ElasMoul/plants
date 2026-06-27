@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { map, switchMap, takeUntil } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -14,16 +14,13 @@ import { PlantResponse } from '../../models/plant.model';
 import { TreatmentResponse } from '../../models/treatment.model';
 import {
   AnalyzeEmitPayload,
-  AnnotationRegion,
   CarePlanDto,
   IdentificationResponse,
 } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
 import { CareType } from '../../../reminder/models/reminder.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
-import { PlantPhotoTimelineComponent } from '../plant-photo-timeline/plant-photo-timeline.component';
 import { PlantActionsSheetComponent, PlantAction } from '../plant-actions-sheet/plant-actions-sheet.component';
-import { PlantScanHistorySheetComponent } from '../plant-scan-history-sheet/plant-scan-history-sheet.component';
 import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-sheet/active-treatment-select-sheet.component';
 
 
@@ -33,19 +30,12 @@ import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-
   styleUrls: ['./plant-detail.component.scss'],
 })
 export class PlantDetailComponent implements OnInit, OnDestroy {
-  @ViewChild(PlantPhotoTimelineComponent) timeline?: PlantPhotoTimelineComponent;
-
-  // Set via the property-binding form below (not ngAfterViewInit) since the sentinel sits
-  // behind *ngIf="!loading && plant" and isn't available on the first view-init pass.
   @ViewChild('scrollSentinel') set scrollSentinel(el: ElementRef<HTMLDivElement> | undefined) {
     if (el && !this.sentinelObserver) {
       this.sentinelObserver = new IntersectionObserver(
         ([entry]) => {
           this.headerCollapsed = !entry.isIntersecting;
         },
-        // rootMargin pushes the effective viewport top down 40px, so the sentinel
-        // (sitting at scrollY=0) only counts as "out of view" — i.e. collapse fires —
-        // once the user has scrolled past 40px.
         { threshold: 0, rootMargin: '-40px 0px 0px 0px' },
       );
       this.sentinelObserver.observe(el.nativeElement);
@@ -59,19 +49,17 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   latestIdentificationId: number | null = null;
   hasIdentification = false;
   carePlanLoaded = false;
-  selectedScan: IdentificationResponse | null = null;
-  selectedRegionIndex: number | null = null;
-  selectedRegion: AnnotationRegion | null = null;
   existingCareTypes: CareType[] = [];
 
   headerCollapsed = false;
   activeSection: 'overview' | 'careLog' | 'actions' | 'treatment' | 'scans' = 'overview';
 
-  // Treatment CTA state for the currently-selected DISEASE region in the Scans section.
-  activeTreatmentForDisease: TreatmentResponse | null = null;
-  checkingActiveTreatment = false;
-  startingTreatment = false;
+  // Scan history list state (T10.D)
+  scanHistory: IdentificationResponse[] = [];
+  scanHistoryLoaded = false;
+  loadingScanHistory = false;
 
+  private plantId!: number;
   private sentinelObserver?: IntersectionObserver;
   private readonly destroy$ = new Subject<void>();
 
@@ -88,9 +76,14 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const section = this.route.snapshot.queryParamMap.get('section') as typeof this.activeSection | null;
+    if (section && ['overview', 'careLog', 'scans'].includes(section)) {
+      this.activeSection = section;
+    }
 
-    this.plantService.getPlant(id).subscribe({
+    this.plantId = Number(this.route.snapshot.paramMap.get('id'));
+
+    this.plantService.getPlant(this.plantId).subscribe({
       next: (res) => {
         this.plant = res.data;
         this.loading = false;
@@ -101,7 +94,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       },
     });
 
-    this.identificationService.getPlantIdentifications(id, 0, 1)
+    this.identificationService.getPlantIdentifications(this.plantId, 0, 1)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
@@ -112,6 +105,9 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
             this.latestIdentificationId = items[0].id;
           }
           this.carePlanLoaded = true;
+          if (this.activeSection === 'scans') {
+            this.loadScanHistory();
+          }
         },
         error: () => {
           this.carePlanLoaded = true;
@@ -123,7 +119,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           this.existingCareTypes = res.data
-            .filter(r => r.plantId === id && r.enabled)
+            .filter(r => r.plantId === this.plantId && r.enabled)
             .map(r => r.careType);
         },
         error: () => {
@@ -148,46 +144,9 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.activeSection = section;
-  }
-
-  openScanHistorySheet(): void {
-    if (!this.plant) return;
-    const ref = this.bottomSheet.open(PlantScanHistorySheetComponent, {
-      data: { plantId: this.plant.id },
-    });
-    ref.afterDismissed()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((scan?: IdentificationResponse) => {
-        if (scan) {
-          this.onScanSelected(scan);
-        }
-      });
-  }
-
-  startTreatment(): void {
-    const plant = this.plant;
-    const region = this.selectedRegion;
-    const scan = this.selectedScan;
-    if (!plant || !region || !scan || this.startingTreatment) return;
-
-    this.startingTreatment = true;
-    this.treatmentService.createTreatment(plant.id, scan.id, region.label)
-      .pipe(
-        switchMap(created => this.treatmentService.craftPlan(created.data.id).pipe(
-          map(crafted => crafted.data.id),
-        )),
-        takeUntil(this.destroy$),
-      )
-      .subscribe({
-        next: treatmentId => {
-          this.startingTreatment = false;
-          this.router.navigate(['/treatment', treatmentId]);
-        },
-        error: () => {
-          this.startingTreatment = false;
-          this.snackBar.open('Could not start a treatment plan.', 'Dismiss', { duration: 4000 });
-        },
-      });
+    if (section === 'scans' && !this.scanHistoryLoaded) {
+      this.loadScanHistory();
+    }
   }
 
   goToActiveTreatment(): void {
@@ -206,7 +165,6 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          // Fall back to the last-known single active treatment if the list fetch fails.
           if (this.plant?.activeTreatmentId) {
             this.router.navigate(['/treatment', this.plant.activeTreatmentId]);
           }
@@ -225,10 +183,6 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           this.router.navigate(['/treatment', treatment.id]);
         }
       });
-  }
-
-  goToTreatment(treatment: TreatmentResponse): void {
-    this.router.navigate(['/treatment', treatment.id]);
   }
 
   private openActionsSheet(): void {
@@ -258,34 +212,6 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       case 'chat':
         this.router.navigate(['/chat'], { queryParams: { plantId: this.plant.id } });
         break;
-    }
-  }
-
-  onScanSelected(scan: IdentificationResponse): void {
-    this.selectedScan = scan;
-    this.selectedRegionIndex = null;
-    this.selectedRegion = null;
-    this.activeTreatmentForDisease = null;
-  }
-
-  onRegionSelected(index: number | null): void {
-    this.selectedRegionIndex = index;
-    this.selectedRegion = index !== null && this.selectedScan?.annotationRegions
-      ? (this.selectedScan.annotationRegions[index] ?? null)
-      : null;
-
-    this.activeTreatmentForDisease = null;
-    if (this.selectedRegion?.type === 'DISEASE' && this.plant) {
-      this.checkActiveTreatment(this.selectedRegion.label);
-    }
-  }
-
-  onCarePlanUpdated(plan: CarePlanDto): void {
-    if (this.selectedScan) {
-      this.selectedScan = { ...this.selectedScan, carePlan: plan };
-    }
-    if (this.selectedScan && this.selectedScan.id === this.latestIdentificationId) {
-      this.latestCarePlan = plan;
     }
   }
 
@@ -320,39 +246,56 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  // "Is there an active treatment for THIS disease" — uses the plural getActiveTreatments()
-  // (T7.4) and matches by diseaseName, same fix as care-card.component.ts's
-  // checkActiveTreatment(): the plant can have more than one active treatment at once, so the
-  // old getActiveTreatment() (single most-recent) could miss this disease's treatment entirely.
-  private checkActiveTreatment(diseaseName: string): void {
-    const plantId = this.plant?.id;
-    if (!plantId) return;
+  openScanDetail(scan: IdentificationResponse): void {
+    this.router.navigate(['/plants', this.plantId, 'scans', scan.id]);
+  }
 
-    this.checkingActiveTreatment = true;
-    this.treatmentService.getActiveTreatments(plantId)
+  scanHealthLabel(scan: IdentificationResponse): string {
+    switch (scan.healthStatus) {
+      case 'HEALTHY': return 'Healthy';
+      case 'ISSUES_DETECTED': return 'Issues detected';
+      default: return 'Unknown';
+    }
+  }
+
+  scanHealthClass(scan: IdentificationResponse): string {
+    switch (scan.healthStatus) {
+      case 'HEALTHY': return 'health-healthy';
+      case 'ISSUES_DETECTED': return 'health-issues';
+      default: return 'health-unknown';
+    }
+  }
+
+  loadScanHistory(): void {
+    if (this.loadingScanHistory) return;
+    this.loadingScanHistory = true;
+    this.identificationService.getPlantIdentifications(this.plantId, 0, 20)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
-          this.checkingActiveTreatment = false;
-          this.activeTreatmentForDisease = res.data.find(t => t.diseaseName === diseaseName) ?? null;
+          this.scanHistory = res.data.content;
+          this.scanHistoryLoaded = true;
+          this.loadingScanHistory = false;
         },
         error: () => {
-          this.checkingActiveTreatment = false;
-          this.activeTreatmentForDisease = null;
+          this.scanHistoryLoaded = true;
+          this.loadingScanHistory = false;
         },
       });
   }
 
   private submitAddScan(payload: AnalyzeEmitPayload): void {
     this.identificationService
-      .analyze(payload.images, payload.organs, payload.plantId ?? this.plant?.id)
+      .analyze(payload.images, payload.organs, payload.plantId ?? this.plant?.id, undefined, payload.userContext)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.snackBar.open('Scan started — it will appear in the strip shortly.', undefined, {
+          this.snackBar.open('Scan started — it will appear in the list shortly.', undefined, {
             duration: 4000,
           });
-          this.timeline?.reload();
+          // Reset so the list reloads on next section activation.
+          this.scanHistoryLoaded = false;
+          this.scanHistory = [];
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0

@@ -32,7 +32,7 @@
         </div>
       </div>
     </div>
-    
+
 
     <!-- Icon button bar -->
     <div class="section-button-bar">
@@ -77,8 +77,6 @@
           <p>{{ plant.notes }}</p>
         </div>
 
-        <!-- Care cards — moved here from Scans (T6.x); disease-specific scan content (photo
-             annotator, region list, disease detail panel, treatment CTA) stays in Scans. -->
         <mat-divider *ngIf="carePlanLoaded && hasIdentification"></mat-divider>
 
         <ng-container *ngIf="carePlanLoaded && hasIdentification">
@@ -96,61 +94,55 @@
         <app-care-log [plantId]="plant.id"></app-care-log>
       </div>
 
-      <!-- Scans (also hosts the care plan content previously on its own tab) -->
-      <div *ngSwitchCase="'scans'" class="tab-content">
+      <!-- Scan History (T10.D) -->
+      <div *ngSwitchCase="'scans'" class="tab-content scans-tab">
 
-        <div class="scans-header">
-          <button mat-stroked-button type="button" class="btn-pill" (click)="openScanHistorySheet()">
-            <mat-icon>history</mat-icon>
-          </button>
-        </div>
-        <app-plant-photo-timeline
-          [plantId]="plant.id"
-          [selectedScanId]="selectedScan?.id ?? null"
-          (scanSelected)="onScanSelected($event)"
-        ></app-plant-photo-timeline>
-
-        <div *ngIf="!carePlanLoaded" class="care-plan-loading">
+        <div *ngIf="loadingScanHistory" class="scans-loading">
           <mat-spinner diameter="32"></mat-spinner>
         </div>
 
-        <div *ngIf="carePlanLoaded && !hasIdentification" class="placeholder-tab">
+        <!-- Empty state -->
+        <div *ngIf="scanHistoryLoaded && scanHistory.length === 0" class="placeholder-tab">
           <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
-          <h3>No scan yet</h3>
-          <p>Identify this plant to see the annotated scan here.</p>
-          <button mat-raised-button color="primary" class="btn-pill" routerLink="/identify">
-            <mat-icon>camera_alt</mat-icon>
-            Identify this plant
-          </button>
+          <h3>No scans yet</h3>
+          <p>Scan this plant to see its health history here.</p>
         </div>
 
-        <ng-container *ngIf="carePlanLoaded && hasIdentification && selectedScan as scan">
-          <mat-divider class="scans-divider"></mat-divider>
-          <h3 class="scans-subheading">{{ scan.createdAt | date:'medium' }}</h3>
+        <!-- History list -->
+        <div class="scan-history-list" *ngIf="scanHistoryLoaded && scanHistory.length > 0">
+          <div
+            class="scan-history-item"
+            *ngFor="let scan of scanHistory"
+            (click)="openScanDetail(scan)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="openScanDetail(scan)"
+          >
+            <img
+              [src]="scan.photoUrl || placeholderImage"
+              [alt]="'Scan ' + (scan.createdAt | date:'shortDate')"
+              class="scan-thumb"
+            />
+            <div class="scan-meta">
+              <div class="scan-date">{{ scan.createdAt | date:'mediumDate' }}</div>
+              <div class="scan-chips">
+                <span class="health-chip" [ngClass]="scanHealthClass(scan)">
+                  {{ scanHealthLabel(scan) }}
+                </span>
+                <span class="care-count-chip" *ngIf="scan.carePlan?.careCards?.length">
+                  {{ scan.carePlan!.careCards.length }} tip{{ scan.carePlan!.careCards.length !== 1 ? 's' : '' }}
+                </span>
+              </div>
+              <div class="scan-context" *ngIf="scan.userContext">
+                <mat-icon class="context-icon">chat_bubble_outline</mat-icon>
+                <span class="context-text">{{ scan.userContext | slice:0:80 }}{{ scan.userContext.length > 80 ? '…' : '' }}</span>
+              </div>
+            </div>
+            <mat-icon class="scan-chevron">chevron_right</mat-icon>
+          </div>
+        </div>
 
-          <app-photo-annotator
-            [imageUrl]="scan.photoUrl || placeholderImage"
-            [regions]="scan.annotationRegions"
-            [selectedRegionIndex]="selectedRegionIndex"
-          ></app-photo-annotator>
-
-          <app-annotation-list
-            *ngIf="scan.annotationRegions && scan.annotationRegions.length"
-            [regions]="scan.annotationRegions"
-            [species]="plant.species ?? null"
-            [identificationId]="scan.id"
-            (regionSelected)="onRegionSelected($event)"
-          ></app-annotation-list>
-
-          <app-disease-detail-panel
-            [region]="selectedRegion"
-            [species]="plant.species ?? null"
-            [identificationId]="scan.id"
-            [plantId]="plant.id"
-            (carePlanUpdated)="onCarePlanUpdated($event)"
-          ></app-disease-detail-panel>
-        </ng-container>
-
+        <!-- FAB to add new scan -->
         <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
           <mat-icon>camera_alt</mat-icon>
         </button>

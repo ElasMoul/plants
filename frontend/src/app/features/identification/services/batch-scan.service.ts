@@ -14,6 +14,7 @@ export interface BatchItem {
   preview: string;
   status: BatchItemStatus;
   errorMessage?: string;
+  userContext?: string;
 }
 
 // Owns the batch-scan queue independently of IdentificationUploadDialogComponent's lifecycle —
@@ -56,8 +57,12 @@ export class BatchScanService {
     return this.itemsSubject.value.some(i => i.status === 'FAILED');
   }
 
-  start(files: { file: File; preview: string }[]): void {
-    const items = files.map(f => ({ id: this.nextId++, file: f.file, preview: f.preview, status: 'PENDING' as BatchItemStatus }));
+  start(files: { file: File; preview: string }[], userContext?: string): void {
+    const items = files.map(f => ({
+      id: this.nextId++, file: f.file, preview: f.preview,
+      status: 'PENDING' as BatchItemStatus,
+      userContext,
+    }));
     this.itemsSubject.next(items);
     this.running = true;
     items.forEach(item => this.processItem(item.id));
@@ -88,7 +93,7 @@ export class BatchScanService {
     if (!item) return;
 
     this.patchItem(id, { status: 'SCANNING' });
-    this.identificationService.analyze([item.file], ['auto']).subscribe({
+    this.identificationService.analyze([item.file], ['auto'], undefined, undefined, item.userContext).subscribe({
       next: res => {
         this.identificationService.pollUntilComplete(res.data.identificationId).subscribe({
           next: () => {

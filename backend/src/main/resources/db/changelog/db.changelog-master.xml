@@ -98,4 +98,7 @@
     <include file="db/changelog/migrations/029_add_generation_status.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/030_add_identification_user_context.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
