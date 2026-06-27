@@ -166,33 +166,18 @@ export class CareCardComponent implements OnChanges, OnDestroy {
     if (plantId === null || identificationId === null) return;
 
     this.startingTreatment = true;
-    // Goes through the Treatment entity (createTreatment + craftPlan), not
-    // TreatmentPlanService.createFromActionPlan() directly — createTreatment() rejects a second
-    // active treatment for the same plant+diseaseName, which is what actually stops duplicates;
-    // see ARCHITECT.md's "Two Treatment concepts".
+    // Creates the Treatment entity in DRAFT — do NOT call craftPlan() here.
+    // craftPlan() belongs to the explicit "Craft Treatment Plan" button on the
+    // Treatment detail page; calling it here is what caused DRAFT→IN_PROGRESS
+    // without user action (T10.C bug fix).
     this.treatmentService.createTreatment(plantId, identificationId, this.card.title)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: created => {
-          this.treatmentService.craftPlan(created.data.id)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: crafted => {
-                this.startingTreatment = false;
-                this.treatmentStarted = true;
-                this.activeTreatmentId = crafted.data.id;
-                const snackRef = this.snackBar.open('Treatment plan started', 'View', { duration: 5000 });
-                snackRef.onAction()
-                  .pipe(takeUntil(this.destroy$))
-                  .subscribe(() => this.router.navigate(['/treatment', crafted.data.id]));
-              },
-              error: (err: HttpErrorResponse) => {
-                this.startingTreatment = false;
-                this.treatmentStarted = true;
-                this.activeTreatmentId = created.data.id;
-                this.aiErrorService.notify(err);
-              },
-            });
+          this.startingTreatment = false;
+          this.treatmentStarted = true;
+          this.activeTreatmentId = created.data.id;
+          this.router.navigate(['/treatment', created.data.id]);
         },
         error: (err: HttpErrorResponse) => {
           this.startingTreatment = false;
