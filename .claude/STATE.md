@@ -9,9 +9,7 @@
 
 | Branch | Status |
 |---|---|
-| `dev` | Clean — all phases 0–8.5 merged |
-| `PHASE9` | T9.1–T9.8 code complete — **pending CI green + merge to dev** |
-| `PHASE9.5` | T9.A–T9.F code complete — **pending merge after PHASE9** |
+| `dev` | Clean — all phases 0–9.5 merged ✅ |
 
 **Migration sequence:** 001–029 applied. Next free: **030** (reserved T10.A `user_context`).
 **Next free PP branch number:** PP-071 (PP-057–070 used by Phases 9 and 9.5).
@@ -32,8 +30,8 @@
 | 7 — Model Control, Batch, Multi-Treatment | ✅ Complete (T7.1–T7.4) |
 | 8 — PlantNet First-Class Provider | ✅ Complete (T8.0–T8.7) |
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
-| 9 — Quality, Testing & Hardening | 🟡 Code complete on PHASE9 branch — pending CI + merge |
-| 9.5 — Species Card Harvest + Async Reliability | 🟡 Code complete on PHASE9.5 branch — pending merge |
+| 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
+| 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
 | 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
@@ -67,9 +65,7 @@
 
 ## Next Tasks (ordered)
 
-1. **Merge PHASE9 → dev** once CI green (last fix commit: 4f1bbb3).
-2. **Merge PHASE9.5 → dev** after PHASE9 lands.
-3. **Phase 10 tasks** (T10.A–T10.F) — contextual scanning, scan redesign, treatment polish.
+1. **Phase 10 tasks** (T10.A–T10.F) — contextual scanning, scan redesign, treatment polish.
 4. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
 5. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 6. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).

@@ -471,8 +471,8 @@ open backend/target/site/jacoco/index.html
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
 | 8 — PlantNet First-Class Provider | ✅ Complete (T8.0–T8.7, all merged to dev) |
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G, all merged to dev) |
-| 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch — pending CI + merge) |
-| 9.5 — Species Card Harvest + Async Reliability | 🟡 Code complete (T9.A–T9.F on PHASE9.5 branch — pending merge) |
+| 9 — Quality, Testing & Hardening | ✅ Complete (T9.1–T9.8, merged to dev) |
+| 9.5 — Species Card Harvest + Async Reliability | ✅ Complete (T9.A–T9.F, merged to dev) |
 | 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+; was Phase 5/10) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
