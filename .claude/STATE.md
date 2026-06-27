@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-27 (Phase 10 designed; files cleaned up + archived)
+> Last updated: 2026-06-27 (Phase 10 complete — all T10.A–F on PHASE10 branch)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -10,9 +10,10 @@
 | Branch | Status |
 |---|---|
 | `dev` | Clean — all phases 0–9.5 merged ✅ |
+| `PHASE10` | Complete — T10.A–F all merged; merge to dev pending |
 
-**Migration sequence:** 001–029 applied. Next free: **030** (reserved T10.A `user_context`).
-**Next free PP branch number:** PP-071 (PP-057–070 used by Phases 9 and 9.5).
+**Migration sequence:** 001–030 applied. Next free: **031**.
+**Next free PP branch number:** PP-076 (PP-071–075 used by Phase 10 T10.A–F).
 
 ---
 
@@ -32,7 +33,7 @@
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
-| 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
+| 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–F, PP-071–075, PHASE10 branch; merge to dev next) |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---
@@ -65,8 +66,8 @@
 
 ## Next Tasks (ordered)
 
-1. **Phase 10 tasks** (T10.A–T10.F) — contextual scanning, scan redesign, treatment polish.
-4. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
+1. **Merge PHASE10 → dev** — all T10 tasks complete; open PR from PHASE10 to dev.
+2. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
 5. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 6. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 7. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
@@ -76,9 +77,9 @@
 
 ## Key Open Decisions
 
-- **D10.1 — Annotation strategy:** merge annotation into identification prompt (single gpt-4o call, simpler, user's recommendation) **vs.** skip annotation call when healthStatus ≠ ISSUES_DETECTED (conservative, preserves per-stage architecture). Confirm before T10.A.
-- **D10.2 — Health-scan card draft state:** client-side presentation only (no DB changes) vs. persisted draft flag. Recommend client-side.
-- **D10.3 — Treatment auto-progression root cause:** must be diagnosed (read TreatmentServiceImpl + CareCardComponent + TreatmentDetailComponent) before T10.C is coded.
+- **D10.1 — Annotation strategy:** Conservative skip chosen (skip when healthStatus ≠ ISSUES_DETECTED). Full merge-into-single-call is a follow-up option. ✅ Implemented.
+- **D10.2 — Health-scan card draft state:** Client-side only confirmed. `@Input() isDraft` + `@Input() treatmentActive` on CareCardComponent. ✅ Implemented.
+- **D10.3 — Treatment auto-progression:** Root cause was H3 (CareCardComponent + plant-detail chaining craftPlan). Fixed in T10.C + T10.F. ✅ Resolved.
 - **Kafka prod story:** still open, blocks T-DEPLOY.5.
 
 ---

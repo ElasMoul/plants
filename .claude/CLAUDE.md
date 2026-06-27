@@ -473,7 +473,7 @@ open backend/target/site/jacoco/index.html
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G, all merged to dev) |
 | 9 — Quality, Testing & Hardening | ✅ Complete (T9.1–T9.8, merged to dev) |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete (T9.A–T9.F, merged to dev) |
-| 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
+| 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–F on PHASE10 branch; merge to dev pending) |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+; was Phase 5/10) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
