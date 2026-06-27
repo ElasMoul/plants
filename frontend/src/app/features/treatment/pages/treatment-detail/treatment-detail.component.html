@@ -113,6 +113,7 @@
           *ngIf="!planLoading && plan"
           [steps]="plan.steps"
           [diagramContent]="plan.diagramContent"
+          [returnUrl]="'/treatment/' + treatment.id + '?section=plan'"
           (stepCompleted)="onPlanStepCompleted()"
         ></app-treatment-step-list>
 
