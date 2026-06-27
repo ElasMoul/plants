@@ -457,24 +457,25 @@ open backend/target/site/jacoco/index.html
 
 ## Current Build Status
 
-> Full session-by-session history: STATE.md. Full task prompts (completed ones
-> compacted to one-liners, Phase 5 still in full detail): TASK_PLAN.md.
+> Full session-by-session history: STATE.md. Full task prompts: TASK_PLAN.md.
+> Archived snapshots: .claude/Archive/.
 
 | Phase | Status |
 |---|---|
 | 0 — Project Setup | ✅ Complete |
 | 1 — Auth + Plant Management | ✅ Complete |
 | 2 — AI Plant Identification | ✅ Complete |
-| 3 — Reminders + Care Plans | ✅ Complete except T3.3 (manual on-device push/PWA testing — never done, needs a real phone) |
-| 4 — AI Chat | ✅ Complete, incl. streaming + conversation history (pre-Phase-5 cleanup pass) |
-| 5 — Launch Preparation | 🔲 Not started |
+| 3 — Reminders + Care Plans | ✅ Complete (T3.3 manual device testing → Phase DEPLOY beta) |
+| 4 — AI Chat | ✅ Complete (streaming + conversation history) |
 | 6 — Species & Treatment Domain Restructure | ✅ Complete (T6.1–T6.14) |
 | 7 — Model Control, Batch Scanning, Multi-Treatment UX | ✅ Complete (T7.1–T7.4) |
-| 8 — PlantNet First-Class Provider | ✅ Complete — T8.0–T8.7 all merged to dev |
-| 8.5 — Identification Pipeline Resilience | ✅ Complete — T8.A–T8.G all merged to dev |
-| 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch) — pending CI + merge to dev |
-| 9.5 — Species Card Harvest + Async-Description Reliability | 🔲 Planned (T9.A–T9.D) — decisions 1–5 gate start |
-| — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) — see STATE.md |
+| 8 — PlantNet First-Class Provider | ✅ Complete (T8.0–T8.7, all merged to dev) |
+| 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G, all merged to dev) |
+| 9 — Quality, Testing & Hardening | 🟡 Code complete (T9.1–T9.8 on PHASE9 branch — pending CI + merge) |
+| 9.5 — Species Card Harvest + Async Reliability | 🟡 Code complete (T9.A–T9.F on PHASE9.5 branch — pending merge) |
+| 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
+| DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+; was Phase 5/10) |
+| — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ---
 
