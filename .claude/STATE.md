@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-27 (Phase 10 complete — all T10.A–F on PHASE10 branch)
+> Last updated: 2026-06-28 (post-Phase-10 bugfixes on PHASE10 branch)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -81,6 +81,18 @@
 - **D10.2 — Health-scan card draft state:** Client-side only confirmed. `@Input() isDraft` + `@Input() treatmentActive` on CareCardComponent. ✅ Implemented.
 - **D10.3 — Treatment auto-progression:** Root cause was H3 (CareCardComponent + plant-detail chaining craftPlan). Fixed in T10.C + T10.F. ✅ Resolved.
 - **Kafka prod story:** still open, blocks T-DEPLOY.5.
+
+---
+
+## Post-Phase-10 Bugfixes (2026-06-28, PHASE10 branch)
+
+Three frontend UX fixes (commit 6c10241):
+- **Scans blank after submit** — `submitAddScan()` now calls `loadScanHistory()` immediately when `activeSection === 'scans'` instead of leaving the section blank.
+- **Plant overview merged care plan** — Initial fetch changed to size=10; `mergedCarePlan` getter deduplicates care cards by `type` across all scans. `loadScanHistory()` updates `allIdentifications` as side-effect.
+- **Species page botanical facts** — "Botanical facts" section (family/genus/IUCN badge) added to species-detail overview; visible regardless of `descriptionStatus`. `gbifId`/`powoId`/`iucnCategory` added to frontend `SpeciesResponse` model.
+
+Backend race condition fix (commit d2c03e3):
+- **`@Async` + `@Transactional` race in `SpeciesEnrichmentServiceImpl`** — `createSpecies()` was firing `enrich()` inline before the outer transaction committed; `enrich()`'s own `findById` returned null → enrichment silently skipped → `descriptionStatus` stuck at PENDING forever. Fixed with `TransactionSynchronizationManager.registerSynchronization(afterCommit)` in both `createSpecies()` and `regenerateDescription()`. See vault: [[async-transactional-race-condition]].
 
 ---
 
