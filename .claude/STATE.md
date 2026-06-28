@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (T10.I complete — getUserMedia contention fixed, /voice-test diagnostic page, ESLint CI fix)
+> Last updated: 2026-06-28 (LAN HTTPS — self-signed cert + Nginx 443, mobile isSecureContext = true)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
