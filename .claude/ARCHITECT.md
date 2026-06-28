@@ -958,6 +958,69 @@ Determines which CTAs appear on a scan detail page's care cards:
 - `craftPlan()` transition DRAFT → IN_PROGRESS: must NOT overwrite `diseaseDescription`.
   The description is generated independently; the plan adds steps only.
 
+### Web Speech API — STT permission pre-check pattern (T10.G)
+The microphone button in `PhotoUploadComponent` uses Web Speech API
+(`SpeechRecognition`/`webkitSpeechRecognition`). On some mobile browsers (especially iOS
+Safari and Android Chrome cold-start), calling `recognition.start()` directly may fail
+with `not-allowed` without ever showing the OS permission dialog — silent failure.
+
+**Fix pattern:** always pre-check mic permission with `navigator.mediaDevices.getUserMedia`
+*before* creating the `SpeechRecognition` object:
+```
+getUserMedia({audio:true})
+  → success: stop all tracks (we only need the grant), then doStartRecognition()
+  → NotFoundError: "No microphone found on this device."
+  → NotAllowedError / PermissionDeniedError:
+       "Microphone access blocked — tap the lock icon in your browser's address bar
+        to allow access, then try again."   (8s duration so user can read it)
+  → getUserMedia not available (HTTP non-localhost, old browser):
+       fall through to doStartRecognition() directly (current behavior)
+```
+- Add `requestingPermission = false` flag; disable the mic button during the prompt.
+- Show a "Requesting access…" chip while `requestingPermission = true`.
+- Keep the `recognition.onerror` `not-allowed` branch as a belt-and-suspenders fallback.
+- **Never** record or forward the `getUserMedia` audio stream — it is immediately stopped
+  after the permission grant. Its only job is to trigger the OS permission dialog reliably.
+
+### Web Speech Synthesis — TTS "Read aloud" pattern (T10.H)
+`SpeechService` (`shared/services/speech.service.ts`, `providedIn: 'root'`) wraps the
+browser's `window.speechSynthesis` API with a simple stateful interface:
+- `isSupported: boolean = 'speechSynthesis' in window` — always feature-detected; the
+  read-aloud button hides itself entirely when this is false (no API, no button, no noise).
+- `speak(text)`: cancels any current utterance (so a new click always wins), creates a new
+  `SpeechSynthesisUtterance` at `rate=0.95`, updates `speaking`/`currentText` state via
+  `onstart`/`onend`/`onerror` callbacks.
+- `stop()` + `ngOnDestroy()`: cancel and reset state.
+- `isReadingText(text): boolean`: used by the button to show the active (stop) state only
+  when THIS text is being read — two buttons on the same page don't interfere.
+
+`ReadAloudButtonComponent` (`shared/components/read-aloud-button/`, declared + exported
+by `SharedModule`):
+- `@Input() text: string` — parent assembles the full plain-text string.
+- `@Input() ariaLabel = 'Read aloud'`
+- A single `mat-icon-button` with `volume_up` icon at rest, `stop_circle` when `isReading`.
+- `*ngIf="speechService.isSupported"` on the button itself — zero DOM impact when unsupported.
+- `toggle()`: `stop()` if reading this text, else `speak(text)`.
+- CSS `.reading` class colors the icon green (primary token) to signal active state.
+
+**Where it's wired:**
+| Surface | Text assembled as |
+|---|---|
+| `CareCardComponent` header | `card.title + '. ' + (card.advice ?? '')` |
+| `SpeciesDetailComponent` description block | `species.description` (guard: `descriptionStatus === 'READY'`) |
+| `TreatmentDetailComponent` disease description | `treatment.diseaseDescription` (guard: `descriptionStatus === 'READY'`) |
+| `TreatmentStepListComponent` per-step | `'Step N: ' + stepInstruction(step) + (stepDetail ?? '')` |
+| Dashboard reminder rows | `reminder.instruction ?? reminder.careType` |
+| `ScanDetailComponent` userContext block | `identification.userContext` |
+
+**Placement rule:** inline with the section heading or title row (icon only, no label text),
+same visual weight as a secondary action. Never a separate full-width row. Never show a
+label next to the icon — the `matTooltip` is sufficient.
+
+**No new lazy module providers needed** — `SpeechService` is `providedIn:'root'`; the button
+component is exported from `SharedModule` and consumable in any lazy feature module
+(IdentificationModule, PlantModule, etc.) without re-providing.
+
 ### Mobile Mermaid Constraint (added to all AI system prompts with Mermaid output)
 ```
 Mermaid diagrams must be optimized for mobile screens:

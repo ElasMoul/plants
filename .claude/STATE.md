@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (post-Phase-10 bugfixes on PHASE10 branch)
+> Last updated: 2026-06-28 (PHASE10 merged to dev via PR #81, bb9b0a8)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -9,11 +9,10 @@
 
 | Branch | Status |
 |---|---|
-| `dev` | Clean — all phases 0–9.5 merged ✅ |
-| `PHASE10` | Complete — T10.A–F all merged; merge to dev pending |
+| `dev` | Clean — all phases 0–10 merged ✅ (PR #81, bb9b0a8) |
 
 **Migration sequence:** 001–030 applied. Next free: **031**.
-**Next free PP branch number:** PP-076 (PP-071–075 used by Phase 10 T10.A–F).
+**Next free PP branch number:** PP-078 (PP-071–075 used by Phase 10 T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS read-aloud).
 
 ---
 
@@ -33,7 +32,7 @@
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
-| 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–F, PP-071–075, PHASE10 branch; merge to dev next) |
+| 10 — Contextual Scanning & Treatment Polish | ⚙️ T10.A–F ✅ merged to dev; T10.G (voice fix) + T10.H (TTS read-aloud) 🔲 planned |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---
@@ -66,8 +65,9 @@
 
 ## Next Tasks (ordered)
 
-1. **Merge PHASE10 → dev** — all T10 tasks complete; open PR from PHASE10 to dev.
-2. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
+1. **T10.G** — `feature/PP-076-voice-permission-fix` — mic `getUserMedia` pre-check, better error messages.
+2. **T10.H** — `feature/PP-077-read-aloud` — TTS `SpeechService` + `ReadAloudButtonComponent` wired into care cards, species, treatment, steps, reminders, scan context.
+3. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
 5. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 6. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 7. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
