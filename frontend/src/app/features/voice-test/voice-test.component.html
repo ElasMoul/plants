@@ -1,0 +1,102 @@
+<div class="voice-test-page">
+
+  <div class="page-header">
+    <h1 class="page-title">Voice Recognition Test</h1>
+    <a mat-icon-button routerLink="/home" aria-label="Back to home">
+      <mat-icon>close</mat-icon>
+    </a>
+  </div>
+
+  <!-- Environment info -->
+  <mat-card class="env-card">
+    <mat-card-header>
+      <mat-card-title>Environment</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="env-row">
+        <mat-icon [class.ok]="hasSpeechAPI" [class.fail]="!hasSpeechAPI">
+          {{ hasSpeechAPI ? 'check_circle' : 'cancel' }}
+        </mat-icon>
+        <span class="env-label">SpeechRecognition API</span>
+        <span class="env-value">{{ hasSpeechAPI ? 'Available' : 'Not available (Firefox has no SpeechRecognition)' }}</span>
+      </div>
+      <div class="env-row">
+        <mat-icon [class.ok]="isSecureCtx" [class.warn]="!isSecureCtx">
+          {{ isSecureCtx ? 'check_circle' : 'warning' }}
+        </mat-icon>
+        <span class="env-label">isSecureContext</span>
+        <span class="env-value">{{ isSecureCtx ? 'true (HTTPS / localhost — OK)' : 'false — SpeechRecognition is blocked on plain HTTP over LAN' }}</span>
+      </div>
+      <div class="env-row">
+        <mat-icon class="neutral">info</mat-icon>
+        <span class="env-label">Hostname</span>
+        <span class="env-value">{{ hostname }}</span>
+      </div>
+      <div class="env-row">
+        <mat-icon class="neutral">info</mat-icon>
+        <span class="env-label">Language</span>
+        <span class="env-value">{{ lang }}</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Control -->
+  <div class="control-row">
+    <button
+      mat-raised-button
+      [color]="listening ? 'warn' : 'primary'"
+      class="toggle-btn"
+      [disabled]="!hasSpeechAPI || !isSecureCtx"
+      (click)="toggle()"
+    >
+      <mat-icon>{{ listening ? 'stop' : 'mic' }}</mat-icon>
+      {{ listening ? 'Stop' : 'Start Listening' }}
+    </button>
+    <span class="status-label" [class.listening]="listening">{{ statusMessage }}</span>
+  </div>
+
+  <!-- Audio level bar -->
+  <div class="level-section">
+    <span class="level-label">Mic level</span>
+    <div class="level-track" [class.active]="listening">
+      <div
+        class="level-fill"
+        [style.width.%]="audioLevel"
+        [class.loud]="audioLevel > 70"
+        [class.medium]="audioLevel > 30 && audioLevel <= 70"
+      ></div>
+    </div>
+    <span class="level-number">{{ audioLevel | number: '1.0-0' }}%</span>
+  </div>
+
+  <!-- Transcript -->
+  <div class="transcript-section">
+    <div class="section-header">
+      <h2>Transcript</h2>
+      <button mat-button (click)="clearAll()" [disabled]="!transcript && log.length === 0">
+        <mat-icon>clear_all</mat-icon> Clear
+      </button>
+    </div>
+    <div class="transcript-box" [class.empty]="!transcript">
+      {{ transcript || '(speak after pressing Start — words appear here live)' }}
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="log-section">
+    <h2>Event Log <span class="log-count" *ngIf="log.length">({{ log.length }})</span></h2>
+    <div class="log-box">
+      <div
+        *ngFor="let entry of log"
+        class="log-entry"
+        [class.log-result]="entry.type === 'result'"
+        [class.log-error]="entry.type === 'error'"
+      >
+        <span class="log-time">{{ entry.time }}</span>
+        <span class="log-msg">{{ entry.msg }}</span>
+      </div>
+      <div *ngIf="log.length === 0" class="log-empty">No events yet</div>
+    </div>
+  </div>
+
+</div>
