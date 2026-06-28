@@ -119,6 +119,25 @@ Backend race condition fix (commit d2c03e3):
 
 ---
 
+## Dev Infrastructure
+
+**LAN HTTPS (2026-06-28):** Frontend Nginx now serves HTTPS on port 443 (self-signed cert) for
+mobile device testing. Port 80 redirects to 443. Cert lives at `frontend/nginx/certs/self.crt`
+(committed); key at `frontend/nginx/certs/self.key` (gitignored). One-time cert generation:
+```
+mkdir -p frontend/nginx/certs
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout frontend/nginx/certs/self.key \
+  -out frontend/nginx/certs/self.crt \
+  -subj "/CN=plantpal.local" \
+  -addext "subjectAltName=IP:<LAN_IP>"
+```
+Then `docker compose build frontend && docker compose up -d frontend`. Phone: navigate to
+`https://<LAN_IP>`, tap Advanced → Proceed. Verify via `/voice-test`: isSecureContext = true.
+Production (Railway/Vercel) is unchanged — they already terminate TLS.
+
+---
+
 ## Known Tech Debt
 
 - JaCoCo gate at 80% (restored in T9.5 — verify still holds after Phase 9.5 additions).
