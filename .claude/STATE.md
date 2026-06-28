@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (T10.I complete — getUserMedia contention fixed, /voice-test diagnostic page, ESLint CI fix)
+> Last updated: 2026-06-28 (LAN HTTPS — self-signed cert + Nginx 443, mobile isSecureContext = true)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -116,6 +116,25 @@ Three frontend UX fixes (commit 6c10241):
 
 Backend race condition fix (commit d2c03e3):
 - **`@Async` + `@Transactional` race in `SpeciesEnrichmentServiceImpl`** — `createSpecies()` was firing `enrich()` inline before the outer transaction committed; `enrich()`'s own `findById` returned null → enrichment silently skipped → `descriptionStatus` stuck at PENDING forever. Fixed with `TransactionSynchronizationManager.registerSynchronization(afterCommit)` in both `createSpecies()` and `regenerateDescription()`. See vault: [[async-transactional-race-condition]].
+
+---
+
+## Dev Infrastructure
+
+**LAN HTTPS (2026-06-28):** Frontend Nginx now serves HTTPS on port 443 (self-signed cert) for
+mobile device testing. Port 80 redirects to 443. Cert lives at `frontend/nginx/certs/self.crt`
+(committed); key at `frontend/nginx/certs/self.key` (gitignored). One-time cert generation:
+```
+mkdir -p frontend/nginx/certs
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout frontend/nginx/certs/self.key \
+  -out frontend/nginx/certs/self.crt \
+  -subj "/CN=plantpal.local" \
+  -addext "subjectAltName=IP:<LAN_IP>"
+```
+Then `docker compose build frontend && docker compose up -d frontend`. Phone: navigate to
+`https://<LAN_IP>`, tap Advanced → Proceed. Verify via `/voice-test`: isSecureContext = true.
+Production (Railway/Vercel) is unchanged — they already terminate TLS.
 
 ---
 
