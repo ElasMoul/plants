@@ -26,6 +26,7 @@ import com.plantpal.species.service.impl.SpeciesServiceImpl;
 import com.plantpal.user.entity.AiModelPreference;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +40,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SpeciesService — Unit Tests")
@@ -70,6 +72,19 @@ class SpeciesServiceTest {
   @Nested
   @DisplayName("findOrCreate()")
   class FindOrCreate {
+
+    @BeforeEach
+    void initTxSync() {
+      // createSpecies() calls TransactionSynchronizationManager.registerSynchronization(),
+      // which requires an active transaction context. Unit tests have none, so we activate
+      // synchronization manually and clear it after each test.
+      TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void clearTxSync() {
+      TransactionSynchronizationManager.clearSynchronization();
+    }
 
     @Test
     @DisplayName("should return the existing row and never create a duplicate")
@@ -112,6 +127,9 @@ class SpeciesServiceTest {
       Species result =
           speciesService.findOrCreate(
               "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.DEEPSEEK);
+      // createSpecies() registers enrichment via afterCommit() — simulate a commit so the
+      // callback fires and we can verify enrich() was called with the right args.
+      TransactionSynchronizationManager.getSynchronizations().forEach(s -> s.afterCommit());
 
       // Then
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
@@ -137,6 +155,8 @@ class SpeciesServiceTest {
       // When
       speciesService.findOrCreate(
           "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.OLLAMA_LLAVA);
+      // Simulate transaction commit so the afterCommit() enrichment callback fires.
+      TransactionSynchronizationManager.getSynchronizations().forEach(s -> s.afterCommit());
 
       // Then
       verify(speciesEnrichmentService).enrich(7L, AiModelPreference.OLLAMA_LLAVA);

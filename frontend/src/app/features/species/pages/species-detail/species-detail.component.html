@@ -45,16 +45,37 @@
             {{ species.externalDataSource === 'AI' ? 'AI' : species.externalDataSource }}
           </span>
 
+          <!-- Botanical facts: always visible once PlantNet data is harvested -->
+          <div *ngIf="species.family || species.genus || species.iucnCategory" class="info-block">
+            <h2 class="info-heading">Botanical facts</h2>
+            <div class="botanical-facts-grid">
+              <div class="fact-row" *ngIf="species.family">
+                <span class="fact-label">Family</span>
+                <span class="fact-value">{{ species.family }}</span>
+              </div>
+              <div class="fact-row" *ngIf="species.genus">
+                <span class="fact-label">Genus</span>
+                <em class="fact-value">{{ species.genus }}</em>
+              </div>
+              <div class="fact-row" *ngIf="species.iucnCategory">
+                <span class="fact-label">Conservation status</span>
+                <span class="fact-value iucn-badge" [ngClass]="iucnBadgeClass(species.iucnCategory)">
+                  {{ iucnLabel(species.iucnCategory) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description: PENDING — polling in background; still show other data above -->
+          <div *ngIf="!species.descriptionStatus || species.descriptionStatus === 'PENDING'" class="info-block pending-block">
+            <mat-spinner diameter="20" class="pending-spinner"></mat-spinner>
+            <p class="pending-text">Generating species description…</p>
+          </div>
+
           <!-- Description: READY -->
           <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
             <h2 class="info-heading">About</h2>
             <p class="info-text">{{ species.description }}</p>
-          </div>
-
-          <!-- Description: PENDING — polling in background -->
-          <div *ngIf="!species.descriptionStatus || species.descriptionStatus === 'PENDING'" class="info-block pending-block">
-            <mat-spinner diameter="20" class="pending-spinner"></mat-spinner>
-            <p class="pending-text">Generating species description…</p>
           </div>
 
           <!-- Description: FAILED — offer retry -->

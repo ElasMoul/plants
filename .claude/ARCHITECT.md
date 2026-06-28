@@ -459,13 +459,27 @@ Species (extends AuditableEntity)
   Species created (new scientificName)
     → persist immediately, status=ACTIVE, description=null, careOverview=null
       (never block the user on a slow external call)
-    → @Async("aiTaskExecutor") SpeciesEnrichmentService.enrich(speciesId)
-         1. DeepSeekClient.generateSpeciesEnrichment() — text-only, no image needed
-         2. Parse defensively (same "never throw" philosophy as ActionPlanValidator) — on
-            failure, leave fields null and flip status to NEEDS_REVIEW
-         3. On success: update the row, externalDataSource="AI" (hardcoded — never trust the
-            AI's own echoed "source" field), externalDataFetchedAt=now
+    → TransactionSynchronizationManager.registerSynchronization(afterCommit)
+         → @Async("aiTaskExecutor") SpeciesEnrichmentService.enrich(speciesId)
+              1. DeepSeekClient.generateSpeciesEnrichment() — text-only, no image needed
+              2. Parse defensively (same "never throw" philosophy as ActionPlanValidator) — on
+                 failure, leave fields null and flip status to NEEDS_REVIEW / FAILED
+              3. On success: update the row, externalDataSource="AI" (hardcoded), descriptionStatus=READY
   ```
+  **⚠️ CRITICAL — always use `afterCommit()` when firing `@Async` from inside `@Transactional`:**
+  `createSpecies()` is `@Transactional`. Calling `enrich(speciesId)` inline means the async thread
+  starts before the outer transaction commits. `enrich()`'s own `@Transactional` opens a new DB
+  connection and calls `findById(speciesId)` — species row doesn't exist yet → returns null →
+  enrichment silently skipped → `descriptionStatus` stays PENDING forever.
+  Fix pattern (applied to both `createSpecies()` and `regenerateDescription()`):
+  ```java
+  speciesEnrichmentService.ifPresent(service ->
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override public void afterCommit() { service.enrich(speciesId, preference); }
+      }));
+  ```
+  Do NOT inline the `enrich()` call directly. Detection: if you see "X not found for enrichment,
+  skipping" in logs on a freshly created entity, this race is the cause.
   No dedicated rate-limit bucket — confirmed via grep that `com.plantpal.species` has no Bucket4j
   usage and enrichment shares no bucket with the per-user identification limits.
   Frontend implication: any page showing `Species.description` must treat `null` as a normal

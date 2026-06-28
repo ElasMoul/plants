@@ -14,6 +14,7 @@ import { PlantResponse } from '../../models/plant.model';
 import { TreatmentResponse } from '../../models/treatment.model';
 import {
   AnalyzeEmitPayload,
+  CareCardDto,
   CarePlanDto,
   IdentificationResponse,
 } from '../../../identification/models/identification.model';
@@ -59,6 +60,9 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   scanHistoryLoaded = false;
   loadingScanHistory = false;
 
+  // All loaded identifications — feeds both the merged overview care plan and the scans list.
+  allIdentifications: IdentificationResponse[] = [];
+
   private plantId!: number;
   private sentinelObserver?: IntersectionObserver;
   private readonly destroy$ = new Subject<void>();
@@ -94,7 +98,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       },
     });
 
-    this.identificationService.getPlantIdentifications(this.plantId, 0, 1)
+    this.identificationService.getPlantIdentifications(this.plantId, 0, 10)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: res => {
@@ -103,6 +107,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           if (items.length > 0) {
             this.latestCarePlan = items[0].carePlan;
             this.latestIdentificationId = items[0].id;
+            this.allIdentifications = items;
           }
           this.carePlanLoaded = true;
           if (this.activeSection === 'scans') {
@@ -274,6 +279,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           this.scanHistory = res.data.content;
+          this.allIdentifications = res.data.content;
           this.scanHistoryLoaded = true;
           this.loadingScanHistory = false;
         },
@@ -282,6 +288,31 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           this.loadingScanHistory = false;
         },
       });
+  }
+
+  get mergedCarePlan(): CarePlanDto | null {
+    if (!this.allIdentifications.length) return this.latestCarePlan;
+    const seen = new Set<string>();
+    const cards: CareCardDto[] = [];
+    for (const scan of this.allIdentifications) {
+      if (scan.status === 'COMPLETED' && scan.carePlan?.careCards) {
+        for (const card of scan.carePlan.careCards) {
+          if (!seen.has(card.type)) {
+            seen.add(card.type);
+            cards.push(card);
+          }
+        }
+      }
+    }
+    if (!cards.length) return this.latestCarePlan;
+    const base: CarePlanDto = this.latestCarePlan ?? {
+      wateringFrequencyDays: 0,
+      fertilizingFrequencyDays: 0,
+      repottingFrequencyMonths: 0,
+      careCards: [],
+      beginnerWarnings: [],
+    };
+    return { ...base, careCards: cards };
   }
 
   private submitAddScan(payload: AnalyzeEmitPayload): void {
@@ -293,9 +324,12 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open('Scan started — it will appear in the list shortly.', undefined, {
             duration: 4000,
           });
-          // Reset so the list reloads on next section activation.
           this.scanHistoryLoaded = false;
           this.scanHistory = [];
+          // Reload immediately so the new PENDING scan is visible without leaving the section.
+          if (this.activeSection === 'scans') {
+            this.loadScanHistory();
+          }
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0

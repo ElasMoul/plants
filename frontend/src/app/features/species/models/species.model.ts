@@ -33,4 +33,8 @@ export interface SpeciesResponse {
   imageLicense?: string | null;
   // Status of async AI prose generation (T9.B). Frontend polls while PENDING, shows Retry on FAILED.
   descriptionStatus?: GenerationStatus | null;
+  // Botanical taxonomy IDs from PlantNet/GBIF (harvested at resolve time — T8.6 / T9.A).
+  gbifId?: string | null;
+  powoId?: string | null;
+  iucnCategory?: string | null;
 }
