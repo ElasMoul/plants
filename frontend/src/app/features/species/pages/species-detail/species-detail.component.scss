@@ -111,6 +111,18 @@
   margin: 0 0 6px;
 }
 
+.info-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+
+  .info-heading {
+    margin: 0;
+    flex: 1;
+  }
+}
+
 .info-text {
   margin: 0;
   color: var(--color-text-primary);

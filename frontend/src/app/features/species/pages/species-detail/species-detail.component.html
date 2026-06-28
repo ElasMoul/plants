@@ -74,7 +74,13 @@
 
           <!-- Description: READY -->
           <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
-            <h2 class="info-heading">About</h2>
+            <div class="info-heading-row">
+              <h2 class="info-heading">About</h2>
+              <app-read-aloud-button
+                [text]="species.description!"
+                ariaLabel="Read species description aloud"
+              ></app-read-aloud-button>
+            </div>
             <p class="info-text">{{ species.description }}</p>
           </div>
 

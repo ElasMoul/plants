@@ -21,6 +21,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatBottomSheetModule } from '@angular/material/bottom-sheet';
 
 import { PlantRoutingModule } from './plant-routing.module';
+import { SharedModule } from '../../shared/shared.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
 import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
@@ -57,6 +58,7 @@ import { ScanDetailComponent } from './components/scan-detail/scan-detail.compon
     ReactiveFormsModule,
     RouterModule,
     PlantRoutingModule,
+    SharedModule,
     CarePlanModule,
     CareLogModule,
     MatCardModule,

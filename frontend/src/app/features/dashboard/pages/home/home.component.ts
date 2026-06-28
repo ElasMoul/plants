@@ -87,6 +87,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     return CARE_ICONS[careType];
   }
 
+  reminderReadText(reminder: ReminderSummaryDto): string {
+    return reminder.plantNickname + ': ' + reminder.careType.toLowerCase().replace(/_/g, ' ');
+  }
+
   goToPlant(plantId: number): void {
     this.router.navigate(['/plants', plantId]);
   }
