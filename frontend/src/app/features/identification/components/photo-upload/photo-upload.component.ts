@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, isDevMode, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, isDevMode, NgZone, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
@@ -68,6 +68,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   constructor(
     private readonly plantService: PlantService,
     private readonly snackBar: MatSnackBar,
+    private readonly ngZone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -202,30 +203,34 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
       this.recognitionBaseText = this.contextText.trim();
 
       this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        let finalTranscript = '';
-        let interimTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const t: string = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += t;
-          } else {
-            interimTranscript += t;
+        this.ngZone.run(() => {
+          let finalTranscript = '';
+          let interimTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            const t: string = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += t;
+            } else {
+              interimTranscript += t;
+            }
           }
-        }
-        const spoken = finalTranscript || interimTranscript;
-        const combined = this.recognitionBaseText ? `${this.recognitionBaseText} ${spoken}` : spoken;
-        this.contextText = combined.substring(0, MAX_CONTEXT_CHARS);
+          const spoken = finalTranscript || interimTranscript;
+          const combined = this.recognitionBaseText ? `${this.recognitionBaseText} ${spoken}` : spoken;
+          this.contextText = combined.substring(0, MAX_CONTEXT_CHARS);
+        });
       };
 
       this.recognition.onerror = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        this.listening = false;
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
-        }
+        this.ngZone.run(() => {
+          this.listening = false;
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+          }
+        });
       };
 
       this.recognition.onend = () => {
-        this.listening = false;
+        this.ngZone.run(() => { this.listening = false; });
       };
 
       this.recognition.start();
