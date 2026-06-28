@@ -67,55 +67,22 @@ export class VoiceTestComponent implements OnDestroy {
     if (this.log.length > 100) this.log.pop();
   }
 
+  // SpeechRecognition manages its own mic — do NOT call getUserMedia before
+  // recognition.start(). Calling getUserMedia first causes an AudioContext source
+  // node to hold the device; Chromium's speech service then silently fails to
+  // acquire it (onstart never fires, onend fires ~2-5s later). Audio meter is
+  // started from inside onstart, after recognition has claimed the device.
   private startAll(): void {
     if (!SpeechRecognitionAPI) {
       this.statusMessage = 'SpeechRecognition not available in this browser.';
       return;
     }
-    this.addLog('Requesting microphone access…');
-    this.statusMessage = 'Requesting mic access…';
-
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        this.mediaStream = stream;
-        this.addLog('Mic granted — starting audio meter and recognition');
-        this.startAudioMeter(stream);
-        this.startRecognition();
-        this.listening = true;
-        this.statusMessage = 'Listening…';
-      })
-      .catch((err: DOMException) => {
-        this.addLog(`getUserMedia failed: ${err.name} — ${err.message}`, 'error');
-        this.statusMessage = `Mic error: ${err.name}`;
-      });
-  }
-
-  private startAudioMeter(stream: MediaStream): void {
-    this.audioContext = new AudioContext();
-    this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 512;
-    this.analyser.smoothingTimeConstant = 0.4;
-    this.dataArray = new Uint8Array(this.analyser.fftSize);
-
-    const source = this.audioContext.createMediaStreamSource(stream);
-    source.connect(this.analyser);
-
-    this.ngZone.runOutsideAngular(() => {
-      const loop = () => {
-        if (!this.analyser || !this.dataArray) return;
-        this.animFrameId = requestAnimationFrame(loop);
-        this.analyser.getByteTimeDomainData(this.dataArray);
-        let sumSquares = 0;
-        for (let i = 0; i < this.dataArray.length; i++) {
-          const norm = (this.dataArray[i] - 128) / 128;
-          sumSquares += norm * norm;
-        }
-        const rms = Math.sqrt(sumSquares / this.dataArray.length);
-        const level = Math.min(100, rms * 500);
-        this.ngZone.run(() => { this.audioLevel = level; });
-      };
-      loop();
-    });
+    this.addLog('Starting recognition — SpeechRecognition owns the mic, no getUserMedia yet');
+    this.statusMessage = 'Starting…';
+    this.cumulativeFinal = '';
+    this.startRecognition();
+    this.listening = true;
+    this.statusMessage = 'Waiting for onstart…';
   }
 
   private startRecognition(): void {
@@ -125,7 +92,12 @@ export class VoiceTestComponent implements OnDestroy {
     this.recognition.lang = navigator.language;
 
     this.recognition.onstart = () => {
-      this.ngZone.run(() => this.addLog('onstart — recognition is active'));
+      this.ngZone.run(() => {
+        this.addLog('onstart — recognition active');
+        this.statusMessage = 'Listening…';
+        // Recognition now holds the mic — safe to open a secondary stream for the meter
+        this.startAudioMeter();
+      });
     };
 
     this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -152,7 +124,7 @@ export class VoiceTestComponent implements OnDestroy {
         const detail = event.message ? ` — ${event.message}` : '';
         this.addLog(`onerror: ${event.error}${detail}`, 'error');
         if (event.error !== 'no-speech') {
-          this.statusMessage = `Recognition error: ${event.error}`;
+          this.statusMessage = `Error: ${event.error}`;
         }
       });
     };
@@ -173,6 +145,45 @@ export class VoiceTestComponent implements OnDestroy {
     } catch (e) {
       this.addLog(`recognition.start() threw: ${String(e)}`, 'error');
     }
+  }
+
+  private startAudioMeter(): void {
+    if (!('mediaDevices' in navigator)) {
+      this.addLog('Audio meter: mediaDevices API not available');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        this.mediaStream = stream;
+        this.addLog('Audio meter: secondary stream acquired');
+        this.audioContext = new AudioContext();
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 512;
+        this.analyser.smoothingTimeConstant = 0.4;
+        this.dataArray = new Uint8Array(this.analyser.fftSize);
+        const source = this.audioContext.createMediaStreamSource(stream);
+        source.connect(this.analyser);
+
+        this.ngZone.runOutsideAngular(() => {
+          const loop = () => {
+            if (!this.analyser || !this.dataArray) return;
+            this.animFrameId = requestAnimationFrame(loop);
+            this.analyser.getByteTimeDomainData(this.dataArray);
+            let sumSquares = 0;
+            for (let i = 0; i < this.dataArray.length; i++) {
+              const norm = (this.dataArray[i] - 128) / 128;
+              sumSquares += norm * norm;
+            }
+            const rms = Math.sqrt(sumSquares / this.dataArray.length);
+            const level = Math.min(100, rms * 500);
+            this.ngZone.run(() => { this.audioLevel = level; });
+          };
+          loop();
+        });
+      })
+      .catch((err: DOMException) => {
+        this.addLog(`Audio meter unavailable: ${err.name} — recognition still works`, 'error');
+      });
   }
 
   private stopAll(): void {
