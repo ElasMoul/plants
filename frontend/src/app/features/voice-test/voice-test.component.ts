@@ -143,13 +143,21 @@ export class VoiceTestComponent implements OnDestroy {
     this.recognition.interimResults = true;
     this.recognition.lang = navigator.language;
 
+    this.recognition.onaudiostart = () => {
+      this.ngZone.run(() => this.addLog('[REC] onaudiostart — mic capture open (before cloud connect)'));
+    };
+
     this.recognition.onstart = () => {
       this.ngZone.run(() => {
-        this.addLog('[REC] onstart fired — recognition active', 'result');
+        this.addLog('[REC] onstart fired — connected to speech service', 'result');
         this.statusMessage = 'Listening…';
         this.listening = true;
         this.startRecLevelMeter();
       });
+    };
+
+    this.recognition.onaudioend = () => {
+      this.ngZone.run(() => this.addLog('[REC] onaudioend — mic capture closed'));
     };
 
     this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
