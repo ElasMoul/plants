@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (T10.G voice-permission fix + T10.H TTS read-aloud planned; PP-076/077 reserved)
+> Last updated: 2026-06-28 (T10.G + T10.H shipped on PHASE10; T10.I mic-bug investigation new task PP-078)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -12,7 +12,7 @@
 | `dev` | Clean — all phases 0–10 merged ✅ (PR #81, bb9b0a8) |
 
 **Migration sequence:** 001–030 applied. Next free: **031**.
-**Next free PP branch number:** PP-078 (PP-071–075 used by Phase 10 T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS read-aloud).
+**Next free PP branch number:** PP-079 (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug).
 
 ---
 
@@ -32,7 +32,7 @@
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
-| 10 — Contextual Scanning & Treatment Polish | ⚙️ T10.A–F ✅ merged to dev; T10.G (voice fix) + T10.H (TTS read-aloud) 🔲 planned |
+| 10 — Contextual Scanning & Treatment Polish | ⚙️ T10.A–H ✅ on PHASE10; T10.I (mic bug PP-078) 🔲 new task |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---
@@ -65,9 +65,8 @@
 
 ## Next Tasks (ordered)
 
-1. **T10.G** — `feature/PP-076-voice-permission-fix` — mic `getUserMedia` pre-check, better error messages.
-2. **T10.H** — `feature/PP-077-read-aloud` — TTS `SpeechService` + `ReadAloudButtonComponent` wired into care cards, species, treatment, steps, reminders, scan context.
-3. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
+1. **T10.I** — `feature/PP-078-mic-bug` — SpeechRecognition fails silently with "Microphone unavailable" in the scan context input even after T10.G getUserMedia pre-check. Diagnose root cause (HTTP vs HTTPS, browser support, permission denial) and fix.
+2. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
 4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 5. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 6. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
@@ -81,6 +80,30 @@
 - **D10.2 — Health-scan card draft state:** Client-side only confirmed. `@Input() isDraft` + `@Input() treatmentActive` on CareCardComponent. ✅ Implemented.
 - **D10.3 — Treatment auto-progression:** Root cause was H3 (CareCardComponent + plant-detail chaining craftPlan). Fixed in T10.C + T10.F. ✅ Resolved.
 - **Kafka prod story:** still open, blocks T-DEPLOY.5.
+
+---
+
+## Phase 10 — T10.G + T10.H (2026-06-28, PHASE10 branch)
+
+**T10.G — Mic permission pre-check (PP-076, merged PHASE10):**
+`PhotoUploadComponent.startListening()` now pre-checks mic access with
+`navigator.mediaDevices.getUserMedia({audio:true})` before starting `SpeechRecognition`.
+`NotFoundError` → "No microphone found." `NotAllowedError` → "tap the lock icon…" (8s).
+`requestingPermission` flag disables button + shows "Requesting access…" chip during prompt.
+Falls back to `doStartRecognition()` directly on old browsers / non-secure HTTP.
+
+**⚠️ T10.I (new, PP-078):** Despite T10.G, user still gets "Microphone unavailable" when
+tapping mic in the scan context section. Root cause TBD — likely HTTP vs HTTPS restriction
+(SpeechRecognition requires HTTPS outside localhost in Chrome), browser-specific gap
+(Firefox has no SpeechRecognition at all), or previously-denied permission not re-prompted.
+
+**T10.H — TTS Read Aloud (PP-077, merged PHASE10):**
+`SpeechService` (`providedIn:'root'`, `NgZone`-safe callbacks) + `ReadAloudButtonComponent`
+(SharedModule, `volume_up`/`stop_circle`). Wired into: CareCardComponent header,
+SpeciesDetail About section (READY guard), TreatmentDetail disease description (READY guard),
+TreatmentStepListComponent per-step, HomeComponent reminder rows (overdue + today,
+`$event.stopPropagation()`), ScanDetailComponent userContext block. PlantModule gained
+`SharedModule` import for ScanDetail access.
 
 ---
 

@@ -34,7 +34,7 @@
 
 ## PHASE 10 — Contextual Scanning, Scan Redesign & Treatment Polish
 
-> **T10.A–F:** ✅ Complete. **T10.G–H:** 🔲 Planned — voice permission fix + TTS read-aloud.
+> **T10.A–H:** ✅ Complete on PHASE10 branch (PP-071–077). **T10.I:** 🔲 Mic bug — SpeechRecognition still fails after T10.G (PP-078).
 >
 > **Goal:** Three interconnected improvements:
 > 1. **Contextual input** — user attaches text or voice ("this leaf is very yellow, I put the
@@ -607,6 +607,58 @@ export class SpeechService implements OnDestroy {
 // The SharedModule exports ReadAloudButtonComponent — verify it's consumable in at
 // least two separate lazy feature modules (IdentificationModule, PlantModule) without
 // a module re-provide (it should be fine as the component uses a root-provided service).
+```
+
+---
+
+### T10.I — Frontend: Fix SpeechRecognition mic not working 🤖 AI
+**Branch:** `feature/PP-078-mic-bug`
+**Depends on:** T10.G (merged — getUserMedia pre-check is in place but mic still fails).
+
+```
+// Phase 10 — T10.I: after T10.G landed, user reports "Microphone unavailable" is still
+// shown when tapping the mic button in the scan context section. T10.G added getUserMedia
+// pre-check and better error messages, but the root cause of the underlying SpeechRecognition
+// failure was not fixed — only the diagnostic path improved.
+
+// STEP 0 — DIAGNOSE BEFORE FIXING:
+// a) Open browser DevTools Console while tapping mic. Report the exact event.error value
+//    from the SpeechRecognition onerror handler ('not-allowed', 'audio-capture', 'network',
+//    'service-not-allowed', etc.) and the browser + OS.
+// b) Is the app running on HTTP or HTTPS? SpeechRecognition in Chrome requires HTTPS
+//    (exception: localhost). If running on a LAN IP (e.g. 192.168.x.x) over HTTP,
+//    SpeechRecognition is blocked by browser policy — getUserMedia will succeed (it has
+//    its own permission) but SpeechRecognition still fires 'not-allowed' or 'service-not-allowed'.
+// c) Is the browser Firefox? Firefox does NOT implement SpeechRecognition
+//    (window.SpeechRecognition and window.webkitSpeechRecognition are both undefined).
+//    The mic button should be hidden — if it isn't, speechSupported is incorrectly true.
+// d) Was mic permission previously denied in the browser's site permissions? A hard denial
+//    blocks getUserMedia AND SpeechRecognition. The user must manually re-allow in browser
+//    site settings — our app cannot override this.
+
+// MOST LIKELY FIX (HTTP/LAN scenario):
+// The dev server is accessed over LAN HTTP (http://192.168.x.x:4200), not localhost.
+// SpeechRecognition is only available on HTTPS or localhost. getUserMedia works because
+// it has a separate (lower) permission threshold.
+//
+// FIX OPTIONS:
+// Option A — dev only: access via http://localhost:4200 instead of LAN IP.
+// Option B — prod-ready: the Angular dev server can serve HTTPS with a self-signed cert
+//   (ng serve --ssl). Document this in README / .env.example for mobile testing.
+// Option C — graceful degradation: detect the insecure context and hide the mic button
+//   entirely (window.isSecureContext === false AND host !== 'localhost').
+//
+// Implement Option C regardless (prevents the broken state from ever reaching users):
+//   Update speechSupported check in PhotoUploadComponent:
+//   readonly speechSupported = !!SpeechRecognitionAPI && (
+//     window.isSecureContext || location.hostname === 'localhost'
+//   );
+//   This hides the mic button on plain HTTP LAN access but preserves it on localhost dev
+//   and any HTTPS deployment. Also add a dev-only console.warn when SpeechRecognitionAPI
+//   exists but isSecureContext is false, so the cause is obvious in DevTools.
+
+// ng build + ng lint clean.
+// No unit tests needed (browser API mocking in JSDOM is already excluded).
 ```
 
 ---

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, isDevMode, NgZone, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
@@ -12,9 +12,14 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 5;
 const MAX_CONTEXT_CHARS = 500;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+if (isDevMode() && SpeechRecognitionAPI && !window.isSecureContext && location.hostname !== 'localhost') {
+  console.warn('[PhotoUpload] SpeechRecognition detected but isSecureContext=false — mic button disabled. Access the app over HTTPS or localhost to enable voice input.');
+}
 
 interface ImageEntry {
   file: File;
@@ -43,11 +48,12 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   contextText = '';
   readonly maxContextChars = MAX_CONTEXT_CHARS;
   readonly speechSupported = !!SpeechRecognitionAPI;
+  readonly speechSecure = window.isSecureContext || location.hostname === 'localhost';
   listening = false;
-  requestingPermission = false;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private recognition: any = null;
+  private recognitionBaseText = '';
 
   get batchModeAvailable(): boolean {
     return this.lockedPlantId == null && this.lockedSpeciesId == null;
@@ -62,6 +68,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   constructor(
     private readonly plantService: PlantService,
     private readonly snackBar: MatSnackBar,
+    private readonly ngZone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -158,56 +165,53 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   }
 
   private startListening(): void {
-    if (!SpeechRecognitionAPI) return;
-    if ('mediaDevices' in navigator && typeof navigator.mediaDevices?.getUserMedia === 'function') {
-      this.requestingPermission = true;
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          stream.getTracks().forEach(t => t.stop());
-          this.requestingPermission = false;
-          this.doStartRecognition();
-        })
-        .catch((err: DOMException) => {
-          this.requestingPermission = false;
-          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-            this.snackBar.open('No microphone found on this device.', 'Dismiss', { duration: 5000 });
-          } else {
-            // NotAllowedError / PermissionDeniedError / SecurityError
-            this.snackBar.open(
-              "Microphone access blocked — tap the lock icon in your browser's address bar and allow microphone access, then try again.",
-              'Dismiss',
-              { duration: 8000 },
-            );
-          }
-        });
-    } else {
-      // Older browser or HTTP (non-localhost) — fall back; recognition.onerror handles 'not-allowed'
-      this.doStartRecognition();
-    }
+    if (!SpeechRecognitionAPI || !this.speechSecure) return;
+    // Call recognition.start() directly — no getUserMedia pre-check.
+    // getUserMedia before recognition.start() causes mic contention on Chromium:
+    // the speech service cannot acquire the device a second time, onstart never
+    // fires, onend arrives silently ~4s later. SpeechRecognition handles its own
+    // mic capture and permission dialog; onerror covers 'not-allowed' below.
+    this.doStartRecognition();
   }
 
   private doStartRecognition(): void {
     try {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = false;
-      this.recognition.interimResults = false;
+      this.recognition.interimResults = true;
       this.recognition.lang = navigator.language;
 
+      this.recognitionBaseText = this.contextText.trim();
+
       this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        const transcript: string = event.results[0][0].transcript;
-        this.contextText = transcript.substring(0, MAX_CONTEXT_CHARS);
-        this.listening = false;
+        this.ngZone.run(() => {
+          let finalTranscript = '';
+          let interimTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            const t: string = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += t;
+            } else {
+              interimTranscript += t;
+            }
+          }
+          const spoken = finalTranscript || interimTranscript;
+          const combined = this.recognitionBaseText ? `${this.recognitionBaseText} ${spoken}` : spoken;
+          this.contextText = combined.substring(0, MAX_CONTEXT_CHARS);
+        });
       };
 
       this.recognition.onerror = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        this.listening = false;
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
-        }
+        this.ngZone.run(() => {
+          this.listening = false;
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+          }
+        });
       };
 
       this.recognition.onend = () => {
-        this.listening = false;
+        this.ngZone.run(() => { this.listening = false; });
       };
 
       this.recognition.start();

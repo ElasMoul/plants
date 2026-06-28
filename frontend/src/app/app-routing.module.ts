@@ -69,6 +69,12 @@ const routes: Routes = [
       import('./features/preferences/preferences.module').then(m => m.PreferencesModule),
     canActivate: [AuthGuard],
   },
+  {
+    path: 'voice-test',
+    loadChildren: () =>
+      import('./features/voice-test/voice-test.module').then(m => m.VoiceTestModule),
+    canActivate: [AuthGuard],
+  },
   // Auth catch-all — prefix '' matches /login, /register, and unknown paths.
   // Auth-routing handles login, register, and ** (fallback to plants).
   // Must be last so specific routes above take priority.
