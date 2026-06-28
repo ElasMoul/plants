@@ -12,9 +12,10 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 5;
 const MAX_CONTEXT_CHARS = 500;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 if (isDevMode() && SpeechRecognitionAPI && !window.isSecureContext && location.hostname !== 'localhost') {
   console.warn('[PhotoUpload] SpeechRecognition detected but isSecureContext=false — mic button disabled. Access the app over HTTPS or localhost to enable voice input.');

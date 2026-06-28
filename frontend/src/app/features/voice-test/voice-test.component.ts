@@ -1,8 +1,9 @@
 import { Component, NgZone, OnDestroy } from '@angular/core';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface LogEntry {
   time: string;
@@ -107,7 +108,7 @@ export class VoiceTestComponent implements OnDestroy {
     this.micLevel = 0;
     if (this.micAnimId !== null) { cancelAnimationFrame(this.micAnimId); this.micAnimId = null; }
     if (this.micAnalyser) { this.micAnalyser.disconnect(); this.micAnalyser = null; }
-    if (this.micAudioCtx) { this.micAudioCtx.close().catch(() => {}); this.micAudioCtx = null; }
+    if (this.micAudioCtx) { this.micAudioCtx.close().catch(() => { /* AudioContext.close() rejection is harmless */ }); this.micAudioCtx = null; }
     if (this.micStream) { this.micStream.getTracks().forEach(t => t.stop()); this.micStream = null; }
     this.micData = null;
     this.addLog('[MIC] Stopped');
@@ -249,7 +250,7 @@ export class VoiceTestComponent implements OnDestroy {
   private stopRecLevelMeter(): void {
     if (this.recAnimId !== null) { cancelAnimationFrame(this.recAnimId); this.recAnimId = null; }
     if (this.recAnalyser) { this.recAnalyser.disconnect(); this.recAnalyser = null; }
-    if (this.recAudioCtx) { this.recAudioCtx.close().catch(() => {}); this.recAudioCtx = null; }
+    if (this.recAudioCtx) { this.recAudioCtx.close().catch(() => { /* AudioContext.close() rejection is harmless */ }); this.recAudioCtx = null; }
     if (this.recStream) { this.recStream.getTracks().forEach(t => t.stop()); this.recStream = null; }
     this.recData = null;
   }
