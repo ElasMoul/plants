@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, isDevMode, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
@@ -15,6 +15,10 @@ const MAX_CONTEXT_CHARS = 500;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+if (isDevMode() && SpeechRecognitionAPI && !window.isSecureContext && location.hostname !== 'localhost') {
+  console.warn('[PhotoUpload] SpeechRecognition detected but isSecureContext=false — mic button hidden. Access the app over HTTPS or localhost to enable voice input.');
+}
 
 interface ImageEntry {
   file: File;
@@ -42,7 +46,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   contextExpanded = false;
   contextText = '';
   readonly maxContextChars = MAX_CONTEXT_CHARS;
-  readonly speechSupported = !!SpeechRecognitionAPI;
+  readonly speechSupported = !!SpeechRecognitionAPI && (window.isSecureContext || location.hostname === 'localhost');
   listening = false;
   requestingPermission = false;
 
