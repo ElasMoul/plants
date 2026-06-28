@@ -131,19 +131,15 @@
           type="button"
           class="mic-btn"
           [class.listening]="listening"
-          [disabled]="listening || requestingPermission"
+          [disabled]="!speechSecure"
           (click)="toggleListening()"
           [attr.aria-label]="listening ? 'Stop listening' : 'Start voice input'"
-          [matTooltip]="listening ? 'Stop' : 'Speak'"
+          [matTooltip]="!speechSecure ? 'Voice input requires HTTPS' : (listening ? 'Stop' : 'Speak')"
         >
-          <mat-icon>{{ listening ? 'mic_off' : 'mic' }}</mat-icon>
+          <mat-icon>{{ listening ? 'stop_circle' : 'mic' }}</mat-icon>
         </button>
       </div>
 
-      <div class="listening-chip" *ngIf="requestingPermission">
-        <mat-icon>mic</mat-icon>
-        Requesting access…
-      </div>
       <div class="listening-chip" *ngIf="listening">
         <mat-icon>mic</mat-icon>
         Listening…

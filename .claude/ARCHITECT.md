@@ -958,42 +958,41 @@ Determines which CTAs appear on a scan detail page's care cards:
 - `craftPlan()` transition DRAFT → IN_PROGRESS: must NOT overwrite `diseaseDescription`.
   The description is generated independently; the plan adds steps only.
 
-### Web Speech API — STT permission pre-check pattern (T10.G)
+### Web Speech API — STT pattern (T10.G, revised T10.I)
 The microphone button in `PhotoUploadComponent` uses Web Speech API
-(`SpeechRecognition`/`webkitSpeechRecognition`). On some mobile browsers (especially iOS
-Safari and Android Chrome cold-start), calling `recognition.start()` directly may fail
-with `not-allowed` without ever showing the OS permission dialog — silent failure.
+(`SpeechRecognition`/`webkitSpeechRecognition`).
 
-**Fix pattern:** always pre-check mic permission with `navigator.mediaDevices.getUserMedia`
-*before* creating the `SpeechRecognition` object:
-```
-getUserMedia({audio:true})
-  → success: stop all tracks (we only need the grant), then doStartRecognition()
-  → NotFoundError: "No microphone found on this device."
-  → NotAllowedError / PermissionDeniedError:
-       "Microphone access blocked — tap the lock icon in your browser's address bar
-        to allow access, then try again."   (8s duration so user can read it)
-  → getUserMedia not available (HTTP non-localhost, old browser):
-       fall through to doStartRecognition() directly (current behavior)
-```
-- Add `requestingPermission = false` flag; disable the mic button during the prompt.
-- Show a "Requesting access…" chip while `requestingPermission = true`.
-- Keep the `recognition.onerror` `not-allowed` branch as a belt-and-suspenders fallback.
-- **Never** record or forward the `getUserMedia` audio stream — it is immediately stopped
-  after the permission grant. Its only job is to trigger the OS permission dialog reliably.
-- **isSecureContext gate (T10.I — open bug):** `SpeechRecognition` itself requires HTTPS.
+**Current pattern (post-T10.I):** call `recognition.start()` directly — no `getUserMedia`
+pre-check. SpeechRecognition manages its own mic capture and shows the browser's
+native permission dialog when needed. `onerror` covers `not-allowed` as fallback.
+
+**Why the T10.G getUserMedia pre-check was removed:** the pre-check was added to trigger
+the OS permission dialog reliably on mobile cold-start. However, it caused mic contention
+on Chromium desktop: even when tracks were stopped immediately, the sequence
+`getUserMedia → recognition.start()` caused `onstart` to never fire and `onend` to arrive
+silently ~4 s later. Diagnosed via `/voice-test` (Step 1 mic-only vs Step 2 recognition-only
+panels confirmed mic was accessible but speech service was failing). Removing the pre-check
+and calling `recognition.start()` directly fixed it. The `not-allowed` `onerror` handler
+remains as the permission-denied signal on all platforms.
+- **isSecureContext gate (T10.I — shipped):** `SpeechRecognition` requires HTTPS.
   Chrome allows `localhost` as an exception, but any LAN IP (`192.168.x.x`) over plain HTTP
-  is blocked — `getUserMedia` succeeds but `recognition.start()` immediately fires
-  `onerror('not-allowed')` or `onerror('service-not-allowed')`, producing "Microphone
-  unavailable." Firefox has no SpeechRecognition at all.
-  Planned fix — hide the mic button when the context is insecure:
-  ```typescript
-  readonly speechSupported =
-    !!SpeechRecognitionAPI &&
-    (window.isSecureContext || location.hostname === 'localhost');
-  ```
-  Add a `console.warn` in dev when `SpeechRecognitionAPI` exists but `isSecureContext`
-  is false, so the cause is self-diagnosable. Branch: `feature/PP-078-mic-bug`.
+  is blocked. Fix: `speechSupported = !!SpeechRecognitionAPI` (API exists — gates Firefox)
+  + `speechSecure = window.isSecureContext || location.hostname === 'localhost'` (gates
+  `[disabled]` and tooltip "Voice input requires HTTPS"; button visible but greyed, not
+  hidden). Branch: `feature/PP-078-mic-bug`.
+- **getUserMedia + SpeechRecognition mic contention (T10.I — root-caused via /voice-test):**
+  Calling `getUserMedia({ audio: true })` to set up an `AudioContext`/`AnalyserNode` BEFORE
+  calling `recognition.start()` silently kills recognition on Chromium. The speech service
+  cannot acquire the audio device a second time — `onstart` never fires, `onend` fires ~2–5 s
+  later with no error. Diagnosed by adding `console.trace` to `stopAll()` and checking
+  whether `ngOnDestroy` or the user's toggle was the caller (it was the user's toggle after
+  manually stopping a hung session — lifecycle was stable, mic was contended).
+  **Rule:** SpeechRecognition manages its own mic; never hold an open `getUserMedia` stream
+  when calling `recognition.start()`. If an audio level meter is needed alongside recognition,
+  start it from inside `recognition.onstart` — recognition has already claimed the device by
+  then and Chrome allows a secondary `getUserMedia` for the `AudioContext` source node.
+  Related-but-distinct from the isSecureContext failure: both affect the same API family but
+  the contention bug occurs even on localhost/HTTPS — the ordering of calls is the variable.
 
 ### Web Speech Synthesis — TTS "Read aloud" pattern (T10.H)
 `SpeechService` (`shared/services/speech.service.ts`, `providedIn: 'root'`) wraps the
