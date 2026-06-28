@@ -32,6 +32,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class SpeciesServiceImpl implements SpeciesService {
@@ -266,10 +268,14 @@ public class SpeciesServiceImpl implements SpeciesService {
     species.setDescriptionStatus(GenerationStatus.PENDING);
     speciesRepository.save(species);
 
-    // Re-fire enrichment; the preference used here is DEEPSEEK (default AI) since we don't have
-    // the triggering user's preference in this path — pass the legacy DEEPSEEK enum value.
     Long id = species.getId();
-    speciesEnrichmentService.ifPresent(service -> service.enrich(id, AiModelPreference.DEEPSEEK));
+    speciesEnrichmentService.ifPresent(service ->
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            service.enrich(id, AiModelPreference.DEEPSEEK);
+          }
+        }));
 
     return speciesMapper.toResponse(species).toBuilder()
         .careCards(parseCareCards(species.getCareCards()))
@@ -357,8 +363,19 @@ public class SpeciesServiceImpl implements SpeciesService {
                 .build());
     log.info("Species created: id={}, scientificName={}", species.getId(), scientificName);
 
+    // Register enrichment to fire AFTER the outer transaction commits.
+    // Firing it inline (before commit) means enrich()'s own @Transactional opens a new
+    // connection and calls findById — but the species row hasn't reached the DB yet, so
+    // findById returns empty and enrichment is silently skipped (descriptionStatus stays PENDING
+    // forever). afterCommit() guarantees the row is visible before the async thread starts.
     Long speciesId = species.getId();
-    speciesEnrichmentService.ifPresent(service -> service.enrich(speciesId, preference));
+    speciesEnrichmentService.ifPresent(service ->
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            service.enrich(speciesId, preference);
+          }
+        }));
 
     return species;
   }
