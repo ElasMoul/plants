@@ -29,6 +29,10 @@
     <div class="context-block" *ngIf="scan.userContext">
       <mat-icon class="context-icon">chat_bubble_outline</mat-icon>
       <p class="context-text">{{ scan.userContext }}</p>
+      <app-read-aloud-button
+        [text]="scan.userContext!"
+        ariaLabel="Read your context aloud"
+      ></app-read-aloud-button>
     </div>
 
     <!-- Annotated photo -->

@@ -44,6 +44,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   readonly maxContextChars = MAX_CONTEXT_CHARS;
   readonly speechSupported = !!SpeechRecognitionAPI;
   listening = false;
+  requestingPermission = false;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private recognition: any = null;
@@ -158,6 +159,34 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
   private startListening(): void {
     if (!SpeechRecognitionAPI) return;
+    if ('mediaDevices' in navigator && typeof navigator.mediaDevices?.getUserMedia === 'function') {
+      this.requestingPermission = true;
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          stream.getTracks().forEach(t => t.stop());
+          this.requestingPermission = false;
+          this.doStartRecognition();
+        })
+        .catch((err: DOMException) => {
+          this.requestingPermission = false;
+          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            this.snackBar.open('No microphone found on this device.', 'Dismiss', { duration: 5000 });
+          } else {
+            // NotAllowedError / PermissionDeniedError / SecurityError
+            this.snackBar.open(
+              "Microphone access blocked — tap the lock icon in your browser's address bar and allow microphone access, then try again.",
+              'Dismiss',
+              { duration: 8000 },
+            );
+          }
+        });
+    } else {
+      // Older browser or HTTP (non-localhost) — fall back; recognition.onerror handles 'not-allowed'
+      this.doStartRecognition();
+    }
+  }
+
+  private doStartRecognition(): void {
     try {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = false;

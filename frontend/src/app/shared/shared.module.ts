@@ -24,6 +24,7 @@ import { ImageLightboxComponent } from './components/image-lightbox/image-lightb
 import { StepDetailDialogComponent } from './components/step-detail-dialog/step-detail-dialog.component';
 import { TreatmentStepListComponent } from './components/treatment-step-list/treatment-step-list.component';
 import { ModelUsageBadgeComponent } from './components/model-usage-badge/model-usage-badge.component';
+import { ReadAloudButtonComponent } from './components/read-aloud-button/read-aloud-button.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -50,6 +51,7 @@ const MATERIAL_MODULES = [
     StepDetailDialogComponent,
     TreatmentStepListComponent,
     ModelUsageBadgeComponent,
+    ReadAloudButtonComponent,
   ],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
@@ -63,6 +65,7 @@ const MATERIAL_MODULES = [
     ImageLightboxComponent,
     TreatmentStepListComponent,
     ModelUsageBadgeComponent,
+    ReadAloudButtonComponent,
   ],
 })
 export class SharedModule {}

@@ -32,8 +32,10 @@
 
 ---
 
-## PHASE 10 — Contextual Scanning, Scan Redesign & Treatment Polish ✅ COMPLETE
+## PHASE 10 — Contextual Scanning, Scan Redesign & Treatment Polish
 
+> **T10.A–F:** ✅ Complete. **T10.G–H:** 🔲 Planned — voice permission fix + TTS read-aloud.
+>
 > **Goal:** Three interconnected improvements:
 > 1. **Contextual input** — user attaches text or voice ("this leaf is very yellow, I put the
 >    plant in the bathroom for humidity — did that affect it?") before scanning. The AI incorporates
@@ -387,6 +389,228 @@ Backend: mvn test clean (prompt string changes are string-only, no logic change)
 
 ---
 
+### T10.G — Frontend: Fix voice input mic permissions 🤖 AI
+**Branch:** `feature/PP-076-voice-permission-fix`
+**Scope:** `PhotoUploadComponent` only — no backend, no new module.
+
+```
+// Phase 10 — T10.G: the mic button in PhotoUploadComponent uses Web Speech API but
+// may fail silently or show an unhelpful error on devices where mic permission hasn't
+// been explicitly granted. Fix the permission flow and improve error messages.
+
+// READ photo-upload.component.ts (features/identification/components/photo-upload/)
+// before writing any code — the current startListening() is already implemented.
+// Do NOT rewrite what already works; only patch the permission-check gap.
+
+ROOT CAUSE TO FIX:
+  Web Speech API's recognition.start() triggers an OS mic prompt in some browsers
+  but NOT in others (especially mobile WebKit). If the user previously dismissed
+  the prompt without explicitly allowing/denying, recognition.start() may silently
+  error with 'not-allowed' and the snackbar just says "Microphone unavailable"
+  — no guidance on how to fix it.
+
+FIX — modify startListening() in PhotoUploadComponent:
+
+1. Add component property: requestingPermission = false.
+   In the template: update the mic button's [disabled] to also disable during
+   requestingPermission (so the user can't double-click). The listening-chip
+   'Listening…' is shown by the existing 'listening' flag — add a second chip
+   (or swap the text) for 'Requesting access…' when requestingPermission=true.
+
+2. Modify startListening() to pre-check mic permission using
+   navigator.mediaDevices.getUserMedia BEFORE creating the SpeechRecognition:
+
+   private startListening(): void {
+     if (!SpeechRecognitionAPI) return;
+     if ('mediaDevices' in navigator && navigator.mediaDevices.getUserMedia) {
+       this.requestingPermission = true;
+       navigator.mediaDevices.getUserMedia({ audio: true })
+         .then(stream => {
+           // Permission granted — stop the audio tracks immediately (we don't
+           // need the audio data, only the permission grant). Then start recognition.
+           stream.getTracks().forEach(t => t.stop());
+           this.requestingPermission = false;
+           this.doStartRecognition();
+         })
+         .catch((err: DOMException) => {
+           this.requestingPermission = false;
+           if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+             this.snackBar.open('No microphone found on this device.', 'Dismiss',
+               { duration: 5000 });
+           } else {
+             // NotAllowedError / PermissionDeniedError / SecurityError
+             this.snackBar.open(
+               'Microphone access blocked — tap the lock icon in your browser\'s ' +
+               'address bar and allow microphone access, then try again.',
+               'Dismiss', { duration: 8000 });
+           }
+         });
+     } else {
+       // Older browser / HTTP (non-localhost) — fall back to current behavior;
+       // recognition.onerror handles 'not-allowed' if it fires.
+       this.doStartRecognition();
+     }
+   }
+
+3. Extract the SpeechRecognition setup into doStartRecognition() (private):
+   Identical to the current body of startListening() after the getUserMedia check.
+   The onerror handler inside doStartRecognition() can be simplified to only handle
+   non-permission errors (e.g. 'network', 'audio-capture') since the permission
+   case is now caught by the getUserMedia rejection above. Keep the 'not-allowed'
+   branch in onerror too as a fallback (belt-and-suspenders).
+
+4. stopListening() and ngOnDestroy(): no change needed.
+
+5. Template additions:
+   - Add [disabled]="listening || requestingPermission" to the mic button.
+   - Add a second chip below the 'Listening…' chip (or replace it) when
+     requestingPermission=true: same style, text "Requesting access…", mic icon.
+
+Do NOT add getUserMedia audio to the actual context recording — this is purely a
+permission pre-check. Do NOT add any new Angular services. Do NOT change the textarea.
+
+ng build + ng lint + tsc --noEmit clean.
+No unit tests needed for getUserMedia (JSDOM doesn't support it).
+```
+
+---
+
+### T10.H — Frontend: TTS "Read aloud" button across all content surfaces 🤖 AI
+**Branch:** `feature/PP-077-read-aloud`
+**Depends on:** T10.G (same branch cycle) — independent of T10.G, can run in parallel.
+
+```
+// Phase 10 — T10.H: add a Web Speech Synthesis API "read aloud" speaker button to
+// every text-heavy content surface in the app so users can listen to care advice,
+// species descriptions, treatment info, task steps, and reminders hands-free.
+
+// READ shared.module.ts + treatment-step-list.component.ts + care-card.component.ts
+// BEFORE writing any code. Understand the SharedModule exports list (add new
+// component to it) and the surfaces listed below.
+
+// ════════════════════════════════════════════
+// STEP 1 — SpeechService (shared/services/)
+// ════════════════════════════════════════════
+// File: frontend/src/app/shared/services/speech.service.ts
+// providedIn: 'root' — one global singleton; cancels prior speech on any new call.
+
+@Injectable({ providedIn: 'root' })
+export class SpeechService implements OnDestroy {
+  readonly isSupported = 'speechSynthesis' in window;
+  speaking = false;
+  currentText = '';
+
+  speak(text: string): void
+    // 1. window.speechSynthesis.cancel() to stop any current utterance.
+    // 2. If text blank or !isSupported: return.
+    // 3. Create SpeechSynthesisUtterance(text):
+    //    - utterance.rate = 0.95 (slightly slower for plant advice readability)
+    //    - utterance.lang = document.documentElement.lang || navigator.language
+    //    - utterance.onstart  → this.speaking = true; this.currentText = text
+    //    - utterance.onend    → this.speaking = false; this.currentText = ''
+    //    - utterance.onerror  → this.speaking = false; this.currentText = ''
+    // 4. window.speechSynthesis.speak(utterance)
+
+  stop(): void
+    // window.speechSynthesis.cancel(); this.speaking=false; this.currentText='';
+
+  isReadingText(text: string): boolean
+    // return this.speaking && this.currentText === text;
+
+  ngOnDestroy(): void { this.stop(); }
+}
+
+// ════════════════════════════════════════════
+// STEP 2 — ReadAloudButtonComponent (shared/components/read-aloud-button/)
+// ════════════════════════════════════════════
+// Selector: app-read-aloud-button
+// Template: a mat-icon-button, hidden entirely when !speechService.isSupported.
+// @Input() text: string      — the full text to speak (parent assembles it).
+// @Input() ariaLabel = 'Read aloud'
+
+// Template (inline is fine — very short):
+//   <button *ngIf="speechService.isSupported"
+//     mat-icon-button type="button"
+//     [attr.aria-label]="isReading ? 'Stop reading' : ariaLabel"
+//     [matTooltip]="isReading ? 'Stop reading' : 'Read aloud'"
+//     [class.reading]="isReading"
+//     (click)="toggle()">
+//     <mat-icon>{{ isReading ? 'stop_circle' : 'volume_up' }}</mat-icon>
+//   </button>
+
+// CSS (.reading): color the icon with the app's primary green to signal active state.
+// Size: the button inherits the surrounding font context — no explicit size override.
+
+// Component logic:
+//   get isReading(): boolean { return this.speechService.isReadingText(this.text); }
+//   toggle(): void {
+//     if (this.isReading) { this.speechService.stop(); }
+//     else { this.speechService.speak(this.text); }
+//   }
+
+// Declare + export in SharedModule (add to declarations[] AND exports[]).
+// SpeechService is providedIn:'root' — SharedModule does NOT add it to providers[].
+
+// ════════════════════════════════════════════
+// STEP 3 — Wire into content surfaces
+// ════════════════════════════════════════════
+// For each surface below: add <app-read-aloud-button [text]="..."> adjacent to the
+// heading or the text block it covers. Keep the button unobtrusive — icon only,
+// same line as the heading where possible, NOT in a separate row.
+
+// ── 3a. CareCardComponent (care-card.component.html) ─────────────────────────
+// Add the button in the card header row, next to the card title text.
+// Text: card.title + '. ' + (card.advice ?? '')
+// ariaLabel: 'Read aloud ' + card.title
+// The header row already has a mat-icon for the card type — place the read-aloud
+// button after it on the right (push with flex spacer or position absolute-right).
+
+// ── 3b. SpeciesDetailComponent overview tab ───────────────────────────────────
+// Find the description block (species.description prose) in species-detail.
+// Add the button next to the "About this species" or equivalent section heading.
+// Text: species.description (may be null while generating — guard: *ngIf="species.description")
+// Only show when descriptionStatus === 'READY' (don't offer to read "Generating…" filler).
+
+// ── 3c. TreatmentDetailComponent ─────────────────────────────────────────────
+// Find the disease description block (treatment.diseaseDescription).
+// Add button next to the "About this disease" or description heading.
+// Text: treatment.diseaseDescription
+// Guard: *ngIf="treatment.diseaseDescription && treatment.descriptionStatus === 'READY'"
+
+// ── 3d. TreatmentStepListComponent (treatment-step-list.component.html) ───────
+// For EACH step row: add a read-aloud button inline with the step instruction text.
+// Text: 'Step ' + step.stepOrder + ': ' + stepInstruction(step)
+//       + (step.stepDetail ? '. ' + step.stepDetail : '')
+// Use the existing stepInstruction(step) helper from the component.
+// The step row already has a "Mark done" button and optional "detail" icon button —
+// place read-aloud as the LAST icon in that row (smallest visual weight).
+
+// ── 3e. Dashboard reminders (dashboard feature) ────────────────────────────────
+// Locate the care-due reminder list on the Home/Dashboard page.
+// Add button per reminder row. Text: reminder.instruction ?? reminder.careType
+// Only if instruction is available (guard: *ngIf="reminder.instruction").
+// If the dashboard uses a compact card, add button to the card's action row.
+
+// ── 3f. ScanDetailComponent userContext block ──────────────────────────────────
+// The "What you asked:" block (added T10.E) that shows the user's context text.
+// Add button immediately after the userContext text.
+// Text: identification.userContext
+// Guard: *ngIf="identification.userContext"
+
+// ════════════════════════════════════════════
+// STEP 4 — Build checks
+// ════════════════════════════════════════════
+// ng build clean (no TS errors, no unused imports).
+// ng lint clean.
+// tsc --noEmit clean.
+// Do NOT write unit tests for SpeechSynthesis — JSDOM does not support it; mock or skip.
+// The SharedModule exports ReadAloudButtonComponent — verify it's consumable in at
+// least two separate lazy feature modules (IdentificationModule, PlantModule) without
+// a module re-provide (it should be fine as the component uses a root-provided service).
+```
+
+---
+
 ## PHASE DEPLOY — Launch Preparation 🔲 NOT STARTED (was Phase 10)
 > **Runs last** — after all numbered phases merged to dev.
 > Goal: deploy to production, beta-test, release v1.0.0.
@@ -463,8 +687,7 @@ exists). Fix. PR with root cause.
 
 | Phase | Status |
 |---|---|
-| 0–9.5 | ✅ All complete (9 + 9.5 on branches pending merge) |
-| 10 — Contextual Scanning & Treatment Polish | 🔲 Not started (T10.A–T10.F, PP-071–078) |
+| 0–10 | ✅ All complete (merged to dev) |
 | DEPLOY — Launch | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---

@@ -12,6 +12,11 @@
       <p class="card-title">{{ card.title }}</p>
       <p class="card-summary">{{ card.summary }}</p>
     </div>
+    <app-read-aloud-button
+      (click)="$event.stopPropagation()"
+      [text]="card.title + '. ' + card.summary"
+      [ariaLabel]="'Read aloud ' + card.title"
+    ></app-read-aloud-button>
     <mat-icon class="expand-icon" [class.rotated]="expanded">expand_more</mat-icon>
   </div>
 
