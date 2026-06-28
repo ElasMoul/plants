@@ -49,7 +49,6 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   readonly speechSupported = !!SpeechRecognitionAPI;
   readonly speechSecure = window.isSecureContext || location.hostname === 'localhost';
   listening = false;
-  requestingPermission = false;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private recognition: any = null;
@@ -166,31 +165,12 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
   private startListening(): void {
     if (!SpeechRecognitionAPI || !this.speechSecure) return;
-    if ('mediaDevices' in navigator && typeof navigator.mediaDevices?.getUserMedia === 'function') {
-      this.requestingPermission = true;
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          stream.getTracks().forEach(t => t.stop());
-          this.requestingPermission = false;
-          this.doStartRecognition();
-        })
-        .catch((err: DOMException) => {
-          this.requestingPermission = false;
-          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-            this.snackBar.open('No microphone found on this device.', 'Dismiss', { duration: 5000 });
-          } else {
-            // NotAllowedError / PermissionDeniedError / SecurityError
-            this.snackBar.open(
-              "Microphone access blocked — tap the lock icon in your browser's address bar and allow microphone access, then try again.",
-              'Dismiss',
-              { duration: 8000 },
-            );
-          }
-        });
-    } else {
-      // Older browser or HTTP (non-localhost) — fall back; recognition.onerror handles 'not-allowed'
-      this.doStartRecognition();
-    }
+    // Call recognition.start() directly — no getUserMedia pre-check.
+    // getUserMedia before recognition.start() causes mic contention on Chromium:
+    // the speech service cannot acquire the device a second time, onstart never
+    // fires, onend arrives silently ~4s later. SpeechRecognition handles its own
+    // mic capture and permission dialog; onerror covers 'not-allowed' below.
+    this.doStartRecognition();
   }
 
   private doStartRecognition(): void {

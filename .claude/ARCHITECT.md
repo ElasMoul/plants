@@ -958,29 +958,22 @@ Determines which CTAs appear on a scan detail page's care cards:
 - `craftPlan()` transition DRAFT → IN_PROGRESS: must NOT overwrite `diseaseDescription`.
   The description is generated independently; the plan adds steps only.
 
-### Web Speech API — STT permission pre-check pattern (T10.G)
+### Web Speech API — STT pattern (T10.G, revised T10.I)
 The microphone button in `PhotoUploadComponent` uses Web Speech API
-(`SpeechRecognition`/`webkitSpeechRecognition`). On some mobile browsers (especially iOS
-Safari and Android Chrome cold-start), calling `recognition.start()` directly may fail
-with `not-allowed` without ever showing the OS permission dialog — silent failure.
+(`SpeechRecognition`/`webkitSpeechRecognition`).
 
-**Fix pattern:** always pre-check mic permission with `navigator.mediaDevices.getUserMedia`
-*before* creating the `SpeechRecognition` object:
-```
-getUserMedia({audio:true})
-  → success: stop all tracks (we only need the grant), then doStartRecognition()
-  → NotFoundError: "No microphone found on this device."
-  → NotAllowedError / PermissionDeniedError:
-       "Microphone access blocked — tap the lock icon in your browser's address bar
-        to allow access, then try again."   (8s duration so user can read it)
-  → getUserMedia not available (HTTP non-localhost, old browser):
-       fall through to doStartRecognition() directly (current behavior)
-```
-- Add `requestingPermission = false` flag; disable the mic button during the prompt.
-- Show a "Requesting access…" chip while `requestingPermission = true`.
-- Keep the `recognition.onerror` `not-allowed` branch as a belt-and-suspenders fallback.
-- **Never** record or forward the `getUserMedia` audio stream — it is immediately stopped
-  after the permission grant. Its only job is to trigger the OS permission dialog reliably.
+**Current pattern (post-T10.I):** call `recognition.start()` directly — no `getUserMedia`
+pre-check. SpeechRecognition manages its own mic capture and shows the browser's
+native permission dialog when needed. `onerror` covers `not-allowed` as fallback.
+
+**Why the T10.G getUserMedia pre-check was removed:** the pre-check was added to trigger
+the OS permission dialog reliably on mobile cold-start. However, it caused mic contention
+on Chromium desktop: even when tracks were stopped immediately, the sequence
+`getUserMedia → recognition.start()` caused `onstart` to never fire and `onend` to arrive
+silently ~4 s later. Diagnosed via `/voice-test` (Step 1 mic-only vs Step 2 recognition-only
+panels confirmed mic was accessible but speech service was failing). Removing the pre-check
+and calling `recognition.start()` directly fixed it. The `not-allowed` `onerror` handler
+remains as the permission-denied signal on all platforms.
 - **isSecureContext gate (T10.I — shipped):** `SpeechRecognition` requires HTTPS.
   Chrome allows `localhost` as an exception, but any LAN IP (`192.168.x.x`) over plain HTTP
   is blocked. Fix: `speechSupported = !!SpeechRecognitionAPI` (API exists — gates Firefox)
