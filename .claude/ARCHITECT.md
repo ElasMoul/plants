@@ -981,6 +981,19 @@ getUserMedia({audio:true})
 - Keep the `recognition.onerror` `not-allowed` branch as a belt-and-suspenders fallback.
 - **Never** record or forward the `getUserMedia` audio stream — it is immediately stopped
   after the permission grant. Its only job is to trigger the OS permission dialog reliably.
+- **isSecureContext gate (T10.I — open bug):** `SpeechRecognition` itself requires HTTPS.
+  Chrome allows `localhost` as an exception, but any LAN IP (`192.168.x.x`) over plain HTTP
+  is blocked — `getUserMedia` succeeds but `recognition.start()` immediately fires
+  `onerror('not-allowed')` or `onerror('service-not-allowed')`, producing "Microphone
+  unavailable." Firefox has no SpeechRecognition at all.
+  Planned fix — hide the mic button when the context is insecure:
+  ```typescript
+  readonly speechSupported =
+    !!SpeechRecognitionAPI &&
+    (window.isSecureContext || location.hostname === 'localhost');
+  ```
+  Add a `console.warn` in dev when `SpeechRecognitionAPI` exists but `isSecureContext`
+  is false, so the cause is self-diagnosable. Branch: `feature/PP-078-mic-bug`.
 
 ### Web Speech Synthesis — TTS "Read aloud" pattern (T10.H)
 `SpeechService` (`shared/services/speech.service.ts`, `providedIn: 'root'`) wraps the
@@ -1010,7 +1023,7 @@ by `SharedModule`):
 | `SpeciesDetailComponent` description block | `species.description` (guard: `descriptionStatus === 'READY'`) |
 | `TreatmentDetailComponent` disease description | `treatment.diseaseDescription` (guard: `descriptionStatus === 'READY'`) |
 | `TreatmentStepListComponent` per-step | `'Step N: ' + stepInstruction(step) + (stepDetail ?? '')` |
-| Dashboard reminder rows | `reminder.instruction ?? reminder.careType` |
+| Dashboard reminder rows | `reminder.plantNickname + ': ' + reminder.careType.toLowerCase().replace(/_/g,' ')` (via `reminderReadText()` helper) |
 | `ScanDetailComponent` userContext block | `identification.userContext` |
 
 **Placement rule:** inline with the section heading or title row (icon only, no label text),
