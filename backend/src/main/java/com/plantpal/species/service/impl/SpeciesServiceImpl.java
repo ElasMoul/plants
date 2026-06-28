@@ -269,13 +269,15 @@ public class SpeciesServiceImpl implements SpeciesService {
     speciesRepository.save(species);
 
     Long id = species.getId();
-    speciesEnrichmentService.ifPresent(service ->
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            service.enrich(id, AiModelPreference.DEEPSEEK);
-          }
-        }));
+    speciesEnrichmentService.ifPresent(
+        service ->
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                  @Override
+                  public void afterCommit() {
+                    service.enrich(id, AiModelPreference.DEEPSEEK);
+                  }
+                }));
 
     return speciesMapper.toResponse(species).toBuilder()
         .careCards(parseCareCards(species.getCareCards()))
@@ -369,13 +371,15 @@ public class SpeciesServiceImpl implements SpeciesService {
     // findById returns empty and enrichment is silently skipped (descriptionStatus stays PENDING
     // forever). afterCommit() guarantees the row is visible before the async thread starts.
     Long speciesId = species.getId();
-    speciesEnrichmentService.ifPresent(service ->
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            service.enrich(speciesId, preference);
-          }
-        }));
+    speciesEnrichmentService.ifPresent(
+        service ->
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                  @Override
+                  public void afterCommit() {
+                    service.enrich(speciesId, preference);
+                  }
+                }));
 
     return species;
   }

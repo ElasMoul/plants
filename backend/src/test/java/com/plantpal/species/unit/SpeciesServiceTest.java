@@ -129,8 +129,7 @@ class SpeciesServiceTest {
               "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.DEEPSEEK);
       // createSpecies() registers enrichment via afterCommit() — simulate a commit so the
       // callback fires and we can verify enrich() was called with the right args.
-      TransactionSynchronizationManager.getSynchronizations()
-          .forEach(s -> s.afterCommit());
+      TransactionSynchronizationManager.getSynchronizations().forEach(s -> s.afterCommit());
 
       // Then
       ArgumentCaptor<Species> captor = ArgumentCaptor.forClass(Species.class);
@@ -157,8 +156,7 @@ class SpeciesServiceTest {
       speciesService.findOrCreate(
           "Ficus lyrata", "Fiddle Leaf Fig", AiModelPreference.OLLAMA_LLAVA);
       // Simulate transaction commit so the afterCommit() enrichment callback fires.
-      TransactionSynchronizationManager.getSynchronizations()
-          .forEach(s -> s.afterCommit());
+      TransactionSynchronizationManager.getSynchronizations().forEach(s -> s.afterCommit());
 
       // Then
       verify(speciesEnrichmentService).enrich(7L, AiModelPreference.OLLAMA_LLAVA);
