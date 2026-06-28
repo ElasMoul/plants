@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (PHASE10 merged to dev via PR #81, bb9b0a8)
+> Last updated: 2026-06-28 (T10.G voice-permission fix + T10.H TTS read-aloud planned; PP-076/077 reserved)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -68,10 +68,10 @@
 1. **T10.G** — `feature/PP-076-voice-permission-fix` — mic `getUserMedia` pre-check, better error messages.
 2. **T10.H** — `feature/PP-077-read-aloud` — TTS `SpeechService` + `ReadAloudButtonComponent` wired into care cards, species, treatment, steps, reminders, scan context.
 3. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
-5. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
-6. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
-7. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
-8. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
+4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
+5. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
+6. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
+7. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
 
 ---
 
