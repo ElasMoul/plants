@@ -34,7 +34,7 @@
 
 ## PHASE 10 — Contextual Scanning, Scan Redesign & Treatment Polish
 
-> **T10.A–H:** ✅ Complete on PHASE10 branch (PP-071–077). **T10.I:** 🔲 Mic bug — SpeechRecognition still fails after T10.G (PP-078).
+> **T10.A–I:** ✅ Complete on PHASE10 branch (PP-071–078). Pending merge to dev.
 >
 > **Goal:** Three interconnected improvements:
 > 1. **Contextual input** — user attaches text or voice ("this leaf is very yellow, I put the
