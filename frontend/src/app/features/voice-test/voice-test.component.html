@@ -9,89 +9,111 @@
 
   <!-- Environment info -->
   <mat-card class="env-card">
-    <mat-card-header>
-      <mat-card-title>Environment</mat-card-title>
-    </mat-card-header>
+    <mat-card-header><mat-card-title>Environment</mat-card-title></mat-card-header>
     <mat-card-content>
       <div class="env-row">
-        <mat-icon [class.ok]="hasSpeechAPI" [class.fail]="!hasSpeechAPI">
-          {{ hasSpeechAPI ? 'check_circle' : 'cancel' }}
-        </mat-icon>
+        <mat-icon [class.ok]="hasSpeechAPI" [class.fail]="!hasSpeechAPI">{{ hasSpeechAPI ? 'check_circle' : 'cancel' }}</mat-icon>
         <span class="env-label">SpeechRecognition API</span>
-        <span class="env-value">{{ hasSpeechAPI ? 'Available' : 'Not available (Firefox has no SpeechRecognition)' }}</span>
+        <span class="env-value">{{ hasSpeechAPI ? 'Available (Chrome/Edge/Safari)' : 'Not available — Firefox has no SpeechRecognition' }}</span>
       </div>
       <div class="env-row">
-        <mat-icon [class.ok]="isSecureCtx" [class.warn]="!isSecureCtx">
-          {{ isSecureCtx ? 'check_circle' : 'warning' }}
-        </mat-icon>
+        <mat-icon [class.ok]="isSecureCtx" [class.warn]="!isSecureCtx">{{ isSecureCtx ? 'check_circle' : 'warning' }}</mat-icon>
         <span class="env-label">isSecureContext</span>
-        <span class="env-value">{{ isSecureCtx ? 'true (HTTPS / localhost — OK)' : 'false — SpeechRecognition is blocked on plain HTTP over LAN' }}</span>
+        <span class="env-value">{{ isSecureCtx ? 'true — OK' : 'false — SpeechRecognition blocked on plain HTTP over LAN' }}</span>
       </div>
       <div class="env-row">
         <mat-icon class="neutral">info</mat-icon>
-        <span class="env-label">Hostname</span>
-        <span class="env-value">{{ hostname }}</span>
-      </div>
-      <div class="env-row">
-        <mat-icon class="neutral">info</mat-icon>
-        <span class="env-label">Language</span>
-        <span class="env-value">{{ lang }}</span>
+        <span class="env-label">Hostname / Lang</span>
+        <span class="env-value">{{ hostname }} / {{ lang }}</span>
       </div>
     </mat-card-content>
   </mat-card>
 
-  <!-- Control -->
-  <div class="control-row">
-    <button
-      mat-raised-button
-      [color]="listening ? 'warn' : 'primary'"
-      class="toggle-btn"
-      [disabled]="!hasSpeechAPI || !isSecureCtx"
-      (click)="toggle()"
-    >
-      <mat-icon>{{ listening ? 'stop' : 'mic' }}</mat-icon>
-      {{ listening ? 'Stop' : 'Start Listening' }}
+  <!-- Two-panel diagnostic -->
+  <div class="panels">
+
+    <!-- Panel A: Mic-only (getUserMedia, no recognition) -->
+    <mat-card class="panel">
+      <mat-card-header>
+        <mat-card-title>Step 1 — Mic Access</mat-card-title>
+        <mat-card-subtitle>getUserMedia only, no SpeechRecognition</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="panel-hint">Tests whether Chrome can open your microphone at all. The bar should move when you speak.</p>
+
+        <button mat-raised-button [color]="micTesting ? 'warn' : 'primary'" (click)="toggleMic()">
+          <mat-icon>{{ micTesting ? 'stop' : 'mic' }}</mat-icon>
+          {{ micTesting ? 'Stop Mic Test' : 'Test Mic' }}
+        </button>
+
+        <div class="level-row">
+          <span class="level-label">Mic level</span>
+          <div class="level-track" [class.active]="micTesting">
+            <div class="level-fill" [style.width.%]="micLevel" [class.loud]="micLevel > 70" [class.medium]="micLevel > 30 && micLevel <= 70"></div>
+          </div>
+          <span class="level-number">{{ micLevel | number: '1.0-0' }}%</span>
+        </div>
+
+        <div class="panel-result">
+          <ng-container *ngIf="micTesting">
+            <span class="result-ok" *ngIf="micLevel > 5">Mic working — audio detected</span>
+            <span class="result-warn" *ngIf="micLevel <= 5">Waiting for audio… speak to test</span>
+          </ng-container>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Panel B: Recognition-only (no getUserMedia upfront) -->
+    <mat-card class="panel">
+      <mat-card-header>
+        <mat-card-title>Step 2 — Speech Recognition</mat-card-title>
+        <mat-card-subtitle>SpeechRecognition only — needs internet (Google API)</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="panel-hint">
+          SpeechRecognition calls Google's cloud API. Requires: mic access, internet,
+          Chrome (not Firefox). If <strong>onstart never fires</strong> and <strong>onend fires after ~4 s</strong>
+          with no onerror, the speech service is failing silently — check network or close
+          apps that may hold the mic in exclusive mode (Discord, Teams, OBS).
+        </p>
+
+        <button mat-raised-button [color]="listening ? 'warn' : 'primary'" [disabled]="!hasSpeechAPI || !isSecureCtx" (click)="toggleRecognition()">
+          <mat-icon>{{ listening ? 'stop' : 'record_voice_over' }}</mat-icon>
+          {{ listening ? 'Stop Recognition' : 'Start Recognition' }}
+        </button>
+
+        <div class="status-row">
+          <span class="status-label" [class.listening]="listening">{{ statusMessage }}</span>
+        </div>
+
+        <div class="level-row">
+          <span class="level-label">Level (post-onstart)</span>
+          <div class="level-track" [class.active]="listening && recLevel > 0">
+            <div class="level-fill" [style.width.%]="recLevel" [class.loud]="recLevel > 70" [class.medium]="recLevel > 30 && recLevel <= 70"></div>
+          </div>
+          <span class="level-number">{{ recLevel | number: '1.0-0' }}%</span>
+        </div>
+
+        <div class="transcript-box" [class.empty]="!transcript">
+          {{ transcript || '(speak after onstart fires)' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+
+  <!-- Controls -->
+  <div class="clear-row">
+    <button mat-button (click)="clearAll()" [disabled]="log.length === 0">
+      <mat-icon>clear_all</mat-icon> Clear log &amp; transcript
     </button>
-    <span class="status-label" [class.listening]="listening">{{ statusMessage }}</span>
-  </div>
-
-  <!-- Audio level bar -->
-  <div class="level-section">
-    <span class="level-label">Mic level</span>
-    <div class="level-track" [class.active]="listening">
-      <div
-        class="level-fill"
-        [style.width.%]="audioLevel"
-        [class.loud]="audioLevel > 70"
-        [class.medium]="audioLevel > 30 && audioLevel <= 70"
-      ></div>
-    </div>
-    <span class="level-number">{{ audioLevel | number: '1.0-0' }}%</span>
-  </div>
-
-  <!-- Transcript -->
-  <div class="transcript-section">
-    <div class="section-header">
-      <h2>Transcript</h2>
-      <button mat-button (click)="clearAll()" [disabled]="!transcript && log.length === 0">
-        <mat-icon>clear_all</mat-icon> Clear
-      </button>
-    </div>
-    <div class="transcript-box" [class.empty]="!transcript">
-      {{ transcript || '(speak after pressing Start — words appear here live)' }}
-    </div>
   </div>
 
   <!-- Event log -->
   <div class="log-section">
     <h2>Event Log <span class="log-count" *ngIf="log.length">({{ log.length }})</span></h2>
     <div class="log-box">
-      <div
-        *ngFor="let entry of log"
-        class="log-entry"
-        [class.log-result]="entry.type === 'result'"
-        [class.log-error]="entry.type === 'error'"
-      >
+      <div *ngFor="let entry of log" class="log-entry" [class.log-result]="entry.type === 'result'" [class.log-error]="entry.type === 'error'">
         <span class="log-time">{{ entry.time }}</span>
         <span class="log-msg">{{ entry.msg }}</span>
       </div>
