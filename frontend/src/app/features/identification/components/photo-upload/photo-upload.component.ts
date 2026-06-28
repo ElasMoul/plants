@@ -17,7 +17,7 @@ const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
 if (isDevMode() && SpeechRecognitionAPI && !window.isSecureContext && location.hostname !== 'localhost') {
-  console.warn('[PhotoUpload] SpeechRecognition detected but isSecureContext=false — mic button hidden. Access the app over HTTPS or localhost to enable voice input.');
+  console.warn('[PhotoUpload] SpeechRecognition detected but isSecureContext=false — mic button disabled. Access the app over HTTPS or localhost to enable voice input.');
 }
 
 interface ImageEntry {
@@ -46,12 +46,14 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   contextExpanded = false;
   contextText = '';
   readonly maxContextChars = MAX_CONTEXT_CHARS;
-  readonly speechSupported = !!SpeechRecognitionAPI && (window.isSecureContext || location.hostname === 'localhost');
+  readonly speechSupported = !!SpeechRecognitionAPI;
+  readonly speechSecure = window.isSecureContext || location.hostname === 'localhost';
   listening = false;
   requestingPermission = false;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private recognition: any = null;
+  private recognitionBaseText = '';
 
   get batchModeAvailable(): boolean {
     return this.lockedPlantId == null && this.lockedSpeciesId == null;
@@ -162,7 +164,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   }
 
   private startListening(): void {
-    if (!SpeechRecognitionAPI) return;
+    if (!SpeechRecognitionAPI || !this.speechSecure) return;
     if ('mediaDevices' in navigator && typeof navigator.mediaDevices?.getUserMedia === 'function') {
       this.requestingPermission = true;
       navigator.mediaDevices.getUserMedia({ audio: true })
@@ -194,13 +196,25 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
     try {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = false;
-      this.recognition.interimResults = false;
+      this.recognition.interimResults = true;
       this.recognition.lang = navigator.language;
 
+      this.recognitionBaseText = this.contextText.trim();
+
       this.recognition.onresult = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        const transcript: string = event.results[0][0].transcript;
-        this.contextText = transcript.substring(0, MAX_CONTEXT_CHARS);
-        this.listening = false;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const t: string = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += t;
+          } else {
+            interimTranscript += t;
+          }
+        }
+        const spoken = finalTranscript || interimTranscript;
+        const combined = this.recognitionBaseText ? `${this.recognitionBaseText} ${spoken}` : spoken;
+        this.contextText = combined.substring(0, MAX_CONTEXT_CHARS);
       };
 
       this.recognition.onerror = (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
