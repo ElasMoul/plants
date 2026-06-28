@@ -81,7 +81,7 @@
 
         <ng-container *ngIf="carePlanLoaded && hasIdentification">
           <app-care-plan
-            [carePlan]="latestCarePlan"
+            [carePlan]="mergedCarePlan"
             [plantId]="plant.id"
             [identificationId]="latestIdentificationId"
             [existingCareTypes]="existingCareTypes"

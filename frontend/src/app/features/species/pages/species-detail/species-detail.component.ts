@@ -118,6 +118,19 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
       });
   }
 
+  iucnLabel(category: string | null | undefined): string {
+    const labels: Record<string, string> = {
+      EX: 'Extinct', EW: 'Extinct in the Wild', CR: 'Critically Endangered',
+      EN: 'Endangered', VU: 'Vulnerable', NT: 'Near Threatened',
+      LC: 'Least Concern', DD: 'Data Deficient', NE: 'Not Evaluated',
+    };
+    return category ? (labels[category] ?? category) : '';
+  }
+
+  iucnBadgeClass(category: string | null | undefined): string {
+    return 'iucn-' + (category?.toLowerCase() ?? '');
+  }
+
   private pollForDescription(speciesId: number): void {
     interval(DESCRIPTION_POLL_INTERVAL_MS).pipe(
       switchMap(() => this.speciesService.getSpecies(speciesId)),
