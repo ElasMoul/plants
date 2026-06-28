@@ -60,7 +60,13 @@
 
         <div class="description-block">
           <!-- READY -->
-          <p *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription">{{ treatment.diseaseDescription }}</p>
+          <ng-container *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription">
+            <app-read-aloud-button
+              [text]="treatment.diseaseDescription!"
+              ariaLabel="Read disease description aloud"
+            ></app-read-aloud-button>
+            <p>{{ treatment.diseaseDescription }}</p>
+          </ng-container>
           <!-- PENDING -->
           <p class="description-pending" *ngIf="!treatment.descriptionStatus || treatment.descriptionStatus === 'PENDING'">
             <mat-spinner diameter="16"></mat-spinner>

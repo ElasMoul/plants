@@ -1,0 +1,11 @@
+<button
+  *ngIf="speechService.isSupported"
+  mat-icon-button
+  type="button"
+  [attr.aria-label]="isReading ? 'Stop reading' : ariaLabel"
+  [matTooltip]="isReading ? 'Stop reading' : 'Read aloud'"
+  [class.reading]="isReading"
+  (click)="toggle()"
+>
+  <mat-icon>{{ isReading ? 'stop_circle' : 'volume_up' }}</mat-icon>
+</button>

@@ -64,6 +64,10 @@
               Overdue by {{ reminder.daysOverdue }} day{{ reminder.daysOverdue !== 1 ? 's' : '' }}
             </p>
           </div>
+          <app-read-aloud-button
+            (click)="$event.stopPropagation()"
+            [text]="reminderReadText(reminder)"
+          ></app-read-aloud-button>
         </div>
       </section>
 
@@ -87,6 +91,10 @@
               {{ reminder.careType | titlecase }}
             </p>
           </div>
+          <app-read-aloud-button
+            (click)="$event.stopPropagation()"
+            [text]="reminderReadText(reminder)"
+          ></app-read-aloud-button>
         </div>
         <p class="empty-note" *ngIf="!topTodayReminders.length">Nothing due today 🌿</p>
       </section>

@@ -30,6 +30,10 @@
         >
           <mat-icon>info_outline</mat-icon>
         </button>
+        <app-read-aloud-button
+          [text]="'Step ' + (step.stepOrder ?? '') + ': ' + stepInstruction(step) + (step.stepDetail ? '. ' + step.stepDetail : '')"
+          ariaLabel="Read step aloud"
+        ></app-read-aloud-button>
       </div>
       <p class="step-due">
         <ng-container *ngIf="!step.enabled">Completed {{ step.completedAt | date:'MMM d' }}</ng-container>
