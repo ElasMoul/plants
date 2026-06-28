@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (T10.G + T10.H shipped on PHASE10; T10.I mic-bug investigation new task PP-078)
+> Last updated: 2026-06-28 (T10.I complete — getUserMedia contention fixed, /voice-test diagnostic page, ESLint CI fix)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -32,7 +32,7 @@
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
-| 10 — Contextual Scanning & Treatment Polish | ⚙️ T10.A–H ✅ on PHASE10; T10.I (mic bug PP-078) 🔲 new task |
+| 10 — Contextual Scanning & Treatment Polish | ✅ T10.A–I complete on PHASE10 branch (PP-071–078); pending merge to dev |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---
@@ -65,7 +65,7 @@
 
 ## Next Tasks (ordered)
 
-1. **T10.I** — `feature/PP-078-mic-bug` — SpeechRecognition fails silently with "Microphone unavailable" in the scan context input even after T10.G getUserMedia pre-check. Diagnose root cause (HTTP vs HTTPS, browser support, permission denial) and fix.
+1. **Merge PHASE10 → dev** — Phase 10 fully complete (T10.A–I, PP-071–078). Open PR to merge PHASE10 branch to dev.
 2. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
 4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 5. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
@@ -83,19 +83,11 @@
 
 ---
 
-## Phase 10 — T10.G + T10.H (2026-06-28, PHASE10 branch)
+## Phase 10 — T10.G + T10.H + T10.I (2026-06-28, PHASE10 branch)
 
 **T10.G — Mic permission pre-check (PP-076, merged PHASE10):**
-`PhotoUploadComponent.startListening()` now pre-checks mic access with
-`navigator.mediaDevices.getUserMedia({audio:true})` before starting `SpeechRecognition`.
-`NotFoundError` → "No microphone found." `NotAllowedError` → "tap the lock icon…" (8s).
-`requestingPermission` flag disables button + shows "Requesting access…" chip during prompt.
-Falls back to `doStartRecognition()` directly on old browsers / non-secure HTTP.
-
-**⚠️ T10.I (new, PP-078):** Despite T10.G, user still gets "Microphone unavailable" when
-tapping mic in the scan context section. Root cause TBD — likely HTTP vs HTTPS restriction
-(SpeechRecognition requires HTTPS outside localhost in Chrome), browser-specific gap
-(Firefox has no SpeechRecognition at all), or previously-denied permission not re-prompted.
+Original fix: added `getUserMedia` pre-check before `recognition.start()`. Later found to cause
+mic contention — see T10.I below. Pre-check removed; pattern superseded by T10.I.
 
 **T10.H — TTS Read Aloud (PP-077, merged PHASE10):**
 `SpeechService` (`providedIn:'root'`, `NgZone`-safe callbacks) + `ReadAloudButtonComponent`
@@ -106,6 +98,14 @@ TreatmentStepListComponent per-step, HomeComponent reminder rows (overdue + toda
 `SharedModule` import for ScanDetail access.
 
 ---
+
+**T10.I — isSecureContext gate + mic contention root cause (PP-078, PHASE10 branch):**
+- `speechSupported = !!SpeechRecognitionAPI` (hides button on Firefox) + `speechSecure = window.isSecureContext || location.hostname === 'localhost'` (disables + tooltip on plain HTTP over LAN).
+- `/voice-test` diagnostic page added at `features/voice-test/` — two-panel layout (Step 1: getUserMedia mic test; Step 2: SpeechRecognition without prior getUserMedia). Accessible via user menu. Reveals that getUserMedia-before-recognition causes silent mic contention on Chromium.
+- `startListening()` simplified: `getUserMedia` pre-check entirely removed, calls `doStartRecognition()` directly. `requestingPermission` flag and "Requesting access…" chip removed.
+- ESLint CI fix: empty `() => {}` → `() => { /* ... */ }` in voice-test; `// eslint-disable-next-line` → block form to cover multi-line `(window as any)` declarations in both files.
+- All callbacks wrapped in `ngZone.run()` (NgZone fix from the previous session for textarea not updating).
+- Commits: `d9e3eaf` (voice input fix), `5691763` (ESLint fix).
 
 ## Post-Phase-10 Bugfixes (2026-06-28, PHASE10 branch)
 

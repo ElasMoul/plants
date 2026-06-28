@@ -994,6 +994,19 @@ remains as the permission-denied signal on all platforms.
   Related-but-distinct from the isSecureContext failure: both affect the same API family but
   the contention bug occurs even on localhost/HTTPS — the ordering of calls is the variable.
 
+- **NgZone wrapping (T10.I critical fix):** `SpeechRecognition` callbacks (`onresult`, `onerror`,
+  `onend`, `onstart`) fire outside Angular's change detection zone. Without wrapping in
+  `ngZone.run(()=>{...})`, setting component properties (e.g. `this.contextText`) has no effect
+  on the template — the textarea never updates. Rule: always wrap ALL SpeechRecognition callbacks
+  in `ngZone.run()`. rAF animation loops use `ngZone.runOutsideAngular()` with only the
+  level-state setter inside `ngZone.run()` (avoids per-frame change detection).
+- **`/voice-test` diagnostic page** (`features/voice-test/`) — two-panel layout. Step 1: pure
+  `getUserMedia` + AudioContext level meter (tests mic hardware). Step 2: pure `SpeechRecognition`
+  with no prior getUserMedia (tests speech service + network). Accessible from the user menu.
+  Useful to distinguish mic hardware failure from speech service (network) failure, since Chrome's
+  SpeechRecognition silently times out (~4s first attempt, ~4ms circuit-breaker pattern) when it
+  cannot reach Google's speech WebSocket API.
+
 ### Web Speech Synthesis — TTS "Read aloud" pattern (T10.H)
 `SpeechService` (`shared/services/speech.service.ts`, `providedIn: 'root'`) wraps the
 browser's `window.speechSynthesis` API with a simple stateful interface:
