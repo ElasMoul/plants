@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
+import com.plantpal.plant.config.PlantKafkaTopicConfig;
 import com.plantpal.plant.dto.CreatePlantRequest;
 import com.plantpal.plant.dto.PlantResponse;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
@@ -19,10 +20,14 @@ import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import io.platform.contracts.events.DimensionEvent;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +36,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,24 +47,29 @@ public class PlantServiceImpl implements PlantService {
 
   private static final String PLANTS_CACHE = "plants";
   private static final String NOT_FOUND_MSG = "Plant not found or not owned by user";
+  private static final String APP_ID = "plantpal";
+  private static final String PLANT_COUNT_DIMENSION = "plant_count";
 
   private final PlantRepository plantRepository;
   private final PlantMapper plantMapper;
   private final IdentificationRepository identificationRepository;
   private final ReminderRepository reminderRepository;
   private final ObjectMapper objectMapper;
+  private final KafkaTemplate<String, Object> kafkaTemplate;
 
   public PlantServiceImpl(
       PlantRepository plantRepository,
       PlantMapper plantMapper,
       IdentificationRepository identificationRepository,
       ReminderRepository reminderRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      KafkaTemplate<String, Object> kafkaTemplate) {
     this.plantRepository = plantRepository;
     this.plantMapper = plantMapper;
     this.identificationRepository = identificationRepository;
     this.reminderRepository = reminderRepository;
     this.objectMapper = objectMapper;
+    this.kafkaTemplate = kafkaTemplate;
   }
 
   @Override
@@ -71,6 +82,8 @@ public class PlantServiceImpl implements PlantService {
 
     plant = plantRepository.save(plant);
     log.info("Plant created: id={}, userId={}", plant.getId(), userId);
+
+    emitDimensionEvent(userId, 1);
 
     return plantMapper.toResponse(plant);
   }
@@ -92,11 +105,27 @@ public class PlantServiceImpl implements PlantService {
   @Transactional
   @CacheEvict(value = PLANTS_CACHE, allEntries = true)
   public void archivePlant(Long id, Long userId) {
+    // findOwnedPlant only matches ACTIVE plants, so an already-archived plant is unreachable
+    // here and this transition is always ACTIVE -> ARCHIVED — no double-emit guard needed.
     Plant plant = findOwnedPlant(id, userId);
     plant.setStatus(PlantStatus.ARCHIVED);
     plantRepository.save(plant);
     disableRemindersForPlant(id);
     log.info("Plant archived: id={}, userId={}", id, userId);
+
+    emitDimensionEvent(userId, -1);
+  }
+
+  private void emitDimensionEvent(Long userId, int delta) {
+    DimensionEvent event =
+        new DimensionEvent(
+            UUID.randomUUID(),
+            APP_ID,
+            String.valueOf(userId),
+            PLANT_COUNT_DIMENSION,
+            delta,
+            OffsetDateTime.now(ZoneOffset.UTC));
+    kafkaTemplate.send(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC, event);
   }
 
   private void disableRemindersForPlant(Long plantId) {

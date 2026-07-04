@@ -30,7 +30,9 @@ public class DeepSeekClient {
 
   private static final Logger log = LoggerFactory.getLogger(DeepSeekClient.class);
 
-  static final String CURE_ADVICE_SYSTEM_PROMPT =
+  // public: reused by com.plantpal.gateway call sites building AiRequest.context["systemPrompt"]
+  // so the gateway path never restates the prompt (Chunk 3, D022 gateway swap).
+  public static final String CURE_ADVICE_SYSTEM_PROMPT =
       """
       You are a plant pathologist. Answer in plain English for a beginner gardener.
       Be direct and practical. Return ONLY valid JSON (no markdown, no preamble):
@@ -132,14 +134,14 @@ public class DeepSeekClient {
       backticks only.
       """;
 
-  static final String DISEASE_DESCRIPTION_SYSTEM_PROMPT =
+  public static final String DISEASE_DESCRIPTION_SYSTEM_PROMPT =
       """
       You are a plant pathologist. Explain a plant disease or pest issue in plain English for a
       beginner gardener. In 2-4 sentences, cover what it is, why it happens, and the risk if left
       untreated. Return ONLY the plain text explanation — no markdown, no headers, no JSON.
       """;
 
-  static final String SPECIES_ENRICHMENT_SYSTEM_PROMPT =
+  public static final String SPECIES_ENRICHMENT_SYSTEM_PROMPT =
       """
       You are an expert botanist. Given a plant's scientific name (and optionally a common name),
       return ONLY valid JSON (no markdown, no preamble) describing it for a beginner gardener:
@@ -250,6 +252,30 @@ public class DeepSeekClient {
     }
     Matcher matcher = RETRY_AFTER_PATTERN.matcher(String.valueOf(e.getResponseBodyAsString()));
     return matcher.find() ? Long.parseLong(matcher.group(1)) : DEFAULT_RETRY_AFTER_SECONDS;
+  }
+
+  /**
+   * Configured model string for {@code ReasoningModelPreference.DEEPSEEK_R1} (D022 gateway swap —
+   * modelHint).
+   */
+  public String getModel() {
+    return model;
+  }
+
+  /**
+   * Configured model string for {@code ReasoningModelPreference.GITHUB_O4_MINI} (D022 gateway swap
+   * — modelHint).
+   */
+  public String getO4MiniModel() {
+    return o4MiniModel;
+  }
+
+  /**
+   * Configured model string for {@code ReasoningModelPreference.GITHUB_GPT41_MINI} (D022 gateway
+   * swap — modelHint).
+   */
+  public String getGpt41MiniModel() {
+    return gpt41MiniModel;
   }
 
   public String generateCureAdvice(String species, String regionLabel) {

@@ -24,7 +24,9 @@ public class GitHubModelsClient {
 
   private static final Logger log = LoggerFactory.getLogger(GitHubModelsClient.class);
 
-  static final String PLANT_IDENTIFICATION_SYSTEM_PROMPT =
+  // public: reused by com.plantpal.gateway call sites building AiRequest.context["systemPrompt"]
+  // so the gateway path never restates the prompt (Chunk 3, D022 gateway swap).
+  public static final String PLANT_IDENTIFICATION_SYSTEM_PROMPT =
       """
       You are an expert botanist and plant pathologist helping a beginner gardener.
       Analyse the plant in the photo and return ONLY valid JSON (no markdown, no preamble).
@@ -95,7 +97,7 @@ public class GitHubModelsClient {
         quotes or backticks only.
       """;
 
-  static final String ANNOTATION_SYSTEM_PROMPT =
+  public static final String ANNOTATION_SYSTEM_PROMPT =
       """
       You are a computer vision system specialised in plant analysis.
       Examine the image and identify all notable regions.

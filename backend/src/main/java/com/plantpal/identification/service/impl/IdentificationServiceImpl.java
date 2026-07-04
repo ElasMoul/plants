@@ -3,6 +3,8 @@ package com.plantpal.identification.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.gateway.GatewayClient;
+import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
@@ -67,6 +69,8 @@ import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
+import io.platform.contracts.aigateway.AiRequest;
+import io.platform.contracts.aigateway.AiRequestMediaInner;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -146,6 +150,8 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final PlantService plantService;
   private final ApplicationEventPublisher eventPublisher;
   private final Executor aiTaskExecutor;
+  private final GatewayClient gatewayClient;
+  private final GatewayProperties gatewayProperties;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -171,7 +177,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       SpeciesService speciesService,
       PlantService plantService,
       ApplicationEventPublisher eventPublisher,
-      @Qualifier("aiTaskExecutor") Executor aiTaskExecutor) {
+      @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
+      GatewayClient gatewayClient,
+      GatewayProperties gatewayProperties) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -193,6 +201,8 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.plantService = plantService;
     this.eventPublisher = eventPublisher;
     this.aiTaskExecutor = aiTaskExecutor;
+    this.gatewayClient = gatewayClient;
+    this.gatewayProperties = gatewayProperties;
   }
 
   @Override
@@ -313,7 +323,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                       event.getOrgans(),
                       userPlantNetProject,
                       userPlantNetLang,
-                      userContext));
+                      userContext,
+                      userId));
 
       // Disease cross-check (Flow 3 only — health scan for an existing plant). Runs in parallel;
       // all exceptions are swallowed so a PlantNet outage never fails the main identification.
@@ -529,7 +540,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
     ReasoningModelPreference preference = loadReasoningPreference(userId);
     String raw =
-        generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel());
+        generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel(), userId);
     return CompletableFuture.completedFuture(parseCureAdvice(raw, preference));
   }
 
@@ -1301,13 +1312,43 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   private String generateCureAdviceForPreference(
-      ReasoningModelPreference preference, String species, String regionLabel) {
+      ReasoningModelPreference preference, String species, String regionLabel, Long userId) {
+    // Gateway routing (D022): every ReasoningModelPreference is in scope for the gateway swap
+    // (Chunk 3) — unlike the vision preferences, none of them are excluded.
+    if (gatewayProperties.enabled()) {
+      String effectiveSpecies = species != null ? species : "Unknown plant";
+      String userMessage =
+          "My "
+              + effectiveSpecies
+              + " has the following issue: "
+              + regionLabel
+              + ". Provide a concise cure procedure in 3-5 numbered steps.";
+      AiRequest request =
+          new AiRequest()
+              .prompt(userMessage)
+              .modelHint(modelHintForReasoning(preference))
+              .appId("plantpal")
+              .userId(String.valueOf(userId))
+              .putContextItem("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT);
+      return gatewayClient.request(request).getResult();
+    }
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, regionLabel);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, regionLabel);
       case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, regionLabel);
       case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, regionLabel);
       case DEEPSEEK_R1 -> deepSeekClient.generateCureAdvice(species, regionLabel);
+    };
+  }
+
+  /** Configured model string per reasoning preference, for the gateway's {@code modelHint}. */
+  private String modelHintForReasoning(ReasoningModelPreference preference) {
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.getModel();
+      case ANTHROPIC_CLAUDE -> anthropicClient.getDefaultModel();
+      case GITHUB_O4_MINI -> deepSeekClient.getO4MiniModel();
+      case GITHUB_GPT41_MINI -> deepSeekClient.getGpt41MiniModel();
+      case DEEPSEEK_R1 -> deepSeekClient.getModel();
     };
   }
 
@@ -1357,9 +1398,23 @@ public class IdentificationServiceImpl implements IdentificationService {
       List<String> organs,
       String plantNetProject,
       String plantNetLang,
-      String userContext) {
+      String userContext,
+      Long userId) {
     return switch (preference) {
       case PLANTNET -> {
+        // Gateway routing (D022): organs/project/lang are attached to the gateway request's
+        // context so ai-gateway's PlantNetAdapter can forward them to PlantNet, matching the
+        // direct-path fidelity below.
+        if (gatewayProperties.enabled()) {
+          AiRequest request =
+              identificationGatewayRequest(imageBytes, mediaType, "plantnet", userId, userContext)
+                  .putContextItem("organs", organs != null ? organs : List.of("auto"))
+                  .putContextItem("project", plantNetProject)
+                  .putContextItem("lang", plantNetLang);
+          PlantNetResponse pnr = parsePlantNetResponse(gatewayClient.request(request).getResult());
+          yield new IdentificationOutcome(
+              plantNetToRawResult(pnr), VisionModelPreference.PLANTNET.name(), pnr);
+        }
         PlantNetResponse pnr =
             plantNetClient.identify(
                 List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
@@ -1381,11 +1436,58 @@ public class IdentificationServiceImpl implements IdentificationService {
           new IdentificationOutcome(
               gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType, userContext),
               VisionModelPreference.GITHUB_GPT41.name());
-      case ANTHROPIC_CLAUDE ->
-          new IdentificationOutcome(
-              anthropicClient.identifyPlant(imageBytes, mediaType, userContext),
+      case ANTHROPIC_CLAUDE -> {
+        if (gatewayProperties.enabled()) {
+          yield new IdentificationOutcome(
+              gatewayClient
+                  .request(
+                      identificationGatewayRequest(
+                          imageBytes,
+                          mediaType,
+                          anthropicClient.getDefaultModel(),
+                          userId,
+                          userContext))
+                  .getResult(),
               VisionModelPreference.ANTHROPIC_CLAUDE.name());
+        }
+        yield new IdentificationOutcome(
+            anthropicClient.identifyPlant(imageBytes, mediaType, userContext),
+            VisionModelPreference.ANTHROPIC_CLAUDE.name());
+      }
     };
+  }
+
+  /**
+   * Shared AiRequest builder for the two gateway-routed vision preferences (ANTHROPIC_CLAUDE,
+   * PLANTNET identify) — same user-facing prompt text and system prompt every direct client uses
+   * for identification, so the gateway path never restates them (Chunk 3, D022 gateway swap).
+   */
+  private AiRequest identificationGatewayRequest(
+      byte[] imageBytes, String mediaType, String modelHint, Long userId, String userContext) {
+    String basePrompt = "Identify this plant and generate a complete beginner care plan.";
+    String promptText =
+        (userContext != null && !userContext.isBlank())
+            ? basePrompt
+                + " The user wants to know: "
+                + userContext
+                + ". Consider this when assessing health and generating care advice"
+                + " — address their specific concern directly."
+            : basePrompt;
+    return new AiRequest()
+        .prompt(promptText)
+        .modelHint(modelHint)
+        .appId("plantpal")
+        .userId(String.valueOf(userId))
+        .putContextItem("systemPrompt", GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT)
+        .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
+  }
+
+  private PlantNetResponse parsePlantNetResponse(String rawJson) {
+    try {
+      return objectMapper.readValue(rawJson, PlantNetResponse.class);
+    } catch (JsonProcessingException e) {
+      throw new PlantPalException("Failed to parse PlantNet gateway response", 502, e);
+    }
   }
 
   private String plantNetToRawResult(PlantNetResponse response) {

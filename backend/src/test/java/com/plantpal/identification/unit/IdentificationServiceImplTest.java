@@ -97,6 +97,7 @@ class IdentificationServiceImplTest {
   @Mock private com.plantpal.species.service.SpeciesService speciesService;
   @Mock private com.plantpal.plant.service.PlantService plantService;
   @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
+  @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
   private IdentificationServiceImpl identificationService;
 
@@ -127,7 +128,17 @@ class IdentificationServiceImplTest {
             speciesService,
             plantService,
             eventPublisher,
-            Runnable::run);
+            Runnable::run,
+            gatewayClient,
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+  }
+
+  /** Flips the gateway flag on for a single test — mirrors the plantNetAlwaysOn flip below. */
+  private void enableGateway() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        identificationService,
+        "gatewayProperties",
+        new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
   }
 
   private MockMultipartFile validImage() {
@@ -1461,6 +1472,309 @@ class IdentificationServiceImplTest {
       assertThatThrownBy(() -> identificationService.getCureAdvice(1L, req(), USER_ID).get())
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("Cure advice unavailable");
+    }
+  }
+
+  @Nested
+  @DisplayName("gateway routing (D022 gateway swap, flag on) — Chunk 3")
+  class GatewayRouting {
+
+    private io.platform.contracts.aigateway.AiResponse gatewayResponse(String result) {
+      io.platform.contracts.aigateway.AiResponse response =
+          new io.platform.contracts.aigateway.AiResponse();
+      response.setResult(result);
+      response.setModel("stub-model");
+      response.setProvider("stub-provider");
+      response.setTokensIn(1);
+      response.setTokensOut(1);
+      response.setComputedCost(java.math.BigDecimal.ZERO);
+      return response;
+    }
+
+    @Test
+    @DisplayName(
+        "should route ANTHROPIC_CLAUDE identification through GatewayClient, image attached")
+    void shouldRouteAnthropicIdentificationThroughGateway() throws Exception {
+      enableGateway();
+      when(anthropicClient.getDefaultModel()).thenReturn("claude-sonnet-4-6");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.ANTHROPIC_CLAUDE)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(validIdentificationJson()));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      assertThat(event.getAiModelPreference()).isEqualTo("ANTHROPIC_CLAUDE");
+      identificationService.processIdentification(event);
+
+      verify(anthropicClient, never()).identifyPlant(any(), any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getAppId()).isEqualTo("plantpal");
+      assertThat(sent.getModelHint()).isEqualTo("claude-sonnet-4-6");
+      assertThat(sent.getContext())
+          .containsEntry("systemPrompt", GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT);
+      assertThat(sent.getMedia()).hasSize(1);
+      assertThat(sent.getMedia().get(0).getMimeType()).isEqualTo("image/jpeg");
+
+      ArgumentCaptor<Identification> saveCaptor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(saveCaptor.capture());
+      assertThat(saveCaptor.getAllValues().get(1).getScientificName())
+          .isEqualTo("Monstera deliciosa");
+    }
+
+    @Test
+    @DisplayName("should route PLANTNET identification through GatewayClient, image attached")
+    void shouldRoutePlantNetIdentificationThroughGateway() throws Exception {
+      enableGateway();
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.PLANTNET)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      String plantNetRawJson =
+          """
+          {"query":{},"language":"en","preferedReferential":"","switchToProject":"",\
+          "bestMatch":"Monstera deliciosa","results":[],"remainingIdentificationRequests":100}
+          """;
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(plantNetRawJson));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      assertThat(event.getAiModelPreference()).isEqualTo("PLANTNET");
+      identificationService.processIdentification(event);
+
+      verify(plantNetClient, never()).identify(any(), any(), any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getAppId()).isEqualTo("plantpal");
+      assertThat(sent.getModelHint()).isEqualTo("plantnet");
+      assertThat(sent.getMedia()).hasSize(1);
+      assertThat(sent.getContext())
+          .containsEntry("organs", List.of("auto"))
+          .containsEntry("project", "all")
+          .containsEntry("lang", "en");
+    }
+
+    @Test
+    @DisplayName(
+        "should attach explicit organs/project/lang to gateway request for PLANTNET identification")
+    void shouldAttachExplicitPlantNetContextThroughGateway() throws Exception {
+      enableGateway();
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.PLANTNET)
+                      .plantnetProject("k-world-flora")
+                      .plantnetLang("fr")
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      String plantNetRawJson =
+          """
+          {"query":{},"language":"en","preferedReferential":"","switchToProject":"",\
+          "bestMatch":"Monstera deliciosa","results":[],"remainingIdentificationRequests":100}
+          """;
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(plantNetRawJson));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(images, List.of("leaf", "flower"), null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getContext())
+          .containsEntry("organs", List.of("leaf", "flower"))
+          .containsEntry("project", "k-world-flora")
+          .containsEntry("lang", "fr");
+    }
+
+    @Test
+    @DisplayName("should route ANTHROPIC_CLAUDE cure advice through GatewayClient")
+    void shouldRouteAnthropicCureAdviceThroughGateway() throws Exception {
+      enableGateway();
+      when(anthropicClient.getDefaultModel()).thenReturn("claude-sonnet-4-6");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(ownedIdentification()));
+      when(gatewayClient.request(any()))
+          .thenReturn(gatewayResponse("1. Remove affected leaves. 2. Reduce watering."));
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.ANTHROPIC_CLAUDE)
+                      .build()));
+
+      var response = identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      assertThat(response.getAdvice()).isEqualTo("1. Remove affected leaves. 2. Reduce watering.");
+      verify(anthropicClient, never()).generateCureAdvice(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("claude-sonnet-4-6");
+      assertThat(captor.getValue().getContext())
+          .containsEntry("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT);
+    }
+
+    @Test
+    @DisplayName(
+        "should route DEEPSEEK_R1 cure advice through GatewayClient with DeepSeek-R1 modelHint")
+    void shouldRouteDeepSeekCureAdviceThroughGateway() throws Exception {
+      enableGateway();
+      when(deepSeekClient.getModel()).thenReturn("DeepSeek-R1");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(ownedIdentification()));
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("1. Step one."));
+      // No stubbed userRepository row → loadReasoningPreference() falls back to DEEPSEEK_R1.
+
+      var response = identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      assertThat(response.getAdvice()).isEqualTo("1. Step one.");
+      verify(deepSeekClient, never()).generateCureAdvice(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("DeepSeek-R1");
+    }
+
+    @Test
+    @DisplayName(
+        "should route GITHUB_O4_MINI cure advice through GatewayClient with o4-mini modelHint")
+    void shouldRouteO4MiniCureAdviceThroughGateway() throws Exception {
+      enableGateway();
+      when(deepSeekClient.getO4MiniModel()).thenReturn("o4-mini");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(ownedIdentification()));
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("1. Step one."));
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.GITHUB_O4_MINI)
+                      .build()));
+
+      identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      verify(deepSeekClient, never()).generateCureAdviceViaO4Mini(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("o4-mini");
+    }
+
+    @Test
+    @DisplayName(
+        "should route GITHUB_GPT41_MINI cure advice through GatewayClient with gpt-4.1-mini modelHint")
+    void shouldRouteGpt41MiniCureAdviceThroughGateway() throws Exception {
+      enableGateway();
+      when(deepSeekClient.getGpt41MiniModel()).thenReturn("gpt-4.1-mini");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(ownedIdentification()));
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("1. Step one."));
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.GITHUB_GPT41_MINI)
+                      .build()));
+
+      identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      verify(deepSeekClient, never()).generateCureAdviceViaGpt41Mini(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("gpt-4.1-mini");
+    }
+
+    @Test
+    @DisplayName(
+        "should route OLLAMA_GEMMA3 cure advice through GatewayClient with configured Ollama model")
+    void shouldRouteOllamaCureAdviceThroughGateway() throws Exception {
+      enableGateway();
+      when(ollamaClient.getModel()).thenReturn("gemma3:4b");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(ownedIdentification()));
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("1. Step one."));
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.OLLAMA_GEMMA3)
+                      .build()));
+
+      identificationService.getCureAdvice(1L, req(), USER_ID).get();
+
+      verify(ollamaClient, never()).generateCureAdvice(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("gemma3:4b");
+    }
+
+    private Identification ownedIdentification() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .scientificName("Monstera deliciosa")
+          .build();
+    }
+
+    private CureAdviceRequest req() {
+      return new CureAdviceRequest("Yellowing leaf — possible overwatering", "Monstera deliciosa");
     }
   }
 

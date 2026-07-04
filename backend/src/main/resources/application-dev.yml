@@ -130,3 +130,11 @@ logging:
     com.plantpal: DEBUG
     org.springframework.security: DEBUG
     org.springframework.web: DEBUG
+
+# ──── Platform ai-gateway (D022 gateway swap) ────────────────────────────────
+# Dev-only: routes the in-scope AI calls through ai-gateway (localhost:8085) instead
+# of calling providers directly. See PROGRESS.md for the exact in-scope call list.
+platform:
+  gateway:
+    enabled: ${PLATFORM_GATEWAY_ENABLED:true}
+    url: ${PLATFORM_GATEWAY_URL:http://localhost:8085}

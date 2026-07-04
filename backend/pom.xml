@@ -32,6 +32,15 @@
 
     <dependencies>
 
+        <!-- ── Platform contracts (D022 gateway swap) ─────────────────────── -->
+        <!-- Pinned per D031/D015 — checkout + local mvn install required before this
+             builds; see DEPLOYMENT.md. -->
+        <dependency>
+            <groupId>io.platform</groupId>
+            <artifactId>contracts</artifactId>
+            <version>0.5.0</version>
+        </dependency>
+
         <!-- ── Spring Boot Starters ──────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

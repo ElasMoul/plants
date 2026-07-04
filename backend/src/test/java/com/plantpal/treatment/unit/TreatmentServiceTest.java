@@ -58,6 +58,7 @@ class TreatmentServiceTest {
   @Mock private AnthropicClient anthropicClient;
   @Mock private UserRepository userRepository;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
+  @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
   private TreatmentServiceImpl treatmentService;
 
@@ -85,7 +86,17 @@ class TreatmentServiceTest {
             anthropicClient,
             userRepository,
             objectMapper,
-            Runnable::run);
+            Runnable::run,
+            gatewayClient,
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+  }
+
+  /** Flips the gateway flag on for a single test. */
+  private void enableGateway() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        treatmentService,
+        "gatewayProperties",
+        new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
   }
 
   @Nested
@@ -249,6 +260,165 @@ class TreatmentServiceTest {
           .isInstanceOf(ValidationException.class);
 
       verify(treatmentPlanService, never()).createFromActionPlan(any(), any(), any(), any(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("gateway routing (D022 gateway swap, flag on) — Chunk 3")
+  class GatewayRouting {
+
+    private Treatment draftTreatment() {
+      return Treatment.builder()
+          .id(7L)
+          .plantId(PLANT_ID)
+          .userId(USER_ID)
+          .diseaseName("Powdery mildew")
+          .status(TreatmentStatus.DRAFT)
+          .build();
+    }
+
+    private io.platform.contracts.aigateway.AiResponse gatewayResponse(String result) {
+      io.platform.contracts.aigateway.AiResponse response =
+          new io.platform.contracts.aigateway.AiResponse();
+      response.setResult(result);
+      response.setModel("stub-model");
+      response.setProvider("stub-provider");
+      response.setTokensIn(1);
+      response.setTokensOut(1);
+      response.setComputedCost(java.math.BigDecimal.ZERO);
+      return response;
+    }
+
+    @Test
+    @DisplayName("craftPlan() should route ANTHROPIC_CLAUDE cure advice through GatewayClient")
+    void craftPlanShouldRouteAnthropicThroughGateway() throws Exception {
+      enableGateway();
+      when(anthropicClient.getDefaultModel()).thenReturn("claude-sonnet-4-6");
+      when(treatmentRepository.findByIdAndUserId(7L, USER_ID))
+          .thenReturn(Optional.of(draftTreatment()));
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
+          .thenReturn(Optional.of(ownedPlant()));
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.ANTHROPIC_CLAUDE)
+                      .build()));
+      String aiJson =
+          """
+          {"advice":"ignored","actionPlan":{"type":"TREATMENT","steps":[
+            {"order":1,"instruction":"Remove affected leaves","dueOffsetDays":0}
+          ]}}
+          """;
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(aiJson));
+      when(treatmentPlanService.createFromActionPlan(
+              eq(PLANT_ID), eq(USER_ID), eq("Powdery mildew"), eq("PEST"), any()))
+          .thenReturn(TreatmentPlanResponse.builder().id(500L).plantId(PLANT_ID).build());
+      when(treatmentRepository.save(any(Treatment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      TreatmentResponse result = treatmentService.craftPlan(7L, USER_ID).get();
+
+      assertThat(result.getStatus()).isEqualTo(TreatmentStatus.IN_PROGRESS);
+      verify(anthropicClient, never()).generateCureAdvice(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getAppId()).isEqualTo("plantpal");
+      assertThat(captor.getValue().getModelHint()).isEqualTo("claude-sonnet-4-6");
+      assertThat(captor.getValue().getContext())
+          .containsEntry("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT);
+    }
+
+    @Test
+    @DisplayName(
+        "createTreatment() disease description should route DEEPSEEK_R1 through GatewayClient")
+    void createTreatmentShouldRouteDeepSeekDiseaseDescriptionThroughGateway() {
+      enableGateway();
+      when(deepSeekClient.getModel()).thenReturn("DeepSeek-R1");
+      // No stubbed userRepository row → loadReasoningPreference() falls back to DEEPSEEK_R1.
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
+          .thenReturn(Optional.of(ownedPlant()));
+      when(treatmentRepository.findByPlantIdAndDiseaseNameAndStatusIn(
+              eq(PLANT_ID), eq("Powdery mildew"), any()))
+          .thenReturn(List.of());
+      when(treatmentRepository.save(any(Treatment.class)))
+          .thenAnswer(
+              inv -> {
+                Treatment t = inv.getArgument(0);
+                t.setId(99L);
+                return t;
+              });
+      when(treatmentRepository.findById(99L))
+          .thenReturn(Optional.of(Treatment.builder().id(99L).build()));
+      when(gatewayClient.request(any()))
+          .thenReturn(gatewayResponse("Powdery mildew is a fungal disease..."));
+
+      var request =
+          CreateTreatmentRequest.builder()
+              .plantId(PLANT_ID)
+              .identificationId(5L)
+              .diseaseName("Powdery mildew")
+              .build();
+
+      treatmentService.createTreatment(request, USER_ID);
+
+      verify(deepSeekClient, never()).generateDiseaseDescription(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("DeepSeek-R1");
+      assertThat(captor.getValue().getContext())
+          .containsEntry("systemPrompt", DeepSeekClient.DISEASE_DESCRIPTION_SYSTEM_PROMPT);
+    }
+
+    @Test
+    @DisplayName(
+        "createTreatment() disease description should route OLLAMA_GEMMA3 through GatewayClient"
+            + " with configured Ollama model")
+    void createTreatmentShouldRouteOllamaDiseaseDescriptionThroughGateway() {
+      enableGateway();
+      when(ollamaClient.getModel()).thenReturn("gemma3:4b");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .reasoningModelPreference(
+                          com.plantpal.user.entity.ReasoningModelPreference.OLLAMA_GEMMA3)
+                      .build()));
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
+          .thenReturn(Optional.of(ownedPlant()));
+      when(treatmentRepository.findByPlantIdAndDiseaseNameAndStatusIn(
+              eq(PLANT_ID), eq("Powdery mildew"), any()))
+          .thenReturn(List.of());
+      when(treatmentRepository.save(any(Treatment.class)))
+          .thenAnswer(
+              inv -> {
+                Treatment t = inv.getArgument(0);
+                t.setId(99L);
+                return t;
+              });
+      when(treatmentRepository.findById(99L))
+          .thenReturn(Optional.of(Treatment.builder().id(99L).build()));
+      when(gatewayClient.request(any()))
+          .thenReturn(gatewayResponse("Powdery mildew is a fungal disease..."));
+
+      var request =
+          CreateTreatmentRequest.builder()
+              .plantId(PLANT_ID)
+              .identificationId(5L)
+              .diseaseName("Powdery mildew")
+              .build();
+
+      treatmentService.createTreatment(request, USER_ID);
+
+      verify(ollamaClient, never()).generateDiseaseDescription(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("gemma3:4b");
     }
   }
 

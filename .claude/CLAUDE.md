@@ -1,3 +1,18 @@
+> ## Platform integration notice
+> This repo is now also a **platform Room** (`../platform/plantpal`, per
+> `platform-vault/spec-plantpal-room.md`). For platform-delta work only:
+> (a) `../CLAUDE.md` (the platform's standing orders) takes precedence over
+> everything below for that work — this file remains the source of truth for
+> PlantPal's own feature work; (b) the platform's root `PROGRESS.md` is the
+> platform handoff file for delta sessions — PlantPal's own `.claude/STATE.md`
+> continuity file is unaffected and stays in use for PlantPal's own feature
+> work; (c) contracts/gateway/naming rules (D002, D009, D022, etc.) apply only
+> to platform-facing code (currently: `HEXAGON.md`, `DEPLOYMENT.md`,
+> `app-manifest.yaml` at repo root) — PlantPal's domain code below is
+> unaffected and continues under this file's rules unchanged.
+
+---
+
 # PlantPal — Claude Code Instructions
 
 > This file is read automatically by Claude Code on every session.

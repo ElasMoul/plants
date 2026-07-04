@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AiErrorService } from '../../../../core/services/ai-error.service';
@@ -36,6 +37,8 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   reasoningModelUsed: string | null = null;
   loadingAdvice = false;
   adviceError = false;
+  adviceErrorMessage = '';
+  adviceErrorBlocked = false;
   addingToPlan = false;
   addedToPlan = false;
 
@@ -48,6 +51,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   constructor(
     private readonly identificationService: IdentificationService,
     private readonly aiErrorService: AiErrorService,
+    private readonly snackBar: MatSnackBar,
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -55,6 +59,8 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
 
     this.loadingAdvice = false;
     this.adviceError = false;
+    this.adviceErrorMessage = '';
+    this.adviceErrorBlocked = false;
     this.addingToPlan = false;
 
     const key = this.cacheKey();
@@ -114,8 +120,15 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           this.adviceError = true;
+          this.adviceErrorBlocked = this.aiErrorService.isBlocked(err);
           this.loadingAdvice = false;
-          this.aiErrorService.notify(err);
+          // notify() would call handle() a second time internally (double-toasting the 429
+          // "Settings" snackbar), so call handle() once here for the inline message and drive
+          // the snackbar ourselves instead of also calling notify().
+          this.adviceErrorMessage = this.aiErrorService.handle(err);
+          if (err.status !== 429) {
+            this.snackBar.open(this.adviceErrorMessage, 'Dismiss', { duration: 4500 });
+          }
         },
       });
   }

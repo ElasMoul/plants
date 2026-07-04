@@ -38,6 +38,7 @@ class SpeciesEnrichmentServiceImplTest {
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private OllamaClient ollamaClient;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
+  @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
   private SpeciesEnrichmentServiceImpl enrichmentService;
 
@@ -54,7 +55,20 @@ class SpeciesEnrichmentServiceImplTest {
   void setUp() {
     enrichmentService =
         new SpeciesEnrichmentServiceImpl(
-            speciesRepository, deepSeekClient, ollamaClient, objectMapper);
+            speciesRepository,
+            deepSeekClient,
+            ollamaClient,
+            objectMapper,
+            gatewayClient,
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+  }
+
+  /** Flips the gateway flag on for a single test. */
+  private void enableGateway() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        enrichmentService,
+        "gatewayProperties",
+        new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
   }
 
   @Nested
@@ -161,6 +175,78 @@ class SpeciesEnrichmentServiceImplTest {
       verify(speciesRepository).save(captor.capture());
       assertThat(captor.getValue().getStatus()).isEqualTo(SpeciesStatus.ACTIVE);
       assertThat(captor.getValue().getDescription()).isEqualTo("A climbing tropical plant.");
+    }
+
+    @Test
+    @DisplayName(
+        "should route DEEPSEEK preference through GatewayClient when the flag is on (D022,"
+            + " Chunk 3)")
+    void shouldRouteDeepSeekThroughGatewayWhenFlagOn() {
+      enableGateway();
+      when(deepSeekClient.getModel()).thenReturn("DeepSeek-R1");
+      when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
+      io.platform.contracts.aigateway.AiResponse response =
+          new io.platform.contracts.aigateway.AiResponse();
+      response.setResult(
+          """
+          {"description":"A climbing tropical plant.",\
+          "careOverview":"Bright indirect light, water weekly.",\
+          "imageUrl":"https://example.com/monstera.jpg","source":"AI"}
+          """);
+      response.setModel("DeepSeek-R1");
+      response.setProvider("deepseek");
+      response.setTokensIn(1);
+      response.setTokensOut(1);
+      response.setComputedCost(java.math.BigDecimal.ZERO);
+      when(gatewayClient.request(any())).thenReturn(response);
+      when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      enrichmentService.enrich(SPECIES_ID, AiModelPreference.DEEPSEEK);
+
+      verify(deepSeekClient, never()).generateSpeciesEnrichment(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getAppId()).isEqualTo("plantpal");
+      assertThat(captor.getValue().getModelHint()).isEqualTo("DeepSeek-R1");
+      assertThat(captor.getValue().getContext())
+          .containsEntry("systemPrompt", DeepSeekClient.SPECIES_ENRICHMENT_SYSTEM_PROMPT);
+      ArgumentCaptor<Species> speciesCaptor = ArgumentCaptor.forClass(Species.class);
+      verify(speciesRepository).save(speciesCaptor.capture());
+      assertThat(speciesCaptor.getValue().getDescription()).isEqualTo("A climbing tropical plant.");
+    }
+
+    @Test
+    @DisplayName(
+        "should route OLLAMA_LLAVA preference through GatewayClient with configured Ollama model"
+            + " when the flag is on (D022, Chunk 3)")
+    void shouldRouteOllamaThroughGatewayWhenFlagOn() {
+      enableGateway();
+      when(ollamaClient.getModel()).thenReturn("gemma3:4b");
+      when(speciesRepository.findById(SPECIES_ID)).thenReturn(Optional.of(draftSpecies()));
+      io.platform.contracts.aigateway.AiResponse response =
+          new io.platform.contracts.aigateway.AiResponse();
+      response.setResult(
+          """
+          {"description":"A climbing tropical plant.",\
+          "careOverview":"Bright indirect light, water weekly.",\
+          "imageUrl":"https://example.com/monstera.jpg","source":"AI"}
+          """);
+      response.setModel("gemma3:4b");
+      response.setProvider("ollama");
+      response.setTokensIn(1);
+      response.setTokensOut(1);
+      response.setComputedCost(java.math.BigDecimal.ZERO);
+      when(gatewayClient.request(any())).thenReturn(response);
+      when(speciesRepository.save(any(Species.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      enrichmentService.enrich(SPECIES_ID, AiModelPreference.OLLAMA_LLAVA);
+
+      verify(ollamaClient, never()).generateSpeciesEnrichment(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("gemma3:4b");
     }
   }
 }

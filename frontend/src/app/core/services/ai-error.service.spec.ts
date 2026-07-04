@@ -67,4 +67,38 @@ describe('AiErrorService', () => {
     service.handle(err);
     expect(snackBarOpenSpy).toHaveBeenCalled();
   });
+
+  it('returns daily limit message on 402 when message mentions daily', () => {
+    const err = new HttpErrorResponse({
+      status: 402,
+      error: { message: 'app plantpal daily ceiling reached' },
+    });
+    const msg = service.handle(err);
+    expect(msg).toBe('Daily AI limit reached — try again tomorrow');
+  });
+
+  it('returns generic period-limit message on 402 for a non-daily ceiling', () => {
+    const err = new HttpErrorResponse({
+      status: 402,
+      error: { message: 'global monthly ceiling reached' },
+    });
+    const msg = service.handle(err);
+    expect(msg).toBe('AI limit reached for this period — try again later');
+  });
+
+  it('does not open a snackbar via handle() on 402', () => {
+    const err = new HttpErrorResponse({ status: 402, error: { message: 'daily ceiling reached' } });
+    service.handle(err);
+    expect(snackBarOpenSpy).not.toHaveBeenCalled();
+  });
+
+  it('isBlocked returns true for 402', () => {
+    const err = new HttpErrorResponse({ status: 402, error: {} });
+    expect(service.isBlocked(err)).toBe(true);
+  });
+
+  it('isBlocked returns false for other statuses', () => {
+    const err = new HttpErrorResponse({ status: 429, error: {} });
+    expect(service.isBlocked(err)).toBe(false);
+  });
 });

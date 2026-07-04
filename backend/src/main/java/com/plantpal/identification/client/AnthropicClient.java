@@ -78,6 +78,14 @@ public class AnthropicClient {
     return apiKey != null && !apiKey.isBlank();
   }
 
+  /**
+   * Configured model string for {@code *ModelPreference.ANTHROPIC_CLAUDE} (D022 gateway swap —
+   * modelHint).
+   */
+  public String getDefaultModel() {
+    return defaultModel;
+  }
+
   public String identifyPlant(byte[] imageBytes, String mediaType) {
     return identifyPlant(imageBytes, mediaType, null);
   }

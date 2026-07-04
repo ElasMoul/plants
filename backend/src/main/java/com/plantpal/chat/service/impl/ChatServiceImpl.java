@@ -4,6 +4,8 @@ import com.plantpal.chat.dto.ChatMessageDto;
 import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.ChatService;
+import com.plantpal.gateway.GatewayClient;
+import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
@@ -17,6 +19,7 @@ import com.plantpal.treatment.entity.Treatment;
 import com.plantpal.treatment.repository.TreatmentRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.platform.contracts.aigateway.AiRequest;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +61,8 @@ public class ChatServiceImpl implements ChatService {
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
   private final TreatmentRepository treatmentRepository;
+  private final GatewayClient gatewayClient;
+  private final GatewayProperties gatewayProperties;
 
   private final Map<Long, Bucket> chatBuckets = new ConcurrentHashMap<>();
 
@@ -65,11 +70,15 @@ public class ChatServiceImpl implements ChatService {
       OllamaClient ollamaClient,
       PlantRepository plantRepository,
       IdentificationRepository identificationRepository,
-      TreatmentRepository treatmentRepository) {
+      TreatmentRepository treatmentRepository,
+      GatewayClient gatewayClient,
+      GatewayProperties gatewayProperties) {
     this.ollamaClient = ollamaClient;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.treatmentRepository = treatmentRepository;
+    this.gatewayClient = gatewayClient;
+    this.gatewayProperties = gatewayProperties;
   }
 
   @Override
@@ -78,8 +87,11 @@ public class ChatServiceImpl implements ChatService {
       throw new PlantPalException("Chat rate limit reached — try again later", 429);
     }
 
-    String prompt = buildPrompt(request, userId);
     log.info("Chat request: userId={}", userId);
+    if (gatewayProperties.enabled()) {
+      return ChatResponse.builder().reply(gatewayChat(request, userId)).build();
+    }
+    String prompt = buildPrompt(request, userId);
     String reply = ollamaClient.chat(prompt);
     return ChatResponse.builder().reply(reply).build();
   }
@@ -90,22 +102,50 @@ public class ChatServiceImpl implements ChatService {
       throw new PlantPalException("Chat rate limit reached — try again later", 429);
     }
 
-    String prompt = buildPrompt(request, userId);
     log.info("Chat stream request: userId={}", userId);
+    if (gatewayProperties.enabled()) {
+      // ai-gateway is buffered-only (no SSE passthrough yet, a real chunk for later) — call once
+      // and invoke onToken a single time with the full result, unlike the real per-token Ollama
+      // stream below.
+      onToken.accept(gatewayChat(request, userId));
+      return;
+    }
+    String prompt = buildPrompt(request, userId);
     ollamaClient.chatStream(prompt, onToken);
+  }
+
+  /** Gateway routing (D022, Chunk 3) — same system prompt + user message as the direct path. */
+  private String gatewayChat(ChatRequest request, Long userId) {
+    String systemPrompt = buildSystemPromptBlock(request, userId);
+    String userMessage = PromptSanitizer.delimit(request.getMessage());
+    AiRequest aiRequest =
+        new AiRequest()
+            .prompt(userMessage)
+            .modelHint(ollamaClient.getModel())
+            .appId("plantpal")
+            .userId(String.valueOf(userId))
+            .putContextItem("systemPrompt", systemPrompt);
+    return gatewayClient.request(aiRequest).getResult();
+  }
+
+  /**
+   * Everything the direct Ollama path prepends before the user's own message: system prompt,
+   * garden/plant context, and prior conversation turns.
+   */
+  private String buildSystemPromptBlock(ChatRequest request, Long userId) {
+    String contextBlock =
+        request.getPlantId() != null
+            ? buildPlantContext(request.getPlantId(), userId) + "\n\n" + buildGardenContext(userId)
+            : buildGardenContext(userId);
+    String historyBlock = buildHistoryBlock(request.getHistory());
+    return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock) + historyBlock;
   }
 
   /**
    * Shared by the synchronous {@link #chat} and the streaming path -- same context, same prompt.
    */
   private String buildPrompt(ChatRequest request, Long userId) {
-    String contextBlock =
-        request.getPlantId() != null
-            ? buildPlantContext(request.getPlantId(), userId) + "\n\n" + buildGardenContext(userId)
-            : buildGardenContext(userId);
-    String historyBlock = buildHistoryBlock(request.getHistory());
-    return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)
-        + historyBlock
+    return buildSystemPromptBlock(request, userId)
         + "\n\nUser: "
         + PromptSanitizer.delimit(request.getMessage());
   }

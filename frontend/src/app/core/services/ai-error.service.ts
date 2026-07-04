@@ -23,11 +23,20 @@ export class AiErrorService {
       ref.onAction().subscribe(() => this.router.navigate(['/preferences']));
       return message;
     }
+    if (err.status === 402) {
+      return this.blockedMessage(err);
+    }
     if (err.status === 0) {
       return 'Connection problem — check your internet and try again';
     }
     const backendMessage = (err.error as ApiResponse<unknown> | undefined)?.message;
     return backendMessage || 'Something went wrong — please try again';
+  }
+
+  // A 402 means a cost ceiling was hit (daily/monthly) — distinct from a 429 rate limit, this
+  // isn't fixed by switching AI models, so no "Settings" action here.
+  isBlocked(err: HttpErrorResponse): boolean {
+    return err.status === 402;
   }
 
   // Same as handle(), but also pops a "Dismiss" snackbar for non-429 errors — for call sites that
@@ -48,6 +57,15 @@ export class AiErrorService {
     const retryAfterSeconds = body?.retryAfterSeconds;
     const timeText = retryAfterSeconds ? this.formatRetryTime(retryAfterSeconds) : 'a bit';
     return `Rate limit reached — try again in ${timeText}, or switch your AI model in Settings`;
+  }
+
+  private blockedMessage(err: HttpErrorResponse): string {
+    const body = err.error as ApiResponse<unknown> | undefined;
+    const message = body?.message ?? '';
+    if (message.toLowerCase().includes('daily')) {
+      return 'Daily AI limit reached — try again tomorrow';
+    }
+    return 'AI limit reached for this period — try again later';
   }
 
   private formatRetryTime(seconds: number): string {

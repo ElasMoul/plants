@@ -26,6 +26,26 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # io.platform:contracts is distributed by GitHub tag pinning (D031), not a
+      # registry — build it from source at the version backend/pom.xml pins.
+      - name: Read pinned contracts version
+        id: contracts
+        run: |
+          VERSION=$(grep -A1 '<artifactId>contracts</artifactId>' backend/pom.xml | grep -oP '(?<=<version>)[^<]+')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout contracts at pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: elmoul/contracts
+          ref: v${{ steps.contracts.outputs.version }}
+          token: ${{ secrets.CONTRACTS_READ_TOKEN }}
+          path: contracts-src
+
+      - name: Install contracts bindings into local Maven repo
+        working-directory: contracts-src/gen/java
+        run: mvn install -DskipTests --batch-mode --no-transfer-progress
+
       - name: Build and test
         working-directory: backend
         run: mvn clean verify --batch-mode --no-transfer-progress -Ddependency.check.skip=true
