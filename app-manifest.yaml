@@ -1,0 +1,63 @@
+# Static app.manifest record (contracts' AppManifest shape, schemas/app/manifest.yaml).
+#
+# Not sent to a POST /apps/register endpoint — mirrors portfolio's and pregnancy's
+# 2026-07-03 MVP ruling: control-plane registration is static-first this phase, there
+# is no registration endpoint yet, and the control-plane's inventory reader picks this
+# repo up from HEXAGON.md's frontmatter directly. This file records the same
+# AppManifest-shaped data in-repo so the schema is exercised and the data exists once
+# a real /apps/register call is wired up.
+#
+# Routes below are PlantPal's real, already-deployed API (backend/src/main/java —
+# SecurityConfig + @RequestMapping paths), not placeholders.
+
+name: plantpal
+version: 0.1.0
+owner: platform-owner
+plan: free
+class: low-stakes
+routes:
+  - path: /actuator/health
+    method: GET
+    public: true
+  - path: /api/v1/auth/register
+    method: POST
+    public: true
+  - path: /api/v1/auth/login
+    method: POST
+    public: true
+  - path: /api/v1/plants
+    method: GET
+    public: false
+  - path: /api/v1/plants
+    method: POST
+    public: false
+  - path: /api/v1/species
+    method: GET
+    public: false
+  - path: /api/v1/identifications
+    method: POST
+    public: false
+  - path: /api/v1/care
+    method: GET
+    public: false
+  - path: /api/v1/treatment-plans
+    method: GET
+    public: false
+  - path: /api/v1/reminders
+    method: GET
+    public: false
+  - path: /api/v1/dashboard
+    method: GET
+    public: false
+  - path: /api/v1/notifications
+    method: GET
+    public: false
+  - path: /api/v1/chat
+    method: POST
+    public: false
+  - path: /api/v1/plantnet
+    method: GET
+    public: false
+  - path: /api/v1/users
+    method: GET
+    public: false
