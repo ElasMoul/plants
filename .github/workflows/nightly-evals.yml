@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 30   # DeepSeek-R1 can take ~60s per call; 3 tests × 60s + margin
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v4
         with:
