@@ -1,15 +1,23 @@
 package com.plantpal.user.service.impl;
 
+import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
 import com.plantpal.user.dto.AuthResponse;
 import com.plantpal.user.dto.LoginRequest;
 import com.plantpal.user.dto.RegisterRequest;
+import com.plantpal.user.dto.UserPreferencesRequest;
+import com.plantpal.user.dto.UserPreferencesResponse;
+import com.plantpal.user.entity.ReasoningModelPreference;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
+import com.plantpal.user.entity.VisionModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.UserService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,15 +36,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
+  private final AnthropicClient anthropicClient;
 
   @Value("${app.jwt.expiration-ms}")
   private long jwtExpirationMs;
 
   public UserServiceImpl(
-      UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder,
+      JwtUtil jwtUtil,
+      AnthropicClient anthropicClient) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
+    this.anthropicClient = anthropicClient;
   }
 
   @Override
@@ -83,6 +96,89 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     String token = jwtUtil.generateToken(user, user.getId());
     return buildAuthResponse(user, token);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserPreferencesResponse getPreferences(Long userId) {
+    User user =
+        userRepository
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    return toPreferencesResponse(user);
+  }
+
+  @Override
+  @Transactional
+  public UserPreferencesResponse updatePreferences(Long userId, UserPreferencesRequest request) {
+    User user =
+        userRepository
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    if (request.getAiModelPreference() != null) {
+      user.setAiModelPreference(request.getAiModelPreference());
+    }
+    if (request.getVisionModelPreference() != null) {
+      user.setVisionModelPreference(request.getVisionModelPreference());
+    }
+    if (request.getReasoningModelPreference() != null) {
+      user.setReasoningModelPreference(request.getReasoningModelPreference());
+    }
+    if (request.getPlantnetProject() != null) {
+      user.setPlantnetProject(request.getPlantnetProject());
+    }
+    if (request.getPlantnetLang() != null) {
+      user.setPlantnetLang(request.getPlantnetLang());
+    }
+    userRepository.save(user);
+    log.info(
+        "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
+            + " plantnetProject={}, plantnetLang={}",
+        userId,
+        user.getVisionModelPreference(),
+        user.getReasoningModelPreference(),
+        user.getPlantnetProject(),
+        user.getPlantnetLang());
+    return toPreferencesResponse(user);
+  }
+
+  private UserPreferencesResponse toPreferencesResponse(User user) {
+    return UserPreferencesResponse.builder()
+        .aiModelPreference(user.getAiModelPreference())
+        .visionModelPreference(user.getVisionModelPreference())
+        .reasoningModelPreference(user.getReasoningModelPreference())
+        .visionModelAvailability(visionModelAvailability())
+        .reasoningModelAvailability(reasoningModelAvailability())
+        .plantnetProject(user.getPlantnetProject())
+        .plantnetLang(user.getPlantnetLang())
+        .build();
+  }
+
+  /**
+   * Every option here other than ANTHROPIC_CLAUDE has its required config (github.token,
+   * app.plantnet.api-key) enforced at application startup, so it's always available once the app is
+   * running — only Claude's API key is genuinely optional (see {@link AnthropicClient}).
+   */
+  private Map<String, Boolean> visionModelAvailability() {
+    Map<String, Boolean> availability = new LinkedHashMap<>();
+    for (VisionModelPreference option : VisionModelPreference.values()) {
+      availability.put(
+          option.name(),
+          option == VisionModelPreference.ANTHROPIC_CLAUDE ? anthropicClient.isAvailable() : true);
+    }
+    return availability;
+  }
+
+  private Map<String, Boolean> reasoningModelAvailability() {
+    Map<String, Boolean> availability = new LinkedHashMap<>();
+    for (ReasoningModelPreference option : ReasoningModelPreference.values()) {
+      availability.put(
+          option.name(),
+          option == ReasoningModelPreference.ANTHROPIC_CLAUDE
+              ? anthropicClient.isAvailable()
+              : true);
+    }
+    return availability;
   }
 
   @Override

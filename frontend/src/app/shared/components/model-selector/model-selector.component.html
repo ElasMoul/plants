@@ -1,0 +1,70 @@
+<div class="model-selector-wrap">
+  <p class="section-hint">
+    <strong>Vision model</strong> — used for plant identification and disease annotation. 
+  </p>
+  <mat-select
+    class="model-select"
+    panelClass="model-select-panel"
+    [value]="selectedVision"
+    [disabled]="saving"
+    aria-label="Vision model preference"
+    matTooltip="Vision model — identification + annotation"
+    matTooltipPosition="below"
+    (selectionChange)="onVisionChange($event)"
+  >
+    <mat-select-trigger>
+      <mat-icon class="trigger-icon">{{ selectedVisionOption?.icon }}</mat-icon>
+      <span class="trigger-label">{{ selectedVisionOption?.label }}</span>
+    </mat-select-trigger>
+    <mat-option
+      *ngFor="let opt of visionOptions"
+      [value]="opt.value"
+      [disabled]="!isVisionAvailable(opt.value)"
+      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
+      matTooltipPosition="right"
+      [matTooltipShowDelay]="300"
+    >
+      <mat-icon>{{ opt.icon }}</mat-icon>
+      <span class="option-label">{{ opt.label }}</span>
+      <span class="option-intent">{{ opt.intent }}</span>
+    </mat-option>
+  </mat-select>
+  <p class="section-hint">
+    <strong>Reasoning model</strong> — used for care plans, cure advice, disease descriptions, and species enrichment.
+  </p>
+    
+  <mat-select
+    class="model-select"
+    panelClass="model-select-panel"
+    [value]="selectedReasoning"
+    [disabled]="saving"
+    aria-label="Reasoning model preference"
+    matTooltip="Reasoning model — care plans, cure advice, descriptions"
+    matTooltipPosition="below"
+    (selectionChange)="onReasoningChange($event)"
+  >
+    <mat-select-trigger>
+      <mat-icon class="trigger-icon">{{ selectedReasoningOption?.icon }}</mat-icon>
+      <span class="trigger-label">{{ selectedReasoningOption?.label }}</span>
+    </mat-select-trigger>
+    <mat-option
+      *ngFor="let opt of reasoningOptions"
+      [value]="opt.value"
+      [disabled]="!isReasoningAvailable(opt.value)"
+      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
+      matTooltipPosition="right"
+      [matTooltipShowDelay]="300"
+    >
+      <mat-icon>{{ opt.icon }}</mat-icon>
+      <span class="option-label">{{ opt.label }}</span>
+      <span class="option-intent">{{ opt.intent }}</span>
+    </mat-option>
+  </mat-select>
+
+  <mat-progress-spinner
+    *ngIf="saving"
+    diameter="20"
+    mode="indeterminate"
+    class="save-spinner"
+  ></mat-progress-spinner>
+</div>

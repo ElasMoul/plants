@@ -1,0 +1,32 @@
+<div class="log-wrapper">
+
+  <!-- Skeleton while loading -->
+  <div *ngIf="loading" class="skeleton-grid">
+    <div *ngFor="let s of skeletonRows" class="skeleton-card">
+      <div class="skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line long"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <p *ngIf="!loading && !logs.length" class="log-empty">No care actions logged yet.</p>
+
+  <!-- Timeline -->
+  <div class="log-timeline" *ngIf="!loading && logs.length">
+    <div class="log-entry" *ngFor="let log of logs">
+      <div class="log-icon-wrap">
+        <mat-icon>{{ careIcon(log.careType) }}</mat-icon>
+      </div>
+      <div class="log-body">
+        <p class="log-type">{{ log.careType | titlecase }}</p>
+        <p class="log-date">{{ log.performedAt | date:'MMM d, y' }} at {{ log.performedAt | date:'h:mm a' }}</p>
+        <p class="log-notes" *ngIf="log.notes">{{ log.notes }}</p>
+        <button type="button" class="log-details-btn" (click)="viewDetails(log)">View details</button>
+      </div>
+    </div>
+  </div>
+
+</div>

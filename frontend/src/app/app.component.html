@@ -1,36 +1,26 @@
-<mat-toolbar color="primary" class="navbar">
+<mat-toolbar class="navbar">
   <a class="brand" routerLink="/">
-    <mat-icon>local_florist</mat-icon>
-    <span>PlantPal</span>
+    <mat-icon class="brand-icon">local_florist</mat-icon>
+    <span class="brand-name">PlantPal</span>
   </a>
-
-  <nav class="nav-links" *ngIf="authService.isLoggedIn()">
-    <a
-      *ngFor="let link of navLinks"
-      mat-button
-      [routerLink]="link.route"
-      routerLinkActive="active-link"
-    >
-      <mat-icon>{{ link.icon }}</mat-icon>
-      <span class="nav-label">{{ link.label }}</span>
-    </a>
-  </nav>
 
   <span class="spacer"></span>
 
-  <!-- AI Test always visible — no auth required -->
-  <a mat-button routerLink="/ai-test" routerLinkActive="active-link">
-    <mat-icon>science</mat-icon>
-    <span class="nav-label">AI Test</span>
-  </a>
-
   <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
-    <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
+    <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-menu-btn" aria-label="User menu">
       <mat-icon>account_circle</mat-icon>
     </button>
     <mat-menu #userMenu="matMenu">
       <div mat-menu-item disabled>{{ authService.getCurrentUser()?.email }}</div>
       <mat-divider></mat-divider>
+      <button mat-menu-item routerLink="/preferences">
+        <mat-icon>tune</mat-icon>
+        <span>AI Model Settings</span>
+      </button>
+      <button mat-menu-item routerLink="/voice-test">
+        <mat-icon>mic</mat-icon>
+        <span>Voice Test</span>
+      </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
         <span>Sign out</span>
@@ -39,13 +29,42 @@
   </ng-container>
 
   <ng-template #loginBtn>
-    <a mat-button routerLink="/login">
-      <mat-icon>login</mat-icon>
-      <span class="nav-label">Login</span>
-    </a>
+    <a mat-button routerLink="/login" class="login-btn">Sign in</a>
   </ng-template>
 </mat-toolbar>
 
-<main class="app-content with-toolbar">
+<main class="app-content with-toolbar" [class.with-bottom-nav]="authService.isLoggedIn()">
+
+  <!-- Friendly in-app prompt before the native browser permission dialog -->
+  <div class="notification-banner" *ngIf="showNotificationBanner">
+    <mat-icon class="banner-icon">notifications_active</mat-icon>
+    <div class="banner-text">
+      <p class="banner-title">Get reminders on your phone</p>
+      <p class="banner-sub">We'll notify you when it's time to water or care for your plants.</p>
+    </div>
+    <div class="banner-actions">
+      <button mat-button type="button" (click)="dismissNotifications()">Not now</button>
+      <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="acceptNotifications()">
+        Enable
+      </button>
+    </div>
+  </div>
+
   <router-outlet></router-outlet>
 </main>
+
+<!-- Bottom navigation — mobile only -->
+<nav class="bottom-nav" *ngIf="authService.isLoggedIn()">
+  <a
+    *ngFor="let link of navLinks"
+    class="bottom-nav-item"
+    [routerLink]="link.route"
+    routerLinkActive="active"
+    #rla="routerLinkActive"
+  >
+    <span class="nav-pill" [class.nav-pill--active]="rla.isActive">
+      <mat-icon>{{ link.icon }}</mat-icon>
+      <span class="nav-label">{{ link.label }}</span>
+    </span>
+  </a>
+</nav>

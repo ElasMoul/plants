@@ -1,0 +1,102 @@
+<div class="list-container">
+
+  <!-- Header -->
+  <div class="list-header">
+    <div>
+      <h1 class="garden-title">My Garden</h1>
+      <p class="garden-subtitle" *ngIf="!loading">
+        You have {{ species.length }} species under your care.
+      </p>
+    </div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="filter-chips" *ngIf="!loading && species.length > 0">
+    <button
+      type="button"
+      class="filter-chip"
+      [class.filter-chip--active]="activeFilter === 'all'"
+      (click)="setFilter('all')"
+    >
+      All
+    </button>
+    <button
+      type="button"
+      class="filter-chip"
+      [class.filter-chip--active]="activeFilter === 'issues'"
+      (click)="setFilter('issues')"
+    >
+      With Issues
+    </button>
+    <button
+      type="button"
+      class="filter-chip"
+      [class.filter-chip--active]="activeFilter === 'recent'"
+      (click)="setFilter('recent')"
+    >
+      Recently scanned
+    </button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div *ngIf="loading" class="species-grid">
+    <div *ngFor="let _ of skeletons" class="skeleton-card">
+      <div class="skeleton skeleton-photo"></div>
+      <div class="skeleton-body">
+        <div class="skeleton skeleton-line wide"></div>
+        <div class="skeleton skeleton-line narrow"></div>
+        <div class="skeleton skeleton-line medium"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && species.length === 0" class="empty-state">
+    <div class="empty-icon-wrap">
+      <mat-icon class="empty-icon">local_florist</mat-icon>
+    </div>
+    <h2 class="empty-title">Your garden awaits</h2>
+    <p class="empty-sub">Add your first plant to start tracking its care.</p>
+    <button mat-raised-button color="primary" (click)="openIdentifyDialog()" class="empty-btn">
+      <mat-icon>add</mat-icon>
+      Add your first plant
+    </button>
+  </div>
+
+  <!-- No results for the active filter -->
+  <div *ngIf="!loading && species.length > 0 && filteredSpecies.length === 0" class="empty-state">
+    <p class="empty-sub">No species match this filter on the current page.</p>
+  </div>
+
+  <!-- Species grid -->
+  <div *ngIf="!loading && filteredSpecies.length > 0" class="species-grid">
+    <app-species-card
+      *ngFor="let item of filteredSpecies"
+      [species]="item"
+    ></app-species-card>
+  </div>
+
+  <!-- Pagination -->
+  <mat-paginator
+    *ngIf="page && page.totalElements > pageSize"
+    [length]="page.totalElements"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[10, 20, 50]"
+    [pageIndex]="currentPage"
+    (page)="onPageChange($event)"
+    showFirstLastButtons
+  ></mat-paginator>
+
+</div>
+
+<!-- FAB: add plant -->
+<button
+  *ngIf="!loading"
+  mat-fab
+  color="primary"
+  class="add-fab"
+  (click)="openIdentifyDialog()"
+  aria-label="Add plant"
+>
+  <mat-icon>add</mat-icon>
+</button>

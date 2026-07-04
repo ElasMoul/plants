@@ -1,0 +1,80 @@
+<div class="scan-detail-container">
+
+  <!-- Loading -->
+  <div *ngIf="state === 'loading'" class="state-center">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="state === 'error'" class="state-center error-state">
+    <mat-icon>error_outline</mat-icon>
+    <p>Could not load this scan.</p>
+    <button mat-stroked-button (click)="goBack()">Go back</button>
+  </div>
+
+  <ng-container *ngIf="state === 'ready' && scan">
+
+    <!-- Sticky header -->
+    <div class="scan-header">
+      <button mat-icon-button class="back-btn" (click)="goBack()" aria-label="Back to scans">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="header-meta">
+        <div class="header-date">{{ scan.createdAt | date:'mediumDate' }}</div>
+        <div class="health-chip" [ngClass]="healthClass">{{ healthLabel }}</div>
+      </div>
+    </div>
+
+    <!-- User context block -->
+    <div class="context-block" *ngIf="scan.userContext">
+      <mat-icon class="context-icon">chat_bubble_outline</mat-icon>
+      <p class="context-text">{{ scan.userContext }}</p>
+      <app-read-aloud-button
+        [text]="scan.userContext!"
+        ariaLabel="Read your context aloud"
+      ></app-read-aloud-button>
+    </div>
+
+    <!-- Annotated photo -->
+    <ng-container *ngIf="scan.annotationStatus === 'COMPLETED' && scan.annotationRegions?.length">
+      <app-photo-annotator
+        class="scan-annotator"
+        [imageUrl]="scan.photoUrl || placeholderImage"
+        [regions]="scan.annotationRegions"
+        [selectedRegionIndex]="selectedRegionIndex"
+      ></app-photo-annotator>
+
+      <app-annotation-list
+        [regions]="scan.annotationRegions"
+        [species]="null"
+        [identificationId]="scan.id"
+        (regionSelected)="onRegionSelected($event)"
+      ></app-annotation-list>
+    </ng-container>
+
+    <!-- Photo only (no annotations) -->
+    <div class="photo-only" *ngIf="scan.annotationStatus !== 'COMPLETED' || !scan.annotationRegions?.length">
+      <img [src]="scan.photoUrl || placeholderImage" alt="Scan photo" class="scan-photo" />
+    </div>
+
+    <!-- Care plan cards -->
+    <div class="care-section" *ngIf="scan.carePlan?.careCards?.length">
+      <h3 class="section-heading">Care tips</h3>
+      <app-care-plan
+        [carePlan]="scan.carePlan"
+        [plantId]="plantId"
+        [identificationId]="scan.id"
+        [existingCareTypes]="[]"
+        [showTreatmentCta]="true"
+      ></app-care-plan>
+    </div>
+
+    <!-- Empty care plan state -->
+    <div class="no-care-section" *ngIf="!scan.carePlan?.careCards?.length">
+      <mat-icon>spa</mat-icon>
+      <p>No care tips for this scan.</p>
+    </div>
+
+  </ng-container>
+
+</div>

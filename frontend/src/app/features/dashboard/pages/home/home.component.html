@@ -1,0 +1,137 @@
+<div class="page-container">
+
+  <!-- Skeleton while loading -->
+  <div *ngIf="loading" class="skeleton-grid">
+    <div *ngFor="let s of skeletonRows" class="skeleton-card">
+      <div class="skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line long"></div>
+      </div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && dashboard">
+
+    <h1 class="page-title">{{ greeting }}</h1>
+
+    <!-- Zero-plant empty state — distinct from Dashboard's, points to identifying the first plant -->
+    <div class="empty-home" *ngIf="!hasAnyData">
+      <mat-icon class="empty-icon">document_scanner</mat-icon>
+      <h2>Let's meet your first plant</h2>
+      <p>Snap a photo to identify it and start tracking its care.</p>
+      <button mat-raised-button color="primary" class="btn-pill" (click)="openIdentifyDialog()">
+        <mat-icon>add_a_photo</mat-icon>
+        Identify your first plant
+      </button>
+    </div>
+
+    <ng-container *ngIf="hasAnyData">
+
+      <!-- Quick stats row -->
+      <div class="stats-strip">
+        <div class="stat-chip stat-species">
+          <span class="stat-count">{{ dashboard.speciesCount }}</span>
+          <span class="stat-label">Species</span>
+        </div>
+        <div class="stat-chip stat-issues">
+          <span class="stat-count">{{ dashboard.healthSummary.issuesCount }}</span>
+          <span class="stat-label">Issues</span>
+        </div>
+        <div class="stat-chip stat-due">
+          <span class="stat-count">{{ dashboard.todayReminders.length }}</span>
+          <span class="stat-label">Due today</span>
+        </div>
+      </div>
+
+      <!-- Needs attention -->
+      <section class="dash-section" *ngIf="dashboard.overdueReminders.length">
+        <h2 class="section-heading">Needs attention</h2>
+        <div
+          class="row-card row-overdue"
+          *ngFor="let reminder of dashboard.overdueReminders"
+          (click)="goToPlant(reminder.plantId)"
+        >
+          <img
+            [src]="reminder.plantPhotoUrl || placeholderImage"
+            [alt]="reminder.plantNickname"
+            class="row-photo"
+          />
+          <div class="row-body">
+            <p class="row-name">{{ reminder.plantNickname }}</p>
+            <p class="row-detail">
+              <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
+              Overdue by {{ reminder.daysOverdue }} day{{ reminder.daysOverdue !== 1 ? 's' : '' }}
+            </p>
+          </div>
+          <app-read-aloud-button
+            (click)="$event.stopPropagation()"
+            [text]="reminderReadText(reminder)"
+          ></app-read-aloud-button>
+        </div>
+      </section>
+
+      <!-- Care due today -->
+      <section class="dash-section">
+        <h2 class="section-heading">Care due today</h2>
+        <div
+          class="row-card"
+          *ngFor="let reminder of topTodayReminders"
+          (click)="goToPlant(reminder.plantId)"
+        >
+          <img
+            [src]="reminder.plantPhotoUrl || placeholderImage"
+            [alt]="reminder.plantNickname"
+            class="row-photo"
+          />
+          <div class="row-body">
+            <p class="row-name">{{ reminder.plantNickname }}</p>
+            <p class="row-detail">
+              <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
+              {{ reminder.careType | titlecase }}
+            </p>
+          </div>
+          <app-read-aloud-button
+            (click)="$event.stopPropagation()"
+            [text]="reminderReadText(reminder)"
+          ></app-read-aloud-button>
+        </div>
+        <p class="empty-note" *ngIf="!topTodayReminders.length">Nothing due today 🌿</p>
+      </section>
+
+      <!-- Recent scans -->
+      <section class="dash-section" *ngIf="dashboard.recentScans.length">
+        <h2 class="section-heading">Recent scans</h2>
+        <div class="scans-strip">
+          <div
+            class="scan-card"
+            *ngFor="let scan of dashboard.recentScans"
+            (click)="goToScan(scan.identificationId)"
+          >
+            <img
+              [src]="scan.photoUrl || placeholderImage"
+              [alt]="scan.plantNickname || 'Scan'"
+              class="scan-photo"
+            />
+            <p class="scan-label">{{ scan.plantNickname || 'New species' }}</p>
+          </div>
+        </div>
+      </section>
+
+    </ng-container>
+
+  </ng-container>
+
+</div>
+
+<!-- FAB: identify a plant -->
+<button
+  *ngIf="!loading"
+  mat-fab
+  color="primary"
+  class="identify-fab"
+  (click)="openIdentifyDialog()"
+  aria-label="Identify a plant"
+>
+  <mat-icon>add_a_photo</mat-icon>
+</button>

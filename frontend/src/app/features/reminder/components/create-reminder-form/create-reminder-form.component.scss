@@ -1,0 +1,17 @@
+mat-dialog-content {
+  padding-top: 4px;
+}
+
+.reminder-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}

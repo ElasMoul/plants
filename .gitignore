@@ -1,0 +1,4 @@
+./backend/.env
+backend/.env
+backend/.idea/
+frontend/nginx/certs/self.key

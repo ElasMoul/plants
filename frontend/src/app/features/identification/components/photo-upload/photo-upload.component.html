@@ -1,0 +1,150 @@
+<div class="upload-wrapper">
+
+  <mat-checkbox
+    *ngIf="batchModeAvailable"
+    class="batch-mode-checkbox"
+    [checked]="batchMode"
+    (change)="onBatchModeChange($event.checked)"
+  >
+    Scan multiple plants
+  </mat-checkbox>
+
+  <!-- Drop zone / click to browse -->
+  <div
+    class="drop-zone"
+    [class.drag-over]="isDragOver"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+    (click)="fileInput.click()"
+    (keydown.enter)="fileInput.click()"
+    (keydown.space)="fileInput.click()"
+    role="button"
+    tabindex="0"
+    aria-label="Upload plant photos"
+  >
+    <div class="upload-icon-circle">
+      <mat-icon class="upload-icon">local_florist</mat-icon>
+    </div>
+    <p class="drop-primary">Upload a photo</p>
+    <p class="drop-secondary">Drag & drop, or <strong>click to browse</strong></p>
+    <p class="drop-hint" *ngIf="!batchMode">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
+    <p class="drop-hint" *ngIf="batchMode">Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each</p>
+  </div>
+
+  <!-- Hidden file input -->
+  <input
+    #fileInput
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+    hidden
+    (change)="onFileChange($event)"
+  />
+
+  <!-- Validation errors -->
+  <div class="error-list" *ngIf="validationErrors.length">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <ul>
+      <li *ngFor="let err of validationErrors">{{ err }}</li>
+    </ul>
+  </div>
+
+  <!-- Image previews -->
+  <div class="preview-grid" *ngIf="entries.length">
+    <div class="preview-card" *ngFor="let entry of entries; let i = index">
+      <div class="img-wrapper">
+        <img [src]="entry.preview" [alt]="'Image ' + (i + 1)" class="preview-img" />
+        <button
+          mat-icon-button
+          class="remove-btn"
+          type="button"
+          (click)="removeImage(i)"
+          [attr.aria-label]="'Remove image ' + (i + 1)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <mat-form-field appearance="outline" class="organ-field" *ngIf="!batchMode">
+        <mat-label>Plant part</mat-label>
+        <mat-select [value]="entry.organ" (selectionChange)="onOrganChange(i, $event)">
+          <mat-option value="auto">Auto-detect</mat-option>
+          <mat-option value="flower">Flower</mat-option>
+          <mat-option value="leaf">Leaf</mat-option>
+          <mat-option value="fruit">Fruit</mat-option>
+          <mat-option value="bark">Bark</mat-option>
+          <mat-option value="habit">Habit (whole plant)</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Optional plant link -->
+  <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length && !lockedPlantId && !batchMode">
+    <mat-label>Link to existing plant (optional)</mat-label>
+    <mat-icon matPrefix>local_florist</mat-icon>
+    <mat-select
+      [value]="selectedPlantId"
+      (selectionChange)="onPlantChange($event)"
+    >
+      <mat-option [value]="undefined">None — identify without linking</mat-option>
+      <mat-option *ngFor="let plant of plants" [value]="plant.id">
+        {{ plant.nickname }}<span *ngIf="plant.species"> ({{ plant.species }})</span>
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Optional context input -->
+  <div class="context-section">
+    <button
+      mat-button
+      type="button"
+      class="context-toggle"
+      (click)="toggleContext()"
+      [attr.aria-expanded]="contextExpanded"
+    >
+      <mat-icon>{{ contextExpanded ? 'expand_less' : 'chat_bubble_outline' }}</mat-icon>
+      Add context <span class="context-optional">(optional)</span>
+    </button>
+
+    <div class="context-body" *ngIf="contextExpanded">
+      <p class="context-helper">Tell the AI what to look for.</p>
+      <p class="context-batch-hint" *ngIf="batchMode && contextText.trim()">
+        Context applies to all scans in this batch.
+      </p>
+      <div class="context-input-row">
+        <mat-form-field appearance="outline" class="context-field">
+          <mat-label>What do you want to know?</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="contextText"
+            [maxlength]="maxContextChars"
+            rows="3"
+            placeholder="e.g. This leaf is very yellow — is there a problem?"
+          ></textarea>
+          <mat-hint align="end">{{ contextCharsLeft }} chars remaining</mat-hint>
+        </mat-form-field>
+
+        <button
+          *ngIf="speechSupported"
+          mat-icon-button
+          type="button"
+          class="mic-btn"
+          [class.listening]="listening"
+          [disabled]="!speechSecure"
+          (click)="toggleListening()"
+          [attr.aria-label]="listening ? 'Stop listening' : 'Start voice input'"
+          [matTooltip]="!speechSecure ? 'Voice input requires HTTPS' : (listening ? 'Stop' : 'Speak')"
+        >
+          <mat-icon>{{ listening ? 'stop_circle' : 'mic' }}</mat-icon>
+        </button>
+      </div>
+
+      <div class="listening-chip" *ngIf="listening">
+        <mat-icon>mic</mat-icon>
+        Listening…
+      </div>
+    </div>
+  </div>
+
+</div>

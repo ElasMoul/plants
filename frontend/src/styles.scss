@@ -1,12 +1,12 @@
 // Angular Material must be @use'd before any other rules
 @use '@angular/material' as mat;
 
-// Theme setup
+// ── Angular Material Theme ─────────────────────────────────────
 @include mat.core();
 
-$plantpal-primary: mat.define-palette(mat.$green-palette, 600, 400, 800);
-$plantpal-accent:  mat.define-palette(mat.$amber-palette, A200, A100, A400);
-$plantpal-warn:    mat.define-palette(mat.$deep-orange-palette);
+$plantpal-primary: mat.define-palette(mat.$green-palette, 900, 700, 900);
+$plantpal-accent:  mat.define-palette(mat.$light-green-palette, 400, 200, 600);
+$plantpal-warn:    mat.define-palette(mat.$red-palette, 400, 200, 700);
 
 $plantpal-theme: mat.define-light-theme((
   color: (
@@ -14,13 +14,34 @@ $plantpal-theme: mat.define-light-theme((
     accent:  $plantpal-accent,
     warn:    $plantpal-warn,
   ),
-  typography: mat.define-typography-config(),
+  typography: mat.define-typography-config(
+    $font-family: "'Inter', 'Roboto', sans-serif",
+  ),
   density: 0,
 ));
 
 @include mat.all-component-themes($plantpal-theme);
 
-// CSS Reset (after @use/@include)
+// ── Design Tokens ──────────────────────────────────────────────
+:root {
+  --color-primary:           #1a3c2a;
+  --color-primary-light:     #4e8c64;
+  --color-background:        #f2ede6;
+  --color-surface:           #ffffff;
+  --color-surface-secondary: #e5efe9;
+  --color-text-primary:      #1a2e20;
+  --color-text-secondary:    #7a8c80;
+  --color-error:             #e05252;
+  --color-warning:           #f0a030;
+  --color-success:           #5bbf6e;
+  --radius-card:             16px;
+  --radius-chip:             50px;
+  --shadow-card:             0 2px 12px rgba(0, 0, 0, 0.08);
+  --font-heading:            'Lora', Georgia, serif;
+  --font-body:               'Inter', 'Roboto', sans-serif;
+}
+
+// ── CSS Reset ──────────────────────────────────────────────────
 *,
 *::before,
 *::after {
@@ -38,6 +59,9 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
 }
 
 img,
@@ -66,11 +90,99 @@ h6 {
   overflow-wrap: break-word;
 }
 
-// Global layout helpers
+// ── Global Angular Material overrides ─────────────────────────
+.mat-mdc-card {
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-fab.mat-primary,
+.mat-mdc-mini-fab.mat-primary {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+
+.mat-mdc-outlined-button.mat-primary {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+// ── Health / Status Badge Utilities ───────────────────────────
+.health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  &.badge-healthy {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.badge-issues,
+  &.badge-issues_detected {
+    background: var(--color-error);
+    color: #fff;
+  }
+
+  &.badge-unknown {
+    background: #ccc;
+    color: #555;
+  }
+
+  &.badge-attention {
+    background: #fce4e4;
+    color: var(--color-error);
+  }
+}
+
+.urgency-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-chip);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &.urgent {
+    background: #fce4e4;
+    color: var(--color-error);
+  }
+
+  &.time {
+    background: #eeeeee;
+    color: #555;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  &.date {
+    background: #eeeeee;
+    color: #555;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+}
+
+// ── Global Layout Helpers ─────────────────────────────────────
 .page-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px 16px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px;
+  }
 }
 
 .spacer {
@@ -85,3 +197,27 @@ h6 {
 .mt-24 { margin-top: 24px; }
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
+
+// ── Section Heading Style ─────────────────────────────────────
+.page-heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+// ── Snackbar overrides ────────────────────────────────────────
+.mat-mdc-snack-bar-container {
+  border-radius: 12px !important;
+}
+
+// ── Image lightbox dialog ──────────────────────────────────────
+.image-lightbox-panel .mat-mdc-dialog-container {
+  --mdc-dialog-container-color: transparent;
+  box-shadow: none;
+
+  .mdc-dialog__surface {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+}

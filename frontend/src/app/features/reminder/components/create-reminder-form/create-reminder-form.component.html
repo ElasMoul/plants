@@ -1,0 +1,52 @@
+<h2 mat-dialog-title>New Reminder</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="reminder-form">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Plant</mat-label>
+      <mat-select formControlName="plantId">
+        <mat-option *ngFor="let plant of plants" [value]="plant.id">
+          {{ plant.nickname }}<span *ngIf="plant.species"> ({{ plant.species }})</span>
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('plantId')?.hasError('required')">Select a plant</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Care type</mat-label>
+      <mat-select formControlName="careType">
+        <mat-option *ngFor="let type of careTypes" [value]="type.value">{{ type.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Repeat every (days)</mat-label>
+      <input matInput type="number" formControlName="frequencyDays" min="1" />
+      <mat-error *ngIf="form.get('frequencyDays')?.hasError('required')">Frequency is required</mat-error>
+      <mat-error *ngIf="form.get('frequencyDays')?.hasError('min')">Must be at least 1 day</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>First due date</mat-label>
+      <input matInput [matDatepicker]="picker" formControlName="firstDueAt" />
+      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    class="btn-pill"
+    [disabled]="form.invalid || saving"
+    (click)="onSave()"
+  >
+    {{ saving ? 'Saving…' : 'Add Reminder' }}
+  </button>
+</mat-dialog-actions>

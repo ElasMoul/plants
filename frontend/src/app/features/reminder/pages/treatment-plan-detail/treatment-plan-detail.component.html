@@ -1,0 +1,51 @@
+<div class="page-container">
+
+  <!-- Loading skeleton -->
+  <ng-container *ngIf="state === 'loading'">
+    <div class="skeleton-header">
+      <div class="skeleton-circle"></div>
+      <div class="skeleton-line skeleton-title"></div>
+    </div>
+    <div class="skeleton-step" *ngFor="let s of skeletonSteps">
+      <div class="skeleton-icon"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line short"></div>
+        <div class="skeleton-line long"></div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Error -->
+  <div class="state-screen" *ngIf="state === 'error'">
+    <mat-icon class="state-icon error-icon">report_problem</mat-icon>
+    <h2 class="state-title">Treatment plan not found</h2>
+    <p class="state-subtitle">It may have been removed, or you don't have access to it.</p>
+    <button mat-stroked-button type="button" class="btn-pill" (click)="goToReminders()">
+      <mat-icon>arrow_back</mat-icon>
+      Back to reminders
+    </button>
+  </div>
+
+  <!-- Ready -->
+  <ng-container *ngIf="state === 'ready' && plan">
+
+    <div class="plan-header">
+      <button mat-icon-button class="back-btn" (click)="goBack()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="plan-title">{{ plan.title }}</h1>
+      <span class="status-chip" [ngClass]="'status-' + plan.status.toLowerCase()">
+        <mat-icon *ngIf="plan.status === 'COMPLETED'">check_circle</mat-icon>
+        {{ plan.status | titlecase }}
+      </span>
+    </div>
+
+    <app-treatment-step-list
+      [steps]="plan.steps"
+      [diagramContent]="plan.diagramContent"
+      (stepCompleted)="loadPlan()"
+    ></app-treatment-step-list>
+
+  </ng-container>
+
+</div>

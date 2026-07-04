@@ -60,7 +60,7 @@ export class RegisterComponent {
     };
 
     this.authService.register(payload).subscribe({
-      next: () => this.router.navigate(['/plants']),
+      next: () => this.router.navigate(['/garden']),
       error: err => {
         this.loading = false;
         const msg = (err.error?.message as string | undefined) ?? 'Registration failed. Please try again.';

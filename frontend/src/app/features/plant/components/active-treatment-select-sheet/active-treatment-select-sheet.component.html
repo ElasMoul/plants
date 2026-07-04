@@ -1,0 +1,23 @@
+<div class="treatment-select-sheet">
+  <h3 class="treatment-select-title">Active treatments</h3>
+
+  <div class="treatment-select-list">
+    <button
+      type="button"
+      class="treatment-select-row"
+      *ngFor="let row of rows"
+      (click)="select(row.treatment)"
+    >
+      <img [src]="row.photoUrl || placeholderImage" alt="" class="treatment-select-thumb" />
+      <div class="treatment-select-meta">
+        <span class="treatment-select-name">{{ row.treatment.diseaseName }}</span>
+        <span class="treatment-select-date" *ngIf="row.treatment.startedAt">
+          Started {{ row.treatment.startedAt | date:'mediumDate' }}
+        </span>
+      </div>
+      <span class="status-chip" [ngClass]="'status-' + row.treatment.status.toLowerCase()">
+        {{ row.treatment.status | titlecase }}
+      </span>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,28 @@
+<app-preview-card
+  [result]="result"
+  [selectedRegionIndex]="selectedRegionIndex"
+  (saved)="onSaved($event)"
+  (edit)="onEdit($event)"
+  (discard)="onDiscard()"
+></app-preview-card>
+
+<app-model-usage-badge
+  [visionModel]="result.visionModelUsed || result.aiModelUsed"
+  [reasoningModel]="result.reasoningModelUsed"
+></app-model-usage-badge>
+
+<app-annotation-list
+  *ngIf="result.annotationRegions && result.annotationRegions.length"
+  [regions]="result.annotationRegions"
+  [species]="result.scientificName"
+  [identificationId]="result.id"
+  (regionSelected)="onRegionSelected($event)"
+></app-annotation-list>
+
+<app-disease-detail-panel
+  [region]="selectedRegion"
+  [species]="result.scientificName"
+  [identificationId]="result.id"
+  [plantId]="result.plantId"
+  (carePlanUpdated)="onCarePlanUpdated($event)"
+></app-disease-detail-panel>

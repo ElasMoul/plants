@@ -1,0 +1,182 @@
+.page-container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 16px 100px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px 100px;
+  }
+}
+
+// ── Skeleton ──────────────────────────────────────────────────
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  animation: pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 60%;
+  border-radius: 4px;
+}
+
+.skeleton-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-secondary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+
+  &.short { width: 55%; }
+  &.long  { width: 80%; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+// ── Error / state screens ──────────────────────────────────────
+.state-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 64px 16px;
+}
+
+.state-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+
+  &.error-icon {
+    color: var(--color-error);
+  }
+}
+
+.state-title {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 8px;
+}
+
+.state-subtitle {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 20px;
+  max-width: 280px;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}
+
+// ── Header ───────────────────────────────────────────────────
+.plan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.back-btn {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.plan-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-chip);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &.status-active {
+    background: transparent;
+    border: 1.5px solid var(--color-success);
+    color: var(--color-success);
+  }
+
+  &.status-completed {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.status-abandoned {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+}
+
+// progress-line / diagram-section / step-list styles now live in the shared
+// app-treatment-step-list component (treatment-step-list.component.scss).
+app-treatment-step-list ::ng-deep .progress-line {
+  margin-left: 48px;
+
+  @media (max-width: 480px) {
+    margin-left: 0;
+  }
+}

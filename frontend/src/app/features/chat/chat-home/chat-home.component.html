@@ -1,4 +1,78 @@
-<div class="page-container">
-  <h1>Chat Assistant</h1>
-  <p>AI chat with garden context — coming in Phase 4.</p>
+<div class="chat-page">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="bot-avatar">
+      <mat-icon>local_florist</mat-icon>
+    </div>
+    <div class="header-text">
+      <p class="header-title">PlantPal AI Assistant</p>
+      <p class="header-status">
+        <span class="status-dot"></span>
+        Expert mode active
+      </p>
+    </div>
+  </div>
+
+  <!-- Plant context chip -->
+  <div class="context-chip" *ngIf="contextPlantNickname">
+    <mat-icon>eco</mat-icon>
+    <span>Chatting about {{ contextPlantNickname }}</span>
+    <button type="button" class="context-chip-dismiss" (click)="clearContext()" aria-label="Clear plant context">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-messages" data-testid="chat-messages">
+    <div *ngFor="let message of messages" class="message-row" [class.row-user]="message.sender === 'user'">
+
+      <div class="ai-avatar" *ngIf="message.sender === 'ai'">
+        <mat-icon>local_florist</mat-icon>
+      </div>
+
+      <div class="bubble" [class.bubble-user]="message.sender === 'user'" [class.bubble-ai]="message.sender === 'ai'">
+        <p class="bubble-text">{{ message.text }}</p>
+      </div>
+
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="message-row" *ngIf="sending">
+      <div class="ai-avatar">
+        <mat-icon>local_florist</mat-icon>
+      </div>
+      <div class="bubble bubble-ai bubble-typing">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Composer — fixed above the bottom nav so it's always reachable, never scrolls out of view -->
+<div class="chat-composer">
+  <div class="quick-chips">
+    <button type="button" class="quick-chip" *ngFor="let chip of quickChips" [disabled]="sending" (click)="useQuickChip(chip)">
+      {{ chip }}
+    </button>
+  </div>
+
+  <div class="input-bar">
+    <input
+      class="chat-input"
+      type="text"
+      placeholder="Ask about your plants..."
+      [(ngModel)]="draft"
+      [disabled]="sending"
+      (keydown.enter)="sendMessage()"
+      data-testid="chat-input"
+    />
+
+    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" aria-label="Send message" data-testid="chat-send-btn">
+      <mat-icon>arrow_upward</mat-icon>
+    </button>
+  </div>
 </div>

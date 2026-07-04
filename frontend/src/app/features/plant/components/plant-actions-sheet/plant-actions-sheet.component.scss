@@ -1,0 +1,38 @@
+.actions-sheet {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-surface-secondary);
+  }
+
+  mat-icon {
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+  }
+}
+
+.action-row-danger {
+  color: var(--color-error);
+
+  mat-icon {
+    color: var(--color-error);
+  }
+}

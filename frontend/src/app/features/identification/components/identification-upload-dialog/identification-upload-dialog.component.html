@@ -1,0 +1,76 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content>
+
+  <app-photo-upload
+    *ngIf="!batchActive"
+    [lockedPlantId]="data?.plantId"
+    [lockedSpeciesId]="data?.speciesId"
+    (analyze)="onAnalyze($event)"
+  ></app-photo-upload>
+
+  <!-- Batch mode progress (T7.3) — one row per queued photo. Bound to BatchScanService's own
+       items$ rather than local state, so this stays correct even if the dialog was closed and
+       reopened mid-batch. -->
+  <div class="batch-list" *ngIf="batchActive">
+    <div class="batch-item" *ngFor="let item of (batchScan.items$ | async)">
+      <img [src]="item.preview" alt="" class="batch-thumb" />
+      <div class="batch-item-body">
+        <span class="batch-status" [ngClass]="'status-' + item.status.toLowerCase()">
+          <mat-progress-spinner *ngIf="item.status === 'SCANNING'" diameter="16" mode="indeterminate"></mat-progress-spinner>
+          <mat-icon *ngIf="item.status === 'PENDING'">schedule</mat-icon>
+          <mat-icon *ngIf="item.status === 'DONE'">check_circle</mat-icon>
+          <mat-icon *ngIf="item.status === 'FAILED'" color="warn">error</mat-icon>
+          {{ item.status === 'PENDING' ? 'Pending' : item.status === 'SCANNING' ? 'Scanning…' : item.status === 'DONE' ? 'Done' : 'Failed' }}
+        </span>
+        <span class="batch-error" *ngIf="item.errorMessage">{{ item.errorMessage }}</span>
+      </div>
+    </div>
+  </div>
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+
+  <ng-container *ngIf="!batchActive">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="btn-pill"
+      [disabled]="!photoUpload?.entries?.length"
+      (click)="startIdentification()"
+    >
+      <mat-icon>biotech</mat-icon>
+      Start identification
+    </button>
+  </ng-container>
+
+  <ng-container *ngIf="batchActive">
+    <button mat-button type="button" (click)="cancel()">
+      {{ batchScan.running ? 'Run in background' : 'Close' }}
+    </button>
+    <ng-container *ngIf="batchScan.done">
+      <button
+        *ngIf="batchScan.hasFailures"
+        mat-stroked-button
+        type="button"
+        class="btn-pill"
+        (click)="retryFailed()"
+      >
+        <mat-icon>refresh</mat-icon>
+        Retry remaining
+      </button>
+      <button mat-stroked-button type="button" class="btn-pill" (click)="startNewBatch()">
+        <mat-icon>add_photo_alternate</mat-icon>
+        Scan more
+      </button>
+      <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="done()">
+        <mat-icon>check</mat-icon>
+        Done
+      </button>
+    </ng-container>
+  </ng-container>
+
+</mat-dialog-actions>

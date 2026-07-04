@@ -15,7 +15,9 @@ import org.springframework.data.domain.PageRequest;
  * This class provides a {@code @JsonCreator} that maps the serialized fields back to the correct
  * {@link PageImpl} constructor. It is a drop-in replacement for {@code Page<T>} in cached methods.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIgnoreProperties(
+    value = {"pageable", "sort", "last", "first", "empty", "numberOfElements"},
+    ignoreUnknown = true)
 public class RestPage<T> extends PageImpl<T> {
 
   @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)

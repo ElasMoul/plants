@@ -1,0 +1,107 @@
+package com.plantpal.species.entity;
+
+import com.plantpal.shared.audit.AuditableEntity;
+import com.plantpal.shared.entity.GenerationStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Shared botanical knowledge — NOT user-scoped. Two users who both own a Monstera deliciosa point
+ * at the same row. Never add a userId/ownership check directly on this entity; ownership checks
+ * belong on the Plant rows that reference it.
+ */
+@Entity
+@Table(name = "species")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Species extends AuditableEntity {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @NotBlank
+  @Column(name = "scientific_name", nullable = false, unique = true, length = 255)
+  private String scientificName;
+
+  @Column(name = "common_name", length = 255)
+  private String commonName;
+
+  @Column(name = "description", columnDefinition = "TEXT")
+  private String description;
+
+  @Column(name = "care_overview", columnDefinition = "TEXT")
+  private String careOverview;
+
+  @Column(name = "image_url", columnDefinition = "TEXT")
+  private String imageUrl;
+
+  // Raw JSON, List<CareCardDto>-shaped (no actionPlan -- that needs plant-specific context like
+  // reminders, which doesn't exist at the species level). Parsed on read in SpeciesServiceImpl,
+  // same pattern as Identification.carePlan.
+  @Column(name = "care_cards", columnDefinition = "TEXT")
+  private String careCards;
+
+  @Column(name = "gbif_id", length = 50)
+  private String gbifId;
+
+  @Column(name = "powo_id", length = 50)
+  private String powoId;
+
+  @Column(name = "iucn_category", length = 10)
+  private String iucnCategory;
+
+  @Column(name = "external_data_source", length = 20)
+  private String externalDataSource;
+
+  // Which reasoning model produced description/careOverview/careCards above.
+  @Column(name = "enrichment_model", length = 30)
+  private String enrichmentModel;
+
+  @Column(name = "external_data_fetched_at")
+  private Instant externalDataFetchedAt;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  private SpeciesStatus status = SpeciesStatus.ACTIVE;
+
+  // Botanical identity fields harvested from the confirmed PlantNet candidate at resolve time.
+  @Column(name = "family", length = 255)
+  private String family;
+
+  @Column(name = "genus", length = 255)
+  private String genus;
+
+  // Tracks where the primary image and taxonomy came from ("PLANTNET" | "AI" | "MANUAL").
+  @Column(name = "identity_source", length = 20)
+  private String identitySource;
+
+  @Column(name = "image_attribution", length = 255)
+  private String imageAttribution;
+
+  @Column(name = "image_license", length = 64)
+  private String imageLicense;
+
+  // Status of the async AI prose generation (description + careOverview).
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "description_status", nullable = false, length = 20)
+  private GenerationStatus descriptionStatus = GenerationStatus.PENDING;
+}

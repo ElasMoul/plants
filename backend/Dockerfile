@@ -22,6 +22,11 @@ WORKDIR /api
 
 # Non-root user — principle of least privilege
 RUN addgroup -S plantpal && adduser -S plantpal -G plantpal
+
+# Pre-create the photo storage dir so its ownership (not root:root) is what
+# Docker copies in as the initial content of the photos_data named volume.
+RUN mkdir -p /tmp/plantpal/photos && chown -R plantpal:plantpal /tmp/plantpal/photos
+
 USER plantpal
 
 COPY --from=build /api/target/plantpal-backend-*.jar app.jar

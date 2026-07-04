@@ -1,0 +1,18 @@
+<div class="actions-sheet">
+  <button type="button" class="action-row" (click)="select('updatePhoto')">
+    <mat-icon>photo_camera</mat-icon>
+    <span>Update Plant Profile Image</span>
+  </button>
+  <button type="button" class="action-row" (click)="select('scan')">
+    <mat-icon>document_scanner</mat-icon>
+    <span>Scan Plant</span>
+  </button>
+  <button type="button" class="action-row" (click)="select('chat')">
+    <mat-icon>chat</mat-icon>
+    <span>Ask Me About {{ data.nickname }}</span>
+  </button>
+  <button type="button" class="action-row action-row-danger" (click)="select('archive')">
+    <mat-icon>archive</mat-icon>
+    <span>Archive Plant</span>
+  </button>
+</div>

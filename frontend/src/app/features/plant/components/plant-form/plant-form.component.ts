@@ -35,6 +35,8 @@ export class PlantFormComponent implements OnInit {
     if (id) {
       this.editId = Number(id);
       this.loadForEdit(this.editId);
+    } else {
+      this.prefillFromQueryParams();
     }
   }
 
@@ -47,6 +49,18 @@ export class PlantFormComponent implements OnInit {
       notes: [''],
       acquiredAt: [null],
     });
+  }
+
+  private prefillFromQueryParams(): void {
+    const p = this.route.snapshot.queryParams;
+    if (p['nickname'] || p['species'] || p['commonName']) {
+      this.form.patchValue({
+        nickname:   p['nickname']   || p['commonName'] || '',
+        species:    p['species']    || '',
+        commonName: p['commonName'] || '',
+        location:   p['location']   || '',
+      });
+    }
   }
 
   private loadForEdit(id: number): void {
@@ -66,7 +80,7 @@ export class PlantFormComponent implements OnInit {
       },
       error: () => {
         this.snackBar.open('Could not load plant data.', 'Dismiss', { duration: 4000 });
-        this.router.navigate(['/plants']);
+        this.router.navigate(['/garden']);
       },
     });
   }
@@ -87,10 +101,10 @@ export class PlantFormComponent implements OnInit {
         notes: raw.notes || undefined,
         acquiredAt,
       };
-      this.plantService.updatePlant(this.editId!, request).subscribe({
+      this.plantService.updatePlant(this.editId ?? 0, request).subscribe({
         next: () => {
           this.snackBar.open('Plant updated.', undefined, { duration: 3000 });
-          this.router.navigate(['/plants', this.editId]);
+          this.router.navigate(['/plants', this.editId], { replaceUrl: true });
         },
         error: () => {
           this.snackBar.open('Could not update plant.', 'Dismiss', { duration: 4000 });
@@ -109,7 +123,7 @@ export class PlantFormComponent implements OnInit {
       this.plantService.createPlant(request).subscribe({
         next: (res) => {
           this.snackBar.open('Plant added!', undefined, { duration: 3000 });
-          this.router.navigate(['/plants', res.data.id]);
+          this.router.navigate(['/plants', res.data.id], { replaceUrl: true });
         },
         error: () => {
           this.snackBar.open('Could not save plant.', 'Dismiss', { duration: 4000 });
@@ -120,7 +134,7 @@ export class PlantFormComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate([this.isEdit ? ['/plants', this.editId] : ['/plants']]);
+    this.router.navigate(this.isEdit ? ['/plants', this.editId] : ['/garden']);
   }
 
   private toDateString(date: Date): string {

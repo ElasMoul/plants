@@ -1,0 +1,288 @@
+.detail-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 0 32px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+// ── Hero ─────────────────────────────────────────────────────
+.detail-hero {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+  background: var(--color-surface-secondary);
+
+  @media (max-width: 600px) {
+    height: 260px;
+  }
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+.hero-back {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.32) !important;
+  z-index: 2;
+}
+
+.hero-text {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 2;
+  color: #fff;
+}
+
+.species-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.15;
+
+  @media (max-width: 600px) {
+    font-size: 1.6rem;
+  }
+}
+
+.species-common-name {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+.species-tabs {
+  margin-top: 8px;
+}
+
+.tab-content {
+  padding: 20px 16px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px;
+  }
+}
+
+// ── Overview ───────────────────────────────────────────────────
+.source-badge {
+  display: inline-block;
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  border-radius: var(--radius-chip);
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.info-block {
+  margin-bottom: 20px;
+}
+
+.info-heading {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0 0 6px;
+}
+
+.info-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+
+  .info-heading {
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.info-text {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.pending-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pending-block .pending-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.failed-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.failed-text {
+  margin: 0;
+  color: var(--color-warn, #f44336);
+  font-size: 0.9rem;
+}
+
+.retry-btn {
+  border-radius: var(--radius-chip) !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-spinner {
+  display: inline-block;
+}
+
+// ── Image attribution ─────────────────────────────────────────
+.image-attribution {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.attr-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+// ── Hero taxonomy ─────────────────────────────────────────────
+.species-taxonomy {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.75);
+}
+
+// ── Botanical facts ────────────────────────────────────────────
+.botanical-facts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fact-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fact-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.fact-value {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.iucn-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-style: normal;
+
+  &.iucn-lc { background: #e8f5e9; color: #2e7d32; }
+  &.iucn-nt { background: #fff8e1; color: #f57f17; }
+  &.iucn-vu { background: #fff3e0; color: #e65100; }
+  &.iucn-en { background: #fbe9e7; color: #c62828; }
+  &.iucn-cr { background: #fce4ec; color: #880e4f; }
+  &.iucn-ew { background: #f3e5f5; color: #4a148c; }
+  &.iucn-ex { background: #f5f5f5; color: #424242; }
+  &.iucn-dd { background: #f5f5f5; color: #757575; }
+}
+
+.care-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Plants tab ─────────────────────────────────────────────────
+.plants-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.plants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.empty-plants-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px;
+  text-align: center;
+  gap: 10px;
+}
+
+.empty-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary-light);
+}
+
+.empty-sub {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.add-plant-btn {
+  border-radius: var(--radius-chip) !important;
+  padding: 0 20px !important;
+}

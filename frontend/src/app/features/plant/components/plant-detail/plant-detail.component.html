@@ -6,105 +6,150 @@
   </div>
 
   <ng-container *ngIf="!loading && plant">
-    <!-- Header -->
-    <div class="detail-header">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/plants" aria-label="Back to plants">
+
+    <!-- Sticky header -->
+    <div #scrollSentinel class="scroll-sentinel"></div>
+    <div class="sticky-header" [class.collapsed]="headerCollapsed">
+      <div class="detail-hero">
+        <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
+        <div class="hero-overlay"></div>
+
+        <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
           <mat-icon>arrow_back</mat-icon>
         </button>
-        <div>
-          <h1 class="plant-name">{{ plant.nickname }}</h1>
-          <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
-        </div>
-      </div>
 
-      <div class="header-actions">
-        <button mat-stroked-button [routerLink]="['/plants', plant.id, 'edit']">
-          <mat-icon>edit</mat-icon>
-          Edit
-        </button>
-        <button mat-stroked-button color="warn" (click)="onArchive()">
-          <mat-icon>archive</mat-icon>
-          Archive
-        </button>
-      </div>
-    </div>
-
-    <!-- Photo -->
-    <div class="photo-banner" *ngIf="plant.photoUrl">
-      <img [src]="plant.photoUrl" [alt]="plant.nickname" class="banner-img" />
-    </div>
-
-    <!-- Tabs -->
-    <mat-tab-group animationDuration="200ms">
-
-      <!-- Tab 1: Overview -->
-      <mat-tab label="Overview">
-        <div class="tab-content">
-          <div class="info-grid">
-            <div class="info-item" *ngIf="plant.species">
-              <span class="info-label">Species</span>
-              <span class="info-value">{{ plant.species }}</span>
-            </div>
-            <div class="info-item" *ngIf="plant.commonName">
-              <span class="info-label">Common name</span>
-              <span class="info-value">{{ plant.commonName }}</span>
-            </div>
-            <div class="info-item" *ngIf="plant.location">
-              <span class="info-label">Location</span>
-              <span class="info-value">
-                <mat-icon class="inline-icon">place</mat-icon>
-                {{ plant.location }}
-              </span>
-            </div>
-            <div class="info-item" *ngIf="plant.acquiredAt">
-              <span class="info-label">Acquired</span>
-              <span class="info-value">{{ plant.acquiredAt | date:'longDate' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Added</span>
-              <span class="info-value">{{ plant.createdAt | date:'mediumDate' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Status</span>
-              <mat-chip [class]="'status-' + plant.status.toLowerCase()">
-                {{ plant.status }}
-              </mat-chip>
-            </div>
-          </div>
-
-          <mat-divider *ngIf="plant.notes"></mat-divider>
-
-          <div class="notes-section" *ngIf="plant.notes">
-            <h3>Notes</h3>
-            <p>{{ plant.notes }}</p>
-          </div>
-        </div>
-      </mat-tab>
-
-      <!-- Tab 2: Care History -->
-      <mat-tab label="Care History">
-        <div class="tab-content placeholder-tab">
-          <mat-icon class="placeholder-icon">event_available</mat-icon>
-          <h3>Care history coming in Phase 3</h3>
-          <p>Watering, fertilizing, and repotting logs will appear here.</p>
-        </div>
-      </mat-tab>
-
-      <!-- Tab 3: Identifications -->
-      <mat-tab label="Identifications">
-        <div class="tab-content placeholder-tab">
-          <mat-icon class="placeholder-icon">biotech</mat-icon>
-          <h3>AI identifications coming in Phase 2</h3>
-          <p>Upload a photo to identify your plant's species and check its health.</p>
-          <button mat-raised-button color="primary" routerLink="/identify" [disabled]="true">
-            <mat-icon>camera_alt</mat-icon>
-            Identify this plant
+        <div class="hero-actions">
+          <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
+            <mat-icon>edit</mat-icon>
           </button>
         </div>
-      </mat-tab>
 
-    </mat-tab-group>
+        <div class="hero-text">
+          <span class="hero-species" *ngIf="plant.commonName || plant.species">
+            {{ plant.commonName || plant.species }}
+          </span>
+          <h1 class="hero-name">{{ plant.nickname }}</h1>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Icon button bar -->
+    <div class="section-button-bar">
+      <div class="section-tabs">
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
+                (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
+          <mat-icon>home</mat-icon>
+        </button>
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'careLog'"
+                (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
+          <mat-icon>history</mat-icon>
+        </button>
+        <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
+                matTooltip="Treatment plan" aria-label="Treatment plan">
+          <mat-icon>healing</mat-icon>
+        </button>
+        <button mat-icon-button [class.active-section-btn]="activeSection === 'scans'"
+                (click)="selectSection('scans')" matTooltip="Scans" aria-label="Scans">
+          <mat-icon>document_scanner</mat-icon>
+        </button>
+      </div>
+      <button mat-icon-button class="more-actions-btn" (click)="selectSection('actions')" matTooltip="More actions" aria-label="More actions">
+        <mat-icon>more_horiz</mat-icon>
+      </button>
+    </div>
+
+    <!-- Section content -->
+    <div [ngSwitch]="activeSection" class="section-content">
+
+      <!-- Overview -->
+      <div *ngSwitchCase="'overview'" class="tab-content">
+
+        <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
+          <span class="attention-badge">ATTENTION NEEDED</span>
+          <p>This plant has reported health issues. Check the Scans section for details.</p>
+        </div>
+
+        <mat-divider *ngIf="plant.notes"></mat-divider>
+
+        <div class="notes-section" *ngIf="plant.notes">
+          <h3>Notes</h3>
+          <p>{{ plant.notes }}</p>
+        </div>
+
+        <mat-divider *ngIf="carePlanLoaded && hasIdentification"></mat-divider>
+
+        <ng-container *ngIf="carePlanLoaded && hasIdentification">
+          <app-care-plan
+            [carePlan]="mergedCarePlan"
+            [plantId]="plant.id"
+            [identificationId]="latestIdentificationId"
+            [existingCareTypes]="existingCareTypes"
+          ></app-care-plan>
+        </ng-container>
+      </div>
+
+      <!-- Care History -->
+      <div *ngSwitchCase="'careLog'" class="tab-content">
+        <app-care-log [plantId]="plant.id"></app-care-log>
+      </div>
+
+      <!-- Scan History (T10.D) -->
+      <div *ngSwitchCase="'scans'" class="tab-content scans-tab">
+
+        <div *ngIf="loadingScanHistory" class="scans-loading">
+          <mat-spinner diameter="32"></mat-spinner>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="scanHistoryLoaded && scanHistory.length === 0" class="placeholder-tab">
+          <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
+          <h3>No scans yet</h3>
+          <p>Scan this plant to see its health history here.</p>
+        </div>
+
+        <!-- History list -->
+        <div class="scan-history-list" *ngIf="scanHistoryLoaded && scanHistory.length > 0">
+          <div
+            class="scan-history-item"
+            *ngFor="let scan of scanHistory"
+            (click)="openScanDetail(scan)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="openScanDetail(scan)"
+          >
+            <img
+              [src]="scan.photoUrl || placeholderImage"
+              [alt]="'Scan ' + (scan.createdAt | date:'shortDate')"
+              class="scan-thumb"
+            />
+            <div class="scan-meta">
+              <div class="scan-date">{{ scan.createdAt | date:'mediumDate' }}</div>
+              <div class="scan-chips">
+                <span class="health-chip" [ngClass]="scanHealthClass(scan)">
+                  {{ scanHealthLabel(scan) }}
+                </span>
+                <span class="care-count-chip" *ngIf="scan.carePlan?.careCards?.length">
+                  {{ scan.carePlan!.careCards.length }} tip{{ scan.carePlan!.careCards.length !== 1 ? 's' : '' }}
+                </span>
+              </div>
+              <div class="scan-context" *ngIf="scan.userContext">
+                <mat-icon class="context-icon">chat_bubble_outline</mat-icon>
+                <span class="context-text">{{ scan.userContext | slice:0:80 }}{{ scan.userContext.length > 80 ? '…' : '' }}</span>
+              </div>
+            </div>
+            <mat-icon class="scan-chevron">chevron_right</mat-icon>
+          </div>
+        </div>
+
+        <!-- FAB to add new scan -->
+        <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
+          <mat-icon>camera_alt</mat-icon>
+        </button>
+
+      </div>
+
+    </div>
   </ng-container>
 
 </div>

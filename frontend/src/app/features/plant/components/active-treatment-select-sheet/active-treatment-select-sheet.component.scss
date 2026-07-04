@@ -1,0 +1,102 @@
+.treatment-select-sheet {
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.treatment-select-title {
+  margin: 4px 20px 8px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.treatment-select-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.treatment-select-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-surface-secondary);
+  }
+}
+
+.treatment-select-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.treatment-select-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.treatment-select-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treatment-select-date {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+// Same chip styling as treatment-detail.component.scss — kept local rather than
+// extracted into a shared component, consistent with how the rest of the app
+// duplicates this small a pattern per page.
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &.status-draft {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+
+  &.status-in_progress {
+    background: transparent;
+    border: 1.5px solid var(--color-success);
+    color: var(--color-success);
+  }
+
+  &.status-completed {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.status-dismissed {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+}

@@ -1,0 +1,63 @@
+<mat-card class="disease-panel" *ngIf="isDisease && region">
+
+  <mat-card-header>
+    <mat-icon mat-card-avatar color="warn">bug_report</mat-icon>
+    <mat-card-title>{{ region.label }}</mat-card-title>
+    <mat-card-subtitle>
+      <span class="confidence-badge confidence-{{ region.confidence.toLowerCase() }}">
+        {{ region.confidence }} confidence
+      </span>
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+
+    <!-- Initial action buttons -->
+    <div class="panel-actions" *ngIf="!advice && !loadingAdvice && !adviceError">
+      <button mat-raised-button color="accent" type="button" (click)="askForCure()">
+        <mat-icon>healing</mat-icon>
+        Ask for cure
+      </button>
+      <button mat-stroked-button type="button" disabled
+        matTooltip="Get cure advice first">
+        <mat-icon>playlist_add</mat-icon>
+        Add to care plan
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div class="panel-loading" *ngIf="loadingAdvice">
+      <mat-spinner diameter="28"></mat-spinner>
+      <span>Getting cure advice…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="panel-error" *ngIf="adviceError">
+      <mat-icon color="warn">error_outline</mat-icon>
+      <span>Could not load advice, please try again</span>
+      <button mat-button color="primary" type="button" (click)="askForCure()">Retry</button>
+    </div>
+
+    <!-- Advice result -->
+    <ng-container *ngIf="advice">
+      <p class="advice-text">{{ advice }}</p>
+      <app-model-usage-badge
+        [reasoningModel]="reasoningModelUsed"
+        prefix="Advice generated using"
+      ></app-model-usage-badge>
+      <div class="panel-actions">
+        <button mat-stroked-button type="button"
+          [disabled]="addingToPlan || addedToPlan"
+          (click)="addToCarePlan()">
+          <mat-icon>{{ addedToPlan ? 'check' : 'playlist_add' }}</mat-icon>
+          {{ addedToPlan ? 'Added to care plan' : (addingToPlan ? 'Adding…' : 'Add to care plan') }}
+        </button>
+      </div>
+      <p class="advice-hint" *ngIf="addedToPlan">
+        Added to your care plan — start the treatment plan from the card below.
+      </p>
+    </ng-container>
+
+  </mat-card-content>
+
+</mat-card>

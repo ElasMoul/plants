@@ -1,0 +1,86 @@
+<div
+  class="care-card"
+  [class]="'urgency-' + card.urgency.toLowerCase()"
+  (click)="toggle()"
+  [attr.aria-expanded]="expanded"
+>
+  <div class="card-header">
+    <div class="card-icon-wrap" [style.background]="accentBg" [style.color]="accentColor">
+      <mat-icon>{{ card.icon }}</mat-icon>
+    </div>
+    <div class="card-body">
+      <p class="card-title">{{ card.title }}</p>
+      <p class="card-summary">{{ card.summary }}</p>
+    </div>
+    <app-read-aloud-button
+      (click)="$event.stopPropagation()"
+      [text]="card.title + '. ' + card.summary"
+      [ariaLabel]="'Read aloud ' + card.title"
+    ></app-read-aloud-button>
+    <mat-icon class="expand-icon" [class.rotated]="expanded">expand_more</mat-icon>
+  </div>
+
+  <div class="card-detail" *ngIf="expanded">
+    <mat-divider></mat-divider>
+
+    <ng-container *ngIf="detailList; else plainDetail">
+      <p class="detail-text" *ngIf="detailList.intro">{{ detailList.intro }}</p>
+      <ol class="detail-list">
+        <li *ngFor="let item of detailList.items">{{ item }}</li>
+      </ol>
+    </ng-container>
+    <ng-template #plainDetail>
+      <p class="detail-text">{{ card.detail }}</p>
+    </ng-template>
+
+    <div class="seasonal-tip" *ngIf="card.seasonalVariation">
+      <mat-icon>calendar_month</mat-icon>
+      <span>{{ card.seasonalVariation }}</span>
+    </div>
+
+    <app-model-usage-badge
+      *ngIf="card.actionPlanModel as model"
+      [reasoningModel]="model"
+      prefix="Plan regenerated using"
+    ></app-model-usage-badge>
+
+    <!-- Action row — only when this card has an actionPlan and a real plant to attach to -->
+    <ng-container *ngIf="plantId !== null && card.actionPlan as plan">
+      <mat-divider class="action-divider"></mat-divider>
+
+      <div class="action-row" *ngIf="plan.type === 'ROUTINE'">
+        <button
+          mat-stroked-button
+          type="button"
+          class="btn-pill"
+          [class.reminder-already-set]="reminderAlreadyExisted"
+          [disabled]="reminderSet || settingReminder"
+          (click)="openReminderDialog($event)"
+        >
+          <mat-icon>{{ reminderSet ? 'check' : 'notifications_active' }}</mat-icon>
+          {{ reminderSet ? 'Reminder set' : (settingReminder ? 'Setting…' : 'Set reminder') }}
+        </button>
+      </div>
+
+      <div class="action-row" *ngIf="showTreatmentCta && plan.type === 'TREATMENT'">
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          class="btn-pill"
+          [disabled]="startingTreatment"
+          (click)="treatmentStarted ? goToTreatment($event) : startTreatmentPlan($event)"
+        >
+          <mat-progress-spinner
+            *ngIf="startingTreatment"
+            diameter="16"
+            mode="indeterminate"
+            class="btn-spinner"
+          ></mat-progress-spinner>
+          <mat-icon *ngIf="!startingTreatment">medical_services</mat-icon>
+          {{ treatmentStarted ? 'Plan in progress' : (startingTreatment ? 'Starting…' : 'Start treatment plan') }}
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</div>

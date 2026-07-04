@@ -1,0 +1,359 @@
+package com.plantpal.identification.client;
+
+import com.plantpal.shared.exception.PlantPalException;
+import com.plantpal.shared.exception.RateLimitException;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+
+@Component
+public class GitHubModelsClient {
+
+  private static final Logger log = LoggerFactory.getLogger(GitHubModelsClient.class);
+
+  static final String PLANT_IDENTIFICATION_SYSTEM_PROMPT =
+      """
+      You are an expert botanist and plant pathologist helping a beginner gardener.
+      Analyse the plant in the photo and return ONLY valid JSON (no markdown, no preamble).
+
+      {
+        "species": "<scientific name, or null if truly unidentifiable>",
+        "commonName": "<common English name>",
+        "confidence": "HIGH | MEDIUM | LOW",
+        "healthStatus": "HEALTHY | ISSUES_DETECTED | UNKNOWN",
+        "healthNotes": "<brief description of visible issues, or null if healthy>",
+        "carePlan": {
+          "wateringFrequencyDays": <int>,
+          "fertilizingFrequencyDays": <int — 0 means never>,
+          "repottingFrequencyMonths": <int>,
+          "careCards": [
+            {
+              "type": "WATERING | LIGHT | HUMIDITY | TEMPERATURE | FERTILIZING | REPOTTING | PRUNING | PEST | SEASONAL | BEGINNER_TIP",
+              "title": "<short title>",
+              "icon": "<material icon name e.g. water_drop, wb_sunny, thermostat>",
+              "summary": "<one sentence>",
+              "detail": "<2-4 sentences, plain English, no jargon>",
+              "urgency": "LOW | MEDIUM | HIGH",
+              "seasonalVariation": "<what changes in winter/summer, or null>",
+              "actionPlan": {
+                "type": "ROUTINE | TREATMENT | null — null if this card is purely informational",
+                "frequencyDays": "<int, ROUTINE only>",
+                "steps": [
+                  {
+                    "order": <int>,
+                    "instruction": "<string>",
+                    "dueOffsetDays": <int>,
+                    "detail": "<2-4 sentences of substeps/precautions for this specific step, or null>",
+                    "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
+                  }
+                ],
+                "diagram": { "format": "MERMAID", "content": "<mermaid flowchart syntax>" } or null
+              }
+            }
+          ],
+          "beginnerWarnings": ["warning1", "warning2"]
+        }
+      }
+
+      Rules:
+      - Identify only the PLANT, ignoring background objects.
+      - Include 4-8 care cards covering the most important aspects for this specific species.
+      - If you cannot identify the plant, still provide general care advice and set confidence to LOW.
+      - Write for someone who has never owned a plant before.
+      - Only set actionPlan.type=TREATMENT for genuinely multi-step processes (3+ distinct actions
+        over time) — a single one-off tip should have actionPlan: null.
+      - Only include a plan-level diagram when the steps have real branching/decision logic worth
+        visualising — most linear step lists do not need one.
+      - Only fill a step's own "detail" when that step needs more than the one-line instruction —
+        e.g. a mixing ratio, a multi-part procedure, or precautions to take. Leave it null for
+        simple steps ("Inspect leaves for new spots").
+      - Only give a step its own "diagram" when that single step has a multi-part procedure or its
+        own decision branching worth visualising (e.g. "mix solution → test on one leaf → no
+        reaction? apply fully : dilute further"). This is rare — most steps, even within a
+        TREATMENT plan, should have diagram: null.
+      - actionPlan must be null for card types: LIGHT, HUMIDITY, TEMPERATURE, SEASONAL. These are
+        environmental conditions, never ROUTINE or TREATMENT plans.
+      - ROUTINE actionPlan is valid only for: WATERING, FERTILIZING, REPOTTING, PRUNING.
+      - TREATMENT actionPlan is valid only for: PEST, and WATERING/FERTILIZING when issues are
+        detected.
+      - Mermaid diagrams must use only "flowchart TD" (never LR). Limit to 5 nodes max.
+        Node labels must be 15 characters or fewer — use abbreviations. Never use subgraph,
+        click events, or style blocks. Node labels must not contain double quotes — use single
+        quotes or backticks only.
+      """;
+
+  static final String ANNOTATION_SYSTEM_PROMPT =
+      """
+      You are a computer vision system specialised in plant analysis.
+      Examine the image and identify all notable regions.
+      Return ONLY valid JSON (no markdown, no preamble):
+
+      {
+        "regions": [
+          {
+            "label": "<specific description>",
+            "type": "PLANT | DISEASE | HEALTHY_AREA",
+            "confidence": "HIGH | MEDIUM | LOW",
+            "polygon": [
+              { "xPct": <0-100>, "yPct": <0-100> },
+              { "xPct": <0-100>, "yPct": <0-100> }
+            ]
+          }
+        ]
+      }
+
+      Rules:
+      - Always include at least one PLANT region for the main plant body.
+      - Add DISEASE regions for yellowing, spots, wilting, pests, rot, or visible damage.
+      - Add HEALTHY_AREA only for notably healthy growth worth highlighting.
+      - Polygon points must trace the boundary clockwise.
+      - First and last point need NOT be identical (canvas will close the path).
+      - All xPct/yPct must be integers 0-100 inclusive.
+      - If the region shape is simple (whole plant body), 4 corner points are enough.
+      - For complex disease areas (irregular spots), use 8-16 points.
+      - Use specific labels (e.g. "Monstera deliciosa", "Yellowing — possible overwatering").
+      """;
+
+  private final RestClient restClient;
+  private final String identificationModel;
+  private final String annotationModel;
+  private final String gpt41Model;
+  private final Bucket tokenBudgetBucket;
+
+  public GitHubModelsClient(
+      @Value("${github.base-url:https://models.inference.ai.azure.com}") String baseUrl,
+      @Value("${github.token}") String token,
+      @Value("${github.models.identification-model:gpt-4o}") String identificationModel,
+      @Value("${github.models.annotation-model:gpt-4o-mini}") String annotationModel,
+      @Value("${github.models.gpt41-model:gpt-4.1}") String gpt41Model,
+      @Value("${app.rate-limit.github-models-tokens-per-minute:40000}") int tokenBudgetPerMinute) {
+    this.identificationModel = identificationModel;
+    this.annotationModel = annotationModel;
+    this.gpt41Model = gpt41Model;
+    this.tokenBudgetBucket =
+        Bucket.builder()
+            .addLimit(
+                Bandwidth.builder()
+                    .capacity(tokenBudgetPerMinute)
+                    .refillIntervally(tokenBudgetPerMinute, Duration.ofMinutes(1))
+                    .build())
+            .build();
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+    factory.setReadTimeout(Duration.ofMinutes(5));
+    this.restClient =
+        RestClient.builder()
+            .baseUrl(baseUrl)
+            .requestFactory(factory)
+            .defaultHeader("Authorization", "Bearer " + token)
+            .build();
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, identificationModel, null);
+  }
+
+  public String identifyPlant(byte[] imageBytes, String mediaType, String userContext) {
+    return identifyPlant(imageBytes, mediaType, identificationModel, userContext);
+  }
+
+  /** Same identification call as {@link #identifyPlant(byte[], String)} but forced onto gpt-4.1. */
+  public String identifyPlantWithGpt41(byte[] imageBytes, String mediaType) {
+    return identifyPlant(imageBytes, mediaType, gpt41Model, null);
+  }
+
+  public String identifyPlantWithGpt41(byte[] imageBytes, String mediaType, String userContext) {
+    return identifyPlant(imageBytes, mediaType, gpt41Model, userContext);
+  }
+
+  private String identifyPlant(
+      byte[] imageBytes, String mediaType, String model, String userContext) {
+    consumeTokenBudget(imageBytes);
+
+    String dataUrl =
+        "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
+
+    String basePrompt = "Identify this plant and generate a complete beginner care plan.";
+    String promptText =
+        (userContext != null && !userContext.isBlank())
+            ? basePrompt
+                + " The user wants to know: "
+                + userContext
+                + ". Consider this when assessing health and generating care advice"
+                + " — address their specific concern directly."
+            : basePrompt;
+
+    List<Map<String, Object>> userContent =
+        List.of(
+            Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "high")),
+            Map.of("type", "text", "text", promptText));
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            model,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", PLANT_IDENTIFICATION_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userContent)),
+            "temperature",
+            0.3,
+            "response_format",
+            Map.of("type", "json_object"));
+
+    Exception lastException = null;
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      long start = System.currentTimeMillis();
+      try {
+        GitHubModelsApiResponse response =
+            restClient
+                .post()
+                .uri("/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .body(GitHubModelsApiResponse.class);
+
+        if (response == null
+            || response.choices() == null
+            || response.choices().isEmpty()
+            || response.choices().get(0).message() == null) {
+          throw new PlantPalException("Empty response from identification service", 503);
+        }
+
+        String raw = response.choices().get(0).message().content();
+        String content = DeepSeekClient.stripThinkTags(raw);
+        log.info(
+            "GitHubModels plant identification completed in {}ms [model={}]",
+            System.currentTimeMillis() - start,
+            model);
+        log.debug("GitHubModels identification raw response: {}", raw);
+        return content;
+
+      } catch (RestClientResponseException e) {
+        if (e.getStatusCode().value() == 429) {
+          throw new RateLimitException("GitHub Models rate limit reached — try again later", null);
+        }
+        lastException = e;
+        log.warn(
+            "GitHubModels identification attempt {} failed (status={}), {}",
+            attempt,
+            e.getStatusCode().value(),
+            attempt < 2 ? "retrying" : "giving up");
+      } catch (PlantPalException e) {
+        throw e;
+      } catch (RestClientException e) {
+        lastException = e;
+        log.warn(
+            "GitHubModels identification attempt {} failed ({}), {}",
+            attempt,
+            e.getMessage(),
+            attempt < 2 ? "retrying" : "giving up");
+      }
+      if (attempt < 2) {
+        sleepWithJitter();
+      }
+    }
+    throw new PlantPalException(
+        "Plant identification service unavailable after retries", 503, lastException);
+  }
+
+  public String analyzeRegions(byte[] imageBytes, String mediaType) {
+    consumeTokenBudget(imageBytes);
+
+    String dataUrl =
+        "data:" + mediaType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
+
+    List<Map<String, Object>> userContent =
+        List.of(
+            Map.of("type", "image_url", "image_url", Map.of("url", dataUrl, "detail", "high")),
+            Map.of("type", "text", "text", "Identify and locate all plant regions in this image."));
+
+    Map<String, Object> requestBody =
+        Map.of(
+            "model",
+            annotationModel,
+            "messages",
+            List.of(
+                Map.of("role", "system", "content", ANNOTATION_SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userContent)),
+            "temperature",
+            0.2,
+            "response_format",
+            Map.of("type", "json_object"));
+
+    long start = System.currentTimeMillis();
+    try {
+      GitHubModelsApiResponse response =
+          restClient
+              .post()
+              .uri("/chat/completions")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(requestBody)
+              .retrieve()
+              .body(GitHubModelsApiResponse.class);
+
+      if (response == null
+          || response.choices() == null
+          || response.choices().isEmpty()
+          || response.choices().get(0).message() == null) {
+        throw new PlantPalException("Empty response from annotation service", 503);
+      }
+
+      String raw = response.choices().get(0).message().content();
+      log.debug("GitHubModels annotation raw response: {}", raw);
+      log.info(
+          "GitHubModels annotation completed in {}ms [model={}]",
+          System.currentTimeMillis() - start,
+          annotationModel);
+      return DeepSeekClient.stripThinkTags(raw);
+
+    } catch (RestClientResponseException e) {
+      log.error(
+          "GitHubModels annotation error status={}, body={}",
+          e.getStatusCode().value(),
+          e.getResponseBodyAsString());
+      throw new PlantPalException("Annotation service unavailable", 503);
+    } catch (PlantPalException e) {
+      throw e;
+    } catch (RestClientException e) {
+      log.error("Failed to reach GitHubModels annotation API", e);
+      throw new PlantPalException("Annotation service unavailable", 503);
+    }
+  }
+
+  private void consumeTokenBudget(byte[] imageBytes) {
+    int estimatedTokens = Math.max(1, imageBytes.length / 3);
+    if (!tokenBudgetBucket.tryConsume(estimatedTokens)) {
+      throw new RateLimitException("GitHub Models token budget exhausted — try again later", 60L);
+    }
+  }
+
+  private void sleepWithJitter() {
+    long jitterMs = ThreadLocalRandom.current().nextLong(0, 1000);
+    try {
+      Thread.sleep(jitterMs);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new PlantPalException("Interrupted while retrying identification", 503);
+    }
+  }
+
+  private record GitHubModelsApiResponse(List<Choice> choices) {}
+
+  private record Choice(Message message) {}
+
+  private record Message(String content) {}
+}

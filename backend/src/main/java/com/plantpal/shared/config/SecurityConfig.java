@@ -42,7 +42,8 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
-                        "/api/v1/test/**")
+                        "/photos/**",
+                        "/api/v1/photos/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
@@ -67,7 +68,7 @@ public class SecurityConfig {
     List<String> origins = Arrays.asList(allowedOriginsRaw.split(","));
 
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(origins);
+    config.setAllowedOriginPatterns(origins);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setExposedHeaders(List.of("X-Correlation-ID"));

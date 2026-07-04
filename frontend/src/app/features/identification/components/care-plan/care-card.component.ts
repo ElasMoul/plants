@@ -1,0 +1,202 @@
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { AiErrorService } from '../../../../core/services/ai-error.service';
+import { CareCardDto, CareCardType } from '../../models/identification.model';
+import { CareType } from '../../../reminder/models/reminder.model';
+import { ReminderService } from '../../../reminder/services/reminder.service';
+import { TreatmentService } from '../../../plant/services/treatment.service';
+import { SetReminderDialogComponent } from './set-reminder-dialog.component';
+import { parseDetailAsList, ParsedDetail } from '../../../../shared/utils/detail-list.util';
+
+const CARD_COLORS: Record<CareCardType, string> = {
+  WATERING:     '#1565C0',
+  LIGHT:        '#F9A825',
+  HUMIDITY:     '#0277BD',
+  TEMPERATURE:  '#E65100',
+  FERTILIZING:  '#558B2F',
+  REPOTTING:    '#6D4C41',
+  PRUNING:      '#00897B',
+  PEST:         '#B71C1C',
+  SEASONAL:     '#6A1B9A',
+  BEGINNER_TIP: '#2E7D32',
+};
+
+@Component({
+  selector: 'app-care-card',
+  templateUrl: './care-card.component.html',
+  styleUrls: ['./care-card.component.scss'],
+})
+export class CareCardComponent implements OnChanges, OnDestroy {
+  @Input() card!: CareCardDto;
+  @Input() plantId: number | null = null;
+  @Input() identificationId: number | null = null;
+  @Input() existingCareTypes: CareType[] = [];
+  @Input() showTreatmentCta = true;
+  @Input() isDraft = false;
+  @Input() treatmentActive = false;
+
+  expanded = false;
+  detailList: ParsedDetail | null = null;
+  reminderSet = false;
+  reminderAlreadyExisted = false;
+  settingReminder = false;
+  startingTreatment = false;
+  treatmentStarted = false;
+  activeTreatmentId: number | null = null;
+
+  private readonly destroy$ = new Subject<void>();
+
+  constructor(
+    private readonly dialog: MatDialog,
+    private readonly reminderService: ReminderService,
+    private readonly treatmentService: TreatmentService,
+    private readonly snackBar: MatSnackBar,
+    private readonly router: Router,
+    private readonly aiErrorService: AiErrorService,
+  ) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['card']) {
+      this.detailList = parseDetailAsList(this.card.detail);
+    }
+    if (changes['card'] || changes['existingCareTypes']) {
+      // AI only attaches a ROUTINE actionPlan to cards whose type maps to a real reminder CareType
+      const alreadyExists = this.existingCareTypes.includes(this.card.type as CareType);
+      this.reminderAlreadyExisted = alreadyExists;
+      this.reminderSet = alreadyExists;
+    }
+    if (
+      this.showTreatmentCta &&
+      !this.isDraft &&
+      (changes['card'] || changes['plantId'] || changes['treatmentActive']) &&
+      this.card?.actionPlan?.type === 'TREATMENT'
+    ) {
+      if (this.treatmentActive) {
+        this.treatmentStarted = true;
+      } else {
+        this.checkActiveTreatment();
+      }
+    }
+  }
+
+  // Deriving treatmentStarted from the real Treatment entity (instead of a session-only flag)
+  // means the button correctly shows "Plan in progress" even after a page refresh, and —
+  // together with TreatmentService.createTreatment()'s own duplicate check — is what stops this
+  // card and any other entry point (e.g. the Scans-tab CTA) from starting two treatments for the
+  // same disease. Uses the plural getActiveTreatments() (T7.4) — the plant can have more than one
+  // active treatment at once, so matching against only the single most-recent one (the old
+  // getActiveTreatment()) could miss this card's disease entirely if a different one started more
+  // recently.
+  private checkActiveTreatment(): void {
+    const plantId = this.plantId;
+    if (plantId === null) return;
+
+    this.treatmentService.getActiveTreatments(plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          const match = res.data.find(t => t.diseaseName === this.card.title);
+          this.treatmentStarted = !!match;
+          this.activeTreatmentId = match?.id ?? null;
+        },
+        error: () => {
+          this.treatmentStarted = false;
+          this.activeTreatmentId = null;
+        },
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  get accentColor(): string {
+    return CARD_COLORS[this.card.type] ?? '#616161';
+  }
+
+  get accentBg(): string {
+    return `${this.accentColor}1A`;
+  }
+
+  toggle(): void {
+    this.expanded = !this.expanded;
+  }
+
+  openReminderDialog(event: Event): void {
+    event.stopPropagation();
+    const plantId = this.plantId;
+    if (this.reminderSet || !this.card.actionPlan || plantId === null) return;
+
+    const dialogRef = this.dialog.open(SetReminderDialogComponent, {
+      width: '360px',
+      maxWidth: '95vw',
+      autoFocus: false,
+      data: { cardTitle: this.card.title, frequencyDays: this.card.actionPlan.frequencyDays ?? 7 },
+    });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((frequencyDays?: number) => {
+        if (frequencyDays == null) return;
+        this.settingReminder = true;
+        this.reminderService.createReminder({
+          plantId,
+          careType: this.card.type as CareType,
+          frequencyDays,
+          firstDueAt: new Date().toISOString(),
+        })
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.settingReminder = false;
+              this.reminderSet = true;
+            },
+            error: () => {
+              this.settingReminder = false;
+              this.snackBar.open('Could not set reminder.', 'Dismiss', { duration: 4000 });
+            },
+          });
+      });
+  }
+
+  startTreatmentPlan(event: Event): void {
+    event.stopPropagation();
+    const plantId = this.plantId;
+    const identificationId = this.identificationId;
+    if (!this.card.actionPlan || this.startingTreatment || this.treatmentStarted) return;
+    if (plantId === null || identificationId === null) return;
+
+    this.startingTreatment = true;
+    // Creates the Treatment entity in DRAFT — do NOT call craftPlan() here.
+    // craftPlan() belongs to the explicit "Craft Treatment Plan" button on the
+    // Treatment detail page; calling it here is what caused DRAFT→IN_PROGRESS
+    // without user action (T10.C bug fix).
+    this.treatmentService.createTreatment(plantId, identificationId, this.card.title)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: created => {
+          this.startingTreatment = false;
+          this.treatmentStarted = true;
+          this.activeTreatmentId = created.data.id;
+          this.router.navigate(['/treatment', created.data.id]);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.startingTreatment = false;
+          this.aiErrorService.notify(err);
+        },
+      });
+  }
+
+  goToTreatment(event: Event): void {
+    event.stopPropagation();
+    if (this.activeTreatmentId !== null) {
+      this.router.navigate(['/treatment', this.activeTreatmentId]);
+    }
+  }
+}

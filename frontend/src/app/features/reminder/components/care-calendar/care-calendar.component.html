@@ -1,0 +1,19 @@
+<div class="calendar-strip">
+  <div
+    class="calendar-day"
+    *ngFor="let day of days; let i = index"
+    [class.is-today]="day.isToday"
+    [class.is-selected]="selectedIndex === i"
+    (click)="selectDay(i, day)"
+  >
+    <p class="day-label">{{ day.isToday ? 'Today' : day.label }}</p>
+    <p class="day-number">{{ day.dayNumber }}</p>
+
+    <div class="day-reminders">
+      <div class="day-chip" *ngFor="let chip of day.chips" [matTooltip]="chip.tooltip">
+        <mat-icon>{{ chip.icon }}</mat-icon>
+        <span class="chip-count" *ngIf="chip.count > 1">{{ chip.count }}</span>
+      </div>
+    </div>
+  </div>
+</div>

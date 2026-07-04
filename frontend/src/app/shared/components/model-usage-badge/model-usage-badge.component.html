@@ -1,0 +1,6 @@
+<p class="model-usage-badge" *ngIf="visible">
+  <mat-icon class="badge-icon">auto_awesome</mat-icon>
+  <span *ngIf="visionLabel && reasoningLabel">{{ prefix }}: {{ visionLabel }} + {{ reasoningLabel }}</span>
+  <span *ngIf="visionLabel && !reasoningLabel">{{ prefix }}: {{ visionLabel }}</span>
+  <span *ngIf="!visionLabel && reasoningLabel">{{ prefix }}: {{ reasoningLabel }}</span>
+</p>

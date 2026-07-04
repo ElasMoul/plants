@@ -1,0 +1,31 @@
+<div class="timeline-wrapper">
+
+  <!-- Skeleton while loading -->
+  <div *ngIf="loading" class="timeline-strip">
+    <div *ngFor="let s of skeletonItems" class="skeleton-thumb"></div>
+  </div>
+
+  <!-- Empty state -->
+  <p *ngIf="!loading && scans.length === 0" class="timeline-empty">
+    No scans yet — your first photo will start the timeline
+  </p>
+
+  <!-- Timeline strip — oldest to newest, left to right -->
+  <div *ngIf="!loading && scans.length" class="timeline-strip">
+    <div
+      class="timeline-item"
+      *ngFor="let scan of scans"
+      [class.timeline-item-selected]="scan.id === selectedScanId"
+      (click)="select(scan)"
+    >
+      <img
+        [src]="scan.photoUrl || placeholderImage"
+        [alt]="scan.commonName || scan.scientificName"
+        class="timeline-thumb"
+        [ngClass]="healthClass(scan)"
+      />
+      <span class="timeline-date">{{ scan.createdAt | date:'MMM d' }}</span>
+    </div>
+  </div>
+
+</div>

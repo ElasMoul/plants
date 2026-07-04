@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>Set a reminder</h2>
+
+<mat-dialog-content>
+  <p class="dialog-text">We'll remind you to {{ data.cardTitle | lowercase }} every:</p>
+
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Frequency</mat-label>
+      <input matInput type="number" formControlName="frequencyDays" min="1" />
+      <span matSuffix>&nbsp;days</span>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="button"
+    class="btn-pill"
+    [disabled]="form.invalid"
+    (click)="confirm()"
+  >
+    Set reminder
+  </button>
+</mat-dialog-actions>

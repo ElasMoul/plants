@@ -1,0 +1,53 @@
+.page-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px;
+  }
+}
+
+.page-title {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-bottom: 32px;
+
+  @media (max-width: 600px) {
+    margin-bottom: 20px;
+  }
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}
+
+.btn-spinner {
+  display: inline-block;
+  margin-right: 8px;
+
+  ::ng-deep circle {
+    stroke: currentColor;
+  }
+}
+
+// ── FAB ────────────────────────────────────────────────────────
+.add-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 50;
+  background-color: var(--color-primary) !important;
+
+  @media (min-width: 769px) {
+    bottom: 24px;
+  }
+}

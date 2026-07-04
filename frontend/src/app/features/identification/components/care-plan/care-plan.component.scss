@@ -1,0 +1,140 @@
+:host {
+  display: block; // ensure the component stretches to its container width
+}
+
+// ── Skeleton ──────────────────────────────────────────────────
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.skeleton-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-secondary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+
+  &.short { width: 55%; }
+  &.long  { width: 80%; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+// ── Summary bar ───────────────────────────────────────────────
+.summary-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-secondary);
+  font-size: 0.82rem;
+  color: var(--color-text-primary);
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--color-primary-light);
+  }
+}
+
+.summary-sep {
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+// ── Card grid ─────────────────────────────────────────────────
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Warnings ──────────────────────────────────────────────────
+.warnings-section {
+  margin-top: 20px;
+}
+
+.warnings-label {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.warnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warning-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(240, 160, 48, 0.12);
+  font-size: 0.82rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--color-warning);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  span {
+    line-height: 1.5;
+  }
+}

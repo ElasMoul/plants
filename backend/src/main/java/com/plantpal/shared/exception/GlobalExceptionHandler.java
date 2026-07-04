@@ -36,11 +36,26 @@ public class GlobalExceptionHandler {
         .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
   }
 
+  @ExceptionHandler(RateLimitException.class)
+  public ResponseEntity<ApiResponse<Void>> handleRateLimit(RateLimitException ex) {
+    log.warn(
+        "Rate limit exceeded: {}, retryAfterSeconds={}",
+        ex.getMessage(),
+        ex.getRetryAfterSeconds());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+        .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode(), ex.getRetryAfterSeconds()));
+  }
+
   // Catch-all for any other PlantPalException subclass not matched above
   @ExceptionHandler(PlantPalException.class)
   public ResponseEntity<ApiResponse<Void>> handlePlantPal(PlantPalException ex) {
     log.error("Business error [code={}]: {}", ex.getErrorCode(), ex.getMessage(), ex);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    HttpStatus status = HttpStatus.resolve(ex.getErrorCode());
+    if (status == null) {
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+    return ResponseEntity.status(status)
         .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
   }
 

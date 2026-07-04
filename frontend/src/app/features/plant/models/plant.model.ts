@@ -1,5 +1,11 @@
 export type PlantStatus = 'ACTIVE' | 'ARCHIVED';
 
+export interface SaveIdentificationAsPlantRequest {
+  identificationId: number;
+  nickname: string;
+  location?: string;
+}
+
 export interface CreatePlantRequest {
   nickname: string;
   species?: string;
@@ -20,6 +26,8 @@ export interface UpdatePlantRequest {
   acquiredAt?: string; // YYYY-MM-DD
 }
 
+export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
+
 export interface PlantResponse {
   id: number;
   userId: number;
@@ -33,4 +41,8 @@ export interface PlantResponse {
   acquiredAt: string | null;
   createdAt: string;
   updatedAt: string;
+  healthStatus?: HealthStatus;
+  nextWaterDays?: number | null;
+  lastScanAt?: string | null;
+  activeTreatmentId?: number | null;
 }

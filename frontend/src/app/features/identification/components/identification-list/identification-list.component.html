@@ -1,0 +1,46 @@
+<div class="list-section">
+  <h2 class="list-title">Your Identifications</h2>
+
+  <div class="list-loading" *ngIf="loading">
+    <mat-progress-spinner diameter="28" mode="indeterminate"></mat-progress-spinner>
+  </div>
+
+  <div class="list-error" *ngIf="!loading && loadError">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <span>Couldn't load your identifications.</span>
+  </div>
+
+  <div class="list-empty" *ngIf="!loading && !loadError && items.length === 0">
+    <mat-icon>local_florist</mat-icon>
+    <span>No identifications yet — upload a photo to get started.</span>
+  </div>
+
+  <div class="identification-rows" *ngIf="!loading && !loadError && items.length">
+    <div
+      class="identification-row row-clickable"
+      *ngFor="let item of items; trackBy: trackById"
+      (click)="onRowClick(item)"
+    >
+      <div class="row-photo">
+        <img [src]="item.photoUrl || placeholderImage" [alt]="item.commonName || item.scientificName" />
+      </div>
+
+      <div class="row-body">
+        <p class="row-name">
+          {{ item.commonName || item.scientificName || 'Identifying…' }}
+        </p>
+        <p class="row-date">
+          {{ item.createdAt | date:'MMM d, h:mm a' }}
+          <span class="model-chip" *ngIf="modelLabel(item) as model">{{ model }}</span>
+        </p>
+      </div>
+
+      <span class="status-chip" [ngClass]="'status-' + item.status.toLowerCase()">
+        <mat-icon *ngIf="item.status === 'PENDING'" class="spin-icon">sync</mat-icon>
+        <mat-icon *ngIf="item.status === 'COMPLETED'">check_circle</mat-icon>
+        <mat-icon *ngIf="item.status === 'FAILED'">error_outline</mat-icon>
+        {{ item.status }}
+      </span>
+    </div>
+  </div>
+</div>

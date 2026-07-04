@@ -1,0 +1,54 @@
+<p class="progress-line">{{ completedCount }} of {{ totalCount }} steps complete</p>
+
+<!-- Diagram — only when the AI included one -->
+<div class="diagram-section" *ngIf="diagramContent">
+  <p class="section-label">How this works</p>
+  <app-mermaid-diagram [definition]="diagramContent"></app-mermaid-diagram>
+</div>
+
+<!-- Step list -->
+<div class="step-list">
+  <div class="step-row" *ngFor="let step of steps; let last = last">
+    <div class="step-marker">
+      <div class="step-circle" [class.completed]="!step.enabled">
+        <mat-icon *ngIf="!step.enabled">check</mat-icon>
+        <span *ngIf="step.enabled">{{ step.stepOrder ?? '•' }}</span>
+      </div>
+      <div class="step-connector" *ngIf="!last"></div>
+    </div>
+
+    <div class="step-body">
+      <div class="step-instruction-row">
+        <p class="step-instruction" [class.done]="!step.enabled">{{ stepInstruction(step) }}</p>
+        <button
+          *ngIf="hasStepDetail(step)"
+          mat-icon-button
+          type="button"
+          class="btn-how-to"
+          matTooltip="Additional info on how to"
+          (click)="openStepDetail(step)"
+        >
+          <mat-icon>info_outline</mat-icon>
+        </button>
+        <app-read-aloud-button
+          [text]="'Step ' + (step.stepOrder ?? '') + ': ' + stepInstruction(step) + (step.stepDetail ? '. ' + step.stepDetail : '')"
+          ariaLabel="Read step aloud"
+        ></app-read-aloud-button>
+      </div>
+      <p class="step-due">
+        <ng-container *ngIf="!step.enabled">Completed {{ step.completedAt | date:'MMM d' }}</ng-container>
+        <ng-container *ngIf="step.enabled">{{ dueLabel(step) }}</ng-container>
+      </p>
+      <button
+        *ngIf="step.enabled"
+        mat-stroked-button
+        type="button"
+        class="btn-mark-done"
+        [disabled]="markingDoneId === step.id"
+        (click)="markStepDone(step)"
+      >
+        {{ markingDoneId === step.id ? 'Marking…' : 'Mark done' }}
+      </button>
+    </div>
+  </div>
+</div>

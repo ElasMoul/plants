@@ -1,0 +1,163 @@
+.preview-container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+// ── Photo ──────────────────────────────────────────────────────
+.photo-banner {
+  margin-bottom: 20px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+// ── Species header ─────────────────────────────────────────────
+.species-header {
+  margin-bottom: 4px;
+}
+
+.scientific-name {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--color-text-primary);
+}
+
+.common-name {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.confidence-badge,
+.health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-chip);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.confidence-badge {
+  &.confidence-high   { background: var(--color-surface-secondary); color: var(--color-primary); }
+  &.confidence-medium { background: #fff8e1; color: #f57f17; }
+  &.confidence-low    { background: #ffebee; color: var(--color-error); }
+}
+
+.health-badge {
+  &.health-healthy          { background: var(--color-success); color: #fff; }
+  &.health-issues_detected  { background: var(--color-error); color: #fff; }
+  &.health-unknown          { background: rgba(0, 0, 0, 0.4); color: #fff; }
+}
+
+.badge-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+// ── Diagnosis callout ────────────────────────────────────────────
+.diagnosis-callout {
+  margin-bottom: 4px;
+}
+
+.diagnosis-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.diagnosis-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+
+  mat-icon {
+    color: var(--color-error);
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    line-height: 1.5;
+  }
+}
+
+// ── Dividers ───────────────────────────────────────────────────
+.section-divider {
+  margin: 20px 0;
+}
+
+// ── Care plan preview ──────────────────────────────────────────
+.care-preview {
+  margin-bottom: 4px;
+}
+
+// ── Section label ──────────────────────────────────────────────
+.section-label {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+// ── Save form ──────────────────────────────────────────────────
+.save-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// ── Actions ────────────────────────────────────────────────────
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+
+  @media (max-width: 400px) {
+    flex-direction: column;
+  }
+
+  .btn-save {
+    flex: 1;
+    min-width: 160px;
+  }
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+}

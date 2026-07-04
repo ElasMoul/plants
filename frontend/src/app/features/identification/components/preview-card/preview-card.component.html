@@ -1,0 +1,93 @@
+<div class="preview-container">
+
+  <!-- Photo with annotation overlay -->
+  <div class="photo-banner">
+    <app-photo-annotator
+      [imageUrl]="result.photoUrl || placeholderImage"
+      [regions]="result.annotationRegions"
+      [selectedRegionIndex]="selectedRegionIndex"
+    ></app-photo-annotator>
+  </div>
+
+  <!-- Species header -->
+  <div class="species-header">
+    <h2 class="scientific-name">{{ result.scientificName }}</h2>
+    <p class="common-name" *ngIf="result.commonName">{{ result.commonName }}</p>
+
+    <div class="badge-row">
+      <span class="confidence-badge" [ngClass]="'confidence-' + confidenceLevel.toLowerCase()">
+        {{ confidencePercent }}% confident
+      </span>
+      <span
+        *ngIf="result.healthStatus"
+        class="health-badge"
+        [ngClass]="'health-' + result.healthStatus.toLowerCase()"
+      >
+        <mat-icon class="badge-icon">{{ healthIcon }}</mat-icon>
+        {{ healthLabel }}
+      </span>
+    </div>
+
+    <!-- Diagnosis callout -->
+    <div class="diagnosis-callout" *ngIf="result.healthNotes && result.healthStatus === 'ISSUES_DETECTED'">
+      <span class="diagnosis-tag">DIAGNOSIS</span>
+      <div class="diagnosis-body">
+        <mat-icon>info_outline</mat-icon>
+        <p>{{ result.healthNotes }}</p>
+      </div>
+    </div>
+  </div>
+
+  <mat-divider class="section-divider"></mat-divider>
+
+  <!-- Care plan preview — first 3 cards -->
+  <div class="care-preview" *ngIf="result.carePlan">
+    <p class="section-label">Care Plan Preview</p>
+    <app-care-plan [carePlan]="result.carePlan" [maxCards]="3" [plantId]="result.plantId" [identificationId]="result.id"></app-care-plan>
+  </div>
+
+  <mat-divider class="section-divider"></mat-divider>
+
+  <!-- Save form -->
+  <form [formGroup]="form" class="save-form" (ngSubmit)="onSave()">
+    <p class="section-label">Add to your garden</p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nickname</mat-label>
+      <input matInput formControlName="nickname" placeholder="e.g. My Monstera" autocomplete="off" />
+      <mat-error *ngIf="form.get('nickname')?.hasError('required')">Nickname is required</mat-error>
+      <mat-error *ngIf="form.get('nickname')?.hasError('maxlength')">Max 255 characters</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Location (optional)</mat-label>
+      <mat-icon matPrefix>place</mat-icon>
+      <input matInput formControlName="location" placeholder="e.g. Living room, Balcony" autocomplete="off" />
+    </mat-form-field>
+  </form>
+
+  <!-- Action buttons -->
+  <div class="action-row">
+    <button
+      mat-raised-button
+      color="primary"
+      class="btn-save btn-pill"
+      [disabled]="form.invalid || saving"
+      (click)="onSave()"
+    >
+      <mat-icon>local_florist</mat-icon>
+      {{ saving ? 'Saving…' : 'Save to garden' }}
+    </button>
+
+    <button mat-stroked-button class="btn-pill" [disabled]="saving" (click)="onEdit()">
+      <mat-icon>edit</mat-icon>
+      Edit before saving
+    </button>
+
+    <button mat-button class="btn-pill" [disabled]="saving" (click)="onDiscard()">
+      <mat-icon>close</mat-icon>
+      Discard
+    </button>
+  </div>
+
+</div>

@@ -1,100 +1,133 @@
+:host {
+  display: block;
+}
+
 .plant-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  cursor: default;
-  transition: box-shadow 0.2s ease;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   }
 }
 
+// ── Photo area ─────────────────────────────────────────────────
 .plant-photo {
-  height: 160px;
+  position: relative;
+  height: 180px;
+  background: var(--color-surface-secondary);
   overflow: hidden;
-  cursor: pointer;
-  background: #f5f5f5;
+
+  @media (max-width: 600px) {
+    height: 160px;
+  }
 }
 
 .photo-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  cursor: zoom-in;
   transition: transform 0.3s ease;
 
-  .plant-photo:hover & {
+  .plant-card:hover & {
     transform: scale(1.04);
   }
 }
 
-.photo-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: #e8f5e9;
+// ── Health badge overlay ───────────────────────────────────────
+.health-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 2;
+
+  &.badge-healthy {
+    background: var(--color-success);
+    color: #fff;
+  }
+
+  &.badge-issues {
+    background: var(--color-error);
+    color: #fff;
+  }
+
+  &.badge-unknown {
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+  }
+}
+
+// ── Context menu button ────────────────────────────────────────
+.card-menu-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
 
   mat-icon {
-    font-size: 56px;
-    width: 56px;
-    height: 56px;
-    color: #66bb6a;
+    font-size: 18px;
   }
-}
-
-mat-card-content {
-  flex: 1;
-  padding-top: 12px;
-}
-
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.nickname {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-  cursor: pointer;
-  color: inherit;
-
-  &:hover {
-    color: #3f51b5;
-  }
-}
-
-.species {
-  margin: 4px 0 10px;
-  font-size: 0.85rem;
-  color: #757575;
-  font-style: italic;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: #9e9e9e;
-  margin-top: 4px;
-}
-
-.meta-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
 }
 
 .archive-action {
-  color: #f44336;
+  color: var(--color-error);
+  mat-icon { color: var(--color-error); }
+}
 
-  mat-icon {
-    color: #f44336;
-  }
+// ── Card body ──────────────────────────────────────────────────
+.card-body {
+  padding: 12px 14px 14px;
+}
+
+.plant-name {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 2px;
+  line-height: 1.3;
+}
+
+.plant-species {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 0 0 10px;
+}
+
+// ── Next water chip ────────────────────────────────────────────
+.next-water {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-chip);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.water-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary-light);
 }

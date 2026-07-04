@@ -1,7 +1,7 @@
 .detail-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 0 0 32px;
 }
 
 .loading-state {
@@ -10,59 +10,178 @@
   padding: 80px 0;
 }
 
-// ── Header ───────────────────────────────────────────────────
-.detail-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+// ── Sticky header ────────────────────────────────────────────
+.sticky-header {
+  position: sticky;
+  top: 50px;
+  z-index: 10;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.scroll-sentinel {
+  height: 1px;
 }
 
-.plant-name {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.plant-species {
-  margin: 4px 0 0;
-  color: #757575;
-  font-style: italic;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-// ── Photo banner ─────────────────────────────────────────────
-.photo-banner {
+// ── Hero ─────────────────────────────────────────────────────
+.detail-hero {
+  position: relative;
   width: 100%;
-  height: 240px;
-  border-radius: 8px;
+  height: 320px;
   overflow: hidden;
-  margin-bottom: 20px;
+  background: var(--color-surface-secondary);
+  transition: height 0.25s ease;
+
+  @media (max-width: 600px) {
+    height: 260px;
+  }
 }
 
-.banner-img {
+.sticky-header.collapsed .detail-hero {
+  transition: height 0.25s ease;
+  height: 80px;
+}
+
+.sticky-header.collapsed .hero-text {
+  transition: all 0.25s ease;
+  left: 65px;
+}
+
+.hero-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-// ── Tab content ──────────────────────────────────────────────
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+.hero-back,
+.hero-action-btn {
+  position: absolute;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.32) !important;
+  z-index: 2;
+}
+
+.hero-back {
+  top: 14px;
+  left: 14px;
+}
+
+.hero-actions {
+  position: absolute;
+  top: 14px;
+  right: 60px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.hero-text {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 2;
+  color: #fff;
+}
+
+.hero-species {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.hero-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  transition: font-size 0.25s ease;
+
+  @media (max-width: 600px) {
+    font-size: 1.6rem;
+  }
+}
+
+.sticky-header.collapsed .hero-name {
+  font-size: 1.1rem;
+}
+
+// ── Icon button bar ──────────────────────────────────────────
+// Sticks directly below the collapsed hero (90px) so it never gets
+// visually trapped behind/under the sticky header while scrolling.
+.section-button-bar {
+  position: sticky;
+  top: 130px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  padding: 8px 4px;
+  background: var(--color-surface);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+// The section tabs share the available space; "more actions" is pushed
+// out to the far right, separate from the tab group.
+.section-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex: 1;
+}
+
+.more-actions-btn {
+  margin-left: auto;
+}
+
+.active-section-btn {
+  background: var(--color-success) !important;
+  border-radius: 50%;
+
+  mat-icon {
+    color: var(--color-primary) !important;
+  }
+}
+
 .tab-content {
-  padding: 24px 0;
+  padding: 24px 16px;
+}
+
+// ── Status banner ────────────────────────────────────────────
+.status-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-card);
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.25);
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+  }
+}
+
+.attention-badge {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 // ── Info grid ────────────────────────────────────────────────
@@ -80,11 +199,11 @@
 }
 
 .info-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9e9e9e;
+  color: var(--color-text-secondary);
 }
 
 .info-value {
@@ -92,23 +211,24 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  color: var(--color-text-primary);
 }
 
 .inline-icon {
   font-size: 16px;
   width: 16px;
   height: 16px;
-  color: #9e9e9e;
+  color: var(--color-text-secondary);
 }
 
 .status-active {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-surface-secondary);
+  color: var(--color-primary);
 }
 
 .status-archived {
   background-color: #fafafa;
-  color: #757575;
+  color: var(--color-text-secondary);
 }
 
 // ── Notes ────────────────────────────────────────────────────
@@ -119,15 +239,16 @@ mat-divider {
 .notes-section {
   h3 {
     margin: 0 0 8px;
-    font-size: 0.95rem;
+    font-family: var(--font-heading);
+    font-size: 1rem;
     font-weight: 600;
-    color: #424242;
+    color: var(--color-text-primary);
   }
 
   p {
     margin: 0;
     white-space: pre-wrap;
-    color: #616161;
+    color: var(--color-text-secondary);
     line-height: 1.6;
   }
 }
@@ -143,13 +264,14 @@ mat-divider {
 
   h3 {
     margin: 0;
-    font-weight: 500;
-    color: #424242;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--color-text-primary);
   }
 
   p {
     margin: 0;
-    color: #757575;
+    color: var(--color-text-secondary);
   }
 }
 
@@ -157,5 +279,160 @@ mat-divider {
   font-size: 56px;
   width: 56px;
   height: 56px;
-  color: #bdbdbd;
+  color: var(--color-primary-light);
+  opacity: 0.6;
+}
+
+.btn-pill {
+  border-radius: var(--radius-chip) !important;
+  padding: 0 20px !important;
+}
+
+// ── Care plan tab ─────────────────────────────────────────────
+.care-plan-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+// ── Scans tab ────────────────────────────────────────────────
+.scans-tab {
+  position: relative;
+  padding-bottom: 80px;
+}
+
+.scans-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.scan-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scan-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-divider);
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--color-surface-secondary);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.scan-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--color-surface-secondary);
+}
+
+.scan-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.scan-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.scan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.health-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  &.health-healthy {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &.health-issues {
+    background: #fbe9e7;
+    color: #bf360c;
+  }
+
+  &.health-unknown {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+}
+
+.care-count-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+
+.scan-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.context-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.context-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-chevron {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.new-scan-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 84px;
+  z-index: 20;
+}
+
+.treatment-cta {
+  margin: 16px 0;
+}
+
+.treatment-progress-chip {
+  cursor: pointer;
 }

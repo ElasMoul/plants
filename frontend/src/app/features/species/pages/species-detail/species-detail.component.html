@@ -1,0 +1,162 @@
+<div class="detail-container">
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-state">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
+
+  <ng-container *ngIf="!loading && species">
+
+    <!-- Hero -->
+    <div class="detail-hero">
+      <img [src]="species.imageUrl || placeholderImage" [alt]="species.scientificName" class="hero-img" />
+      <div class="hero-overlay"></div>
+
+      <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <div class="hero-text">
+        <h1 class="species-name">{{ species.scientificName }}</h1>
+        <p class="species-common-name">{{ species.commonName || 'Common name unknown' }}</p>
+        <p *ngIf="species.family || species.genus" class="species-taxonomy">
+          <span *ngIf="species.family">Family: <em>{{ species.family }}</em></span>
+          <span *ngIf="species.family && species.genus"> · </span>
+          <span *ngIf="species.genus">Genus: <em>{{ species.genus }}</em></span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Image attribution (PlantNet) -->
+    <div *ngIf="species.imageAttribution" class="image-attribution">
+      <mat-icon class="attr-icon">photo_camera</mat-icon>
+      <span>{{ species.imageAttribution }}<span *ngIf="species.imageLicense"> · {{ species.imageLicense }}</span></span>
+    </div>
+
+    <mat-tab-group class="species-tabs" animationDuration="0ms">
+
+      <!-- Overview tab -->
+      <mat-tab label="Overview">
+        <div class="tab-content overview-content">
+          <span
+            *ngIf="species.externalDataSource"
+            class="source-badge"
+          >
+            {{ species.externalDataSource === 'AI' ? 'AI' : species.externalDataSource }}
+          </span>
+
+          <!-- Botanical facts: always visible once PlantNet data is harvested -->
+          <div *ngIf="species.family || species.genus || species.iucnCategory" class="info-block">
+            <h2 class="info-heading">Botanical facts</h2>
+            <div class="botanical-facts-grid">
+              <div class="fact-row" *ngIf="species.family">
+                <span class="fact-label">Family</span>
+                <span class="fact-value">{{ species.family }}</span>
+              </div>
+              <div class="fact-row" *ngIf="species.genus">
+                <span class="fact-label">Genus</span>
+                <em class="fact-value">{{ species.genus }}</em>
+              </div>
+              <div class="fact-row" *ngIf="species.iucnCategory">
+                <span class="fact-label">Conservation status</span>
+                <span class="fact-value iucn-badge" [ngClass]="iucnBadgeClass(species.iucnCategory)">
+                  {{ iucnLabel(species.iucnCategory) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description: PENDING — polling in background; still show other data above -->
+          <div *ngIf="!species.descriptionStatus || species.descriptionStatus === 'PENDING'" class="info-block pending-block">
+            <mat-spinner diameter="20" class="pending-spinner"></mat-spinner>
+            <p class="pending-text">Generating species description…</p>
+          </div>
+
+          <!-- Description: READY -->
+          <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
+            <div class="info-heading-row">
+              <h2 class="info-heading">About</h2>
+              <app-read-aloud-button
+                [text]="species.description!"
+                ariaLabel="Read species description aloud"
+              ></app-read-aloud-button>
+            </div>
+            <p class="info-text">{{ species.description }}</p>
+          </div>
+
+          <!-- Description: FAILED — offer retry -->
+          <div *ngIf="species.descriptionStatus === 'FAILED'" class="info-block failed-block">
+            <p class="failed-text">Description generation failed.</p>
+            <button mat-stroked-button color="warn" (click)="retryDescription()" [disabled]="retrying" class="retry-btn">
+              <mat-spinner *ngIf="retrying" diameter="16" class="btn-spinner"></mat-spinner>
+              <mat-icon *ngIf="!retrying">refresh</mat-icon>
+              {{ retrying ? 'Retrying…' : 'Retry' }}
+            </button>
+          </div>
+
+          <div *ngIf="species.careOverview" class="info-block">
+            <h2 class="info-heading">Care overview</h2>
+            <p class="info-text">{{ species.careOverview }}</p>
+          </div>
+
+          <app-model-usage-badge
+            *ngIf="species.descriptionStatus === 'READY' && species.description"
+            [reasoningModel]="species.enrichmentModel"
+            prefix="Enriched using"
+          ></app-model-usage-badge>
+
+          <!-- Informational only -- plantId=null hides each card's action row (no reminders/
+               treatments at the species level), same as the unsaved-preview use of these cards. -->
+          <div *ngIf="species.careCards && species.careCards.length" class="info-block">
+            <h2 class="info-heading">How to care for it</h2>
+            <div class="care-cards-grid">
+              <app-care-card
+                *ngFor="let card of species.careCards"
+                [card]="card"
+                [plantId]="null"
+              ></app-care-card>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Plants tab -->
+      <mat-tab label="Plants">
+        <div class="tab-content plants-content">
+
+          <div *ngIf="plantsLoading" class="plants-loading">
+            <mat-spinner diameter="36"></mat-spinner>
+          </div>
+
+          <ng-container *ngIf="!plantsLoading">
+            <div *ngIf="plants.length === 0" class="empty-plants-state">
+              <mat-icon class="empty-icon">local_florist</mat-icon>
+              <p class="empty-sub">You don't have a plant of this species yet.</p>
+              <button mat-raised-button color="primary" (click)="openAddPlantDialog()" class="add-plant-btn">
+                <mat-icon>add</mat-icon>
+                Add plant of this species
+              </button>
+            </div>
+
+            <ng-container *ngIf="plants.length > 0">
+              <div class="plants-list">
+                <app-species-plant-row
+                  *ngFor="let plant of plants"
+                  [plant]="plant"
+                ></app-species-plant-row>
+              </div>
+              <button mat-raised-button color="primary" (click)="openAddPlantDialog()" class="add-plant-btn">
+                <mat-icon>add</mat-icon>
+                Add plant of this species
+              </button>
+            </ng-container>
+          </ng-container>
+
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+
+  </ng-container>
+
+</div>

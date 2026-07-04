@@ -16,6 +16,12 @@ spring:
   jpa:
     open-in-view: false
 
+  # Photo uploads — phone cameras produce 3-10MB images
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+
   # Jackson: ISO-8601 dates, omit null fields globally
   jackson:
     serialization:
@@ -50,6 +56,13 @@ logging:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+# ──── Sentry ──────────────────────────────────────────────────────────────────
+# Empty DSN disables Sentry. Set SENTRY_DSN in production environment.
+sentry:
+  dsn: ${SENTRY_DSN:}
+  traces-sample-rate: 0.1
+  environment: ${SPRING_PROFILES_ACTIVE:dev}
 
 # ──── SpringDoc / Swagger ─────────────────────────────────────────────────────
 springdoc:

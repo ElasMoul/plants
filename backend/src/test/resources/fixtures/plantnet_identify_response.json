@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "score": 0.92,
+      "species": {
+        "scientificNameWithoutAuthor": "Monstera deliciosa",
+        "commonNames": ["Swiss cheese plant"],
+        "genus": { "scientificNameWithoutAuthor": "Monstera" },
+        "family": { "scientificNameWithoutAuthor": "Araceae" }
+      },
+      "gbif": { "id": "2684241" },
+      "powo": { "id": "urn:lsid:ipni.org:names:15786-2" },
+      "iucn": { "id": "56446", "category": "LC" },
+      "images": [
+        {
+          "url": {
+            "s": "https://bs.plantnet.org/image/s/abc123.jpg",
+            "m": "https://bs.plantnet.org/image/m/abc123.jpg"
+          },
+          "author": "Jane Doe",
+          "license": "cc-by-sa",
+          "citation": "Jane Doe / PlantNet"
+        }
+      ]
+    },
+    {
+      "score": 0.05,
+      "species": {
+        "scientificNameWithoutAuthor": "Monstera adansonii",
+        "commonNames": ["Monkey leaf"],
+        "genus": { "scientificNameWithoutAuthor": "Monstera" },
+        "family": { "scientificNameWithoutAuthor": "Araceae" }
+      }
+    }
+  ],
+  "bestMatch": "Monstera deliciosa",
+  "switchToProject": null,
+  "predictedOrgans": [
+    { "organ": "leaf", "score": 0.87 },
+    { "organ": "habit", "score": 0.09 }
+  ],
+  "version": "2024-07-09T21:00:00.315491",
+  "remainingIdentificationRequests": 498
+}

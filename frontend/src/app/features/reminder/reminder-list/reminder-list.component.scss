@@ -1,0 +1,281 @@
+.page-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 100px;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px 100px;
+  }
+}
+
+.page-title {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin: 0 0 28px;
+}
+
+// ── Skeleton ──────────────────────────────────────────────────
+.skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-secondary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+
+  &.short { width: 55%; }
+  &.long  { width: 80%; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+// ── Day filter note ──────────────────────────────────────────
+.filter-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: -8px 0 16px;
+
+  strong {
+    color: var(--color-text-primary);
+  }
+}
+
+.filter-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+// ── Empty state ──────────────────────────────────────────────
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 16px;
+  gap: 6px;
+
+  h2 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    margin: 0;
+    max-width: 280px;
+  }
+}
+
+.empty-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: var(--color-primary-light);
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+
+// ── Reminder card ────────────────────────────────────────────
+.reminder-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &.overdue {
+    border-left-color: var(--color-error);
+  }
+}
+
+.reminder-photo {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.care-icon-wrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--color-primary-light);
+  }
+}
+
+.reminder-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-plant {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.reminder-detail {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.treatment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  vertical-align: middle;
+
+  &:hover {
+    background: var(--color-success);
+  }
+
+  .chip-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    color: var(--color-primary-light);
+  }
+}
+
+.check-toggle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-secondary);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-success);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  // Permanently completed (one-time/treatment-step reminder) — distinct from the
+  // generic dimmed :disabled look used for the brief in-flight state.
+  &.done {
+    opacity: 1;
+    border-color: var(--color-success);
+    background: var(--color-success);
+
+    mat-icon {
+      color: var(--color-surface);
+    }
+  }
+}
+
+.reminder-card.done {
+  opacity: 0.7;
+}
+
+// ── FAB ──────────────────────────────────────────────────────
+.add-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  background-color: var(--color-primary) !important;
+
+  @media (min-width: 769px) {
+    bottom: 24px;
+  }
+}
