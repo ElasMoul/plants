@@ -53,12 +53,21 @@ the platform, unrelated to `ai-gateway`.
 ## AI provider keys — current state vs. the gateway swap
 
 Per the owner's ruling (`spec-plantpal-room.md` §2-1, §5-2): the gateway swap
-(PlantPal's `AiProvider` port pointing at `ai-gateway`'s `ai.request` instead of
-calling providers directly) is **dev/local-only until profile-gating lands in
-Chunk 3**. **Production keeps calling providers directly with the keys above —
-prod does not route through `ai-gateway` yet.** This document will be updated
-when the swap ships; nothing in this chunk changes AI call behavior in any
-environment.
+(Chunk 3, shipped) is **dev/local-only, profile-gated**. `platform.gateway.enabled`
+defaults to `false` (`application.yml`) and is only set `true` in
+`application-dev.yml`. **Production keeps calling providers directly with the
+keys above — Railway's prod env simply never sets the flag, and `ai-gateway` is
+never publicly exposed, so prod cannot reach it even if it wanted to.** All of
+the provider keys above remain required in every environment: the gateway swap
+is additive (an `if (platform.gateway.enabled)` branch at each in-scope call
+site), not a replacement — the direct-client path and its keys are unchanged.
+
+New env vars (`backend/.env`):
+
+| Variable | Required | Description |
+|---|---|---|
+| `PLATFORM_GATEWAY_ENABLED` | No | Overrides `platform.gateway.enabled` (default `false`, `true` in dev profile) |
+| `PLATFORM_GATEWAY_URL` | No | ai-gateway base URL (default `http://localhost:8085`) |
 
 ## Consuming `contracts`
 
@@ -66,13 +75,13 @@ Per D031, the Java binding has no package registry. Before building against a
 pinned `contracts` version:
 
 ```bash
-git -C ../contracts checkout v0.3.0
+git -C ../contracts checkout v0.4.0
 mvn install -f ../contracts/gen/java/pom.xml
 ```
 
-Not required for this chunk's changes (no code was touched), but will be once
-the `app.manifest`/`app.health` contracts are consumed programmatically rather
-than declared statically.
+Required as of Chunk 3: `backend/pom.xml` now depends on `io.platform:contracts:0.4.0`
+for the `ai.request`/`ai.response`/`ai.blocked` Java types used by
+`com.plantpal.gateway.GatewayClient`.
 
 ## Health check
 

@@ -18,11 +18,13 @@ infra:
   - redis
   - kafka
 contracts:
-  pin: v0.3.0
+  pin: v0.4.0
   binding: java
   used:
     - app.health
     - app.manifest
+    - ai.request
+    - ai.response
 ---
 
 # plantpal — Hexagon Descriptor
@@ -33,10 +35,10 @@ contracts:
 | Type | app hexagon |
 | Class | low-stakes (D010) |
 | Decisions | D006 (owner-first; PlantPal is tenant zero), D009 (loose coupling — PlantPal is standalone and pre-existing, runs with the platform entirely absent), D010 (app classes — low-stakes posture), D022 (all AI calls eventually flow through ai-gateway — not yet wired, see below), D027 (self-declared tiering; plant count as a ceiling — enforcement lives in Treasury, not here) |
-| Contracts pinned | `contracts` v0.3.0 (Java binding) |
+| Contracts pinned | `contracts` v0.4.0 (Java binding) |
 | Status | active — PlantPal is a real, already-deployed app (Railway + Vercel), unlike a Room scaffolded from nothing |
 
-> **Chunk 0 note:** this is the clone + Room-files chunk only (per `spec-plantpal-room.md` §6, Phase A). No application code changed. The gateway swap (`ai-gateway` dependency, `ai.request`/`ai.response` in `contracts.used`) is Chunk 3 — PlantPal still calls its AI providers (Ollama, GitHub Models, PlantNet, optional Anthropic) directly today, per `backend/.env.example`.
+> **Chunk 3 note (this chunk):** additive gateway swap, profile-gated behind `platform.gateway.enabled` (default `false`; `true` only in `application-dev.yml`). New `com.plantpal.gateway.GatewayClient` port routes the in-scope AI calls through `ai-gateway`'s `ai.request`/`ai.response` when the flag is on; every call site keeps its pre-existing direct-client path unchanged when the flag is off (which is always, in prod — Railway never sets the flag, and `ai-gateway` is never publicly exposed). **Not** a full hexagonal refactor: `VisionModelPreference.GITHUB_GPT4O`/`GITHUB_GPT41` (ai-gateway's `OpenAiAdapter` is text-only — routing them would silently drop the photo) and `PlantNetDiseaseClient`/PlantNet's non-identify endpoints stay direct always, flag or no flag. Full in-scope-vs-always-direct list: `PROGRESS.md`.
 
 ## Inbound ports (driving)
 
@@ -51,13 +53,14 @@ contracts:
 | Port | Callee | Contract | Sync/async |
 |---|---|---|---|
 | Registration | control-plane | `app.manifest` | static record this phase (`app-manifest.yaml`) — see below |
+| ai-gateway (`com.plantpal.gateway.GatewayClient`, `POST /ai/request`) | ai-gateway | `ai.request`/`ai.response` | sync, **profile-gated** (`platform.gateway.enabled`, dev-only) — the in-scope calls only, see PROGRESS.md |
 | (existing, not platform-facing) | Postgres, Redis, Kafka | none — PlantPal's own datastore/cache/async pipeline | — |
-| (existing, not platform-facing) | Ollama / GitHub Models / PlantNet / Anthropic | none — direct provider calls, pre-gateway | sync/async |
+| (existing, not platform-facing, always direct regardless of flag) | Ollama (vision) / GitHub Models (`GITHUB_GPT4O`/`GITHUB_GPT41` vision, `PLANTNET`'s non-identify endpoints) / PlantNetDiseaseClient | none — direct provider calls | sync/async |
 
 ## Dependencies
 
-- `contracts` (pinned `v0.3.0`, Java binding) — `app.health` and `app.manifest` only, this chunk.
-- No `ai-gateway` dependency yet. That lands in Chunk 3 (the gateway swap), per `spec-plantpal-room.md` §2-1 and §6.
+- `contracts` (pinned `v0.4.0`, Java binding) — `app.health`, `app.manifest`, and now `ai.request`/`ai.response` (Chunk 3).
+- `io.platform:contracts:0.4.0` added to `backend/pom.xml`; local `mvn install` of the `contracts` checkout required before building (see DEPLOYMENT.md).
 
 ## Key invariants
 
