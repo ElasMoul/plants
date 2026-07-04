@@ -53,6 +53,14 @@ public class OllamaClient {
   }
 
   /**
+   * Configured model string for {@code *ModelPreference.OLLAMA_GEMMA3} (D022 gateway swap —
+   * modelHint).
+   */
+  public String getModel() {
+    return model;
+  }
+
+  /**
    * Sends a single-turn prompt to Ollama and returns the assistant reply.
    *
    * @param userPrompt the prompt to send

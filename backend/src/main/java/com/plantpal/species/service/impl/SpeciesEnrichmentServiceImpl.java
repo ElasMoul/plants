@@ -1,6 +1,8 @@
 package com.plantpal.species.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.gateway.GatewayClient;
+import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.CareCardDto;
@@ -10,6 +12,7 @@ import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.user.entity.AiModelPreference;
 import com.plantpal.user.entity.ReasoningModelPreference;
+import io.platform.contracts.aigateway.AiRequest;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -35,16 +38,22 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
   private final ObjectMapper objectMapper;
+  private final GatewayClient gatewayClient;
+  private final GatewayProperties gatewayProperties;
 
   public SpeciesEnrichmentServiceImpl(
       SpeciesRepository speciesRepository,
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      GatewayClient gatewayClient,
+      GatewayProperties gatewayProperties) {
     this.speciesRepository = speciesRepository;
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
     this.objectMapper = objectMapper;
+    this.gatewayClient = gatewayClient;
+    this.gatewayProperties = gatewayProperties;
   }
 
   @Override
@@ -59,12 +68,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
 
     boolean useOllama = preference == AiModelPreference.OLLAMA_LLAVA;
     try {
-      String raw =
-          useOllama
-              ? ollamaClient.generateSpeciesEnrichment(
-                  species.getScientificName(), species.getCommonName())
-              : deepSeekClient.generateSpeciesEnrichment(
-                  species.getScientificName(), species.getCommonName());
+      String raw = generateEnrichment(species, useOllama);
       SpeciesEnrichmentJson parsed = objectMapper.readValue(raw, SpeciesEnrichmentJson.class);
 
       species.setDescription(parsed.getDescription());
@@ -90,6 +94,37 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       species.setDescriptionStatus(GenerationStatus.FAILED);
       speciesRepository.save(species);
     }
+  }
+
+  /**
+   * Gateway routing (D022, Chunk 3): both branches (Ollama vs DeepSeek) are in scope. Species
+   * enrichment is fire-and-forget and not tied to a triggering user (Species has no per-row
+   * ownership — see CLAUDE.md), so {@code userId="system"} is used for the required contracts field
+   * rather than threading a user id through {@link #enrich}.
+   */
+  private String generateEnrichment(Species species, boolean useOllama) {
+    if (gatewayProperties.enabled()) {
+      String userMessage =
+          "Scientific name: "
+              + species.getScientificName()
+              + (species.getCommonName() != null
+                  ? "\nCommon name: " + species.getCommonName()
+                  : "");
+      String modelHint = useOllama ? ollamaClient.getModel() : deepSeekClient.getModel();
+      AiRequest request =
+          new AiRequest()
+              .prompt(userMessage)
+              .modelHint(modelHint)
+              .appId("plantpal")
+              .userId("system")
+              .putContextItem("systemPrompt", DeepSeekClient.SPECIES_ENRICHMENT_SYSTEM_PROMPT);
+      return gatewayClient.request(request).getResult();
+    }
+    return useOllama
+        ? ollamaClient.generateSpeciesEnrichment(
+            species.getScientificName(), species.getCommonName())
+        : deepSeekClient.generateSpeciesEnrichment(
+            species.getScientificName(), species.getCommonName());
   }
 
   /**

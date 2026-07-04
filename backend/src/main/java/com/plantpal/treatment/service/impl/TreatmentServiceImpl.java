@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.gateway.GatewayClient;
+import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
@@ -69,6 +71,8 @@ public class TreatmentServiceImpl implements TreatmentService {
   private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
   private final Executor aiTaskExecutor;
+  private final GatewayClient gatewayClient;
+  private final GatewayProperties gatewayProperties;
 
   private final Map<Long, Bucket> aiBuckets = new ConcurrentHashMap<>();
 
@@ -82,7 +86,9 @@ public class TreatmentServiceImpl implements TreatmentService {
       AnthropicClient anthropicClient,
       UserRepository userRepository,
       ObjectMapper objectMapper,
-      @Qualifier("aiTaskExecutor") Executor aiTaskExecutor) {
+      @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
+      GatewayClient gatewayClient,
+      GatewayProperties gatewayProperties) {
     this.treatmentRepository = treatmentRepository;
     this.plantRepository = plantRepository;
     this.treatmentPlanService = treatmentPlanService;
@@ -93,6 +99,8 @@ public class TreatmentServiceImpl implements TreatmentService {
     this.userRepository = userRepository;
     this.objectMapper = objectMapper;
     this.aiTaskExecutor = aiTaskExecutor;
+    this.gatewayClient = gatewayClient;
+    this.gatewayProperties = gatewayProperties;
   }
 
   @Override
@@ -174,7 +182,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
     String species = plant.getSpecies() != null ? plant.getSpecies() : plant.getCommonName();
     ReasoningModelPreference preference = loadReasoningPreference(userId);
-    String raw = generateCureAdvice(preference, species, treatment.getDiseaseName());
+    String raw = generateCureAdvice(preference, species, treatment.getDiseaseName(), userId);
     ActionPlanDto actionPlan = ActionPlanValidator.normalize(parseActionPlan(raw));
 
     var plan =
@@ -338,7 +346,9 @@ public class TreatmentServiceImpl implements TreatmentService {
     String species = plant.getSpecies() != null ? plant.getSpecies() : plant.getCommonName();
     ReasoningModelPreference preference = loadReasoningPreference(userId);
     CompletableFuture.runAsync(
-        () -> generateAndSaveDiseaseDescription(treatmentId, preference, species, diseaseName),
+        () ->
+            generateAndSaveDiseaseDescription(
+                treatmentId, preference, species, diseaseName, userId),
         aiTaskExecutor);
   }
 
@@ -349,10 +359,16 @@ public class TreatmentServiceImpl implements TreatmentService {
    * descriptionStatus=FAILED when all attempts are exhausted (T9.B).
    */
   private void generateAndSaveDiseaseDescription(
-      Long treatmentId, ReasoningModelPreference preference, String species, String diseaseName) {
+      Long treatmentId,
+      ReasoningModelPreference preference,
+      String species,
+      String diseaseName,
+      Long userId) {
     try {
       saveDiseaseDescription(
-          treatmentId, generateDiseaseDescription(preference, species, diseaseName), preference);
+          treatmentId,
+          generateDiseaseDescription(preference, species, diseaseName, userId),
+          preference);
     } catch (RateLimitException e) {
       long waitSeconds =
           Math.min(
@@ -365,7 +381,9 @@ public class TreatmentServiceImpl implements TreatmentService {
       try {
         Thread.sleep(Duration.ofSeconds(waitSeconds));
         saveDiseaseDescription(
-            treatmentId, generateDiseaseDescription(preference, species, diseaseName), preference);
+            treatmentId,
+            generateDiseaseDescription(preference, species, diseaseName, userId),
+            preference);
       } catch (InterruptedException ie) {
         Thread.currentThread().interrupt();
         markDescriptionFailed(treatmentId);
@@ -417,7 +435,26 @@ public class TreatmentServiceImpl implements TreatmentService {
   }
 
   private String generateCureAdvice(
-      ReasoningModelPreference preference, String species, String diseaseName) {
+      ReasoningModelPreference preference, String species, String diseaseName, Long userId) {
+    // Gateway routing (D022): every ReasoningModelPreference is in scope for the gateway swap
+    // (Chunk 3) — unlike the vision preferences, none of them are excluded.
+    if (gatewayProperties.enabled()) {
+      String effectiveSpecies = species != null ? species : "Unknown plant";
+      String userMessage =
+          "My "
+              + effectiveSpecies
+              + " has the following issue: "
+              + diseaseName
+              + ". Provide a concise cure procedure in 3-5 numbered steps.";
+      return gatewayClient
+          .request(
+              gatewayRequest(
+                  userMessage,
+                  modelHintForReasoning(preference),
+                  DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT,
+                  userId))
+          .getResult();
+    }
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, diseaseName);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, diseaseName);
@@ -428,7 +465,19 @@ public class TreatmentServiceImpl implements TreatmentService {
   }
 
   private String generateDiseaseDescription(
-      ReasoningModelPreference preference, String species, String diseaseName) {
+      ReasoningModelPreference preference, String species, String diseaseName, Long userId) {
+    if (gatewayProperties.enabled()) {
+      String effectiveSpecies = species != null ? species : "Unknown plant";
+      String userMessage = "Plant: " + effectiveSpecies + "\nDisease/pest issue: " + diseaseName;
+      return gatewayClient
+          .request(
+              gatewayRequest(
+                  userMessage,
+                  modelHintForReasoning(preference),
+                  DeepSeekClient.DISEASE_DESCRIPTION_SYSTEM_PROMPT,
+                  userId))
+          .getResult();
+    }
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
           ollamaClient.generateDiseaseDescription(species, diseaseName);
@@ -438,6 +487,27 @@ public class TreatmentServiceImpl implements TreatmentService {
       case GITHUB_GPT41_MINI ->
           deepSeekClient.generateDiseaseDescriptionViaGpt41Mini(species, diseaseName);
       case DEEPSEEK_R1 -> deepSeekClient.generateDiseaseDescription(species, diseaseName);
+    };
+  }
+
+  private io.platform.contracts.aigateway.AiRequest gatewayRequest(
+      String userMessage, String modelHint, String systemPrompt, Long userId) {
+    return new io.platform.contracts.aigateway.AiRequest()
+        .prompt(userMessage)
+        .modelHint(modelHint)
+        .appId("plantpal")
+        .userId(String.valueOf(userId))
+        .putContextItem("systemPrompt", systemPrompt);
+  }
+
+  /** Configured model string per reasoning preference, for the gateway's {@code modelHint}. */
+  private String modelHintForReasoning(ReasoningModelPreference preference) {
+    return switch (preference) {
+      case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.getModel();
+      case ANTHROPIC_CLAUDE -> anthropicClient.getDefaultModel();
+      case GITHUB_O4_MINI -> deepSeekClient.getO4MiniModel();
+      case GITHUB_GPT41_MINI -> deepSeekClient.getGpt41MiniModel();
+      case DEEPSEEK_R1 -> deepSeekClient.getModel();
     };
   }
 
