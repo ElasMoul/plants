@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +45,7 @@ class ChatServiceImplTest {
   @Mock private PlantRepository plantRepository;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private TreatmentRepository treatmentRepository;
+  @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
   private ChatServiceImpl chatService;
 
@@ -53,7 +55,20 @@ class ChatServiceImplTest {
   void setUp() {
     chatService =
         new ChatServiceImpl(
-            ollamaClient, plantRepository, identificationRepository, treatmentRepository);
+            ollamaClient,
+            plantRepository,
+            identificationRepository,
+            treatmentRepository,
+            gatewayClient,
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+  }
+
+  /** Flips the gateway flag on for a single test. */
+  private void enableGateway() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        chatService,
+        "gatewayProperties",
+        new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
   }
 
   private ChatRequest request(String message) {
@@ -286,6 +301,67 @@ class ChatServiceImplTest {
 
       // 30 legitimate calls went through; the 31st was rejected before reaching ollamaClient.
       verify(ollamaClient, org.mockito.Mockito.times(30)).chatStream(any(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("gateway routing (D022 gateway swap, flag on) — Chunk 3")
+  class GatewayRouting {
+
+    @BeforeEach
+    void stubEmptyGarden() {
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+    }
+
+    private io.platform.contracts.aigateway.AiResponse gatewayResponse(String result) {
+      io.platform.contracts.aigateway.AiResponse response =
+          new io.platform.contracts.aigateway.AiResponse();
+      response.setResult(result);
+      response.setModel("gemma3:4b");
+      response.setProvider("ollama");
+      response.setTokensIn(1);
+      response.setTokensOut(1);
+      response.setComputedCost(java.math.BigDecimal.ZERO);
+      return response;
+    }
+
+    @Test
+    @DisplayName("chat() should route through GatewayClient when the flag is on")
+    void chatShouldRouteThroughGateway() {
+      enableGateway();
+      when(ollamaClient.getModel()).thenReturn("gemma3:4b");
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("Your Monstera looks happy!"));
+
+      ChatResponse response = chatService.chat(request("How is my Monstera doing?"), USER_ID);
+
+      assertThat(response.getReply()).isEqualTo("Your Monstera looks happy!");
+      verify(ollamaClient, never()).chat(any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getAppId()).isEqualTo("plantpal");
+      assertThat(sent.getModelHint()).isEqualTo("gemma3:4b");
+      assertThat(sent.getPrompt()).contains("How is my Monstera doing?");
+      assertThat((String) sent.getContext().get("systemPrompt")).contains("You are PlantPal");
+    }
+
+    @Test
+    @DisplayName(
+        "chatStream() should call onToken exactly once with the full result when the flag is on"
+            + " (buffered gateway, no SSE passthrough yet)")
+    void chatStreamShouldCallOnTokenOnceThroughGateway() {
+      enableGateway();
+      when(ollamaClient.getModel()).thenReturn("gemma3:4b");
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse("Water it once a week."));
+
+      List<String> tokens = new java.util.ArrayList<>();
+      chatService.chatStream(request("How often should I water?"), USER_ID, tokens::add);
+
+      assertThat(tokens).containsExactly("Water it once a week.");
+      verify(ollamaClient, never()).chatStream(any(), any());
     }
   }
 }
