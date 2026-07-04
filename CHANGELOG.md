@@ -22,3 +22,11 @@
   `contracts` pin to `v0.5.0` (adds the `DimensionEvent` schema). New
   `com.plantpal.plant.config.PlantKafkaTopicConfig` (topic bean, mirrors
   `identification.config.KafkaTopicConfig`'s pattern).
+
+### Fixed
+- Gateway-routed PLANTNET identification (`IdentificationServiceImpl.runIdentification`)
+  now attaches `organs`/`project`/`lang` to the `AiRequest` context so
+  ai-gateway's `PlantNetAdapter` receives them — previously only the image made
+  the trip on the gateway path, silently dropping the user's PlantNet flora/lang
+  preference and any explicit `organs` list. Direct (non-gateway) path was
+  already correct and unaffected.

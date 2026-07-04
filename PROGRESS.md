@@ -4,6 +4,46 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## PlantNet gateway request: attach organs/project/lang to context (companion to ai-gateway PlantNetAdapter fix)
+
+**Branch:** `platform-integration`.
+
+### What shipped
+
+Closes backlog item 1 from Chunk 3 (above): `IdentificationServiceImpl.runIdentification`'s
+`PLANTNET` case now attaches `organs`/`project`/`lang` onto the shared
+`identificationGatewayRequest(...)` `AiRequest` via three `.putContextItem(...)` calls
+(context keys fixed by the ai-gateway `PlantNetAdapter` fix, not chosen here) before sending
+through `GatewayClient`. Previously only the image made the trip on the gateway path — the
+per-user PlantNet flora/lang preference (T8.4) and any `organs` hint were silently dropped.
+The shared `identificationGatewayRequest` helper itself is untouched (also used by the
+`ANTHROPIC_CLAUDE` case, where organs/project/lang are meaningless). The stale comment
+documenting the old gap was replaced.
+
+### Files touched
+
+**Modified (main):**
+- `backend/src/main/java/com/plantpal/identification/service/impl/IdentificationServiceImpl.java`
+  (`runIdentification`'s `PLANTNET` case)
+
+**Modified (test):**
+- `backend/src/test/java/com/plantpal/identification/unit/IdentificationServiceImplTest.java`
+  (`GatewayRouting` nested class: extended
+  `shouldRoutePlantNetIdentificationThroughGateway` with context assertions for the default
+  case — `organs=["auto"]`, `project="all"`, `lang="en"` per `User`'s entity defaults when
+  no explicit preference is set; added
+  `shouldAttachExplicitPlantNetContextThroughGateway` proving explicit
+  organs/plantnetProject/plantnetLang pass through end-to-end)
+
+**Docs:** `CHANGELOG.md`, this file.
+
+### Test counts
+
+- Backend unit suite (`mvn test`): **243 tests, 0 failures** (was 241 before the 2 new
+  assertions-bearing tests in this chunk — one test extended in place, one new test added).
+
+---
+
 ## Dimension-event emission — plant_count metering (D024/D027)
 
 **Branch:** `platform-integration` (same branch Chunks 3/4a landed on). Not pushed yet

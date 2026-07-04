@@ -1402,17 +1402,16 @@ public class IdentificationServiceImpl implements IdentificationService {
       Long userId) {
     return switch (preference) {
       case PLANTNET -> {
-        // Gateway routing (D022): ai-gateway's PlantNetAdapter doesn't read organs/project/lang
-        // from the request (Chunk 3 scoping note, carried into PROGRESS.md) — only the image
-        // itself makes the trip. Direct path below is unaffected and keeps full fidelity.
+        // Gateway routing (D022): organs/project/lang are attached to the gateway request's
+        // context so ai-gateway's PlantNetAdapter can forward them to PlantNet, matching the
+        // direct-path fidelity below.
         if (gatewayProperties.enabled()) {
-          PlantNetResponse pnr =
-              parsePlantNetResponse(
-                  gatewayClient
-                      .request(
-                          identificationGatewayRequest(
-                              imageBytes, mediaType, "plantnet", userId, userContext))
-                      .getResult());
+          AiRequest request =
+              identificationGatewayRequest(imageBytes, mediaType, "plantnet", userId, userContext)
+                  .putContextItem("organs", organs != null ? organs : List.of("auto"))
+                  .putContextItem("project", plantNetProject)
+                  .putContextItem("lang", plantNetLang);
+          PlantNetResponse pnr = parsePlantNetResponse(gatewayClient.request(request).getResult());
           yield new IdentificationOutcome(
               plantNetToRawResult(pnr), VisionModelPreference.PLANTNET.name(), pnr);
         }

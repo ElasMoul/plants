@@ -1584,6 +1584,58 @@ class IdentificationServiceImplTest {
       assertThat(sent.getAppId()).isEqualTo("plantpal");
       assertThat(sent.getModelHint()).isEqualTo("plantnet");
       assertThat(sent.getMedia()).hasSize(1);
+      assertThat(sent.getContext())
+          .containsEntry("organs", List.of("auto"))
+          .containsEntry("project", "all")
+          .containsEntry("lang", "en");
+    }
+
+    @Test
+    @DisplayName(
+        "should attach explicit organs/project/lang to gateway request for PLANTNET identification")
+    void shouldAttachExplicitPlantNetContextThroughGateway() throws Exception {
+      enableGateway();
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.PLANTNET)
+                      .plantnetProject("k-world-flora")
+                      .plantnetLang("fr")
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      String plantNetRawJson =
+          """
+          {"query":{},"language":"en","preferedReferential":"","switchToProject":"",\
+          "bestMatch":"Monstera deliciosa","results":[],"remainingIdentificationRequests":100}
+          """;
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(plantNetRawJson));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(images, List.of("leaf", "flower"), null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getContext())
+          .containsEntry("organs", List.of("leaf", "flower"))
+          .containsEntry("project", "k-world-flora")
+          .containsEntry("lang", "fr");
     }
 
     @Test
