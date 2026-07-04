@@ -5,6 +5,7 @@ import static com.plantpal.testdata.PlantTestDataBuilder.aPlant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.repository.IdentificationRepository;
+import com.plantpal.plant.config.PlantKafkaTopicConfig;
 import com.plantpal.plant.dto.PlantResponse;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
@@ -25,6 +27,7 @@ import com.plantpal.plant.service.impl.PlantServiceImpl;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import io.platform.contracts.events.DimensionEvent;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +42,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlantService — Unit Tests")
@@ -48,6 +52,7 @@ class PlantServiceTest {
   @Mock private PlantMapper plantMapper;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private ReminderRepository reminderRepository;
+  @Mock private KafkaTemplate<String, Object> kafkaTemplate;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PlantServiceImpl plantService;
@@ -78,6 +83,30 @@ class PlantServiceTest {
       verify(plantRepository).save(captor.capture());
       assertThat(captor.getValue().getStatus()).isEqualTo(PlantStatus.ACTIVE);
       assertThat(captor.getValue().getUserId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("should emit a dimension.event with delta +1 for plant_count")
+    void shouldEmitDimensionEventOnCreate() {
+      // Given
+      var request = aCreatePlantRequest().withNickname("My Monstera").build();
+      var savedPlant = aPlant().withId(10L).withUserId(1L).build();
+
+      when(plantMapper.toEntity(request)).thenReturn(aPlant().build());
+      when(plantRepository.save(any(Plant.class))).thenReturn(savedPlant);
+      when(plantMapper.toResponse(savedPlant)).thenReturn(PlantResponse.builder().id(10L).build());
+
+      // When
+      plantService.createPlant(request, 1L);
+
+      // Then
+      ArgumentCaptor<DimensionEvent> captor = ArgumentCaptor.forClass(DimensionEvent.class);
+      verify(kafkaTemplate).send(eq(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC), captor.capture());
+      DimensionEvent event = captor.getValue();
+      assertThat(event.getAppId()).isEqualTo("plantpal");
+      assertThat(event.getUserId()).isEqualTo("1");
+      assertThat(event.getDimensionKey()).isEqualTo("plant_count");
+      assertThat(event.getDelta()).isEqualTo(1);
     }
   }
 
@@ -172,6 +201,43 @@ class PlantServiceTest {
       assertThat(watering.isEnabled()).isFalse();
       assertThat(fertilizing.isEnabled()).isFalse();
       verify(reminderRepository).saveAll(java.util.List.of(watering, fertilizing));
+    }
+
+    @Test
+    @DisplayName("should emit a dimension.event with delta -1 for plant_count")
+    void shouldEmitDimensionEventOnArchive() {
+      // Given
+      var plant = aPlant().withId(1L).withUserId(1L).withStatus(PlantStatus.ACTIVE).build();
+      when(plantRepository.findByIdAndUserIdAndStatus(1L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.of(plant));
+      when(plantRepository.save(any(Plant.class))).thenReturn(plant);
+
+      // When
+      plantService.archivePlant(1L, 1L);
+
+      // Then
+      ArgumentCaptor<DimensionEvent> captor = ArgumentCaptor.forClass(DimensionEvent.class);
+      verify(kafkaTemplate).send(eq(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC), captor.capture());
+      DimensionEvent event = captor.getValue();
+      assertThat(event.getAppId()).isEqualTo("plantpal");
+      assertThat(event.getUserId()).isEqualTo("1");
+      assertThat(event.getDimensionKey()).isEqualTo("plant_count");
+      assertThat(event.getDelta()).isEqualTo(-1);
+    }
+
+    @Test
+    @DisplayName("should not emit a dimension.event when trying to archive a plant not owned")
+    void shouldNotEmitDimensionEventWhenNotFound() {
+      // Given
+      when(plantRepository.findByIdAndUserIdAndStatus(99L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.empty());
+
+      // When / Then — findOwnedPlant only matches ACTIVE rows, so an already-archived (or
+      // nonexistent/unowned) plant can never reach the emission and can't double-emit.
+      assertThatThrownBy(() -> plantService.archivePlant(99L, 1L))
+          .isInstanceOf(ResourceNotFoundException.class);
+
+      verify(kafkaTemplate, never()).send(any(), any());
     }
   }
 

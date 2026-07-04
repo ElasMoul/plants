@@ -16,3 +16,9 @@
   instructions (untouched).
   No application code changed — repo cloned as-is at `dev` (post PHASE10 merge)
   onto a new `platform-integration` branch.
+- Dimension-event emission (D024/D027): `PlantServiceImpl` publishes a
+  `dimension.event` (`plant_count`, delta `+1`/`-1`) to Kafka topic `dimension.events`
+  on plant create and archive, for Treasury's business-dimension metering. Bumped
+  `contracts` pin to `v0.5.0` (adds the `DimensionEvent` schema). New
+  `com.plantpal.plant.config.PlantKafkaTopicConfig` (topic bean, mirrors
+  `identification.config.KafkaTopicConfig`'s pattern).

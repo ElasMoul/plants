@@ -4,6 +4,83 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## Dimension-event emission — plant_count metering (D024/D027)
+
+**Branch:** `platform-integration` (same branch Chunks 3/4a landed on). Not pushed yet
+(pushing to origin at the end of this session, per instructions), no PR.
+
+### What shipped
+
+- Bumped `contracts` pin `0.4.0` → `0.5.0` in `backend/pom.xml` (adds the
+  `io.platform.contracts.events.DimensionEvent` schema). Built via
+  `mvn install -f ../contracts/gen/java/pom.xml` against the `contracts` repo checked out
+  at tag `v0.5.0` (checkout done in the sibling `contracts` repo, not committed from here —
+  per platform/CLAUDE.md's rule against fixing/touching sibling repos from this session).
+- New `com.plantpal.plant.config.PlantKafkaTopicConfig` — `DIMENSION_EVENT_TOPIC =
+  "dimension.events"` constant + `NewTopic` bean (3 partitions, replica 1), mirroring
+  `identification.config.KafkaTopicConfig`'s existing pattern. Topic name is a hard
+  contract with Treasury's consumer — not independently chosen.
+- `PlantServiceImpl` gained a `KafkaTemplate<String, Object>` constructor param (existing
+  bean from `shared.config.KafkaConfig`, same pattern as
+  `IdentificationServiceImpl`/`ChatServiceImpl`/`TreatmentServiceImpl`). Emits a
+  `DimensionEvent` (`appId="plantpal"`, `dimensionKey="plant_count"`) on:
+  - `createPlant()` — delta `+1`, after `plantRepository.save()`.
+  - `archivePlant()` — delta `-1`, after the ACTIVE→ARCHIVED save.
+- **No double-emit guard added.** Checked: `archivePlant()`'s `findOwnedPlant()` only
+  matches rows with `status = ACTIVE` (`findByIdAndUserIdAndStatus(id, userId,
+  PlantStatus.ACTIVE)`), so an already-archived plant throws `ResourceNotFoundException`
+  before reaching the emission — re-archiving an ARCHIVED→ARCHIVED no-op is not reachable
+  through this method today. A guard would be dead code; documented inline instead
+  (comment above `archivePlant()`) plus a unit test proving the not-found path never calls
+  `kafkaTemplate.send()`, so if `findOwnedPlant` ever changes to allow re-archiving, this
+  test starts failing and flags the gap.
+
+### A real bug found and fixed along the way (test-infra, not app logic)
+
+Running `mvn verify` after the above surfaced a genuine `PlantControllerIT` failure —
+**not** caused by the new production code being wrong, but by the *existing* integration
+test never having mocked `KafkaTemplate`. With a real (unreachable) Kafka broker in the
+Testcontainers environment, `KafkaProducer.send()` blocks synchronously for
+`max.block.ms` (default 60s) fetching metadata for a topic it's never seen before, then
+throws `TimeoutException` **synchronously from the send() call itself** (not via the
+async callback) — which propagated straight through `emitDimensionEvent()` into a 500.
+`IdentificationControllerIT` already had `@MockBean private KafkaTemplate<String,
+Object> kafkaTemplate;` for exactly this reason; `PlantControllerIT` didn't, because
+`PlantServiceImpl` never touched Kafka before this chunk. Added the same `@MockBean` to
+`PlantControllerIT`. Flagging this in case another IT class adds a first-ever Kafka
+producer call in the future — the failure mode (slow test, then a bare 500 with a Kafka
+`TimeoutException` in the cause chain) isn't obviously Kafka-related from the assertion
+failure alone.
+
+### Files touched
+
+**New:**
+- `backend/src/main/java/com/plantpal/plant/config/PlantKafkaTopicConfig.java`
+
+**Modified (main):**
+- `backend/pom.xml` (contracts `0.4.0` → `0.5.0`)
+- `backend/src/main/java/com/plantpal/plant/service/impl/PlantServiceImpl.java`
+  (`KafkaTemplate` constructor param, `emitDimensionEvent()`, calls in `createPlant()`/
+  `archivePlant()`)
+
+**Modified (test):**
+- `backend/src/test/java/com/plantpal/plant/unit/PlantServiceTest.java` (`@Mock
+  KafkaTemplate` field; new tests: emit +1 on create, emit -1 on archive, no emit on
+  not-found archive)
+- `backend/src/test/java/com/plantpal/plant/integration/PlantControllerIT.java`
+  (`@MockBean KafkaTemplate` — bug fix, see above)
+
+**Docs:** `HEXAGON.md` (contracts pin, D024 added to decisions list, new outbound Kafka
+producer port row), `CHANGELOG.md`, this file.
+
+### Test counts
+
+- Backend full suite (`mvn clean verify`, unit + integration/Testcontainers): **273
+  tests, 0 failures, 0 errors** after this change (includes the `PlantControllerIT` fix
+  above — without it, 2 of 273 fail/error).
+
+---
+
 ## Chunk 3 — Gateway swap (thin GatewayClient behind a config flag)
 
 **Branch:** `platform-integration`. Not pushed, no PR (per chunk scope).
