@@ -34,8 +34,16 @@
     <!-- Error -->
     <div class="panel-error" *ngIf="adviceError">
       <mat-icon color="warn">error_outline</mat-icon>
-      <span>Could not load advice, please try again</span>
-      <button mat-button color="primary" type="button" (click)="askForCure()">Retry</button>
+      <span>{{ adviceErrorMessage || 'Could not load advice, please try again' }}</span>
+      <button
+        *ngIf="!adviceErrorBlocked"
+        mat-button
+        color="primary"
+        type="button"
+        (click)="askForCure()"
+      >
+        Retry
+      </button>
     </div>
 
     <!-- Advice result -->
