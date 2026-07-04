@@ -71,3 +71,11 @@ springdoc:
     try-it-out-enabled: true
   api-docs:
     path: /v3/api-docs
+
+# ──── Platform ai-gateway (D022 gateway swap, off by default) ───────────────
+# Never set true in prod — ai-gateway is never publicly exposed and Railway's prod
+# env simply doesn't set this flag. See DEPLOYMENT.md.
+platform:
+  gateway:
+    enabled: ${PLATFORM_GATEWAY_ENABLED:false}
+    url: ${PLATFORM_GATEWAY_URL:http://localhost:8085}
