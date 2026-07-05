@@ -30,3 +30,22 @@
   the trip on the gateway path, silently dropping the user's PlantNet flora/lang
   preference and any explicit `organs` list. Direct (non-gateway) path was
   already correct and unaffected.
+- `deploy.yml`'s `build-backend` job ran a plain `mvn package`, which fails on a
+  GitHub runner since `backend/pom.xml` unconditionally depends on
+  `io.platform:contracts:0.5.0` (no registry, built from a pinned tag per D031).
+  Replicated `ci.yml`'s three contracts steps (read pinned version from the pom,
+  checkout `contracts` at that tag, `mvn install` its Java bindings) before the
+  Package step, so the two workflows can never disagree with the pom. Workflow
+  stays disabled (owner re-enables after review) — only the build steps changed.
+
+### Changed
+- Gateway swap is now gated by a **Spring profile** (`platform`,
+  `application-platform.yml`) instead of a boolean default living inside
+  `application.yml`/`application-dev.yml`. `platform.gateway.*` no longer
+  appears in either base file; `GatewayProperties` binds `enabled=false` via
+  `@DefaultValue` when the prefix is entirely absent, so the default/standalone
+  boot never reads a `platform.*` key (D009). Activate with
+  `SPRING_PROFILES_ACTIVE=dev,platform` to route AI calls through `ai-gateway`
+  (`platform.gateway.enabled` defaults `true` under that profile). Railway prod
+  never activates `platform`. Added `GatewayStandaloneProfileIT`/
+  `GatewayPlatformProfileIT` context tests for both cases.
