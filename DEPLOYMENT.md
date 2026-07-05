@@ -53,20 +53,33 @@ the platform, unrelated to `ai-gateway`.
 ## AI provider keys — current state vs. the gateway swap
 
 Per the owner's ruling (`spec-plantpal-room.md` §2-1, §5-2): the gateway swap
-(Chunk 3, shipped) is **dev/local-only, profile-gated**. `platform.gateway.enabled`
-defaults to `false` (`application.yml`) and is only set `true` in
-`application-dev.yml`. **Production keeps calling providers directly with the
-keys above — Railway's prod env simply never sets the flag, and `ai-gateway` is
-never publicly exposed, so prod cannot reach it even if it wanted to.** All of
-the provider keys above remain required in every environment: the gateway swap
-is additive (an `if (platform.gateway.enabled)` branch at each in-scope call
-site), not a replacement — the direct-client path and its keys are unchanged.
+(Chunk 3, shipped) is **profile-gated**, and as of the platform-profile split it's
+gated by a **Spring profile**, not a flag flipped inside a shared profile.
+`platform.gateway.*` no longer appears in `application.yml` or
+`application-dev.yml` at all — it lives entirely in `application-platform.yml`,
+which only takes effect when the `platform` profile is active
+(`SPRING_PROFILES_ACTIVE=dev,platform` locally). `GatewayProperties` binds
+`enabled=false` by `@DefaultValue` when that prefix is absent, so:
 
-New env vars (`backend/.env`):
+- **No profile / `dev` profile (the default)** — zero `platform.*` keys are read.
+  The app boots and serves fully standalone, AI calls go straight to the direct
+  provider clients, exactly as pre-platform (D009).
+- **`platform` profile** — `platform.gateway.enabled` defaults to `true` (still
+  overridable via `PLATFORM_GATEWAY_ENABLED`), and the in-scope AI calls route
+  through `ai-gateway` at `platform.gateway.url`.
+
+**Production (Railway) runs with no profile override beyond its own — `platform`
+is never activated there, and `ai-gateway` is never publicly exposed, so prod
+cannot reach it even if it wanted to.** All of the provider keys above remain
+required in every environment: the gateway swap is additive (an
+`if (platform.gateway.enabled)` branch at each in-scope call site), not a
+replacement — the direct-client path and its keys are unchanged.
+
+New env vars (`backend/.env`, only read when the `platform` profile is active):
 
 | Variable | Required | Description |
 |---|---|---|
-| `PLATFORM_GATEWAY_ENABLED` | No | Overrides `platform.gateway.enabled` (default `false`, `true` in dev profile) |
+| `PLATFORM_GATEWAY_ENABLED` | No | Overrides `platform.gateway.enabled` (default `true` when the `platform` profile is active; the key doesn't exist at all otherwise) |
 | `PLATFORM_GATEWAY_URL` | No | ai-gateway base URL (default `http://localhost:8085`) |
 
 ## Consuming `contracts`
