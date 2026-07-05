@@ -1,0 +1,14 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PlantPal – Platform Profile (D022 gateway swap)
+# Activate alongside the base profile, e.g. SPRING_PROFILES_ACTIVE=dev,platform,
+# to route the in-scope AI calls through ai-gateway instead of calling providers
+# directly. See PROGRESS.md for the exact in-scope call list.
+#
+# Never active in production: Railway's prod env never sets this profile, and
+# ai-gateway is never publicly exposed there anyway. See DEPLOYMENT.md.
+# ──────────────────────────────────────────────────────────────────────────────
+
+platform:
+  gateway:
+    enabled: ${PLATFORM_GATEWAY_ENABLED:true}
+    url: ${PLATFORM_GATEWAY_URL:http://localhost:8085}
