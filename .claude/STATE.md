@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-06-28 (LAN HTTPS — self-signed cert + Nginx 443, mobile isSecureContext = true)
+> Last updated: 2026-07-06 (housekeeping — stale git index refresh, no code changes)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
