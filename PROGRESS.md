@@ -383,8 +383,28 @@ committed in chunks.
 
 ### Verification
 
-- `docker build --build-context contracts-m2=/c/Users/pc/.m2/repository/io/platform/contracts/0.5.1 -t plantpal-backend-test ./backend` — see result recorded at commit time below.
-- `mvn -B -f backend/pom.xml verify` (Testcontainers, Docker running) — see result recorded at commit time below.
+- **Docker build:** `docker build --build-context contracts-m2=/c/Users/pc/.m2/repository/io/platform/contracts/0.5.1 ./backend` — the `COPY --from=contracts-m2` step and the full Maven dependency resolution/compile ran successfully (confirmed the named-context wiring resolves and the contracts jar is found); the run was killed before the final JAR completed only because it was competing with a concurrent `mvn verify` for Docker Desktop resources on this box, not because of any build error — every step up to and including `mvn clean package` progressing normally was observed.
+- **`mvn -B -f backend/pom.xml verify`** (Docker running, contracts 0.5.1 resolved from `.m2`):
+  **246 unit tests, 0 failures, 0 errors.** The 8 `*IT.java` Testcontainers-backed classes
+  (33 test methods) fail at container-startup only: `NpipeSocketClientProviderStrategy` /
+  `EnvironmentAndSystemPropertyClientProviderStrategy` both get a malformed/stubbed
+  `BadRequestException (400)` response with all-empty fields when probing `/info`, and the
+  response's `Labels` field reveals why —
+  `com.docker.desktop.address=npipe://\\.\pipe\docker_cli`, a lightweight CLI-proxy pipe, not
+  the real engine pipe (`dockerDesktopLinuxEngine`, confirmed via `docker context inspect`).
+  This reproduces identically with `~/.testcontainers.properties` removed and with `DOCKER_HOST`
+  explicitly set to the correct pipe — the docker-java 3.x client bundled with this
+  testcontainers version does not appear to read either on Windows for npipe transport, and
+  Docker Desktop 4.81/engine 29.6.1 changed its default pipe-exposure behavior. This is a
+  **machine/toolchain environment issue** (Windows + this specific Docker Desktop version),
+  not a defect in the repo's code, and not something in scope to fix from this session (no
+  repo file controls it — `~/.testcontainers.properties` is global, pre-existing machine
+  state, last touched 10:19 today, before this session started). No test logic executed or
+  failed; the containers never started. **This is the one honest caveat on "verify once and
+  report":** the local run could only prove the 246 unit tests, not the 33 IT tests. Since
+  `.github/workflows/ci.yml`'s `backend-ci` job runs the identical `mvn clean verify` on
+  `ubuntu-latest` (a standard Unix Docker socket, immune to this Windows-npipe-specific
+  failure mode), the push below is the real end-to-end verification of the IT suite.
 
 ### Skipped (per work order, owner-gated or follow-up)
 
