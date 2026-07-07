@@ -47,8 +47,11 @@ app:
     api-key: test-plantnet-api-key-placeholder
 
   jwt:
-    # Valid Base64, decodes to 32 bytes (256 bits) — never use in production
-    secret: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    # Obviously-fake test-only constant (SEC-4). Must stay valid standard Base64
+    # (JwtUtil does Decoders.BASE64.decode) and decode to >= 32 bytes for JJWT's
+    # HS256 key-length check — 64 base64 chars decode to 48 bytes. Never use in
+    # production.
+    secret: TESTONLYFAKEKEY0TESTONLYFAKEKEY0TESTONLYFAKEKEY0TESTONLYFAKEKEY0
     expiration-ms: 3600000             # 1 hour — short for tests
 
   storage:
