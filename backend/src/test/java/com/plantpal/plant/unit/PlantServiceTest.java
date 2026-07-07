@@ -5,7 +5,6 @@ import static com.plantpal.testdata.PlantTestDataBuilder.aPlant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -15,19 +14,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.repository.IdentificationRepository;
-import com.plantpal.plant.config.PlantKafkaTopicConfig;
 import com.plantpal.plant.dto.PlantResponse;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
+import com.plantpal.plant.event.PlantCountChangedEvent;
 import com.plantpal.plant.mapper.PlantMapper;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.plant.service.impl.PlantServiceImpl;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
-import io.platform.contracts.events.DimensionEvent;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,11 +36,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlantService — Unit Tests")
@@ -52,7 +50,7 @@ class PlantServiceTest {
   @Mock private PlantMapper plantMapper;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private ReminderRepository reminderRepository;
-  @Mock private KafkaTemplate<String, Object> kafkaTemplate;
+  @Mock private ApplicationEventPublisher eventPublisher;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PlantServiceImpl plantService;
@@ -99,13 +97,13 @@ class PlantServiceTest {
       // When
       plantService.createPlant(request, 1L);
 
-      // Then
-      ArgumentCaptor<DimensionEvent> captor = ArgumentCaptor.forClass(DimensionEvent.class);
-      verify(kafkaTemplate).send(eq(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC), captor.capture());
-      DimensionEvent event = captor.getValue();
-      assertThat(event.getAppId()).isEqualTo("plantpal");
-      assertThat(event.getUserId()).isEqualTo("1");
-      assertThat(event.getDimensionKey()).isEqualTo("plant_count");
+      // Then — published as an application event; PlantCountDimensionEmitter forwards it to
+      // Kafka only after the transaction commits (FIX-12).
+      ArgumentCaptor<PlantCountChangedEvent> captor =
+          ArgumentCaptor.forClass(PlantCountChangedEvent.class);
+      verify(eventPublisher).publishEvent(captor.capture());
+      PlantCountChangedEvent event = captor.getValue();
+      assertThat(event.getUserId()).isEqualTo(1L);
       assertThat(event.getDelta()).isEqualTo(1);
     }
   }
@@ -215,13 +213,13 @@ class PlantServiceTest {
       // When
       plantService.archivePlant(1L, 1L);
 
-      // Then
-      ArgumentCaptor<DimensionEvent> captor = ArgumentCaptor.forClass(DimensionEvent.class);
-      verify(kafkaTemplate).send(eq(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC), captor.capture());
-      DimensionEvent event = captor.getValue();
-      assertThat(event.getAppId()).isEqualTo("plantpal");
-      assertThat(event.getUserId()).isEqualTo("1");
-      assertThat(event.getDimensionKey()).isEqualTo("plant_count");
+      // Then — published as an application event; PlantCountDimensionEmitter forwards it to
+      // Kafka only after the transaction commits (FIX-12).
+      ArgumentCaptor<PlantCountChangedEvent> captor =
+          ArgumentCaptor.forClass(PlantCountChangedEvent.class);
+      verify(eventPublisher).publishEvent(captor.capture());
+      PlantCountChangedEvent event = captor.getValue();
+      assertThat(event.getUserId()).isEqualTo(1L);
       assertThat(event.getDelta()).isEqualTo(-1);
     }
 
@@ -237,7 +235,7 @@ class PlantServiceTest {
       assertThatThrownBy(() -> plantService.archivePlant(99L, 1L))
           .isInstanceOf(ResourceNotFoundException.class);
 
-      verify(kafkaTemplate, never()).send(any(), any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
   }
 

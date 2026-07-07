@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.dto.CarePlanDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
-import com.plantpal.plant.config.PlantKafkaTopicConfig;
 import com.plantpal.plant.dto.CreatePlantRequest;
 import com.plantpal.plant.dto.PlantResponse;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.dto.UpdatePlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
+import com.plantpal.plant.event.PlantCountChangedEvent;
 import com.plantpal.plant.mapper.PlantMapper;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.plant.service.PlantService;
@@ -20,23 +20,19 @@ import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
-import io.platform.contracts.events.DimensionEvent;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,15 +43,13 @@ public class PlantServiceImpl implements PlantService {
 
   private static final String PLANTS_CACHE = "plants";
   private static final String NOT_FOUND_MSG = "Plant not found or not owned by user";
-  private static final String APP_ID = "plantpal";
-  private static final String PLANT_COUNT_DIMENSION = "plant_count";
 
   private final PlantRepository plantRepository;
   private final PlantMapper plantMapper;
   private final IdentificationRepository identificationRepository;
   private final ReminderRepository reminderRepository;
   private final ObjectMapper objectMapper;
-  private final KafkaTemplate<String, Object> kafkaTemplate;
+  private final ApplicationEventPublisher eventPublisher;
 
   public PlantServiceImpl(
       PlantRepository plantRepository,
@@ -63,13 +57,13 @@ public class PlantServiceImpl implements PlantService {
       IdentificationRepository identificationRepository,
       ReminderRepository reminderRepository,
       ObjectMapper objectMapper,
-      KafkaTemplate<String, Object> kafkaTemplate) {
+      ApplicationEventPublisher eventPublisher) {
     this.plantRepository = plantRepository;
     this.plantMapper = plantMapper;
     this.identificationRepository = identificationRepository;
     this.reminderRepository = reminderRepository;
     this.objectMapper = objectMapper;
-    this.kafkaTemplate = kafkaTemplate;
+    this.eventPublisher = eventPublisher;
   }
 
   @Override
@@ -116,16 +110,13 @@ public class PlantServiceImpl implements PlantService {
     emitDimensionEvent(userId, -1);
   }
 
+  /**
+   * Publishes an intra-JVM event that {@code PlantCountDimensionEmitter} forwards to Kafka only
+   * AFTER the surrounding transaction commits — a rollback therefore never leaks a phantom
+   * plant_count delta to Treasury (FIX-12).
+   */
   private void emitDimensionEvent(Long userId, int delta) {
-    DimensionEvent event =
-        new DimensionEvent(
-            UUID.randomUUID(),
-            APP_ID,
-            String.valueOf(userId),
-            PLANT_COUNT_DIMENSION,
-            delta,
-            OffsetDateTime.now(ZoneOffset.UTC));
-    kafkaTemplate.send(PlantKafkaTopicConfig.DIMENSION_EVENT_TOPIC, event);
+    eventPublisher.publishEvent(new PlantCountChangedEvent(userId, delta));
   }
 
   private void disableRemindersForPlant(Long plantId) {
