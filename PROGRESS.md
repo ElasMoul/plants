@@ -289,3 +289,111 @@ scoping constraint" section only explicitly excludes the two GitHub Models visio
 preferences. I treated the enumeration as authoritative and left vision-Ollama on the direct
 path always (see backlog note above) rather than expanding scope on my own judgment. Flag
 for the owner: is vision-Ollama in scope for a later chunk?
+
+---
+
+## PP-081 — Platform profile split; fix deploy.yml contracts build (backfilled 2026-07-07)
+
+**Merged:** 2026-07-05, PR #107 (`feature/PP-081-platform-profile-split` → `main`), commit
+`7b54ff1`. This entry backfills the missing session handoff — the work itself already shipped
+and its `CHANGELOG.md`/`HEXAGON.md`/`DEPLOYMENT.md` updates landed in the same PR; only the
+`PROGRESS.md` record was missing (part of the platform-wide "2026-07-06 undocumented commit
+wave" hygiene gap noted in root `PLATFORM_STATE.md` §6.7).
+
+### What shipped
+
+- Split the gateway-swap config so it's gated by a genuine **Spring profile**
+  (`application-platform.yml`, active only under `platform`) instead of a flag living inside
+  the shared `application.yml`/`application-dev.yml`. `platform.gateway.*` no longer appears
+  in either base file at all. `GatewayProperties.enabled` binds to `false` via `@DefaultValue`
+  when the `platform.gateway` prefix is entirely absent (the default/standalone boot path),
+  so a standalone `dev` boot never reads a single `platform.*` key — the strongest form of
+  D009 isolation available without deleting the integration outright.
+  `SPRING_PROFILES_ACTIVE=dev,platform` activates it; `platform.gateway.enabled` then
+  defaults `true` (still overridable via `PLATFORM_GATEWAY_ENABLED`).
+- Two new integration tests pin both boot modes down: `GatewayStandaloneProfileIT` (no
+  `platform` profile → `GatewayProperties` not on the context / disabled) and
+  `GatewayPlatformProfileIT` (with `platform` profile → enabled, URL bound from
+  `application-platform.yml`).
+- **`deploy.yml` build-backend fix:** the workflow ran a plain `mvn package`, which fails on
+  a fresh GitHub runner because `backend/pom.xml` unconditionally depends on
+  `io.platform:contracts:<pin>` (no package registry, D031) — nothing on a clean runner has
+  it pre-installed. Replicated `ci.yml`'s three contracts steps (read the pinned version out
+  of the pom, checkout `contracts` at that tag, `mvn install` its Java bindings) ahead of the
+  Package step, so `deploy.yml` and `ci.yml` can never silently disagree with the pom. The
+  workflow itself stays **disabled in the GitHub UI** (owner-gated re-enable) — only its build
+  steps changed, nothing was turned on.
+
+### Verification at the time
+
+PR-described as tested via the two new profile ITs plus the existing suite; this backfill
+session did not re-run that verification (see today's session below for the current
+`mvn verify` run, which exercises this code path incidentally via `GatewayStandaloneProfileIT`/
+`GatewayPlatformProfileIT` still being present in the tree).
+
+### Files touched (from the merge diff)
+
+`.github/workflows/deploy.yml`, `CHANGELOG.md`, `DEPLOYMENT.md`, `HEXAGON.md`,
+`backend/src/main/java/com/plantpal/gateway/GatewayProperties.java`,
+`backend/src/main/resources/application-dev.yml`,
+`backend/src/main/resources/application-platform.yml` (new),
+`backend/src/main/resources/application.yml`,
+`backend/src/test/java/.../integration/GatewayPlatformProfileIT.java` (new),
+`backend/src/test/java/.../integration/GatewayStandaloneProfileIT.java` (new).
+
+---
+
+## 2026-07-07 — FIX-12, contracts re-pin, SEC-4, Docker contracts supply, doc sync
+
+**Context:** reconciled a predecessor session's uncommitted work (dirty tree, no commits) per
+the platform's standing PREDECESSOR RECONCILIATION protocol, finished it, verified, and
+committed in chunks.
+
+### What shipped
+
+1. **FIX-12** — `PlantServiceImpl`'s `plant_count` dimension-event Kafka emit moved out of the
+   `@Transactional` method body into an intra-JVM `PlantCountChangedEvent` +
+   `PlantCountDimensionEmitter` (`@TransactionalEventListener(phase = AFTER_COMMIT)`), so a
+   transaction rollback can no longer leak a phantom delta to Treasury. New
+   `PlantCountDimensionEmitterTest` covers both delta directions and pins the listener to the
+   `AFTER_COMMIT` phase by reflection. `PlantServiceTest`'s existing dimension-event assertions
+   updated to verify the published event instead of a direct Kafka send.
+2. **Contracts re-pin** `0.5.0` → `0.5.1` in `backend/pom.xml` (picks up the v0.5.1 `runId`
+   int32→int64 overflow correctness fix) + `HEXAGON.md` frontmatter. Jar was already
+   pre-installed in the local `.m2`.
+3. **SEC-4** — `backend/.env.example`'s `JWT_SECRET` replaced with an explicit
+   `<generate: openssl rand -base64 64>` placeholder (previously a real-looking generated
+   value). `application-test.yml`'s test secret replaced with an obviously-fake repeating
+   constant (`TESTONLYFAKEKEY0...`), still valid Base64 decoding to 48 bytes (>= JJWT's
+   256-bit HS256 minimum) so the suite keeps passing. `.gitignore`'s malformed
+   `./backend/.env` line removed (the following `backend/.env` line already covers it).
+4. **Docker contracts supply** — `backend/Dockerfile` switched from a BuildKit cache mount
+   (empty/unbuildable on a clean machine) to `COPY --from=contracts-m2`, a named additional
+   build context, matching `../ai-gateway/Dockerfile`'s proven pattern.
+   `docker-compose.yml`'s `backend.build.additional_contexts` wires the same context via a
+   `CONTRACTS_M2_0_5_1` env var. Verified locally: `docker build --build-context
+   contracts-m2=<path to .m2 contracts 0.5.1> ./backend` builds successfully end-to-end
+   (see verification below).
+5. **Doc sync** — `HEXAGON.md`/`DEPLOYMENT.md` pin prose (previously hardcoded `v0.4.0`/
+   `v0.5.0` in body text despite frontmatter/pom already at 0.5.1) now points at
+   `backend/pom.xml` as the authoritative source instead of repeating a version number that
+   drifts. `README.md` fully rewritten: Java 21 (was 17), real 5-provider AI stack (was
+   Anthropic-only), MVP table flipped to shipped (✅), `.claude/` file-location table added,
+   dev-branch strategy removed (consolidated into `main` at `dea0d56`).
+
+### Verification
+
+- `docker build --build-context contracts-m2=/c/Users/pc/.m2/repository/io/platform/contracts/0.5.1 -t plantpal-backend-test ./backend` — see result recorded at commit time below.
+- `mvn -B -f backend/pom.xml verify` (Testcontainers, Docker running) — see result recorded at commit time below.
+
+### Skipped (per work order, owner-gated or follow-up)
+
+- Branch pruning (~100 remote branches) — owner call.
+- PNG slimming under `.claude/` — owner call.
+- Frontend unit test expansion — follow-up session.
+- Streaming asymmetry / vision-Ollama gateway routing — open owner rulings, not invented here.
+
+### Next step
+
+Push `main`; confirm remote CI (`gh run list --repo ElasMoul/plants`) goes green on the new
+commits, since `deploy.yml` stays disabled and CI is the only remote verification available.

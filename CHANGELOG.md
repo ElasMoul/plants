@@ -48,4 +48,35 @@
   `SPRING_PROFILES_ACTIVE=dev,platform` to route AI calls through `ai-gateway`
   (`platform.gateway.enabled` defaults `true` under that profile). Railway prod
   never activates `platform`. Added `GatewayStandaloneProfileIT`/
-  `GatewayPlatformProfileIT` context tests for both cases.
+  `GatewayPlatformProfileIT` context tests for both cases. (PP-081, PR #107)
+
+## 2026-07-07
+
+### Fixed
+- **FIX-12** — `plant_count` dimension-event Kafka emit moved out of the
+  `@Transactional` service method body into an intra-JVM
+  `PlantCountChangedEvent` forwarded to Kafka by a new
+  `PlantCountDimensionEmitter` bound to
+  `@TransactionalEventListener(phase = AFTER_COMMIT)`. A rolled-back
+  transaction can no longer leak a phantom `plant_count` delta to Treasury.
+- **SEC-4** — `backend/.env.example`'s `JWT_SECRET` no longer commits a
+  real-looking generated value; replaced with an explicit
+  `<generate: openssl rand -base64 64>` placeholder. `application-test.yml`'s
+  test secret replaced with an obviously-fake repeating constant (still valid
+  Base64, still >= JJWT's 256-bit HS256 minimum). `.gitignore`'s malformed
+  `./backend/.env` line removed.
+- Docker build was unbuildable from a clean checkout: `backend/Dockerfile`
+  relied on a BuildKit cache mount that only holds the `contracts` jar if a
+  prior build happened to populate it. Switched to `COPY --from=contracts-m2`,
+  a named additional build context (matches `../ai-gateway/Dockerfile`'s
+  pattern); `docker-compose.yml` wires it via `CONTRACTS_M2_0_5_1`. Documented
+  in `DEPLOYMENT.md`.
+
+### Changed
+- Contracts re-pinned `0.5.0` → `0.5.1` (`backend/pom.xml`, `HEXAGON.md`) —
+  picks up the v0.5.1 `runId` int32→int64 overflow correctness fix.
+- `HEXAGON.md`/`DEPLOYMENT.md` pin prose now points at `backend/pom.xml` as
+  the authoritative source instead of hardcoding a version number that drifts.
+- `README.md` overhauled: Java 21 (was 17), real 5-provider AI stack (was
+  Anthropic-only), MVP table flipped to shipped, `.claude/` file-location
+  table added, stale dev-branch strategy removed.
