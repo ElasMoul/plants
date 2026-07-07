@@ -18,7 +18,7 @@ infra:
   - redis
   - kafka
 contracts:
-  pin: v0.5.0
+  pin: v0.5.1
   binding: java
   used:
     - app.health
