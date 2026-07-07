@@ -413,7 +413,27 @@ committed in chunks.
 - Frontend unit test expansion — follow-up session.
 - Streaming asymmetry / vision-Ollama gateway routing — open owner rulings, not invented here.
 
+### Remote CI confirmation (resolves the local Testcontainers gap above)
+
+Pushed to `origin/main` (`2f6b784`). `gh run list --repo ElasMoul/plants` → run `28894380341`:
+
+| Job | Result | Duration |
+|---|---|---|
+| Frontend CI | ✅ success | 2m51s |
+| Backend CI (`mvn clean verify`, incl. all 8 `*IT.java` Testcontainers classes) | ✅ success | 5m17s |
+| Secret Scanning | ✅ success | 11s |
+
+Backend CI's steps confirm, on a real Unix Docker socket: the `0.5.1` contracts pin resolves
+cleanly from a pinned-tag checkout + `mvn install` (same mechanism as this session's
+`backend/Dockerfile` fix), and the full test suite — including the 33 IT methods this
+session's local Windows run couldn't execute — passes. Nightly AI Evals' most recent run
+(scheduled, unrelated to this push) shows `failure`, pre-existing and out of scope here (not
+touched by anything in this session's diff).
+
 ### Next step
 
-Push `main`; confirm remote CI (`gh run list --repo ElasMoul/plants`) goes green on the new
-commits, since `deploy.yml` stays disabled and CI is the only remote verification available.
+All work-order items shipped and verified both locally (246 unit tests) and remotely (full
+`mvn verify` incl. ITs, green on CI). Nothing left running. Follow-up candidates for a future
+session: investigate/fix the local Windows Testcontainers npipe issue (toolchain-level, not
+repo-level) so ITs can run locally again; look into the pre-existing `Nightly AI Evals`
+failure if it persists.
