@@ -27,8 +27,9 @@ Zookeeper, Kafka, backend, frontend (Nginx).
 - Java 21, Maven (backend)
 - Node 18 (frontend)
 - Docker + Docker Compose (full local stack)
-- `contracts` checked out at `v0.3.0` alongside this repo (this chunk only wires
-  `app.health`/`app.manifest` — no runtime dependency on `contracts` code yet)
+- `contracts` checked out and `mvn install`-ed locally at the version pinned in
+  `backend/pom.xml` (authoritative source — currently `0.5.1`; do not trust the
+  version number in this doc, it drifts)
 
 ### Environment variables (`backend/.env`, copy from `backend/.env.example`)
 
@@ -84,17 +85,55 @@ New env vars (`backend/.env`, only read when the `platform` profile is active):
 
 ## Consuming `contracts`
 
-Per D031, the Java binding has no package registry. Before building against a
-pinned `contracts` version:
+Per D031, the Java binding has no package registry. The pin is **`backend/pom.xml`
+is the authoritative source** — this doc only paraphrases it and can drift; check
+the pom before trusting any version number written here (currently `0.5.1`).
+Before building on the host against the pinned version:
 
 ```bash
-git -C ../contracts checkout v0.4.0
+git -C ../contracts checkout v0.5.1
 mvn install -f ../contracts/gen/java/pom.xml
 ```
 
-Required as of Chunk 3: `backend/pom.xml` now depends on `io.platform:contracts:0.4.0`
-for the `ai.request`/`ai.response`/`ai.blocked` Java types used by
-`com.plantpal.gateway.GatewayClient`.
+`backend/pom.xml` depends on `io.platform:contracts:0.5.1` for the
+`ai.request`/`ai.response`/`ai.blocked` types used by
+`com.plantpal.gateway.GatewayClient` and the `dimension.event`
+(`DimensionEvent`) type used by `com.plantpal.plant.event.PlantCountDimensionEmitter`.
+
+### Docker build — contracts supply
+
+`backend/Dockerfile` cannot build the `contracts` Java codegen inside the image
+(jsonschema2pojo NPEs deterministically under Docker — see the Dockerfile's own
+comment) even though it builds reliably on the host. Instead the Dockerfile
+expects a **named build context** called `contracts-m2` containing the
+already-built jar + POM from the host's local `.m2`:
+
+```
+COPY --from=contracts-m2 . /root/.m2/repository/io/platform/contracts/0.5.1/
+```
+
+Before building the image, run the host-side `mvn install` above once (populates
+`~/.m2/repository/io/platform/contracts/0.5.1/`), then supply that path as the
+`contracts-m2` context:
+
+```bash
+docker build \
+  --build-context contracts-m2=$HOME/.m2/repository/io/platform/contracts/0.5.1 \
+  -t plantpal-backend ./backend
+```
+
+Or via Compose (`docker-compose.yml`'s `backend.build.additional_contexts`,
+already wired to read the `CONTRACTS_M2_0_5_1` env var):
+
+```bash
+export CONTRACTS_M2_0_5_1=$HOME/.m2/repository/io/platform/contracts/0.5.1   # bash
+# $env:CONTRACTS_M2_0_5_1 = "$HOME\.m2\repository\io\platform\contracts\0.5.1"  # PowerShell
+docker compose build backend
+```
+
+If the pin in `backend/pom.xml` moves, update all three of: the `COPY --from`
+path in `backend/Dockerfile`, the `additional_contexts` path in
+`docker-compose.yml`'s comment/env var name, and the `mvn install` version above.
 
 ## Health check
 

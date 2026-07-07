@@ -3,14 +3,21 @@
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /api
 
+# contracts is a private repo with no package registry (D031). Its
+# jsonschema2pojo codegen is unreliable inside Docker (see ai-gateway/Dockerfile
+# for the fuller note), but builds reliably on the host, so rather than run
+# that codegen in-image this copies the already-built artifact from the host's
+# local .m2 (see the "contracts-m2" additional_context in docker-compose.yml,
+# or --build-context on the CLI) straight into this image's own .m2 cache.
+# Requires a "contracts-m2" build context pointing at
+# ~/.m2/repository/io/platform/contracts/0.5.1 on the host — see DEPLOYMENT.md.
+COPY --from=contracts-m2 . /root/.m2/repository/io/platform/contracts/0.5.1/
+
 COPY pom.xml .
 COPY src/ src/
 
-# BuildKit cache mount: the /root/.m2 directory is reused across builds.
-# Dependencies downloaded on the first build are cached; subsequent builds skip them.
 # -DskipTests: tests run in CI, not inside the Docker image build.
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn clean package \
+RUN mvn clean package \
       -DskipTests \
       -Dspotless.check.skip=true \
       -Dcheckstyle.skip=true \
