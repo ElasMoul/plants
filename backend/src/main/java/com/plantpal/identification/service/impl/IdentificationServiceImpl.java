@@ -1546,6 +1546,11 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static String classifyFailureReason(Exception e) {
     if (e instanceof RateLimitException) return "RATE_LIMITED";
     if (e instanceof JsonProcessingException) return "PARSE_ERROR";
+    // A 402 from the ai-gateway means the user/app hit its AI ceiling ("daily AI limit reached").
+    // Tagged distinctly from a generic PROVIDER_ERROR (503 etc.) so the frontend poller can surface
+    // an explicit "AI limit reached" block state instead of a generic "something broke" failure
+    // (platform D023 — a block is NEVER a spinner and never a generic error).
+    if (e instanceof PlantPalException ppe && ppe.getErrorCode() == 402) return "AI_LIMIT_REACHED";
     if (e instanceof PlantPalException) return "PROVIDER_ERROR";
     return "OTHER";
   }

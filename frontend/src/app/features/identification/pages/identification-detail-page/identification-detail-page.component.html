@@ -49,6 +49,15 @@
     </div>
   </div>
 
+  <!-- blocked: AI ceiling reached (gateway 402) — explicit state, no retry spinner -->
+  <div class="state-screen" *ngIf="state === 'blocked'">
+    <app-ai-block-notice class="block-state-card" [reason]="result?.failureReason"></app-ai-block-notice>
+    <button mat-stroked-button type="button" class="btn-pill" routerLink="/identify">
+      <mat-icon>add_photo_alternate</mat-icon>
+      Back to upload
+    </button>
+  </div>
+
   <!-- not found -->
   <div class="state-screen" *ngIf="state === 'not-found'">
     <mat-icon class="state-icon error-icon">search_off</mat-icon>

@@ -16,6 +16,10 @@ interface ChatMessage {
   id: number;
   sender: 'user' | 'ai';
   text: string;
+  // Set when the AI reply was blocked by the platform ceiling (HTTP 402) — the thread renders a
+  // dedicated block notice instead of the text bubble (platform D023: never a generic error).
+  blocked?: boolean;
+  blockReason?: string | null;
 }
 
 // The canned opening greeting isn't a real conversation turn — excluded from history sent to the AI.
@@ -137,7 +141,13 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
         error: (err: HttpErrorResponse) => {
           this.sending = false;
           const msg = this.messages.find(m => m.id === aiMessageId);
-          if (msg) {
+          if (!msg) return;
+          // A 402 ceiling block gets the explicit block state, not a generic error line. The input
+          // stays usable (sending=false) so the user isn't dead-ended.
+          if (this.aiErrorService.isBlocked(err)) {
+            msg.blocked = true;
+            msg.blockReason = this.aiErrorService.blockReason(err);
+          } else {
             msg.text = this.aiErrorService.handle(err);
           }
         },

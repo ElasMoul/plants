@@ -31,9 +31,18 @@
         <mat-icon>local_florist</mat-icon>
       </div>
 
-      <div class="bubble" [class.bubble-user]="message.sender === 'user'" [class.bubble-ai]="message.sender === 'ai'">
-        <p class="bubble-text">{{ message.text }}</p>
-      </div>
+      <app-ai-block-notice
+        *ngIf="message.blocked; else textBubble"
+        class="chat-block-notice"
+        [compact]="true"
+        [reason]="message.blockReason"
+      ></app-ai-block-notice>
+
+      <ng-template #textBubble>
+        <div class="bubble" [class.bubble-user]="message.sender === 'user'" [class.bubble-ai]="message.sender === 'ai'">
+          <p class="bubble-text">{{ message.text }}</p>
+        </div>
+      </ng-template>
 
     </div>
 

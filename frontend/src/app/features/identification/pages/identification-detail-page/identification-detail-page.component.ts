@@ -21,7 +21,13 @@ type DetailState =
   | 'plant-select'
   | 'ready'
   | 'failed'
+  | 'blocked'
   | 'not-found';
+
+// Backend failureReason tag (IdentificationServiceImpl.classifyFailureReason) for a gateway 402 —
+// the AI ceiling was hit, so the poller must terminate into the explicit block state, not a
+// generic "we couldn't identify this" failure (platform D023).
+const BLOCKED_FAILURE_REASON = 'AI_LIMIT_REACHED';
 
 @Component({
   selector: 'app-identification-detail-page',
@@ -129,7 +135,7 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (data.status === 'FAILED') {
-      this.state = 'failed';
+      this.state = data.failureReason === BLOCKED_FAILURE_REASON ? 'blocked' : 'failed';
       return;
     }
     if (data.plantId != null) {

@@ -1161,6 +1161,50 @@ class IdentificationServiceImplTest {
     }
 
     @Test
+    @DisplayName(
+        "processIdentification gateway 402 block: tags failureReason AI_LIMIT_REACHED, not"
+            + " PROVIDER_ERROR")
+    void shouldTagAiLimitReachedOnGatewayBlock() {
+      // A gateway 402 arrives as a PlantPalException(errorCode=402) — see GatewayClient. It must be
+      // distinguishable from a generic 503 provider error so the frontend surfaces an explicit
+      // "AI limit reached" block state (platform D023) rather than a generic failure.
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenThrow(new PlantPalException("daily AI limit reached", 402));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("DEEPSEEK")
+              .requestedAt(Instant.now())
+              .build();
+
+      assertThatCode(() -> identificationService.processIdentification(event))
+          .doesNotThrowAnyException();
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      Identification saved = captor.getValue();
+      assertThat(saved.getStatus()).isEqualTo(IdentificationStatus.FAILED);
+      assertThat(saved.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.FAILED);
+      assertThat(saved.getFailureReason()).isEqualTo("AI_LIMIT_REACHED");
+
+      verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+
+    @Test
     @DisplayName("processIdentification: stores source image dimensions read from the photo")
     void shouldStoreSourceImageDimensions() throws Exception {
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(testJpegBytes(100, 75));
