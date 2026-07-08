@@ -562,14 +562,69 @@ the container → `redis:16379` → refused.
 `KAFKA_BOOTSTRAP_SERVERS: kafka:9092`. Nothing was `up`'d — the stack is being
 managed live from the root session.
 
+### Follow-up work order (same day) — fail-fast startup validation for secret env vars
+
+**Two more live incidents tonight, same defect class** (placeholder env values pass
+boot silently, explode later with cryptic errors):
+
+1. **VAPID keys left as `.env.example` placeholders** → `WebPushServiceImpl`'s
+   constructor threw `IllegalArgumentException: Invalid point encoding 0x-36` →
+   whole app crash-looped with no hint which env var was wrong.
+2. **`JWT_SECRET` left as the SEC-4 placeholder** (`<generate: openssl rand -base64
+   64>`) → app booted FINE, then every login/registration 500'd with
+   `io.jsonwebtoken.io.DecodingException: Illegal base64 character: ':'` — runtime
+   failure, zero indication it's config (`JwtUtil` only decodes at signing time).
+
+**SEC-4 context:** that placeholder was introduced *deliberately* (2026-07-07
+session) when the committed real-looking secret was burned — the right call. The
+gap was that nothing *enforced* replacing it: the placeholder was designed to be
+unusable but nothing made it fail fast and loud.
+
+**Fix — `SecretConfigValidator`** (`backend/src/main/java/com/plantpal/shared/config/`):
+
+- Pattern: `BeanFactoryPostProcessor`. The codebase had no prior startup-validation
+  pattern to follow (config is `@Value`/`@Configuration` classes; one
+  `@ConfigurationProperties` in gateway), so the deciding constraint was ordering:
+  an `ApplicationRunner` runs *after* context refresh (WebPushServiceImpl's
+  constructor would still crash-loop first) and `InitializingBean` has no ordering
+  guarantee. BFPPs run before ANY regular bean is instantiated, so the aggregated
+  named-variable error always wins over the cryptic BouncyCastle one.
+- Rules: `JWT_SECRET` — no placeholder markers (`<`, `>`, `:`), standard Base64,
+  >= 32 decoded bytes. `VAPID_PUBLIC_KEY` — base64url, exactly 65 bytes starting
+  0x04. `VAPID_PRIVATE_KEY` — base64url, exactly 32 bytes; the length check is
+  deliberate because the `.env.example` placeholder
+  (`your_vapid_private_key_here`) is *accidentally valid base64url* — a
+  decode-only check would wave it through.
+- Every failure names the exact env var + fix command (`openssl rand -base64 64` /
+  `npx web-push generate-vapid-keys`); all failures aggregate into ONE
+  single-screen `ApplicationContextException`, and the app refuses to start.
+- Unset env vars (unresolvable `${...}` placeholder) get the same named treatment
+  instead of Spring's generic placeholder error.
+
+**Tests:** `SecretConfigValidatorTest` (same-package `shared/config`, mirroring
+`PromptSanitizerTest`'s convention; `MockEnvironment`, no Spring context): valid
+values pass; placeholder JWT names the var; bad VAPID point names the var; missing
+var named; multiple failures aggregate (asserts all three var names in one
+message). **10/10 green; full unit suite 256/256 green (was 246).** Integration
+tests not runnable locally (known Windows Testcontainers npipe blocker, see
+2026-07-07 entry) — they boot the full context with `application-test.yml`'s
+valid test-only values, so CI's IT run will exercise the validator's pass path.
+
+**Heads-up for the live stack:** the dockerized backend's current `backend/.env`
+carries the SEC-4 JWT placeholder — after this change that container will REFUSE
+TO START with a named error until a real `JWT_SECRET` is set. That is the intended
+behavior, but it will look like a new failure if nobody reads the message.
+
 ### Handoff
 
 - State: all seven dev host ports remapped to the platform block, host-side
   configs and docs synced; live Redis-port regression corrected with an explicit
-  container-side override (the fix(compose) correction commit); `docker compose config` verified clean;
-  nothing pushed.
-- Next step: owner reviews and pushes; owner also decides whether the native
-  `mvn spring-boot:run` flow should move to 8180 too (would require touching
-  `server.port`, out of scope here).
+  container-side override (the fix(compose) correction commit); fail-fast secret
+  validation shipped (`SecretConfigValidator`, 256 unit tests green); `docker
+  compose config` verified clean; nothing pushed.
+- Next step: owner reviews and pushes (CI will run the ITs the local machine
+  can't); owner sets a real `JWT_SECRET` in the live `backend/.env` before
+  restarting the dockerized backend, and decides whether the native
+  `mvn spring-boot:run` flow should move to 8180 (out of scope here).
 - No background processes or servers were started in this session; nothing to
   stop.
