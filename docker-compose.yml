@@ -12,7 +12,7 @@ services:
       POSTGRES_USER: plantpal
       POSTGRES_PASSWORD: plantpal
     ports:
-      - "5432:5432"
+      - "15433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +42,7 @@ services:
     container_name: plantpal-backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8180:8080"
     env_file:
       - ./backend/.env
     environment:
@@ -81,8 +81,8 @@ services:
     container_name: plantpal-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8181:80"
+      - "8444:443"
     depends_on:
       backend:
         condition: service_healthy
@@ -98,7 +98,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --save 60 1 --save 300 10
     ports:
-      - "6379:6379"
+      - "16379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -117,7 +117,7 @@ services:
     container_name: plantpal-zookeeper
     restart: unless-stopped
     ports:
-      - "2181:2181"
+      - "12181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -134,11 +134,15 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "29092:29092"
+      - "29192:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      # PLAINTEXT is the internal docker-network listener (kafka:9092, unchanged — container
+      # port only, no host mapping). PLAINTEXT_HOST is the host-facing listener and must match
+      # the new host port mapping above (29192) or host-side clients (native `mvn spring-boot:run`,
+      # local kafka CLI tools) will connect but advertise/rediscover the broker on the old port.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29192
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
