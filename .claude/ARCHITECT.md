@@ -158,7 +158,8 @@ Kafka: identification.requested (3 partitions)
 HTTP GET /identifications/{id}  ← frontend polls every 3s
   → returns current status (PENDING / COMPLETED / FAILED) + result fields
 ```
-- docker-compose: Zookeeper + Kafka (confluentinc/cp-kafka:7.6.0, port 29092)
+- docker-compose: Zookeeper + Kafka (confluentinc/cp-kafka:7.6.0, host port 29192 —
+  platform 81xx/1xxxx port block; container-internal port 9092 unchanged)
 - Event classes in identification/event/ — @Getter @Setter @Builder @AllArgsConstructor @NoArgsConstructor
 - Consumer in identification/consumer/IdentificationConsumer.java — thin, delegates to service
 - Rate-limit Bucket4j check happens in submitIdentification() BEFORE publishing (not in consumer)

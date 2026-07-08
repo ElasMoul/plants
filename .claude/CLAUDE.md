@@ -322,15 +322,15 @@ Guidelines:
 # application-dev.yml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/plantpal_dev
+    url: jdbc:postgresql://localhost:15433/plantpal_dev
     username: ${DB_USERNAME:plantpal}
     password: ${DB_PASSWORD:plantpal}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29192}
   jpa:
     hibernate.ddl-auto: validate      # Liquibase owns the schema
   liquibase:
@@ -441,7 +441,8 @@ plant | identification | reminder | treatment | species | chat | user | auth | s
 ## Running the Project
 
 ```bash
-# Start local infrastructure (PostgreSQL + Redis + Kafka + Zookeeper)
+# Start local infrastructure (PostgreSQL :15433, Redis :16379, Kafka :29192, Zookeeper :12181
+# — platform 81xx/1xxxx port block, see docker-compose.yml)
 docker-compose up -d
 
 # Backend
@@ -451,6 +452,11 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 # → http://localhost:8080
 # → http://localhost:8080/swagger-ui.html
 # → http://localhost:8080/actuator/health
+# NOTE: server.port is hardcoded to 8080 (application.yml) — a natively-run backend
+# (this command) is NOT reachable at 8180, which is only where the dockerized
+# `backend` compose service is published. proxy.conf.json now targets 8180 to
+# match the dockerized service; override --server.port=8180 or repoint the proxy
+# if you run the backend natively.
 
 # Frontend
 cd frontend

@@ -35,7 +35,8 @@ here — this file is a durable reference to what exists *now*.
 - No inline styles — Angular Material tokens + SCSS only
 - All HTTP calls return Observable<ApiResponse<T>>
 - JWT attached automatically by jwt.interceptor.ts
-- All requests proxied via proxy.conf.json (/api → localhost:8080)
+- All requests proxied via proxy.conf.json (/api → localhost:8180 — the dockerized
+  backend's platform-block host port; see docker-compose.yml)
 - Every `@Injectable()` service has no `providedIn: 'root'` — each lazy feature
   module that uses a service re-provides it in its own `providers:` array. This
   is deliberate (not an oversight): expect to add a provider line whenever a new
@@ -99,7 +100,7 @@ too), `treatment-step-list/` (diagram + step list + mark-done UI, shared by
 both the TreatmentPlan detail page and the Treatment page's "plan" section).
 
 ## API Contract
-Backend base URL proxied to localhost:8080.
+Backend base URL proxied to localhost:8180.
 All responses: `{ success: boolean, data: T, message: string, correlationId: string, timestamp: string }`
 
 ## Established Patterns

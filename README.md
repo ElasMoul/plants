@@ -119,7 +119,9 @@ cd plantpal
 
 ```bash
 docker-compose up -d
-# Starts PostgreSQL (:5432), Redis (:6379), Zookeeper, Kafka (:29092)
+# Starts PostgreSQL (:15433), Redis (:16379), Zookeeper (:12181), Kafka (:29192)
+# Platform port-block: plantpal's dev host ports live in the 81xx/1xxxx range to
+# avoid colliding with other tenant apps and the platform stack — see docker-compose.yml.
 ```
 
 ### 3. Configure the backend
@@ -139,6 +141,15 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 # API available at http://localhost:8080
 # Swagger UI at http://localhost:8080/swagger-ui.html
 ```
+
+> **Note:** `server.port` (`application.yml`) is still hardcoded to `8080` — a
+> backend run this way (bypassing Docker) binds directly to host `8080`, not
+> the `8180` the dockerized `backend` service is now published on. Only the
+> containerized backend (`docker-compose up -d backend`) is reachable at the
+> new platform-block port; `frontend/proxy.conf.json` now targets `8180` to
+> match it. If you run the backend natively, either add
+> `-Dspring-boot.run.arguments=--server.port=8180` to the command above or
+> point the proxy config back at `8080` for your local session.
 
 ### 5. Run the frontend
 
