@@ -610,21 +610,40 @@ tests not runnable locally (known Windows Testcontainers npipe blocker, see
 2026-07-07 entry) — they boot the full context with `application-test.yml`'s
 valid test-only values, so CI's IT run will exercise the validator's pass path.
 
-**Heads-up for the live stack:** the dockerized backend's current `backend/.env`
-carries the SEC-4 JWT placeholder — after this change that container will REFUSE
-TO START with a named error until a real `JWT_SECRET` is set. That is the intended
-behavior, but it will look like a new failure if nobody reads the message.
+**Heads-up for the live stack — CORRECTED (coordinator, same night):** an earlier
+version of this note claimed the live `backend/.env` still carried the SEC-4 JWT
+placeholder and would refuse to start. That was already false when written: the
+root session had injected a real `JWT_SECRET` (and real VAPID keys) into
+`backend/.env` earlier on 2026-07-08 (machine-local, never committed), and the
+dockerized backend is running healthy. The validator's value is guarding FUTURE
+machines/migrations — which is exactly how these placeholders got in in the first
+place: `.env` was rebuilt from `.env.example` after the last machine migration.
+
+### Cleanup (same night) — untrack the per-machine nginx dev cert
+
+`frontend/nginx/certs/self.crt` was TRACKED (committed from the old machine) while
+`self.key` was gitignored — which is why the tree showed `M self.crt` after the
+root session regenerated the pair tonight. Certs are per-machine dev artifacts:
+`.gitignore` now covers the whole `frontend/nginx/certs/` directory, `self.crt`
+was `git rm --cached`-ed (file kept on disk — it is the live one nginx uses), and
+DEPLOYMENT.md documents generation for the docker path (frontend Dockerfile COPYs
+the dir, so the pair must exist before building):
+`openssl req -x509 -newkey rsa:2048 -keyout self.key -out self.crt -days 365
+-nodes -subj "/CN=localhost"`. The historically committed `self.crt` is just a
+public self-signed cert for localhost — no secret exposure, no history rewrite
+needed.
 
 ### Handoff
 
 - State: all seven dev host ports remapped to the platform block, host-side
   configs and docs synced; live Redis-port regression corrected with an explicit
   container-side override (the fix(compose) correction commit); fail-fast secret
-  validation shipped (`SecretConfigValidator`, 256 unit tests green); `docker
-  compose config` verified clean; nothing pushed.
+  validation shipped (`SecretConfigValidator`, 256 unit tests green); per-machine
+  nginx dev cert untracked + gitignored, generation documented in DEPLOYMENT.md;
+  `docker compose config` verified clean; working tree clean; nothing pushed.
 - Next step: owner reviews and pushes (CI will run the ITs the local machine
-  can't); owner sets a real `JWT_SECRET` in the live `backend/.env` before
-  restarting the dockerized backend, and decides whether the native
-  `mvn spring-boot:run` flow should move to 8180 (out of scope here).
+  can't); owner decides whether the native `mvn spring-boot:run` flow should move
+  to 8180 (out of scope here). Live `backend/.env` already has real secrets
+  (root session, 2026-07-08) — no action needed there.
 - No background processes or servers were started in this session; nothing to
   stop.
