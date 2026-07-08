@@ -18,7 +18,7 @@ infra:
   - redis
   - kafka
 contracts:
-  pin: v0.5.1
+  pin: v0.7.0
   binding: java
   used:
     - app.health
@@ -26,6 +26,7 @@ contracts:
     - ai.request
     - ai.response
     - dimension.event
+    - state.event
 ---
 
 # plantpal — Hexagon Descriptor
