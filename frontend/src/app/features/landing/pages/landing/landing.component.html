@@ -1,0 +1,111 @@
+<div class="landing">
+
+  <!-- ── Hero ──────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-backdrop" aria-hidden="true">
+      <svg class="hero-leaf hero-leaf--one" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M100 10C40 40 20 100 40 160C80 140 120 140 160 160C180 100 160 40 100 10Z"
+          fill="currentColor"
+        />
+      </svg>
+      <svg class="hero-leaf hero-leaf--two" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M100 10C40 40 20 100 40 160C80 140 120 140 160 160C180 100 160 40 100 10Z"
+          fill="currentColor"
+        />
+      </svg>
+    </div>
+
+    <div class="hero-content fade-up">
+      <span class="eyebrow">
+        <mat-icon>local_florist</mat-icon>
+        Your garden, understood
+      </span>
+      <h1 class="hero-title">Plant care that actually knows your plants</h1>
+      <p class="hero-subline">
+        Snap a photo and PlantPal identifies the species, checks its health, and builds a
+        personalised care plan — with reminders so nothing gets missed.
+      </p>
+      <div class="hero-actions">
+        <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
+          Get started free
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
+        <a mat-stroked-button class="btn-pill hero-cta-secondary" routerLink="/login">Sign in</a>
+      </div>
+      <p class="hero-note">No credit card needed. Free to start.</p>
+    </div>
+  </section>
+
+  <!-- ── How it works ──────────────────────────────────────── -->
+  <section class="how-it-works">
+    <div class="section-inner">
+      <h2 class="section-title fade-up">How it works</h2>
+      <p class="section-subtitle fade-up">From photo to full care plan in three simple steps.</p>
+
+      <ol class="steps-strip">
+        <li
+          class="step-card fade-up"
+          *ngFor="let step of howItWorks; let i = index"
+          [style.animation-delay.ms]="i * 120"
+        >
+          <span class="step-index">{{ i + 1 }}</span>
+          <div class="step-icon">
+            <mat-icon>{{ step.icon }}</mat-icon>
+          </div>
+          <h3 class="step-title">{{ step.title }}</h3>
+          <p class="step-description">{{ step.description }}</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── Feature cards ─────────────────────────────────────── -->
+  <section class="features">
+    <div class="section-inner">
+      <h2 class="section-title fade-up">Everything your plants need</h2>
+      <p class="section-subtitle fade-up">
+        One app for identification, health, care, and everyday questions.
+      </p>
+
+      <div class="feature-grid">
+        <mat-card
+          class="feature-card fade-up"
+          *ngFor="let feature of features; let i = index"
+          [style.animation-delay.ms]="i * 100"
+        >
+          <div class="feature-icon">
+            <mat-icon>{{ feature.icon }}</mat-icon>
+          </div>
+          <h3 class="feature-title">{{ feature.title }}</h3>
+          <p class="feature-description">{{ feature.description }}</p>
+        </mat-card>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer CTA ────────────────────────────────────────── -->
+  <section class="footer-cta">
+    <div class="footer-cta-inner fade-up">
+      <mat-icon class="footer-cta-icon">eco</mat-icon>
+      <h2 class="footer-cta-title">Ready to grow with confidence?</h2>
+      <p class="footer-cta-subtitle">
+        Join PlantPal and give every plant in your home the care it actually needs.
+      </p>
+      <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
+        Get started free
+        <mat-icon>arrow_forward</mat-icon>
+      </a>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    <span class="brand">
+      <mat-icon>local_florist</mat-icon>
+      PlantPal
+    </span>
+    <span class="copyright">&copy; {{ currentYear }} PlantPal. Grow smarter.</span>
+  </footer>
+
+</div>
