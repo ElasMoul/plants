@@ -31,6 +31,18 @@ Zookeeper, Kafka, backend, frontend (Nginx).
   `backend/pom.xml` (authoritative source — currently `0.5.1`; do not trust the
   version number in this doc, it drifts)
 
+### Self-signed dev TLS certs (`frontend/nginx/certs/`, per machine — not in git)
+
+`frontend/Dockerfile` does `COPY nginx/certs /etc/nginx/certs`, so the pair must
+exist before building the frontend image. It is gitignored (per-machine dev
+artifact); generate it once per machine:
+
+```bash
+cd frontend/nginx/certs
+openssl req -x509 -newkey rsa:2048 -keyout self.key -out self.crt -days 365 \
+  -nodes -subj "/CN=localhost"
+```
+
 ### Environment variables (`backend/.env`, copy from `backend/.env.example`)
 
 | Variable | Required | Description |

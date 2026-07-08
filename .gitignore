@@ -1,3 +1,5 @@
 backend/.env
 backend/.idea/
-frontend/nginx/certs/self.key
+# Per-machine self-signed dev TLS pair for the nginx frontend container —
+# regenerated on each machine (see DEPLOYMENT.md), never committed.
+frontend/nginx/certs/
