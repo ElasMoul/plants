@@ -515,10 +515,59 @@ how) is the owner's call, not mine to make from a port-remap task.
 - `e9e0b0e` — `fix(config): repoint host-side dev configs at new platform ports`
 - `5e7162e` — `docs: sync dev port references to platform port-block ruling`
 
+### CORRECTION (same day, 2026-07-08) — live regression found and fixed
+
+**Regression, verified live by the coordinator:** dockerized backend health DOWN,
+`RedisConnectionException: Unable to connect to redis/<unresolved>:16379 ...
+Connection refused: redis/172.19.0.3:16379`. Downstream: healthcheck failed, so
+`frontend` (`depends_on: service_healthy`) never started.
+
+**What was wrong:** this session's remap changed `backend/.env.example`
+`REDIS_PORT` `6379 → 16379`. That value is correct for **native host runs** (the
+host-published port), but `docker-compose.yml` feeds the *same* `.env` into the
+backend container via `env_file:`, and inside the compose network Redis still
+listens on container port `6379`. The compose `environment:` block overrode the
+Redis **host** (`SPRING_DATA_REDIS_HOST: redis`) but not the **port**, so
+`application-dev.yml`'s `${REDIS_PORT:...}` placeholder resolved to `16379` inside
+the container → `redis:16379` → refused.
+
+**Fix (commit: `fix(compose): override container-internal Redis port for dockerized backend`):**
+- `docker-compose.yml` backend `environment:` — added `SPRING_DATA_REDIS_PORT: 6379`
+  (mirrors the existing `SPRING_DATA_REDIS_HOST` pattern; a Spring OS-env var
+  outranks the yml placeholder, same mechanism that already made the host override
+  work). Comment expanded to state the rule: every port that `.env` remaps to a
+  host-published value needs an explicit container-internal override here, because
+  `environment:` beats `env_file:`.
+- `backend/.env.example` — comment added near the remapped values: host-side ports
+  for NATIVE runs; the dockerized backend gets container-internal overrides from
+  docker-compose.yml.
+
+**Audit of the other remapped `.env`-fed values (same bug class):**
+- **Kafka** — NOT luck: compose `environment:` explicitly sets
+  `KAFKA_BOOTSTRAP_SERVERS: kafka:9092`, which replaces the env_file's
+  `localhost:29192` outright (`environment:` beats `env_file:` at the compose
+  level — confirmed in the rendered `docker compose config`, where the merged
+  environment shows `kafka:9092`). That's why consumers joined fine tonight.
+- **Postgres** — explicitly overridden (`SPRING_DATASOURCE_URL:
+  jdbc:postgresql://postgres:5432/...`), and `.env.example` has no DB host/port
+  variable anyway (only `DB_USERNAME`/`DB_PASSWORD`, unremapped). Safe.
+- **Zookeeper** — no `.env`-fed value exists; all refs are compose-internal
+  (`zookeeper:2181`). N/A.
+- Redis **port** was the single value with no explicit container-side override —
+  the one gap, now closed.
+
+**Verification:** `docker compose -f docker-compose.yml config` (with
+`CONTRACTS_M2_0_5_1` set) renders clean; merged backend environment shows
+`SPRING_DATA_REDIS_PORT: "6379"` alongside `SPRING_DATA_REDIS_HOST: redis` and
+`KAFKA_BOOTSTRAP_SERVERS: kafka:9092`. Nothing was `up`'d — the stack is being
+managed live from the root session.
+
 ### Handoff
 
 - State: all seven dev host ports remapped to the platform block, host-side
-  configs and docs synced, `docker compose config` verified clean; nothing pushed.
+  configs and docs synced; live Redis-port regression corrected with an explicit
+  container-side override (the fix(compose) correction commit); `docker compose config` verified clean;
+  nothing pushed.
 - Next step: owner reviews and pushes; owner also decides whether the native
   `mvn spring-boot:run` flow should move to 8180 too (would require touching
   `server.port`, out of scope here).
