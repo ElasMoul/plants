@@ -1,12 +1,12 @@
 {
   "/api": {
-    "target": "http://localhost:8080",
+    "target": "http://localhost:8180",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "info"
   },
   "/photos": {
-    "target": "http://localhost:8080",
+    "target": "http://localhost:8180",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "info"

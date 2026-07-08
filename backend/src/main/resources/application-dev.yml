@@ -8,7 +8,7 @@ spring:
 
   # ── Database ────────────────────────────────────────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/plantpal_dev
+    url: jdbc:postgresql://localhost:15433/plantpal_dev
     username: ${DB_USERNAME:plantpal}   # Default 'plantpal' matches docker-compose.yml
     password: ${DB_PASSWORD:plantpal}
     hikari:
@@ -21,7 +21,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
 
   # ── JPA / Hibernate ──────────────────────────────────────────────────────────
   jpa:
@@ -42,7 +42,7 @@ spring:
 
   # ── Kafka — async identification pipeline ──────────────────────────────────
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29192}
     consumer:
       group-id: plantpal-identification
       auto-offset-reset: earliest
