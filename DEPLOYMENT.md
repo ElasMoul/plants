@@ -94,6 +94,15 @@ New env vars (`backend/.env`, only read when the `platform` profile is active):
 |---|---|---|
 | `PLATFORM_GATEWAY_ENABLED` | No | Overrides `platform.gateway.enabled` (default `true` when the `platform` profile is active; the key doesn't exist at all otherwise) |
 | `PLATFORM_GATEWAY_URL` | No | ai-gateway base URL (default `http://localhost:8085`) |
+| `PLATFORM_STATEFEED_ENABLED` | No | Overrides `platform.statefeed.enabled` (default `true` when the `platform` profile is active; the key doesn't exist at all otherwise) |
+| `PLATFORM_STATEFEED_URL` | No | state-feed base URL (default `http://localhost:8080` — state-feed's dev host port per the platform port-block ruling, see `PROGRESS.md`'s 2026-07-08 entry: PlantPal's own backend was remapped 8080 → 8180 specifically because 8080 collided with state-feed) |
+
+`com.plantpal.statefeed.StateFeedEmitter` is entirely fire-and-forget: `POST
+{PLATFORM_STATEFEED_URL}/events` on a background executor, 2s connect / 5s read
+timeouts, any failure logged at WARN and swallowed — PlantPal never blocks on or
+cares about the state-feed's availability (spec-state-feed.md §3, read-only
+mirror). Emits `app.status` once on startup and `activity.count`
+(`identification.completed`) each time an identification finishes.
 
 ## Consuming `contracts`
 

@@ -22,6 +22,19 @@
   `contracts` pin to `v0.5.0` (adds the `DimensionEvent` schema). New
   `com.plantpal.plant.config.PlantKafkaTopicConfig` (topic bean, mirrors
   `identification.config.KafkaTopicConfig`'s pattern).
+- State-feed emitter (D029): new `com.plantpal.statefeed.StateFeedEmitter`
+  outbound port, gated by the `platform` Spring profile
+  (`application-platform.yml`, same pattern as the gateway swap). Emits
+  `state.event`'s `app.status` once on `ApplicationReadyEvent` and
+  `activity.count` (`identification.completed`) each time the existing
+  `IdentificationCompletedEvent` fires (now also published via
+  `ApplicationEventPublisher` alongside its pre-existing Kafka send — no new
+  cross-package injection needed). Fire-and-forget over `POST
+  {platform.statefeed.url}/events`, 2s connect / 5s read timeouts, any failure
+  logged at WARN and swallowed — the feed is a read-only mirror
+  (spec-state-feed.md §3), never load-bearing. New
+  `StateFeedProperties`/`StateFeedEmitter` unit tests (7 + 1 cases): default
+  gating, payload shape, transport-failure swallowing.
 
 ### Fixed
 - Gateway-routed PLANTNET identification (`IdentificationServiceImpl.runIdentification`)
@@ -39,6 +52,13 @@
   stays disabled (owner re-enables after review) — only the build steps changed.
 
 ### Changed
+- Re-pinned `contracts` `v0.5.1` → `v0.7.0` (all intervening releases —
+  v0.6.0/v0.6.1/v0.6.2/v0.7.0 — are additive or patch-only per contracts'
+  `CHANGELOG.md`; no breaking change touches anything PlantPal consumes).
+  `HEXAGON.md` frontmatter pin bumped to match; Docker build-context wiring
+  (`docker-compose.yml`, `backend/Dockerfile`) renamed
+  `CONTRACTS_M2_0_5_1` → `CONTRACTS_M2_0_7_0`. CI workflows already read the
+  pinned version dynamically off `backend/pom.xml` — unaffected.
 - Gateway swap is now gated by a **Spring profile** (`platform`,
   `application-platform.yml`) instead of a boolean default living inside
   `application.yml`/`application-dev.yml`. `platform.gateway.*` no longer
