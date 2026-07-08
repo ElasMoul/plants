@@ -437,3 +437,90 @@ All work-order items shipped and verified both locally (246 unit tests) and remo
 session: investigate/fix the local Windows Testcontainers npipe issue (toolchain-level, not
 repo-level) so ITs can run locally again; look into the pre-existing `Nightly AI Evals`
 failure if it persists.
+
+---
+
+## 2026-07-08 — Dev host port remap to the platform 81xx/1xxxx block
+
+**Context:** Platform port-block ruling (owner) — plantpal's dev `docker-compose.yml`
+published host ports collided with the live platform stack and other tenant apps:
+backend `8080:8080` collided with `state-feed`; frontend `80:80`/`443:443`, postgres
+`5432`, redis `6379`, zookeeper `2181`, and kafka `29092` all collided with common
+service defaults. A parallel runtime-repo session is recording the authoritative
+port registry; this session only touched plantpal's own side.
+
+### What shipped
+
+Container-internal ports are unchanged — only the **published host side** moved, per
+the owner's mapping:
+
+| Service | Old host port | New host port |
+|---|---|---|
+| backend | 8080 | 8180 |
+| frontend (HTTP) | 80 | 8181 |
+| frontend (HTTPS) | 443 | 8444 |
+| postgres | 5432 | 15433 |
+| redis | 6379 | 16379 |
+| zookeeper | 2181 | 12181 |
+| kafka | 29092 | 29192 |
+
+- `docker-compose.yml`: all seven port mappings above. Kafka's
+  `KAFKA_ADVERTISED_LISTENERS` has two listeners — `PLAINTEXT` (`kafka:9092`,
+  internal docker-network only, **left untouched**) and `PLAINTEXT_HOST`
+  (`localhost:29092`, the host-facing listener host clients get handed back after
+  the initial connect). Updated `PLAINTEXT_HOST` to `localhost:29192` to match —
+  otherwise host clients would connect to the new port but be handed stale
+  metadata pointing at the old one. The backend healthcheck's `wget` target
+  (`localhost:8080/actuator/health`) runs *inside* the backend container and was
+  correctly left alone.
+- Host-side dev configs that reach the dockerized infra from outside Docker (native
+  `mvn spring-boot:run`, `ng serve`) updated to match: `backend/.env.example`
+  (`REDIS_PORT`, `KAFKA_BOOTSTRAP_SERVERS`), `application-dev.yml` (same two, plus
+  the hardcoded Postgres JDBC URL), `frontend/proxy.conf.json` (`/api`, `/photos`
+  targets now `localhost:8180`).
+- Docs synced: `README.md` and the living `.claude/` docs (`CLAUDE.md`,
+  `FRONTEND.md`, `ARCHITECT.md`). `.claude/Archive/*` deliberately left untouched —
+  historical session snapshots, not live docs.
+
+### One flagged gap, not silently fixed
+
+`server.port` is hardcoded to `8080` in `application.yml` (a **container**-internal
+setting, out of scope for a "host ports only" remap). A backend run natively via
+`mvn spring-boot:run` (bypassing Docker entirely) still binds directly to host
+`8080` — it is not reachable at `8180`. Only the dockerized `backend` compose
+service is published on `8180`. Since `proxy.conf.json` now targets `8180` to match
+the dockerized service, a native-run backend needs
+`-Dspring-boot.run.arguments=--server.port=8180` (or repoint the proxy locally) to
+line up. Called out in README.md/`.claude/CLAUDE.md` rather than changed
+unilaterally — deciding whether the native-run flow should also move to 8180 (and
+how) is the owner's call, not mine to make from a port-remap task.
+
+### Verification
+
+- `docker compose -f docker-compose.yml config` — renders clean with all seven new
+  host ports and the updated Kafka listener (temporarily created an empty
+  `backend/.env` to get past the `env_file` requirement, then removed it — it's
+  gitignored and doesn't exist for real yet, per the work order).
+- Repo-wide grep for the old host-port strings — only expected hits remain: the
+  two deliberately-kept native-run `localhost:8080` mentions (README.md,
+  `.claude/CLAUDE.md`, both with an explanatory note attached), the
+  container-internal healthcheck/`EXPOSE`/`server.port`/nginx-to-`backend`-service
+  references (unchanged by design), a Testcontainers dynamic port mapping in
+  `AbstractIntegrationTest.java` (unrelated ephemeral test infra), and
+  `.claude/Archive/*` (historical record).
+
+### Commits (local only, not pushed)
+
+- `37b5e9b` — `fix(compose): move dev host ports to platform 81xx/1xxxx block`
+- `e9e0b0e` — `fix(config): repoint host-side dev configs at new platform ports`
+- `5e7162e` — `docs: sync dev port references to platform port-block ruling`
+
+### Handoff
+
+- State: all seven dev host ports remapped to the platform block, host-side
+  configs and docs synced, `docker compose config` verified clean; nothing pushed.
+- Next step: owner reviews and pushes; owner also decides whether the native
+  `mvn spring-boot:run` flow should move to 8180 too (would require touching
+  `server.port`, out of scope here).
+- No background processes or servers were started in this session; nothing to
+  stop.
