@@ -54,6 +54,10 @@ core/         auth service, JWT interceptor, auth guard, models, push-notificati
               user.service.ts (preferences), ai-error.service.ts (T7.2 — see below)
 shared/       reusable components + constants (see shared/components/ below)
 features/
+  landing/    public marketing page at '/' (PP-082) — anonymous-visitor-only; component
+              redirects to /home in ngOnInit if AuthService.isLoggedIn(). Root route
+              (app-routing.module.ts) now lazy-loads this instead of redirecting
+              straight to 'home'. No providers — static content only, no services.
   auth/       login, register
   preferences/ /preferences page (T7.2) — hosts the vision/reasoning model-selector
               full-page; linked from the user account menu and from AiErrorService's

@@ -3,10 +3,12 @@ import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
-  // Exact empty path redirect
+  // Public marketing landing page (PP-082) — anonymous visitors land here; the component
+  // itself redirects to '/home' when already logged in (mirrors AuthGuard's opposite check).
+  // pathMatch: 'full' keeps this from swallowing every other route below.
   {
     path: '',
-    redirectTo: 'home',
+    loadChildren: () => import('./features/landing/landing.module').then(m => m.LandingModule),
     pathMatch: 'full',
   },
   // Guarded feature routes — declared BEFORE the auth catch-all
