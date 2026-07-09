@@ -4,6 +4,55 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-09 — CI red after wave-2 merge: SecretConfigValidator BFPP + spotless (PP-085)
+
+**Context:** owner merged the wave-2 PRs (#108–#110); CI went red on `main` (30/33 ITs
+errored, dev container crash-looped). Root-caused and fixed on
+`bugfix/PP-085-secret-validator-bfpp-instantiation` → [PR #111](https://github.com/ElasMoul/plants/pull/111).
+
+### Root cause (two stacked, both CI-only gates)
+
+1. **`SecretConfigValidator` (a `BeanFactoryPostProcessor`) took `Environment` by
+   constructor.** BFPPs are instantiated in `invokeBeanFactoryPostProcessors`, *before*
+   `AutowiredAnnotationBeanPostProcessor` is active → constructor autowiring unavailable →
+   Spring falls back to a missing no-arg ctor → `"No default constructor found"` → context
+   refresh fails on **every** profile (the 30 IT errors AND the dev-container crash). Added
+   2026-07-08 but **never pushed (no CI) nor IT-run locally (Windows npipe)**, so it first
+   broke when this wave carried it to `main`. Its unit test only did
+   `new SecretConfigValidator(mockEnv)` — never Spring's real BFPP lifecycle.
+   **Fix:** `EnvironmentAware` + setter (`ApplicationContextAwareProcessor` is registered in
+   `prepareBeanFactory`, earlier than BFPP instantiation, so the setter path works). Added a
+   `SpringLifecycle` regression test that boots a real `AnnotationConfigApplicationContext` —
+   throws pre-fix, passes post-fix.
+2. **Spotless (Google Java Format) gate.** `mvn verify` runs `spotless:check`; `mvn test`
+   (what the wave-2 builder agents ran) does not — so unformatted state-feed code +
+   the PP-085 fix blocked the build before ITs ran. **Fix:** `mvn spotless:apply` on the 5
+   files, no logic change.
+
+### Verification — GREEN on CI (run 28990603046)
+
+- Backend CI 5m39s: **BUILD SUCCESS**, all IT classes ran and passed
+  (SpeciesControllerIT 4, AuthControllerIT 4 [was erroring], TreatmentControllerIT 7,
+  TreatmentPlanControllerIT 5, IdentificationControllerIT 5, GatewayStandaloneProfileIT 1,
+  GatewayPlatformProfileIT 1, PlantControllerIT 3; IdentificationEvalIT 3 skipped by design).
+  Frontend CI green. Unit suite 267 locally.
+
+### Standing lesson (applies to all future delta sessions)
+
+**Gate on `mvn verify`, not `mvn test`.** `test` skips BOTH the Testcontainers `*IT.java`
+suite and `spotless:check` — the wave-2 agents' "264 green" was true but blind to both gates.
+The Windows npipe blocker means ITs can't run locally; a builder agent that can't run `verify`
+must say so explicitly and treat the branch as unverified until CI (or a Linux box) runs it —
+not report green off `mvn test` alone. When practical, run at least `mvn -o spotless:check`
+locally (it needs no Docker) before pushing.
+
+### Handoff
+
+- State: PR #111 green on CI, awaiting owner merge — unblocks `main` (CI + dev boot).
+- No background processes running.
+
+---
+
 ## 2026-07-09 — Integration wave 2: demand doc, contracts 0.7.0, state-feed emitter, block-state UI (+ landing page)
 
 **Context:** owner-approved integration plan (chunks A/B/C-proposal executed this session;
