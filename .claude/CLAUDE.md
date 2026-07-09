@@ -11,6 +11,24 @@
 > `app-manifest.yaml` at repo root) — PlantPal's domain code below is
 > unaffected and continues under this file's rules unchanged.
 
+> ## Demand system
+> Platform-delta only; platform standing orders in `../CLAUDE.md` take precedence
+> for this. Demands are how this repo asks another repo for something it must not
+> build itself. Full reference: `../DEMAND_SYSTEM.md`.
+> - **Session start (both directions):** check for demand traffic — any demand
+>   dispatched *to* plantpal to work (owner tells you at launch), and any demand
+>   plantpal *raised* that is now satisfied (act on follow-ups, then move the file
+>   to `demands/archive/`).
+> - **To RAISE:** write the envelope file under `demands/`
+>   (`YYYY-MM-DD-<target>-<slug>.md`), commit it as a small standalone
+>   coordination commit to `main`, and push — that push is the raise. Never
+>   implement any part of it in the target repo. (plantpal already raised the
+>   ai-gateway/contracts demand this way: `demands/2026-07-09-ai-gateway-full-ai-coverage.md`.)
+> - **To FULFILL a demand dispatched here:** work it in-repo as normal, then write
+>   a report in `demands/fulfilled/<demand-id>-report.md`. "done" is a claim, not a
+>   verdict — never self-certify and never notify the origin directly; the
+>   coordinator validates and delivers the assembled summary.
+
 ---
 
 # PlantPal — Claude Code Instructions

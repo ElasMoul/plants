@@ -148,3 +148,10 @@ Production (Railway/Vercel) is unchanged — they already terminate TLS.
 - `PlantNetClient` PLANTNET enum: if a future cleanup removes it, remove from both backend enum and frontend type simultaneously.
 - SSE streaming (chat): written and unit-tested but never confirmed against a live Docker stack with actual incremental token delivery — re-verify before DEPLOY.
 - DeepSeekAnnotationClient 429 shape differs from DeepSeekClient's RateLimitException — noted in ARCHITECT.md, not yet unified.
+
+---
+
+## 2026-07-09 — Platform demand system adopted (platform-delta)
+- Completed §2 demand-folder structure (added `demands/README.md`, `demands/fulfilled/.gitkeep`, `demands/archive/.gitkeep`; existing live demand `demands/2026-07-09-ai-gateway-full-ai-coverage.md` left untouched) and documented the convention in a new **Demand system** section of `.claude/CLAUDE.md`. See `../DEMAND_SYSTEM.md`.
+- Candidate demands scanned: none new — every cross-repo need in PROGRESS.md/STATE.md targets ai-gateway/contracts and is already subsumed by the raised full-ai-coverage demand (G1–G6).
+- Next step: no action needed; at session start check demand traffic both directions (dispatched-to-plantpal, and the raised ai-gateway demand for satisfaction → archive when closed).
