@@ -1,6 +1,6 @@
 > ## Platform integration notice
 > This repo is now also a **platform Room** (`../platform/plantpal`, per
-> `platform-vault/spec-plantpal-room.md`). For platform-delta work only:
+> `platform-vault/spec-plantpal.md`). For platform-delta work only:
 > (a) `../CLAUDE.md` (the platform's standing orders) takes precedence over
 > everything below for that work — this file remains the source of truth for
 > PlantPal's own feature work; (b) the platform's root `PROGRESS.md` is the

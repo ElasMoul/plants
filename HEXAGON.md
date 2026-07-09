@@ -4,7 +4,7 @@ kind: app
 side: host
 status: active
 class: low-stakes
-spec: spec-plantpal-room.md
+spec: spec-plantpal.md
 decisions:
   - D006
   - D009
@@ -75,5 +75,5 @@ contracts:
 - **User auth stays PlantPal's own** (JWT, `SecurityConfig`/`AuthController`, as-is) — platform identity, when it arrives, is attribution-only (D009). The platform never issues or validates PlantPal's tokens.
 - **Its database stays its own.** No platform tables inside PlantPal's Postgres schema; Postgres/Redis/Kafka are pre-existing infrastructure PlantPal already ran before joining the platform, not platform-provisioned.
 - **Its deploy stays independent** — Railway (backend) + Vercel (frontend), on its own cadence and its own CI (`.github/workflows/deploy.yml`); the platform observes via `app.health`, it does not gate PlantPal's releases.
-- **No platform-awareness in domain logic** — the integration delta lives entirely in adapters/config (this chunk: root-level files only). If a domain class (e.g. `com.plantpal.plant.*`, `com.plantpal.identification.*`) ever imports a platform concept, that is out of bounds per `spec-plantpal-room.md` §3.
+- **No platform-awareness in domain logic** — the integration delta lives entirely in adapters/config (this chunk: root-level files only). If a domain class (e.g. `com.plantpal.plant.*`, `com.plantpal.identification.*`) ever imports a platform concept, that is out of bounds per `spec-plantpal.md` §3.
 - **Launch is not blocked** — this Room's self-describing files and the future gateway swap are additive; none of PlantPal's own roadmap (Phase 9.5 → 10 → launch) waits on the platform.

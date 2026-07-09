@@ -65,7 +65,7 @@ the platform, unrelated to `ai-gateway`.
 
 ## AI provider keys — current state vs. the gateway swap
 
-Per the owner's ruling (`spec-plantpal-room.md` §2-1, §5-2): the gateway swap
+Per the owner's ruling (`spec-plantpal.md` §2-1, §5-2): the gateway swap
 (Chunk 3, shipped) is **profile-gated**, and as of the platform-profile split it's
 gated by a **Spring profile**, not a flag flipped inside a shared profile.
 `platform.gateway.*` no longer appears in `application.yml` or
