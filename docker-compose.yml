@@ -32,13 +32,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       # Requires a "contracts-m2" build context pointing at the host's local
-      # .m2 contracts 0.5.1 artifact -- see backend/Dockerfile and
-      # DEPLOYMENT.md. CONTRACTS_M2_0_5_1 must be set in the shell (path
+      # .m2 contracts 0.7.0 artifact -- see backend/Dockerfile and
+      # DEPLOYMENT.md. CONTRACTS_M2_0_7_0 must be set in the shell (path
       # syntax differs per OS, so it isn't hardcoded here); e.g.:
-      #   export CONTRACTS_M2_0_5_1=$HOME/.m2/repository/io/platform/contracts/0.5.1   (bash)
-      #   $env:CONTRACTS_M2_0_5_1 = "$HOME\.m2\repository\io\platform\contracts\0.5.1"  (PowerShell)
+      #   export CONTRACTS_M2_0_7_0=$HOME/.m2/repository/io/platform/contracts/0.7.0   (bash)
+      #   $env:CONTRACTS_M2_0_7_0 = "$HOME\.m2\repository\io\platform\contracts\0.7.0"  (PowerShell)
       additional_contexts:
-        contracts-m2: ${CONTRACTS_M2_0_5_1}
+        contracts-m2: ${CONTRACTS_M2_0_7_0}
     container_name: plantpal-backend
     restart: unless-stopped
     ports:

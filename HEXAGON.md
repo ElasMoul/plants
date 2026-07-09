@@ -18,7 +18,7 @@ infra:
   - redis
   - kafka
 contracts:
-  pin: v0.5.1
+  pin: v0.7.0
   binding: java
   used:
     - app.health
@@ -26,6 +26,7 @@ contracts:
     - ai.request
     - ai.response
     - dimension.event
+    - state.event
 ---
 
 # plantpal — Hexagon Descriptor
@@ -43,6 +44,8 @@ contracts:
 
 > **Dimension-event note (this chunk):** `PlantServiceImpl` now emits a `dimension.event` (`plant_count`, delta `+1`/`-1`) to the `dimension.events` Kafka topic on plant create and archive, for Treasury's business-dimension metering (D024/D027). Always-on, no feature flag — unlike the gateway swap, this isn't provider-facing and has no direct-path fallback to preserve.
 
+> **State-feed note (this chunk):** new `com.plantpal.statefeed.StateFeedEmitter` port, gated by the **`platform` Spring profile** like the gateway swap (`platform.statefeed.*` lives only in `application-platform.yml`; `StateFeedProperties` binds `enabled=false` via `@DefaultValue` when the prefix is absent, so a standalone boot reads zero `platform.statefeed.*` keys). Emits over HTTP `POST {url}/events` on a background executor (`aiTaskExecutor`), 2s connect / 5s read timeouts, any failure logged at WARN and swallowed — never propagated (spec-state-feed.md §3: the feed is a read-only mirror, not load-bearing). Two events, both additive to this chunk's scope: `app.status` (`running`) once on `ApplicationReadyEvent`, and `activity.count` (`identification.completed`, delta `1`) each time `IdentificationCompletedEvent` fires — the existing identification-package event, now also published via `ApplicationEventPublisher` in addition to its pre-existing Kafka send, so no new cross-package injection was needed.
+
 ## Inbound ports (driving)
 
 | Port | Contract | Sync/async |
@@ -58,12 +61,13 @@ contracts:
 | Registration | control-plane | `app.manifest` | static record this phase (`app-manifest.yaml`) — see below |
 | ai-gateway (`com.plantpal.gateway.GatewayClient`, `POST /ai/request`) | ai-gateway | `ai.request`/`ai.response` | sync, **gated by the `platform` Spring profile** (`application-platform.yml`, never active in prod) — the in-scope calls only, see PROGRESS.md |
 | Kafka producer (`dimension.event`, topic `dimension.events`) | Treasury (consumer) | `dimension.event` | async, always-on — `plant_count` delta `+1` on `PlantServiceImpl.createPlant()`, `-1` on `archivePlant()` |
+| state-feed (`com.plantpal.statefeed.StateFeedEmitter`, `POST /events`) | state-feed | `state.event` (`AppStatusEvent`, `ActivityCountEvent`) | async, fire-and-forget, **gated by the `platform` Spring profile** (`application-platform.yml`, never active in prod) — `app.status` once on `ApplicationReadyEvent`; `activity.count` (`identification.completed`) each time `IdentificationCompletedEvent` fires. Any transport failure is logged at WARN and swallowed — the feed is a read-only mirror (spec-state-feed.md §3), never load-bearing |
 | (existing, not platform-facing) | Postgres, Redis, Kafka | none — PlantPal's own datastore/cache/async pipeline | — |
 | (existing, not platform-facing, always direct regardless of flag) | Ollama (vision) / GitHub Models (`GITHUB_GPT4O`/`GITHUB_GPT41` vision, `PLANTNET`'s non-identify endpoints) / PlantNetDiseaseClient | none — direct provider calls | sync/async |
 
 ## Dependencies
 
-- `contracts` (pinned `v0.5.1`, Java binding; authoritative source: `backend/pom.xml`) — `app.health`, `app.manifest`, `ai.request`/`ai.response` (Chunk 3), and `dimension.event` (plant_count metering).
+- `contracts` (pinned `v0.5.1`, Java binding; authoritative source: `backend/pom.xml`) — `app.health`, `app.manifest`, `ai.request`/`ai.response` (Chunk 3), `dimension.event` (plant_count metering), and `state.event` (`app.status`/`activity.count` via `StateFeedEmitter`).
 - `io.platform:contracts:0.5.1` declared in `backend/pom.xml`; local `mvn install` of the `contracts` checkout required before building on the host, or the `contracts-m2` Docker build context for image builds (see DEPLOYMENT.md).
 
 ## Key invariants

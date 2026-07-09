@@ -4,6 +4,79 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-09 — Integration wave 2: demand doc, contracts 0.7.0, state-feed emitter, block-state UI (+ landing page)
+
+**Context:** owner-approved integration plan (chunks A/B/C-proposal executed this session;
+chunk D — runtime/ci-runner wiring — explicitly deferred until those repos are fixed and
+authenticated; chunk E — go-commercial tier UI + `platform` profile flip — held for the owner).
+Orchestrated: 2 scout agents, 3 builder agents, coordinator-reviewed.
+
+### Branches produced (none pushed, no PRs — owner reviews)
+
+1. **`feature/PP-082-landing-page`** (PlantPal feature work, not platform-delta — recorded here
+   only because it shipped in the same session; `ddf9aa1` + `c04f784`). Public marketing page at
+   `/`: anonymous visitors get hero/how-it-works/features/CTA; logged-in users still redirect to
+   `/home`. Verified: tsc/lint/prod build green, 4/4 Jest, live-render check (a11y tree +
+   computed styles; desktop + 375px). Known launch gaps flagged: no SSR (SEO), PWA manifest
+   icons still placehold.co placeholders, no real logo asset.
+
+2. **`feature/PP-083-contracts-070-statefeed`** (this branch):
+   - `2b54ef7` — **demand doc** `demands/2026-07-09-ai-gateway-full-ai-coverage.md` for the
+     platform architect → ai-gateway/contracts. Inventories PlantPal's full AI surface; gaps
+     G1–G6 (OpenAI-adapter media support, streaming *gateway sessions* — owner's token+refresh
+     sketch with the D022 correction that sessions terminate at the gateway, Ollama context
+     loss, PlantNet aux adapters, `ai.model-manifest` contract proposal incl. draft manifest,
+     hardening). Fixes land in those repos, reviewed — not from here.
+   - `767272c` — **contracts re-pin 0.5.1 → 0.7.0.** All intervening releases additive;
+     `DimensionEvent` unchanged; no code adaptation needed. Docker named-context var renamed
+     `CONTRACTS_M2_0_5_1` → `CONTRACTS_M2_0_7_0` (compose + DEPLOYMENT.md); CI workflows read
+     the pin dynamically off the pom (verified, no change). Manifest/HEXAGON alignment vs
+     v0.7.0 schemas checked: already exact, no-op. NOTE: root `PLATFORM_STATE.md` still says
+     plantpal pins 0.5.0 — stale twice over now.
+   - `e999cfe` — **state-feed emitter** (`com.plantpal.statefeed`): `app.status` on
+     `ApplicationReadyEvent` + `activity.count` per completed identification (listens to the
+     existing `IdentificationCompletedEvent`, now also published as a Spring event — no new
+     cross-package injection). Fire-and-forget: async on `aiTaskExecutor`, 2s/5s timeouts, all
+     failures WARN-and-swallow. Config `platform.statefeed.*` in `application-platform.yml`
+     only (D009-safe `@DefaultValue enabled=false`). **Open item:** default URL
+     `http://localhost:8080` is *inferred* from the 2026-07-08 port-collision note, not a
+     state-feed-authored source — confirm against the runtime session's port registry.
+   - Unit suite: 256 → **264 green** (`mvn test`; ITs not runnable locally, known npipe issue —
+     CI covers them on push).
+
+3. **`feature/PP-084-ai-block-state-ui`** (`ba5f7c4`, built in an isolated worktree, adopted +
+   worktree removed): **AI block-state, end to end (D023 / spec delta item 2 — now shipped).**
+   Trace findings: chat (sync + stream) and craft-plan already carried the gateway 402 with
+   reason; **async identification flattened it into generic `PROVIDER_ERROR`** — fixed by
+   tagging `failureReason = "AI_LIMIT_REACHED"` on 402 (reused existing free-text column, no
+   migration). New shared `AiBlockNoticeComponent` (compact chat-inline + full identification
+   terminal state), `AiErrorService.blockReason()` + raw-string body parsing (fixes the
+   stream's `responseType:'text'` case). Backend 257 green (+1), frontend 19 Jest green (+8),
+   tsc/lint/prod build clean. **Flagged, deliberately not done:** disease-description async
+   generation still collapses 402 → generic `FAILED` (has a "regenerate" terminal state, so no
+   spinner violation; parity would need a `GenerationStatus` variant — owner call);
+   identification persists only the tag, not the gateway's reason prose (static friendly
+   message shown — owner call if exact prose wanted there).
+
+### Merge note
+PP-083 and PP-084 both touch `IdentificationServiceImpl` (different methods:
+`publishCompletedEvent` vs `classifyFailureReason`) — expect a trivial/clean merge, but merge
+PP-083 first, then PP-084, and re-run `mvn test` after the second merge.
+
+### Handoff
+- State: three reviewed, verified branches awaiting owner review + push (CI will run the ITs);
+  demand doc awaiting routing to the ai-gateway/contracts sessions; state-feed URL needs
+  port-registry confirmation; chunk E (tier UI at N=10, profile flip) and chunk D
+  (runtime/ci-runner) intentionally not started.
+- Next step: owner reviews/pushes branches → routes the demand doc → rules on the two
+  block-state parity flags and the state-feed port → then chunk E can be a single
+  fullstack-agent work order.
+- No background processes left running (preview server from the landing-page check was stopped
+  and verified dead; agent worktree removed; `.claude/launch.json` left untracked as a dev
+  convenience — owner may commit or delete).
+
+---
+
 ## PlantNet gateway request: attach organs/project/lang to context (companion to ai-gateway PlantNetAdapter fix)
 
 **Branch:** `platform-integration`.

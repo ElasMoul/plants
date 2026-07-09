@@ -1682,6 +1682,10 @@ public class IdentificationServiceImpl implements IdentificationService {
             .completedAt(Instant.now())
             .build();
     kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC, event);
+    // Also published as a Spring application event (in addition to the Kafka message above) so
+    // in-process listeners — e.g. com.plantpal.statefeed.StateFeedEmitter — can react without a
+    // Kafka consumer or a new cross-package injection.
+    eventPublisher.publishEvent(event);
   }
 
   /** Wire shape returned by {@link DeepSeekClient#generateCureAdvice}. */
