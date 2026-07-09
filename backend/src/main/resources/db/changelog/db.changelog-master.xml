@@ -101,4 +101,7 @@
     <include file="db/changelog/migrations/030_add_identification_user_context.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/031_add_business_tier.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

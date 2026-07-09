@@ -30,4 +30,7 @@ public class UserPreferencesResponse {
   // PlantNet flora and common-name language (T8.4).
   private String plantnetProject;
   private String plantnetLang;
+
+  // Self-declared business/professional tier (D027, PP-086). Non-null in practice.
+  private Boolean businessTier;
 }

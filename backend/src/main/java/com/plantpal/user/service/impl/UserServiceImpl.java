@@ -130,15 +130,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     if (request.getPlantnetLang() != null) {
       user.setPlantnetLang(request.getPlantnetLang());
     }
+    if (request.getBusinessTier() != null) {
+      user.setBusinessTier(request.getBusinessTier());
+    }
     userRepository.save(user);
     log.info(
         "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
-            + " plantnetProject={}, plantnetLang={}",
+            + " plantnetProject={}, plantnetLang={}, businessTier={}",
         userId,
         user.getVisionModelPreference(),
         user.getReasoningModelPreference(),
         user.getPlantnetProject(),
-        user.getPlantnetLang());
+        user.getPlantnetLang(),
+        user.isBusinessTier());
     return toPreferencesResponse(user);
   }
 
@@ -151,6 +155,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .reasoningModelAvailability(reasoningModelAvailability())
         .plantnetProject(user.getPlantnetProject())
         .plantnetLang(user.getPlantnetLang())
+        .businessTier(user.isBusinessTier())
         .build();
   }
 

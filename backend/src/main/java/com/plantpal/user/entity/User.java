@@ -74,6 +74,12 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "plantnet_lang", length = 10)
   private String plantnetLang = "en";
 
+  // Self-declared business/professional tier (D027, PP-086). No server-side enforcement — the
+  // N=10 plants upgrade prompt threshold is a frontend-only presentational check.
+  @Builder.Default
+  @Column(name = "is_business_tier", nullable = false)
+  private boolean businessTier = false;
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_USER"));
