@@ -37,7 +37,8 @@ import org.springframework.stereotype.Component;
  * AutowiredAnnotationBeanPostProcessor} is active, so constructor autowiring is not yet available
  * and Spring falls back to a (missing) no-arg constructor — {@code "No default constructor found"}.
  * {@code ApplicationContextAwareProcessor} (which services {@code EnvironmentAware}) is registered
- * in {@code prepareBeanFactory}, earlier still, so the setter path works at BFPP-instantiation time.
+ * in {@code prepareBeanFactory}, earlier still, so the setter path works at BFPP-instantiation
+ * time.
  */
 @Component
 public class SecretConfigValidator implements BeanFactoryPostProcessor, EnvironmentAware {

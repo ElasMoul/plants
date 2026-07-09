@@ -29,9 +29,9 @@ import org.springframework.web.client.RestClient;
  *
  * <ul>
  *   <li>{@code app.status} once, on {@link ApplicationReadyEvent} — "plantpal is up."
- *   <li>{@code activity.count} each time an identification finishes (listens to the existing
- *       {@code IdentificationCompletedEvent} Spring application event — no new cross-package
- *       injection; identification already publishes this event for {@link
+ *   <li>{@code activity.count} each time an identification finishes (listens to the existing {@code
+ *       IdentificationCompletedEvent} Spring application event — no new cross-package injection;
+ *       identification already publishes this event for {@link
  *       com.plantpal.identification.event.DuplicateCareCardRemovedEvent}'s sibling wiring).
  * </ul>
  */

@@ -208,7 +208,8 @@ class SecretConfigValidatorTest {
     }
 
     @Test
-    @DisplayName("should fail context refresh with the aggregated named-variable error on bad secrets")
+    @DisplayName(
+        "should fail context refresh with the aggregated named-variable error on bad secrets")
     void shouldFailRefreshWithBadSecrets() {
       try (AnnotationConfigApplicationContext context =
           contextWith(PLACEHOLDER_JWT, VALID_VAPID_PUBLIC, VALID_VAPID_PRIVATE)) {

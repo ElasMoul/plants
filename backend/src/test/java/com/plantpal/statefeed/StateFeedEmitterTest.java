@@ -17,12 +17,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Exercises {@link StateFeedEmitter} over real HTTP against a loopback stub server (same
- * technique as {@code com.plantpal.gateway.GatewayClientTest}) — verifies actual payload shape,
- * the enabled/disabled gate, and that any transport failure is swallowed rather than propagated
- * (the state-feed is a read-only mirror, spec-state-feed.md §3: PlantPal must never care if it's
- * down). Uses a synchronous (same-thread) {@link Executor} instead of the real {@code
- * aiTaskExecutor} so assertions don't need to poll/await a background thread.
+ * Exercises {@link StateFeedEmitter} over real HTTP against a loopback stub server (same technique
+ * as {@code com.plantpal.gateway.GatewayClientTest}) — verifies actual payload shape, the
+ * enabled/disabled gate, and that any transport failure is swallowed rather than propagated (the
+ * state-feed is a read-only mirror, spec-state-feed.md §3: PlantPal must never care if it's down).
+ * Uses a synchronous (same-thread) {@link Executor} instead of the real {@code aiTaskExecutor} so
+ * assertions don't need to poll/await a background thread.
  */
 class StateFeedEmitterTest {
 
@@ -43,8 +43,7 @@ class StateFeedEmitterTest {
     List<String> receivedBodies = new CopyOnWriteArrayList<>();
     startStubServer(200, receivedBodies);
     StateFeedEmitter emitter =
-        new StateFeedEmitter(
-            new StateFeedProperties(false, baseUrl()), SAME_THREAD_EXECUTOR);
+        new StateFeedEmitter(new StateFeedProperties(false, baseUrl()), SAME_THREAD_EXECUTOR);
 
     emitter.onApplicationReady();
 
@@ -138,9 +137,7 @@ class StateFeedEmitterTest {
   @Test
   void applicationReadyEvent_listenerAnnotationPresent() throws NoSuchMethodException {
     var method = StateFeedEmitter.class.getMethod("onApplicationReady");
-    assertThat(
-            method.isAnnotationPresent(
-                org.springframework.context.event.EventListener.class))
+    assertThat(method.isAnnotationPresent(org.springframework.context.event.EventListener.class))
         .isTrue();
   }
 
