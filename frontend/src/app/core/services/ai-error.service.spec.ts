@@ -101,4 +101,34 @@ describe('AiErrorService', () => {
     const err = new HttpErrorResponse({ status: 429, error: {} });
     expect(service.isBlocked(err)).toBe(false);
   });
+
+  it('blockReason returns the backend message from an object body', () => {
+    const err = new HttpErrorResponse({
+      status: 402,
+      error: { message: 'app plantpal daily ceiling reached' },
+    });
+    expect(service.blockReason(err)).toBe('app plantpal daily ceiling reached');
+  });
+
+  it('blockReason parses a raw text body (chat streaming responseType:text)', () => {
+    // Chat streaming sets responseType:'text', so a 402 error body arrives as an unparsed string.
+    const err = new HttpErrorResponse({
+      status: 402,
+      error: JSON.stringify({ success: false, message: 'daily ceiling reached', errorCode: 402 }),
+    });
+    expect(service.blockReason(err)).toBe('daily ceiling reached');
+  });
+
+  it('blockReason returns null when the body carries no message', () => {
+    const err = new HttpErrorResponse({ status: 402, error: 'not json' });
+    expect(service.blockReason(err)).toBeNull();
+  });
+
+  it('handle() still derives the daily block message from a raw text body', () => {
+    const err = new HttpErrorResponse({
+      status: 402,
+      error: JSON.stringify({ message: 'daily ceiling reached' }),
+    });
+    expect(service.handle(err)).toBe('Daily AI limit reached — try again tomorrow');
+  });
 });

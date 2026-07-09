@@ -1,0 +1,8 @@
+<div class="block-notice" [class.block-notice--compact]="compact" role="status" data-testid="ai-block-notice">
+  <mat-icon class="block-icon">hourglass_empty</mat-icon>
+  <div class="block-text">
+    <p class="block-title">{{ title }}</p>
+    <p class="block-guidance">{{ guidance }}</p>
+    <p class="block-reason" *ngIf="showReason">{{ reason }}</p>
+  </div>
+</div>

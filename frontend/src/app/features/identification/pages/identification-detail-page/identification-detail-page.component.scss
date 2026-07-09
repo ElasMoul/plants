@@ -107,6 +107,13 @@
   border-radius: var(--radius-chip) !important;
 }
 
+.block-state-card {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
 .failed-actions {
   display: flex;
   flex-direction: column;

@@ -25,6 +25,7 @@ import { StepDetailDialogComponent } from './components/step-detail-dialog/step-
 import { TreatmentStepListComponent } from './components/treatment-step-list/treatment-step-list.component';
 import { ModelUsageBadgeComponent } from './components/model-usage-badge/model-usage-badge.component';
 import { ReadAloudButtonComponent } from './components/read-aloud-button/read-aloud-button.component';
+import { AiBlockNoticeComponent } from './components/ai-block-notice/ai-block-notice.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -52,6 +53,7 @@ const MATERIAL_MODULES = [
     TreatmentStepListComponent,
     ModelUsageBadgeComponent,
     ReadAloudButtonComponent,
+    AiBlockNoticeComponent,
   ],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
@@ -66,6 +68,7 @@ const MATERIAL_MODULES = [
     TreatmentStepListComponent,
     ModelUsageBadgeComponent,
     ReadAloudButtonComponent,
+    AiBlockNoticeComponent,
   ],
 })
 export class SharedModule {}

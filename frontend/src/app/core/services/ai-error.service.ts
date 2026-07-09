@@ -29,7 +29,7 @@ export class AiErrorService {
     if (err.status === 0) {
       return 'Connection problem — check your internet and try again';
     }
-    const backendMessage = (err.error as ApiResponse<unknown> | undefined)?.message;
+    const backendMessage = this.parseBody(err)?.message;
     return backendMessage || 'Something went wrong — please try again';
   }
 
@@ -37,6 +37,12 @@ export class AiErrorService {
   // isn't fixed by switching AI models, so no "Settings" action here.
   isBlocked(err: HttpErrorResponse): boolean {
     return err.status === 402;
+  }
+
+  // The raw block reason from the backend (gateway BlockedResponse.reason), when the body carried
+  // one — for the block-state UI to show alongside the friendly title. Returns null when absent.
+  blockReason(err: HttpErrorResponse): string | null {
+    return this.parseBody(err)?.message ?? null;
   }
 
   // Same as handle(), but also pops a "Dismiss" snackbar for non-429 errors — for call sites that
@@ -48,8 +54,23 @@ export class AiErrorService {
     }
   }
 
+  // Normalises err.error into an ApiResponse: it may arrive as a parsed object (JSON responses) or
+  // as a raw string (chat streaming uses responseType:'text', so the error body isn't auto-parsed).
+  private parseBody(err: HttpErrorResponse): ApiResponse<unknown> | undefined {
+    const raw = err.error;
+    if (raw == null) return undefined;
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw) as ApiResponse<unknown>;
+      } catch {
+        return undefined;
+      }
+    }
+    return raw as ApiResponse<unknown>;
+  }
+
   private rateLimitMessage(err: HttpErrorResponse): string {
-    const body = err.error as ApiResponse<unknown> | undefined;
+    const body = this.parseBody(err);
     const message = body?.message ?? '';
     if (message.toLowerCase().includes('plantnet')) {
       return "Pl@ntNet daily quota reached — try again tomorrow, or switch to a different model in Settings";
@@ -60,7 +81,7 @@ export class AiErrorService {
   }
 
   private blockedMessage(err: HttpErrorResponse): string {
-    const body = err.error as ApiResponse<unknown> | undefined;
+    const body = this.parseBody(err);
     const message = body?.message ?? '';
     if (message.toLowerCase().includes('daily')) {
       return 'Daily AI limit reached — try again tomorrow';
