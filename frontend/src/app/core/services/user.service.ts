@@ -56,4 +56,10 @@ export class UserService {
       })
       .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
   }
+
+  updateBusinessTierPreference(businessTier: boolean): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { businessTier })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
 }

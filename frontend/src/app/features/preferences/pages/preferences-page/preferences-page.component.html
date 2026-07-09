@@ -75,6 +75,23 @@
   </div>
 
   <div class="preference-section">
+    <h2>Garden type</h2>
+    <div class="toggle-row">
+      <mat-slide-toggle
+        [checked]="businessTier"
+        [disabled]="businessTierSaving"
+        (change)="onBusinessTierChange($event)"
+      >
+        This is a business or professional garden
+      </mat-slide-toggle>
+    </div>
+    <p class="section-hint">
+      Self-declared — helps us understand who's using PlantPal at scale. This doesn't change
+      anything about your account today.
+    </p>
+  </div>
+
+  <div class="preference-section">
     <h2>Hitting a rate limit?</h2>
     <p class="section-hint">
       Each AI model has its own hourly call budget. If you see a rate-limit message, switching to

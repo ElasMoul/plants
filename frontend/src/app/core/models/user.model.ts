@@ -36,6 +36,9 @@ export interface UserPreferences {
   // PlantNet flora (project code e.g. "k-world-flora") and common-name language (T8.4).
   plantnetProject?: string;
   plantnetLang?: string;
+  // Self-declared business/professional tier (D027, PP-086). No client-side enforcement — the
+  // 10+ plants upgrade prompt on the Home dashboard is purely presentational.
+  businessTier?: boolean;
 }
 
 export interface User {
