@@ -37,7 +37,7 @@ contracts:
 | Type | app hexagon |
 | Class | low-stakes (D010) |
 | Decisions | D006 (owner-first; PlantPal is tenant zero), D009 (loose coupling — PlantPal is standalone and pre-existing, runs with the platform entirely absent), D010 (app classes — low-stakes posture), D022 (all AI calls eventually flow through ai-gateway — not yet wired, see below), D024 (business-dimension metering — `plant_count` reported to Treasury via `dimension.event`), D027 (self-declared tiering; plant count as a ceiling — enforcement lives in Treasury, not here) |
-| Contracts pinned | `contracts` v0.5.1 (Java binding); authoritative source: `backend/pom.xml` |
+| Contracts pinned | `contracts` v0.7.0 (Java binding); authoritative source: `backend/pom.xml` |
 | Status | active — PlantPal is a real, already-deployed app (Railway + Vercel), unlike a Room scaffolded from nothing |
 
 > **Chunk 3 note:** additive gateway swap, gated by the **`platform` Spring profile** (not a flag inside a shared profile — see the platform-profile-split delta). `platform.gateway.*` lives only in `application-platform.yml`; `application.yml`/`application-dev.yml` carry none of it, so the default/standalone boot never reads a `platform.*` key at all, and `GatewayProperties` binds `enabled=false` via `@DefaultValue` when the prefix is absent. New `com.plantpal.gateway.GatewayClient` port routes the in-scope AI calls through `ai-gateway`'s `ai.request`/`ai.response` when the `platform` profile is active (`platform.gateway.enabled` defaults `true` there); every call site keeps its pre-existing direct-client path unchanged otherwise (which is always, in prod — Railway never activates the `platform` profile, and `ai-gateway` is never publicly exposed). **Not** a full hexagonal refactor: `VisionModelPreference.GITHUB_GPT4O`/`GITHUB_GPT41` (ai-gateway's `OpenAiAdapter` is text-only — routing them would silently drop the photo) and `PlantNetDiseaseClient`/PlantNet's non-identify endpoints stay direct always, profile or no profile. Full in-scope-vs-always-direct list: `PROGRESS.md`.
@@ -67,8 +67,8 @@ contracts:
 
 ## Dependencies
 
-- `contracts` (pinned `v0.5.1`, Java binding; authoritative source: `backend/pom.xml`) — `app.health`, `app.manifest`, `ai.request`/`ai.response` (Chunk 3), `dimension.event` (plant_count metering), and `state.event` (`app.status`/`activity.count` via `StateFeedEmitter`).
-- `io.platform:contracts:0.5.1` declared in `backend/pom.xml`; local `mvn install` of the `contracts` checkout required before building on the host, or the `contracts-m2` Docker build context for image builds (see DEPLOYMENT.md).
+- `contracts` (pinned `v0.7.0`, Java binding; authoritative source: `backend/pom.xml`) — `app.health`, `app.manifest`, `ai.request`/`ai.response` (Chunk 3), `dimension.event` (plant_count metering), and `state.event` (`app.status`/`activity.count` via `StateFeedEmitter`).
+- `io.platform:contracts:0.7.0` declared in `backend/pom.xml`; local `mvn install` of the `contracts` checkout required before building on the host, or the `contracts-m2` Docker build context for image builds (see DEPLOYMENT.md).
 
 ## Key invariants
 
