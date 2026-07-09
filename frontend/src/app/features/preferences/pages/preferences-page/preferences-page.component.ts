@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Location } from '@angular/common';
 import { Router } from '@angular/router';
+import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { UserService } from '../../../../core/services/user.service';
@@ -25,6 +26,9 @@ export class PreferencesPageComponent implements OnInit {
   plantnetSaved = false;
   plantnetLoadError = false;
 
+  businessTier = false;
+  businessTierSaving = false;
+
   constructor(
     private readonly location: Location,
     private readonly router: Router,
@@ -46,6 +50,7 @@ export class PreferencesPageComponent implements OnInit {
         // Seed dropdowns from stored preferences
         this.selectedProject = prefs.data.plantnetProject ?? 'all';
         this.selectedLang = prefs.data.plantnetLang ?? 'en';
+        this.businessTier = prefs.data.businessTier ?? false;
       },
       error: () => {
         this.plantnetLoadError = true;
@@ -67,6 +72,22 @@ export class PreferencesPageComponent implements OnInit {
           this.plantnetSaving = false;
         },
       });
+  }
+
+  onBusinessTierChange(event: MatSlideToggleChange): void {
+    const previous = this.businessTier;
+    const next = event.checked;
+    this.businessTier = next;
+    this.businessTierSaving = true;
+    this.userService.updateBusinessTierPreference(next).subscribe({
+      next: () => {
+        this.businessTierSaving = false;
+      },
+      error: () => {
+        this.businessTier = previous;
+        this.businessTierSaving = false;
+      },
+    });
   }
 
   projectLabel(project: PlantNetProject): string {

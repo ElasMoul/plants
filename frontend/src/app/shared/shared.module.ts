@@ -17,6 +17,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { ModelSelectorComponent } from './components/model-selector/model-selector.component';
 import { MermaidDiagramComponent } from './components/mermaid-diagram/mermaid-diagram.component';
@@ -26,6 +27,7 @@ import { TreatmentStepListComponent } from './components/treatment-step-list/tre
 import { ModelUsageBadgeComponent } from './components/model-usage-badge/model-usage-badge.component';
 import { ReadAloudButtonComponent } from './components/read-aloud-button/read-aloud-button.component';
 import { AiBlockNoticeComponent } from './components/ai-block-notice/ai-block-notice.component';
+import { BusinessTierPromptComponent } from './components/business-tier-prompt/business-tier-prompt.component';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -42,6 +44,7 @@ const MATERIAL_MODULES = [
   MatTooltipModule,
   MatDividerModule,
   MatDialogModule,
+  MatSlideToggleModule,
 ];
 
 @NgModule({
@@ -54,6 +57,7 @@ const MATERIAL_MODULES = [
     ModelUsageBadgeComponent,
     ReadAloudButtonComponent,
     AiBlockNoticeComponent,
+    BusinessTierPromptComponent,
   ],
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [
@@ -69,6 +73,7 @@ const MATERIAL_MODULES = [
     ModelUsageBadgeComponent,
     ReadAloudButtonComponent,
     AiBlockNoticeComponent,
+    BusinessTierPromptComponent,
   ],
 })
 export class SharedModule {}
