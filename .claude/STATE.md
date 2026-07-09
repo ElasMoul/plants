@@ -11,7 +11,7 @@
 |---|---|
 | `dev` | Clean — all phases 0–10 merged ✅ (PR #81, bb9b0a8) |
 
-**Migration sequence:** 001–030 applied. Next free: **031**.
+**Migration sequence:** 001–031 applied. Next free: **032**.
 **Next free PP branch number:** PP-087 (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–086 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, and PP-086 = this self-declared business-tier branch).
 
 ---
