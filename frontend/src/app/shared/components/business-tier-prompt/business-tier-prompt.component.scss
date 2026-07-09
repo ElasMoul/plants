@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.tier-prompt {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem 1.125rem;
+  border-radius: var(--radius-card);
+  // A soft tint of the design-system primary token — friendly upsell, not a warning.
+  background: rgba(26, 60, 42, 0.06);
+  border: 1px solid rgba(26, 60, 42, 0.18);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 1rem;
+}
+
+.tier-icon {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+.tier-text {
+  min-width: 0;
+}
+
+.tier-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tier-guidance {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.tier-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
