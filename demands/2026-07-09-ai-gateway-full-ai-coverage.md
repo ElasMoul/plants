@@ -1,3 +1,13 @@
+---
+id: plantpal-20260709-ai-gateway-full-coverage
+date: 2026-07-09
+from: plantpal
+to: [ai-gateway, contracts]
+capability: Route all of PlantPal's AI calls (vision identification, annotation, structured reasoning, streaming chat, PlantNet auxiliary lookups) through ai-gateway, closing gaps G1-G6 and adding a per-app model-manifest contract
+needs-owner: false
+status: open
+---
+
 # Demand — ai-gateway: full AI coverage for PlantPal
 
 > **From:** `plantpal` (tenant zero) · **To:** platform architect → `ai-gateway` / `contracts`
