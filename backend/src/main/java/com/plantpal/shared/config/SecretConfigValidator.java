@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContextException;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -30,9 +31,16 @@ import org.springframework.stereotype.Component;
  * named-variable error wins over the cryptic BouncyCastle one) and earlier than an {@code
  * ApplicationRunner} or {@code InitializingBean} could guarantee. All failures are collected and
  * reported in ONE exception, not just the first.
+ *
+ * <p>The {@link Environment} is injected via {@link EnvironmentAware}, NOT the constructor: a BFPP
+ * is instantiated during {@code invokeBeanFactoryPostProcessors}, which runs before {@code
+ * AutowiredAnnotationBeanPostProcessor} is active, so constructor autowiring is not yet available
+ * and Spring falls back to a (missing) no-arg constructor — {@code "No default constructor found"}.
+ * {@code ApplicationContextAwareProcessor} (which services {@code EnvironmentAware}) is registered
+ * in {@code prepareBeanFactory}, earlier still, so the setter path works at BFPP-instantiation time.
  */
 @Component
-public class SecretConfigValidator implements BeanFactoryPostProcessor {
+public class SecretConfigValidator implements BeanFactoryPostProcessor, EnvironmentAware {
 
   private static final Logger log = LoggerFactory.getLogger(SecretConfigValidator.class);
 
@@ -43,9 +51,10 @@ public class SecretConfigValidator implements BeanFactoryPostProcessor {
   private static final int VAPID_PRIVATE_KEY_BYTES = 32;
   private static final byte UNCOMPRESSED_POINT_PREFIX = 0x04;
 
-  private final Environment environment;
+  private Environment environment;
 
-  public SecretConfigValidator(Environment environment) {
+  @Override
+  public void setEnvironment(Environment environment) {
     this.environment = environment;
   }
 

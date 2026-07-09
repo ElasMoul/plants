@@ -5,12 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContextException;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
 @DisplayName("SecretConfigValidator - Unit Tests")
@@ -43,7 +47,11 @@ class SecretConfigValidatorTest {
     if (vapidPriv != null) {
       environment.setProperty("app.web-push.private-key", vapidPriv);
     }
-    return new SecretConfigValidator(environment);
+    // Mirror how Spring wires a BFPP: no-arg construct, then EnvironmentAware setter (constructor
+    // injection is unavailable at BFPP-instantiation time — that was the PP-085 bug).
+    SecretConfigValidator validator = new SecretConfigValidator();
+    validator.setEnvironment(environment);
+    return validator;
   }
 
   @Nested
@@ -165,6 +173,49 @@ class SecretConfigValidatorTest {
 
       assertThat(failures).hasSize(1);
       assertThat(failures.get(0)).contains("VAPID_PUBLIC_KEY").contains("not valid base64url");
+    }
+  }
+
+  @Nested
+  @DisplayName("Spring BFPP lifecycle (PP-085 regression)")
+  class SpringLifecycle {
+
+    // Boots a real Spring context with ONLY the validator registered, so the BFPP is instantiated
+    // through Spring's actual lifecycle. This is the path that was broken (constructor injection is
+    // unavailable at invokeBeanFactoryPostProcessors time -> "No default constructor found"); the
+    // mock-based tests above never exercised it. Guards against the EnvironmentAware wiring
+    // regressing back to constructor injection.
+    private AnnotationConfigApplicationContext contextWith(
+        String jwt, String vapidPub, String vapidPriv) {
+      Map<String, Object> props = new HashMap<>();
+      props.put("app.jwt.secret", jwt);
+      props.put("app.web-push.public-key", vapidPub);
+      props.put("app.web-push.private-key", vapidPriv);
+      AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+      context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test", props));
+      context.register(SecretConfigValidator.class);
+      return context;
+    }
+
+    @Test
+    @DisplayName("should instantiate the BFPP and refresh cleanly with valid secrets")
+    void shouldRefreshWithValidSecrets() {
+      try (AnnotationConfigApplicationContext context =
+          contextWith(VALID_JWT_SECRET, VALID_VAPID_PUBLIC, VALID_VAPID_PRIVATE)) {
+        context.refresh(); // must not throw — the bug was a BeanCreationException here
+        assertThat(context.getBean(SecretConfigValidator.class)).isNotNull();
+      }
+    }
+
+    @Test
+    @DisplayName("should fail context refresh with the aggregated named-variable error on bad secrets")
+    void shouldFailRefreshWithBadSecrets() {
+      try (AnnotationConfigApplicationContext context =
+          contextWith(PLACEHOLDER_JWT, VALID_VAPID_PUBLIC, VALID_VAPID_PRIVATE)) {
+        assertThatThrownBy(context::refresh)
+            .isInstanceOf(ApplicationContextException.class)
+            .hasMessageContaining("JWT_SECRET");
+      }
     }
   }
 
