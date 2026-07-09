@@ -1,0 +1,14 @@
+<div class="tier-prompt" *ngIf="visible" role="status" data-testid="business-tier-prompt">
+  <mat-icon class="tier-icon">storefront</mat-icon>
+  <div class="tier-text">
+    <p class="tier-title">Your garden is growing</p>
+    <p class="tier-guidance">
+      10+ plants means you might be running a business or professional operation. Let us know so
+      we can build for you.
+    </p>
+    <div class="tier-actions">
+      <button mat-button color="primary" (click)="goToPreferences()">Tell us more</button>
+      <button mat-button (click)="dismiss()">Not now</button>
+    </div>
+  </div>
+</div>

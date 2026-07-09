@@ -8,6 +8,7 @@ import { takeUntil } from 'rxjs/operators';
 import { DashboardService } from '../../services/dashboard.service';
 import { CareType, DashboardResponse, ReminderSummaryDto } from '../../models/dashboard.model';
 import { AuthService } from '../../../../core/services/auth.service';
+import { UserService } from '../../../../core/services/user.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
@@ -37,12 +38,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   dashboard: DashboardResponse | null = null;
   loading = true;
+  businessTier = false;
 
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private readonly dashboardService: DashboardService,
     private readonly authService: AuthService,
+    private readonly userService: UserService,
     private readonly identificationService: IdentificationService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
@@ -60,6 +63,16 @@ export class HomeComponent implements OnInit, OnDestroy {
         error: () => {
           this.loading = false;
         },
+      });
+
+    this.userService.getPreferences()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.businessTier = res.data.businessTier ?? false;
+        },
+        // Non-critical for the dashboard itself — the upgrade prompt just stays hidden.
+        error: () => undefined,
       });
   }
 

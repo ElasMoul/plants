@@ -28,6 +28,11 @@
 
     <ng-container *ngIf="hasAnyData">
 
+      <app-business-tier-prompt
+        [totalPlants]="dashboard.healthSummary.totalPlants"
+        [businessTier]="businessTier"
+      ></app-business-tier-prompt>
+
       <!-- Quick stats row -->
       <div class="stats-strip">
         <div class="stat-chip stat-species">
