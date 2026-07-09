@@ -4,6 +4,74 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-09 — Chunk E (self-declared business tier) + a second CI break, root-caused and closed (PP-086/PP-087)
+
+**Context:** owner approved chunk E of the integration plan (tier self-declaration UI, D027) after
+a doc reread surfaced 3 small drift items (demand-coordinator frontmatter, HEXAGON.md stale pin
+prose, STATE.md branch counter) — folded into the same branch. Separately, the owner's post-merge
+smoke test of wave 2 surfaced a *second*, unrelated CI break, root-caused and fixed same session.
+
+### Chunk E — [PR #112](https://github.com/ElasMoul/plants/pull/112), merged
+
+Self-declared business/professional tier (D027: honest signal, no client enforcement — enforcement
+is a future Treasury concern). Migration 031 (`users.is_business_tier`), `UserPreferencesRequest`/
+`Response` field following the existing null-check-to-preserve pattern, a preferences-page toggle
+(auto-saves, matching `ModelSelectorComponent`'s pattern), and a dismissible Home-dashboard upgrade
+prompt at `!businessTier && totalPlants >= 10` — no new endpoint, reuses the existing
+`DashboardResponse.healthSummary.totalPlants` + preferences call. Dismissal persists in
+localStorage. **Explicitly out of scope:** the `platform` Spring profile flip — `GET
+/satisfied/plantpal` on the live `demand-coordinator` (localhost:8082) was still empty, meaning
+ai-gateway hadn't closed the G1–G6 gaps from the earlier demand doc.
+Verified independently by the coordinating session (not just the builder agent's own report):
+backend 271/271 + `spotless:check` clean fully offline, frontend tsc/build/full-jest 41/41 across
+7 suites. Bundled doc fixes: demand envelope frontmatter added (was showing "unstructured" on the
+coordinator's board), 3 stale `v0.5.1`/`0.5.1` contracts-pin mentions in `HEXAGON.md` corrected to
+`v0.7.0`, `STATE.md`'s branch/migration counters resynced.
+
+### PP-087 — a second, unrelated CI break found and fixed — [PR #113](https://github.com/ElasMoul/plants/pull/113), merged
+
+PP-086's PR showed green backend / red frontend CI on code that never touched `package.json`.
+Root cause: **four Dependabot PRs had auto-merged to `main` before this session even started**
+(2026-07-04 through 2026-07-09), each bumping *one half* of a version-matched package pair to a
+major line the rest of the Angular-16/TS-ESLint-5/Jest-29 stack doesn't support, without checking
+the paired package moved too:
+
+| Package | Was | Bumped to | Broke because |
+|---|---|---|---|
+| `@angular-devkit/build-angular` | 16.2.0 | 22.0.5 | peer-requires `@angular/compiler-cli ^22`; project has `^16` |
+| `@angular/service-worker` | 16.2.0 | 22.0.5 | same family mismatch |
+| `@angular-eslint/template-parser` | 16.3.1 | 22.0.0 | same |
+| `@typescript-eslint/eslint-plugin` | 5.62.0 | 8.62.1 | peer-requires `parser ^8.63`; project has `^5.62` |
+| `jest-environment-jsdom` | 29.7.0 | 30.4.1 | major ahead of `jest ^29.7.0` |
+
+`npm install` tolerates this (permissive peer resolution) — why it went unnoticed locally across
+several sessions, including this one's earlier chunks. `npm ci` (what CI actually runs) does not.
+**Fix:** reverted all five to their pre-bump versions, regenerated `package-lock.json`, verified
+`npm ci` reproduces and clears the exact CI failure locally before pushing. Full gate re-run
+green (tsc/lint/build/jest 6/6 suites, 35/35 tests). CI on the PR itself confirmed both jobs green
+end-to-end, including the backend integration-test suite.
+
+**Cleanup (owner-approved):** the five *original*, still-open, never-merged Dependabot PRs
+proposing these exact bumps (#99, #100, #101, #102, #103 — distinct from whichever four auto-merged
+earlier and caused the original break) were closed with a comment pointing at #113, so they can't
+be accidentally merged later and reintroduce the same failure.
+
+**Not fixed, flagged for the owner:** *why* four Dependabot PRs auto-merged without a peer-dependency
+check in the first place is a `.github/dependabot.yml` / branch-protection gap, not a one-off —
+four-for-four says systemic. Worth a config review (e.g. grouping the Angular-family packages so
+they bump together, or requiring a green CI check before auto-merge) before this recurs.
+
+### Handoff
+- **State:** both PRs merged, `main` verified clean post-merge (`frontend/package.json` confirmed
+  to hold all five correct versions; a fresh `main`-branch CI run is green). The 5 duplicate
+  Dependabot PRs are closed. Working tree clean, nothing running locally.
+- **Next step:** owner review of the Dependabot config gap (not actioned this session — a repo
+  policy decision, not something to change unprompted). Otherwise: chunk D (runtime/ci-runner,
+  deferred), the state-feed port confirmation, and the two block-state parity flags from wave 2
+  remain the open items carried forward from earlier entries in this file.
+
+---
+
 ## 2026-07-09 — CI red after wave-2 merge: SecretConfigValidator BFPP + spotless (PP-085)
 
 **Context:** owner merged the wave-2 PRs (#108–#110); CI went red on `main` (30/33 ITs
@@ -48,7 +116,7 @@ locally (it needs no Docker) before pushing.
 
 ### Handoff
 
-- State: PR #111 green on CI, awaiting owner merge — unblocks `main` (CI + dev boot).
+- **Resolved:** [PR #111](https://github.com/ElasMoul/plants/pull/111) merged same day — `main` unblocked (CI + dev boot green again).
 - No background processes running.
 
 ---
@@ -113,13 +181,15 @@ PP-083 and PP-084 both touch `IdentificationServiceImpl` (different methods:
 PP-083 first, then PP-084, and re-run `mvn test` after the second merge.
 
 ### Handoff
-- State: three reviewed, verified branches awaiting owner review + push (CI will run the ITs);
-  demand doc awaiting routing to the ai-gateway/contracts sessions; state-feed URL needs
-  port-registry confirmation; chunk E (tier UI at N=10, profile flip) and chunk D
-  (runtime/ci-runner) intentionally not started.
-- Next step: owner reviews/pushes branches → routes the demand doc → rules on the two
-  block-state parity flags and the state-feed port → then chunk E can be a single
-  fullstack-agent work order.
+- **Resolved:** all three branches merged ([PR #108](https://github.com/ElasMoul/plants/pull/108) landing,
+  [PR #109](https://github.com/ElasMoul/plants/pull/109) contracts/state-feed,
+  [PR #110](https://github.com/ElasMoul/plants/pull/110) block-state UI) — see the PP-085 entry above for
+  the CI breakage the merge surfaced and its fix. Demand doc routed to the ai-gateway session
+  (owner confirmed it's being worked). Chunk E shipped in the next session (see top entry).
+- **Still open:** state-feed URL port-registry confirmation; the two block-state parity flags
+  (disease-description async 402 → generic FAILED; identification not persisting the gateway's
+  reason prose); chunk D (runtime/ci-runner) intentionally deferred until those repos are fixed
+  and authenticated.
 - No background processes left running (preview server from the landing-page check was stopped
   and verified dead; agent worktree removed; `.claude/launch.json` left untracked as a dev
   convenience — owner may commit or delete).
