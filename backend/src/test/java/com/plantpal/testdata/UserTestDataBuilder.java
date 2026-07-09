@@ -29,6 +29,7 @@ public final class UserTestDataBuilder {
     private String firstName = "John";
     private String lastName = "Doe";
     private UserStatus status = UserStatus.ACTIVE;
+    private boolean businessTier = false;
 
     public UserBuilder withId(Long id) {
       this.id = id;
@@ -55,6 +56,11 @@ public final class UserTestDataBuilder {
       return this;
     }
 
+    public UserBuilder withBusinessTier(boolean businessTier) {
+      this.businessTier = businessTier;
+      return this;
+    }
+
     public User build() {
       return User.builder()
           .id(id)
@@ -63,6 +69,7 @@ public final class UserTestDataBuilder {
           .firstName(firstName)
           .lastName(lastName)
           .status(status)
+          .businessTier(businessTier)
           .build();
     }
   }

@@ -30,4 +30,8 @@ public class UserPreferencesRequest {
   // PlantNet flora and common-name language (T8.4). Nullable — omit to leave existing value.
   private String plantnetProject;
   private String plantnetLang;
+
+  // Self-declared business/professional tier (D027, PP-086). Nullable — omit to leave existing
+  // value unchanged, same convention as every other field above.
+  private Boolean businessTier;
 }

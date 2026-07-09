@@ -16,6 +16,8 @@ import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
 import com.plantpal.user.dto.AuthResponse;
+import com.plantpal.user.dto.UserPreferencesRequest;
+import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
@@ -160,6 +162,77 @@ class UserServiceTest {
       assertThatThrownBy(() -> userService.login(request))
           .isInstanceOf(UnauthorizedException.class)
           .hasMessageContaining("Account is not active");
+    }
+  }
+
+  @Nested
+  @DisplayName("getPreferences()")
+  class GetPreferences {
+
+    @Test
+    @DisplayName("should include businessTier from the stored user")
+    void shouldIncludeBusinessTier() {
+      // Given
+      var user = aUser().withId(1L).withBusinessTier(true).build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+      // When
+      UserPreferencesResponse response = userService.getPreferences(1L);
+
+      // Then
+      assertThat(response.getBusinessTier()).isTrue();
+    }
+
+    @Test
+    @DisplayName("should default businessTier to false when never opted in")
+    void shouldDefaultBusinessTierToFalse() {
+      // Given
+      var user = aUser().withId(1L).build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+      // When
+      UserPreferencesResponse response = userService.getPreferences(1L);
+
+      // Then
+      assertThat(response.getBusinessTier()).isFalse();
+    }
+  }
+
+  @Nested
+  @DisplayName("updatePreferences()")
+  class UpdatePreferences {
+
+    @Test
+    @DisplayName("should set businessTier when present in the request")
+    void shouldSetBusinessTierWhenPresent() {
+      // Given
+      var user = aUser().withId(1L).withBusinessTier(false).build();
+      var request = UserPreferencesRequest.builder().businessTier(true).build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+      when(userRepository.save(any(User.class))).thenReturn(user);
+
+      // When
+      UserPreferencesResponse response = userService.updatePreferences(1L, request);
+
+      // Then
+      assertThat(response.getBusinessTier()).isTrue();
+      assertThat(user.isBusinessTier()).isTrue();
+    }
+
+    @Test
+    @DisplayName("should leave businessTier unchanged when omitted from the request")
+    void shouldLeaveBusinessTierUnchangedWhenOmitted() {
+      // Given
+      var user = aUser().withId(1L).withBusinessTier(true).build();
+      var request = UserPreferencesRequest.builder().build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+      when(userRepository.save(any(User.class))).thenReturn(user);
+
+      // When
+      UserPreferencesResponse response = userService.updatePreferences(1L, request);
+
+      // Then
+      assertThat(response.getBusinessTier()).isTrue();
     }
   }
 
