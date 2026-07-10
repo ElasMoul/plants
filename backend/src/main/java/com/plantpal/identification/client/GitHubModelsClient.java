@@ -163,6 +163,21 @@ public class GitHubModelsClient {
             .build();
   }
 
+  /** Configured model string for {@code VisionModelPreference.GITHUB_GPT4O}'s gateway modelHint. */
+  public String getIdentificationModel() {
+    return identificationModel;
+  }
+
+  /** Configured model string for {@code VisionModelPreference.GITHUB_GPT41}'s gateway modelHint. */
+  public String getGpt41Model() {
+    return gpt41Model;
+  }
+
+  /** Configured model string for the annotation call's gateway modelHint (always gpt-4o-mini). */
+  public String getAnnotationModel() {
+    return annotationModel;
+  }
+
   public String identifyPlant(byte[] imageBytes, String mediaType) {
     return identifyPlant(imageBytes, mediaType, identificationModel, null);
   }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
+import com.plantpal.gateway.PlantNetGatewayClient;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.GitHubModelsClient;
@@ -152,6 +153,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final Executor aiTaskExecutor;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
+  private final PlantNetGatewayClient plantNetGatewayClient;
 
   private final Map<Long, Bucket> deepSeekBuckets = new ConcurrentHashMap<>();
   private final Map<Long, Bucket> cureAdviceBuckets = new ConcurrentHashMap<>();
@@ -179,7 +181,8 @@ public class IdentificationServiceImpl implements IdentificationService {
       ApplicationEventPublisher eventPublisher,
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
       GatewayClient gatewayClient,
-      GatewayProperties gatewayProperties) {
+      GatewayProperties gatewayProperties,
+      PlantNetGatewayClient plantNetGatewayClient) {
     this.deepSeekClient = deepSeekClient;
     this.gitHubModelsClient = gitHubModelsClient;
     this.visionAnnotationClient = visionAnnotationClient;
@@ -203,6 +206,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.aiTaskExecutor = aiTaskExecutor;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
+    this.plantNetGatewayClient = plantNetGatewayClient;
   }
 
   @Override
@@ -333,6 +337,16 @@ public class IdentificationServiceImpl implements IdentificationService {
               ? CompletableFuture.supplyAsync(
                   () -> {
                     try {
+                      // G4 follow-up: swap the direct PlantNet disease cross-check for the
+                      // gateway's /ai/plantnet/disease-check endpoint when the gateway is enabled
+                      // (D022) — same best-effort semantics either way (never fails identification).
+                      if (gatewayProperties.enabled()) {
+                        return plantNetGatewayClient.checkDisease(
+                            imageBytes,
+                            mediaType,
+                            organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
+                            userPlantNetLang);
+                      }
                       return plantNetDiseaseClient.identifyDisease(
                           List.of(new ByteArrayMultipartFile(imageBytes, mediaType)),
                           organsForParallelCall != null ? organsForParallelCall : List.of("auto"),
@@ -366,7 +380,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       String annotationJson;
       if ("ISSUES_DETECTED".equals(healthStatusForAnnotation)) {
         try {
-          annotationJson = visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+          annotationJson = runAnnotation(imageBytes, mediaType, userId);
           identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
           identification.setAnnotationModel("gpt-4o-mini");
         } catch (Exception e) {
@@ -1006,7 +1020,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       byte[] rawBytes = fileStorageService.loadPhotoBytes(ident.getPhotoUrl());
       String mediaType = resolveMediaType(ident.getPhotoUrl());
       byte[] imageBytes = ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
-      String annotationJson = visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+      String annotationJson = runAnnotation(imageBytes, mediaType, ident.getUserId());
       ident.setAnnotationRegions(annotationJson);
       ident.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
       ident.setAnnotationModel("gpt-4o-mini");
@@ -1428,14 +1442,43 @@ public class IdentificationServiceImpl implements IdentificationService {
           new IdentificationOutcome(
               ollamaClient.identifyPlant(imageBytes, mediaType, userContext),
               VisionModelPreference.OLLAMA_GEMMA3.name());
-      case GITHUB_GPT4O ->
-          new IdentificationOutcome(
-              gitHubModelsClient.identifyPlant(imageBytes, mediaType, userContext),
+      case GITHUB_GPT4O -> {
+        // Gap G1 follow-up: gpt-4o identification now routes through the gateway (media support
+        // shipped in OpenAiAdapter) — the direct GitHubModelsClient call retires from this hot
+        // path when the gateway is enabled, same additive if/else shape as ANTHROPIC_CLAUDE below
+        // (D022; direct client remains for standalone/dev, spec §2.1 seed-code pattern).
+        if (gatewayProperties.enabled()) {
+          yield new IdentificationOutcome(
+              gatewayClient
+                  .request(
+                      identificationGatewayRequest(
+                          imageBytes,
+                          mediaType,
+                          gitHubModelsClient.getIdentificationModel(),
+                          userId,
+                          userContext))
+                  .getResult(),
               VisionModelPreference.GITHUB_GPT4O.name());
-      case GITHUB_GPT41 ->
-          new IdentificationOutcome(
-              gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType, userContext),
+        }
+        yield new IdentificationOutcome(
+            gitHubModelsClient.identifyPlant(imageBytes, mediaType, userContext),
+            VisionModelPreference.GITHUB_GPT4O.name());
+      }
+      case GITHUB_GPT41 -> {
+        // Gap G1 follow-up: same gateway routing as GITHUB_GPT4O, forced onto gpt-4.1.
+        if (gatewayProperties.enabled()) {
+          yield new IdentificationOutcome(
+              gatewayClient
+                  .request(
+                      identificationGatewayRequest(
+                          imageBytes, mediaType, gitHubModelsClient.getGpt41Model(), userId, userContext))
+                  .getResult(),
               VisionModelPreference.GITHUB_GPT41.name());
+        }
+        yield new IdentificationOutcome(
+            gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType, userContext),
+            VisionModelPreference.GITHUB_GPT41.name());
+      }
       case ANTHROPIC_CLAUDE -> {
         if (gatewayProperties.enabled()) {
           yield new IdentificationOutcome(
@@ -1458,9 +1501,10 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   /**
-   * Shared AiRequest builder for the two gateway-routed vision preferences (ANTHROPIC_CLAUDE,
-   * PLANTNET identify) — same user-facing prompt text and system prompt every direct client uses
-   * for identification, so the gateway path never restates them (Chunk 3, D022 gateway swap).
+   * Shared AiRequest builder for every gateway-routed vision preference (ANTHROPIC_CLAUDE,
+   * PLANTNET identify, and — since the G1 follow-up — GITHUB_GPT4O/GITHUB_GPT41) — same
+   * user-facing prompt text and system prompt every direct client uses for identification, so the
+   * gateway path never restates them (Chunk 3, D022 gateway swap).
    */
   private AiRequest identificationGatewayRequest(
       byte[] imageBytes, String mediaType, String modelHint, Long userId, String userContext) {
@@ -1480,6 +1524,27 @@ public class IdentificationServiceImpl implements IdentificationService {
         .userId(String.valueOf(userId))
         .putContextItem("systemPrompt", GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT)
         .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
+  }
+
+  /**
+   * Gap G1 follow-up: routes the always-on gpt-4o-mini annotation call (visual region polygons)
+   * through the gateway when enabled — same additive if/else shape used throughout this class for
+   * D022's gateway swap. {@code userId} may be {@code null} for system-initiated retries with no
+   * resolvable user (falls back to "system", matching the convention used for species enrichment).
+   */
+  private String runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
+    if (gatewayProperties.enabled()) {
+      AiRequest request =
+          new AiRequest()
+              .prompt("Identify and locate all plant regions in this image.")
+              .modelHint(gitHubModelsClient.getAnnotationModel())
+              .appId("plantpal")
+              .userId(userId != null ? String.valueOf(userId) : "system")
+              .putContextItem("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT)
+              .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
+      return gatewayClient.request(request).getResult();
+    }
+    return visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
   }
 
   private PlantNetResponse parsePlantNetResponse(String rawJson) {
