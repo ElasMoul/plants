@@ -98,6 +98,7 @@ class IdentificationServiceImplTest {
   @Mock private com.plantpal.plant.service.PlantService plantService;
   @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
   @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
+  @Mock private com.plantpal.gateway.PlantNetGatewayClient plantNetGatewayClient;
 
   private IdentificationServiceImpl identificationService;
 
@@ -130,7 +131,8 @@ class IdentificationServiceImplTest {
             eventPublisher,
             Runnable::run,
             gatewayClient,
-            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+            plantNetGatewayClient);
   }
 
   /** Flips the gateway flag on for a single test — mirrors the plantNetAlwaysOn flip below. */
@@ -1807,6 +1809,177 @@ class IdentificationServiceImplTest {
           ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
       verify(gatewayClient).request(captor.capture());
       assertThat(captor.getValue().getModelHint()).isEqualTo("gemma3:4b");
+    }
+
+    @Test
+    @DisplayName(
+        "should route GITHUB_GPT4O identification through GatewayClient (gap G1 follow-up),"
+            + " image attached")
+    void shouldRouteGithubGpt4oIdentificationThroughGateway() throws Exception {
+      enableGateway();
+      when(gitHubModelsClient.getIdentificationModel()).thenReturn("gpt-4o");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(validIdentificationJson()));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      assertThat(event.getAiModelPreference()).isEqualTo("GITHUB_GPT4O");
+      identificationService.processIdentification(event);
+
+      verify(gitHubModelsClient, never()).identifyPlant(any(), any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest sent = captor.getValue();
+      assertThat(sent.getAppId()).isEqualTo("plantpal");
+      assertThat(sent.getModelHint()).isEqualTo("gpt-4o");
+      assertThat(sent.getMedia()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName(
+        "should route GITHUB_GPT41 identification through GatewayClient (gap G1 follow-up),"
+            + " forced onto gpt-4.1")
+    void shouldRouteGithubGpt41IdentificationThroughGateway() throws Exception {
+      enableGateway();
+      when(gitHubModelsClient.getGpt41Model()).thenReturn("gpt-4.1");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT41)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(validIdentificationJson()));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      verify(gitHubModelsClient, never()).identifyPlantWithGpt41(any(), any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient).request(captor.capture());
+      assertThat(captor.getValue().getModelHint()).isEqualTo("gpt-4.1");
+    }
+
+    @Test
+    @DisplayName(
+        "should route the always-on gpt-4o-mini annotation call through GatewayClient when"
+            + " healthStatus=ISSUES_DETECTED (gap G1 follow-up)")
+    void shouldRouteAnnotationThroughGateway() throws Exception {
+      enableGateway();
+      when(gitHubModelsClient.getIdentificationModel()).thenReturn("gpt-4o");
+      when(gitHubModelsClient.getAnnotationModel()).thenReturn("gpt-4o-mini");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gatewayClient.request(any()))
+          .thenReturn(
+              gatewayResponse(issuesDetectedJson()), gatewayResponse("{\"regions\":[]}"));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      verify(visionAnnotationClient, never()).analyzeRegions(any(), any());
+      ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
+          ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
+      verify(gatewayClient, times(2)).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest annotationRequest = captor.getAllValues().get(1);
+      assertThat(annotationRequest.getModelHint()).isEqualTo("gpt-4o-mini");
+      assertThat(annotationRequest.getContext())
+          .containsEntry("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT);
+      assertThat(annotationRequest.getMedia()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName(
+        "should route the PlantNet disease cross-check through PlantNetGatewayClient (gap G4"
+            + " follow-up)")
+    void shouldRouteDiseaseCrossCheckThroughGateway() throws Exception {
+      enableGateway();
+      when(gitHubModelsClient.getIdentificationModel()).thenReturn("gpt-4o");
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .build()));
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gatewayClient.request(any())).thenReturn(gatewayResponse(validIdentificationJson()));
+      when(plantNetGatewayClient.checkDisease(any(), any(), any(), any()))
+          .thenReturn(
+              new com.plantpal.identification.dto.plantnet.PlantNetDiseaseResponse(List.of(), 5));
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .plantId(PLANT_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(plantRepository.existsByIdAndUserId(PLANT_ID, USER_ID)).thenReturn(true);
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
+          .thenReturn(
+              Optional.of(Plant.builder().id(PLANT_ID).userId(USER_ID).nickname("p").build()));
+      when(reminderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+      // plantId != null triggers the disease cross-check branch (Flow 3 — health scan).
+      IdentificationRequestedEvent event = submitAndCaptureEvent(images, null, PLANT_ID, USER_ID);
+      identificationService.processIdentification(event);
+
+      verify(plantNetDiseaseClient, never()).identifyDisease(any(), any(), any());
+      verify(plantNetGatewayClient)
+          .checkDisease(any(), eq("image/jpeg"), eq(List.of("auto")), eq("en"));
     }
 
     private Identification ownedIdentification() {
