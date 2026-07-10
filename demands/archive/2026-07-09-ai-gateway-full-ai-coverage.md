@@ -5,8 +5,23 @@ from: plantpal
 to: [ai-gateway, contracts]
 capability: Route all of PlantPal's AI calls (vision identification, annotation, structured reasoning, streaming chat, PlantNet auxiliary lookups) through ai-gateway, closing gaps G1-G6 and adding a per-app model-manifest contract
 needs-owner: false
-status: open
+status: archived
 ---
+
+> **Archived 2026-07-10.** Fulfilled and owner-approved by both workers (`contracts` v0.9.1
+> `ai.model-manifest` schema; `ai-gateway` G1/G3/G4/G5/G6 — see
+> `../contracts/demands/fulfilled/plantpal-20260709-ai-gateway-full-coverage-report.md` and
+> `../ai-gateway/demands/fulfilled/plantpal-20260709-ai-gateway-full-coverage-report.md`).
+> PlantPal's own follow-ups (this demand's §5) worked on `feature/PP-088-gateway-full-routing`:
+> `ai-model-manifest.yaml` committed (G5, declarative only — ai-gateway doesn't mount
+> `AI_MANIFEST_DIR` yet, and its contracts pin stays at v0.7.0 pending two confirmed v0.9.0
+> defects); GITHUB_GPT4O/GITHUB_GPT41 identification + the always-on gpt-4o-mini annotation now
+> route through the gateway when enabled, same additive if/else shape as the existing
+> ANTHROPIC_CLAUDE/PLANTNET routing (G1); PlantNet aux lookups (projects/languages/quota) and the
+> disease cross-check now route through `PlantNetGatewayClient` → `ai-gateway`'s `/ai/plantnet/*`
+> endpoints (G4); G3 needed no PlantPal-side change, existing gateway context-assertion coverage
+> re-verified green. G2 (streaming chat sessions) and the Ollama-vision-routing ruling remain
+> explicitly out of scope — chat still streams direct-to-Ollama, Ollama vision routing untouched.
 
 # Demand — ai-gateway: full AI coverage for PlantPal
 
