@@ -4,6 +4,75 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-10 — ai-gateway full-coverage demand closed: PlantPal's own follow-ups (PP-088)
+
+**Context:** `demands/2026-07-09-ai-gateway-full-ai-coverage.md` came back FULFILLED AND
+OWNER-APPROVED (`GET /satisfied/plantpal` on the demand-coordinator, contracts v0.9.1 +
+ai-gateway both reported `done`). This session worked the demand's own §5 follow-ups — the ones
+now unblocked — on `feature/PP-088-gateway-full-routing` (based on `main`; see branch-base note
+below), and archived the demand.
+
+**G5 — model manifest.** Committed `ai-model-manifest.yaml` at repo root (sibling to
+`app-manifest.yaml`), matching contracts' final `schemas/ai-gateway/model-manifest.json` shape
+(camelCase `downshiftPolicy`/`streamingDesired`, not the demand draft's bare `downshift`/
+`streaming` markers). Declarative only for now — ai-gateway's fulfillment report flagged that its
+deployed instance doesn't mount `AI_MANIFEST_DIR` yet (needs a `runtime` compose volume mount,
+out of scope for either side), and its own contracts pin stays at v0.7.0 (two confirmed v0.9.0
+defects — a broken `gen/java/pom.xml` XML comment, and the `capabilities` map-typed field not
+codegen'ing — both flagged back to `contracts`, neither fixed from either app repo per the
+standing rule).
+
+**G1 follow-up — GitHub-Models vision through the gateway.** Extended the existing D022 gateway
+swap's additive if/else pattern (the one already used for `ANTHROPIC_CLAUDE`/`PLANTNET`
+identification and every `ReasoningModelPreference`) to the two remaining vision preferences:
+`GITHUB_GPT4O`/`GITHUB_GPT41` identification, and the always-on gpt-4o-mini annotation call (new
+`runAnnotation()` helper in `IdentificationServiceImpl`, replacing both direct
+`visionAnnotationClient.analyzeRegions()` call sites). `GitHubModelsClient` gained
+`getIdentificationModel()`/`getGpt41Model()`/`getAnnotationModel()` getters for the gateway's
+`modelHint`. The direct `GitHubModelsClient`/`DeepSeekAnnotationClient` path is unchanged and
+still serves standalone/dev (D009) — same "retires from the hot path, survives as seed code"
+shape the demand's §5 asked for, matching how Anthropic/PlantNet were handled in Chunk 3.
+
+**G4 follow-up — PlantNet auxiliary calls through the gateway.** New
+`com.plantpal.gateway.PlantNetGatewayClient` (mirrors `GatewayClient`'s RestClient pattern,
+targets ai-gateway's `/ai/plantnet/{projects,languages,quota,disease-check}`, unwraps
+ai-gateway's own `ApiResponse<String>` envelope and parses the inner raw-PlantNet-JSON string onto
+PlantPal's existing `PlantNetProjectDto`/`PlantNetQuotaDto`/`PlantNetDiseaseResponse` DTOs — same
+types the direct path already used, so callers see an identical return type either way).
+`PlantNetConfigController` and the disease cross-check in `IdentificationServiceImpl` now branch
+on `gatewayProperties.enabled()` exactly like every other gateway call site.
+
+**G3 — no code change.** Re-checked the existing gateway context-assertion coverage
+(`IdentificationServiceImplTest$GatewayRouting`'s `systemPrompt`/context assertions) — still
+green, confirming the demand's own note that G3 needed no PlantPal-side follow-up.
+
+**Explicitly not touched (per the demand's §5 and this session's brief):** chat streaming stays
+direct-to-Ollama (G2 unshipped, needs-owner); Ollama vision routing stays as-is (owner ruling
+still open).
+
+**Branch-base note for the architect:** `dev` turned out to be a strict ancestor of `main` (98
+commits behind, zero divergent commits) — it predates the entire D022 gateway swap this session
+builds on (no `GatewayClient`/`GatewayProperties` on `dev` at all). Branched off `main` instead
+since basing off `dev` would have silently reverted the gateway infrastructure; flagging so `dev`
+can be fast-forwarded.
+
+**Verification:** `mvn clean test` inside `maven:3.9-eclipse-temurin-21` (Docker, host `.m2`
+mounted for the pinned `contracts:0.7.0` jar — no local JDK/Maven on this machine): **289/289
+unit tests, 0 failures, BUILD SUCCESS.** Integration/Testcontainers tests not run (environment
+can't support them here; the demand-touched code is all unit-covered). Compose stack was not
+started (left stopped, per instructions).
+
+Demand archived: `demands/2026-07-09-ai-gateway-full-ai-coverage.md` →
+`demands/archive/2026-07-09-ai-gateway-full-ai-coverage.md`, `status: archived`.
+
+**Handoff:** feature branch `feature/PP-088-gateway-full-routing` pushed (never `main`/`dev`) for
+architect review/merge. Next step: architect review + merge; then fast-forward `dev` to `main`
+(see branch-base note); then, once `runtime`'s `AI_MANIFEST_DIR` volume mount and contracts
+v0.9.0's two defects are fixed upstream, swap `ai-model-manifest.yaml` from declarative-only to
+actually consumed. No background processes/servers were started this session; nothing to stop.
+
+---
+
 ## 2026-07-09 — Chunk E (self-declared business tier) + a second CI break, root-caused and closed (PP-086/PP-087)
 
 **Context:** owner approved chunk E of the integration plan (tier self-declaration UI, D027) after

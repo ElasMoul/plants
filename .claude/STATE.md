@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-06 (housekeeping — stale git index refresh, no code changes)
+> Last updated: 2026-07-10 (ai-gateway full-coverage demand follow-ups, PP-088 — platform-delta, see PROGRESS.md)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -12,7 +12,7 @@
 | `dev` | Clean — all phases 0–10 merged ✅ (PR #81, bb9b0a8) |
 
 **Migration sequence:** 001–031 applied. Next free: **032**.
-**Next free PP branch number:** PP-087 (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–086 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, and PP-086 = this self-declared business-tier branch).
+**Next free PP branch number:** PP-089 (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–088 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, PP-086 = self-declared business-tier, PP-087 = CI fix, PP-088 = ai-gateway full-coverage demand follow-ups (G1/G4/G5 gateway routing) — see PROGRESS.md's 2026-07-10 entry).
 
 ---
 
@@ -155,3 +155,15 @@ Production (Railway/Vercel) is unchanged — they already terminate TLS.
 - Completed §2 demand-folder structure (added `demands/README.md`, `demands/fulfilled/.gitkeep`, `demands/archive/.gitkeep`; existing live demand `demands/2026-07-09-ai-gateway-full-ai-coverage.md` left untouched) and documented the convention in a new **Demand system** section of `.claude/CLAUDE.md`. See `../DEMAND_SYSTEM.md`.
 - Candidate demands scanned: none new — every cross-repo need in PROGRESS.md/STATE.md targets ai-gateway/contracts and is already subsumed by the raised full-ai-coverage demand (G1–G6).
 - Next step: no action needed; at session start check demand traffic both directions (dispatched-to-plantpal, and the raised ai-gateway demand for satisfaction → archive when closed).
+
+## 2026-07-10 — ai-gateway full-coverage demand closed: PlantPal's follow-ups (platform-delta, PP-088)
+- Full detail in PROGRESS.md's 2026-07-10 entry (platform-delta home per the platform integration
+  notice at the top of this repo's `.claude/CLAUDE.md`). Summary: gateway routing extended to
+  GITHUB_GPT4O/GITHUB_GPT41 identification + the gpt-4o-mini annotation call (G1), PlantNet
+  projects/languages/quota/disease-check now route through a new `PlantNetGatewayClient` (G4),
+  `ai-model-manifest.yaml` committed at repo root (G5, declarative only pending upstream fixes).
+  289/289 backend unit tests green. Branch `feature/PP-088-gateway-full-routing`, based on `main`
+  (see PROGRESS.md's branch-base note — `dev` is 98 commits behind and lacks the gateway
+  infrastructure entirely; needs a fast-forward). Demand archived to `demands/archive/`.
+- Next step: architect review/merge; `dev` fast-forward; runtime `AI_MANIFEST_DIR` mount + contracts
+  v0.9.0 defect fixes are prerequisites before the manifest is actually consumed.

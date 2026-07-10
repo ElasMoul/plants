@@ -1,0 +1,43 @@
+# PlantPal's declared AI model manifest (contracts `ai.model-manifest`,
+# schemas/ai-gateway/model-manifest.json — v0.9.0 draft, camelCase fields per
+# that schema's final shape). Sibling to app-manifest.yaml at repo root.
+#
+# Gap G5 follow-up (demands/2026-07-09-ai-gateway-full-ai-coverage.md): this is
+# the real declaration promised there, adapted from that demand's own §4
+# illustrative draft to the FINAL schema shape ai-gateway's fulfillment report
+# confirmed (downshift -> downshiftPolicy; media/streaming as fully-specified
+# enums/booleans, not bare present/absent markers).
+#
+# Declarative only for now: ai-gateway's deployed instance doesn't yet mount an
+# AI_MANIFEST_DIR (needs a runtime compose volume mount, flagged as out of
+# scope in ai-gateway's own fulfillment report) — until then every PlantPal
+# call still runs the legacy/transitional path (adapter-support-level
+# modelHint validation, ai.guardrail.classes config), unaffected by this file.
+# Also unconsumed today because ai-gateway's contracts pin stays at v0.7.0
+# (v0.9.0 has two confirmed contracts defects — broken gen/java/pom.xml XML
+# comment, and the `capabilities` map-typed field not codegen'ing correctly —
+# both flagged back to contracts, neither fixed from here per the standing
+# "never patch contracts" rule). This file is still committed now because the
+# schema itself is sound and hand-validated against it (see below); only its
+# consumption is blocked upstream.
+
+appId: plantpal
+class: low-stakes
+capabilities:
+  vision-identification:
+    models: [gpt-4o, claude-sonnet-4-6, gpt-4.1, gemma3:4b, plantnet]
+    media: required
+    downshiftPolicy: block # never silently downshift an identification (D023)
+  annotation:
+    models: [gpt-4o-mini]
+    media: required
+    downshiftPolicy: skip # annotation is decorative; skip beats degrade
+  reasoning-json:
+    models: [DeepSeek-R1, o4-mini, gpt-4.1-mini, claude-sonnet-4-6, gemma3:4b]
+    media: none
+    downshiftPolicy: allow
+  chat:
+    models: [gemma3:4b]
+    media: none
+    downshiftPolicy: allow
+    streamingDesired: true # consumed once ai-gateway ships G2's session/stream endpoints
