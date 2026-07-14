@@ -908,3 +908,77 @@ needed.
   (root session, 2026-07-08) — no action needed there.
 - No background processes or servers were started in this session; nothing to
   stop.
+
+## 2026-07-14 — V1-closure verification pass (no code changes needed)
+
+**Context:** launched with a V1-closure work order covering five items. Checked
+the demand-coordinator first: `GET /inbox/plantpal` and `GET /satisfied/plantpal`
+both empty — no demand traffic pending either direction.
+
+### Findings — three of five items were already shipped in earlier sessions
+
+1. **FIX-12 (Kafka `dimension.event` emitted inside `@Transactional`)** — already
+   fixed 2026-07-07. `PlantServiceImpl.createPlant()`/`archivePlant()` only publish
+   an intra-JVM `PlantCountChangedEvent`; `PlantCountDimensionEmitter`
+   (`@TransactionalEventListener(phase = AFTER_COMMIT)`) is the sole Kafka sender,
+   confirmed by reading both classes directly. `PlantCountDimensionEmitterTest`
+   still pins the `AFTER_COMMIT` phase by reflection. Re-verified: still correct,
+   no regression.
+2. **Contracts re-pin 0.5.0 → 0.7.0** — already done via PR #109
+   (`feature/PP-083-contracts-070-statefeed`, merged to `main` at `3bba266`).
+   `backend/pom.xml` and `HEXAGON.md` frontmatter both read `0.7.0`; jar present in
+   `.m2`. Re-verified by re-running the full unit suite against the current pin
+   (below).
+3. **README refresh** — already done 2026-07-07 (Java 21, real 5-provider AI
+   stack, dead branch strategy removed). Read it fully today: still accurate,
+   nothing stale found.
+
+### Re-verification done this session
+
+- **`mvn -B test` (excluding `*IT.java`)** against contracts `0.7.0`: **289 unit
+  tests, 0 failures, 0 errors** (summed from `target/surefire-reports/*.txt`;
+  exit code 0). This is a higher count than the 246 recorded 2026-07-07 — the
+  intervening PP-084/086/088 waves added tests, consistent with git log.
+- **Item 5, integration tests** — confirmed still box-blocked: `docker context
+  inspect` shows the same `npipe:////./pipe/dockerDesktopLinuxEngine` path, and
+  `~/.testcontainers.properties` still pins
+  `NpipeSocketClientProviderStrategy`. Did not attempt an `*IT.java` run (known
+  hang risk on this box, already root-caused 2026-07-07) — logging under
+  ownerItems per the work order rather than fighting it again.
+- **Item 5, native port move (→ 8180)** — **owner-delegated recommended ruling
+  2026-07-14: PARK, not trivial.** Traced the full blast radius before ruling:
+  `server.port: 8080` in `application.yml` is also the **container-internal**
+  port the dockerized `backend` service binds to (`docker-compose.yml` maps
+  `8180:8080`, and the healthcheck's `wget http://localhost:8080/...` runs
+  inside that container). Moving it to `8180` would require simultaneously
+  changing the compose port mapping, the healthcheck target, and
+  `backend/Dockerfile`'s `EXPOSE 8080` — and touches Railway's prod binding
+  assumption (`server.port` is a hardcoded literal, not `${PORT:8080}`; unclear
+  whether Railway's own PORT injection currently overrides it, and that's
+  outside this session's scope to investigate). That's a coordinated
+  multi-file config change with a live-service blast radius, not the "trivial
+  config" branch of the delegation — so it stays parked exactly as the
+  2026-07-08 session left it (native `mvn spring-boot:run` continues needing
+  `--server.port=8180` or a proxy repoint, both already documented in
+  README.md/`.claude/CLAUDE.md`).
+- **Item 4, contribution flow** — confirmed PR-based (`.github/pull_request_template.md`
+  present, git log shows merges via GitHub PR, e.g. `3bba266`, `b1160a1`). No code
+  changed this session, so no PR was needed — nothing to submit.
+
+### Handoff
+
+- State: all three code/doc closure items (FIX-12, contracts 0.7.0, README) were
+  already shipped by prior sessions; re-verified green today (289/289 unit
+  tests, contracts 0.7.0 resolved from `.m2`). Working tree clean, nothing to
+  commit or push.
+- Next step: none required for V1 closure from this repo's side. If the owner
+  later confirms Railway's prod PORT-binding behavior, the native-port question
+  can be revisited with that missing fact filled in.
+- Standing: integration tests remain box-blocked on this Windows machine
+  (Testcontainers npipe, root-caused 2026-07-07, unchanged today) — CI's Linux
+  runners are the only current source of IT coverage; do not keep re-attempting
+  locally.
+- Vault-sync: none (no vault-relevant decision changed; the port question was
+  parked, not ruled, so nothing new for `platform-vault` to record).
+- No background processes or servers were started in this session; nothing to
+  stop.
