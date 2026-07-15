@@ -86,6 +86,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -117,6 +119,13 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final List<String> ALLOWED_TYPES =
       List.of("image/jpeg", "image/png", "image/webp");
   private static final double CLOSE_RUNNER_UP_MARGIN = 0.10;
+
+  // Some providers (and the ai-gateway passthrough path, which bypasses each client's own
+  // stripThinkTags()) ignore response_format and wrap JSON in a markdown code fence, or precede it
+  // with prose. Matches a ```json / ``` / ~~~ fenced block anywhere in the string (see
+  // extractJson()).
+  private static final Pattern FENCED_JSON =
+      Pattern.compile("(?:```|~~~)(?:json)?\\s*(.*?)\\s*(?:```|~~~)", Pattern.DOTALL);
 
   @Value("${app.plantnet.always-on-candidates:true}")
   private boolean plantNetAlwaysOn;
@@ -339,7 +348,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                     try {
                       // G4 follow-up: swap the direct PlantNet disease cross-check for the
                       // gateway's /ai/plantnet/disease-check endpoint when the gateway is enabled
-                      // (D022) — same best-effort semantics either way (never fails identification).
+                      // (D022) — same best-effort semantics either way (never fails
+                      // identification).
                       if (gatewayProperties.enabled()) {
                         return plantNetGatewayClient.checkDisease(
                             imageBytes,
@@ -749,7 +759,8 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   private List<List<Integer>> parseDuplicateGroups(String raw) {
     try {
-      DuplicateGroupsJson parsed = objectMapper.readValue(raw, DuplicateGroupsJson.class);
+      DuplicateGroupsJson parsed =
+          objectMapper.readValue(extractJson(raw), DuplicateGroupsJson.class);
       if (parsed.getDuplicateGroups() == null) return List.of();
       List<List<Integer>> result = new ArrayList<>();
       for (List<String> group : parsed.getDuplicateGroups()) {
@@ -1103,9 +1114,47 @@ public class IdentificationServiceImpl implements IdentificationService {
     return identification;
   }
 
+  /**
+   * Best-effort recovery for AI JSON that didn't come back clean — wrapped in a markdown code fence
+   * ({@code ```json ... ```} / {@code ``` ... ```} / {@code ~~~ ... ~~~}) or preceded/followed by
+   * prose. This affects every AI-JSON parse in this class, not just identification: providers
+   * routed through the ai-gateway passthrough bypass each client's own stripThinkTags() fence
+   * handling, so the raw string handed to us can still be fenced.
+   *
+   * <p>Strategy (mirrors sentinel-hub's parse.py): if the trimmed input already looks like bare
+   * JSON, return it unchanged. Otherwise strip a fenced block if one is found. Otherwise fall back
+   * to the pragmatic minimum — extract the substring from the first {@code '{'} to the last {@code
+   * '}'}. Never throws, and never guarantees the result is valid JSON — this only rescues
+   * fenced/prose-wrapped-but-otherwise-valid JSON; the caller's own try/catch still handles
+   * genuinely malformed output via its existing fallback.
+   */
+  private static String extractJson(String raw) {
+    if (raw == null) return null;
+    String candidate = raw.strip();
+    if (candidate.startsWith("{") || candidate.startsWith("[")) {
+      return candidate;
+    }
+
+    Matcher fenceMatch = FENCED_JSON.matcher(candidate);
+    if (fenceMatch.find()) {
+      candidate = fenceMatch.group(1).strip();
+    }
+    if (candidate.startsWith("{") || candidate.startsWith("[")) {
+      return candidate;
+    }
+
+    int firstBrace = candidate.indexOf('{');
+    int lastBrace = candidate.lastIndexOf('}');
+    if (firstBrace != -1 && lastBrace > firstBrace) {
+      return candidate.substring(firstBrace, lastBrace + 1);
+    }
+    return candidate;
+  }
+
   private DeepSeekPlantResult parseIdentificationResult(String raw) {
     try {
-      DeepSeekPlantResult result = objectMapper.readValue(raw, DeepSeekPlantResult.class);
+      DeepSeekPlantResult result =
+          objectMapper.readValue(extractJson(raw), DeepSeekPlantResult.class);
       if (result.getCommonName() == null) result.setCommonName("Unknown Plant");
       return result;
     } catch (JsonProcessingException e) {
@@ -1115,15 +1164,16 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   private CureAdviceResponse parseCureAdvice(String raw, ReasoningModelPreference preference) {
+    String candidate = extractJson(raw);
     try {
-      CureAdviceJson parsed = objectMapper.readValue(raw, CureAdviceJson.class);
+      CureAdviceJson parsed = objectMapper.readValue(candidate, CureAdviceJson.class);
       return CureAdviceResponse.builder()
           .advice(parsed.getAdvice())
           .actionPlan(ActionPlanValidator.normalize(parsed.getActionPlan()))
           .reasoningModelUsed(preference.name())
           .build();
     } catch (JsonProcessingException e) {
-      CureAdviceJson merged = parseConcatenatedCureAdviceJson(raw);
+      CureAdviceJson merged = parseConcatenatedCureAdviceJson(candidate);
       if (merged != null) {
         return CureAdviceResponse.builder()
             .advice(merged.getAdvice())
@@ -1182,7 +1232,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       return fallbackCarePlan();
     }
     try {
-      CarePlanDto plan = objectMapper.readValue(raw, CarePlanDto.class);
+      CarePlanDto plan = objectMapper.readValue(extractJson(raw), CarePlanDto.class);
       if (plan.getCareCards() == null || plan.getCareCards().isEmpty()) {
         return fallbackCarePlan();
       }
@@ -1471,7 +1521,11 @@ public class IdentificationServiceImpl implements IdentificationService {
               gatewayClient
                   .request(
                       identificationGatewayRequest(
-                          imageBytes, mediaType, gitHubModelsClient.getGpt41Model(), userId, userContext))
+                          imageBytes,
+                          mediaType,
+                          gitHubModelsClient.getGpt41Model(),
+                          userId,
+                          userContext))
                   .getResult(),
               VisionModelPreference.GITHUB_GPT41.name());
         }
@@ -1501,10 +1555,10 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   /**
-   * Shared AiRequest builder for every gateway-routed vision preference (ANTHROPIC_CLAUDE,
-   * PLANTNET identify, and — since the G1 follow-up — GITHUB_GPT4O/GITHUB_GPT41) — same
-   * user-facing prompt text and system prompt every direct client uses for identification, so the
-   * gateway path never restates them (Chunk 3, D022 gateway swap).
+   * Shared AiRequest builder for every gateway-routed vision preference (ANTHROPIC_CLAUDE, PLANTNET
+   * identify, and — since the G1 follow-up — GITHUB_GPT4O/GITHUB_GPT41) — same user-facing prompt
+   * text and system prompt every direct client uses for identification, so the gateway path never
+   * restates them (Chunk 3, D022 gateway swap).
    */
   private AiRequest identificationGatewayRequest(
       byte[] imageBytes, String mediaType, String modelHint, Long userId, String userContext) {

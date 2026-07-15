@@ -428,6 +428,140 @@ class IdentificationServiceImplTest {
   }
 
   @Nested
+  @DisplayName("AI JSON fence recovery — extractJson()")
+  class AiJsonFenceRecovery {
+
+    /**
+     * Live bug (2026-07-15): a provider response wrapped its identification JSON in a markdown code
+     * fence — {@code ```json\n{...}\n``` } — and the parser called {@code objectMapper.readValue()}
+     * on the raw fenced string without stripping it, throwing and silently falling back to "Unknown
+     * Plant"/LOW/0.3 even though the model had identified the plant correctly. extractJson() now
+     * strips the fence before parsing.
+     */
+    @Test
+    @DisplayName("should parse real values from a ```json-fenced identification response")
+    void shouldParseFencedJsonIdentification() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn("```json\n" + validIdentificationJson() + "\n```");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(saved.getCommonName()).isEqualTo("Swiss cheese plant");
+      assertThat(saved.getConfidence()).isEqualTo(0.9);
+      assertThat(saved.getHealthStatus()).isEqualTo("HEALTHY");
+    }
+
+    @Test
+    @DisplayName("should still parse a bare (unfenced) JSON identification response")
+    void shouldParseBareJsonIdentification() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(saved.getCommonName()).isEqualTo("Swiss cheese plant");
+      assertThat(saved.getConfidence()).isEqualTo(0.9);
+    }
+
+    @Test
+    @DisplayName("should parse real values when JSON is preceded by prose with no code fence")
+    void shouldParseProseThenJsonIdentification() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn("Here is my analysis of your plant:\n\n" + validIdentificationJson().strip());
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(saved.getCommonName()).isEqualTo("Swiss cheese plant");
+      assertThat(saved.getConfidence()).isEqualTo(0.9);
+    }
+
+    @Test
+    @DisplayName("should still fall back to Unknown Plant when output is genuinely not JSON")
+    void shouldFallBackOnGenuinelyMalformedIdentification() throws Exception {
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn("Sorry, I could not identify this plant clearly.");
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+
+      IdentificationRequestedEvent event =
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID);
+      identificationService.processIdentification(event);
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository, times(2)).save(captor.capture());
+      Identification saved = captor.getAllValues().get(1);
+
+      assertThat(saved.getScientificName()).isNull();
+      assertThat(saved.getCommonName()).isEqualTo("Unknown Plant");
+      assertThat(saved.getConfidence()).isEqualTo(0.3);
+      assertThat(saved.getHealthStatus()).isEqualTo("UNKNOWN");
+    }
+  }
+
+  @Nested
   @DisplayName("T10.A — userContext + annotation skip (D10.1)")
   class UserContextAndAnnotationSkip {
 
@@ -1823,7 +1957,8 @@ class IdentificationServiceImplTest {
               Optional.of(
                   com.plantpal.user.entity.User.builder()
                       .id(USER_ID)
-                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
                       .build()));
       List<MultipartFile> images = List.of(validImage());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
@@ -1865,7 +2000,8 @@ class IdentificationServiceImplTest {
               Optional.of(
                   com.plantpal.user.entity.User.builder()
                       .id(USER_ID)
-                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT41)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT41)
                       .build()));
       List<MultipartFile> images = List.of(validImage());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
@@ -1904,14 +2040,14 @@ class IdentificationServiceImplTest {
               Optional.of(
                   com.plantpal.user.entity.User.builder()
                       .id(USER_ID)
-                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
                       .build()));
       List<MultipartFile> images = List.of(validImage());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
       when(gatewayClient.request(any()))
-          .thenReturn(
-              gatewayResponse(issuesDetectedJson()), gatewayResponse("{\"regions\":[]}"));
+          .thenReturn(gatewayResponse(issuesDetectedJson()), gatewayResponse("{\"regions\":[]}"));
 
       Identification pendingEntity =
           Identification.builder()
@@ -1948,7 +2084,8 @@ class IdentificationServiceImplTest {
               Optional.of(
                   com.plantpal.user.entity.User.builder()
                       .id(USER_ID)
-                      .visionModelPreference(com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
                       .build()));
       List<MultipartFile> images = List.of(validImage());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");

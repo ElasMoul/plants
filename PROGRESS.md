@@ -1000,3 +1000,22 @@ both empty — no demand traffic pending either direction.
 - Standing: platform AI path needs `PLATFORM_GATEWAY_ENABLED=true` + a
   reachable `PLATFORM_GATEWAY_URL` (host.docker.internal when dockerized).
 - Vault-sync: demand raised plantpal-20260715-tenant-app-networking-d040
+
+## Session — 2026-07-15 (identification AI-JSON fence-parsing bugfix)
+- State: Fixed the markdown-fence JSON parsing bug in `IdentificationServiceImpl`
+  (backend/src/main/java/com/plantpal/identification/service/impl/IdentificationServiceImpl.java)
+  found live via a real identification (fenced ```json response silently fell
+  back to "Unknown Plant" 0.3). Added a reusable `extractJson()` helper, used by
+  all 4 AI-JSON parse sites in the class (identification, care plan, cure
+  advice, duplicate-care-card groups). 4 new regression tests added
+  (`IdentificationServiceImplTest$AiJsonFenceRecovery`); full backend unit
+  suite: 293 tests, 0 failures, 0 errors. Integration tests (`*IT.java`)
+  remain box-blocked on this machine (Testcontainers npipe) — not run, per
+  standing note.
+- Next step: none required — fix is self-contained and covered by unit tests.
+  Consider (not done here) also checking whether other repos/clients rely on
+  DeepSeekClient.stripThinkTags() fence-handling that the ai-gateway
+  passthrough path bypasses.
+- Standing: integration tests remain box-blocked on this Windows machine
+  (Testcontainers npipe) — unchanged.
+- Vault-sync: none — plantpal-local quality fix.

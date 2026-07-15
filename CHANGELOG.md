@@ -37,6 +37,27 @@
   gating, payload shape, transport-failure swallowing.
 
 ### Fixed
+- **Identification AI-JSON parsing broke on a markdown-fenced response**
+  (`IdentificationServiceImpl.parseIdentificationResult`), causing a
+  successful identification to be logged as `Malformed identification JSON
+  from DeepSeek, using fallback` and silently saved as "Unknown Plant"
+  confidence 0.3 even when the model correctly identified the plant
+  (confirmed live: PlantNet independently matched "Coleus spp." on the same
+  photo). Root cause: the provider (or the ai-gateway passthrough path, which
+  bypasses each client's own `stripThinkTags()`) wrapped its JSON in a
+  ` ```json ... ``` ` code fence, and `objectMapper.readValue()` was called on
+  the raw fenced string. Added a single reusable `extractJson()` helper
+  (mirrors sentinel-hub's `parse.py`): strips a leading/trailing
+  ` ```json`/` ``` `/`~~~` fence if present, otherwise falls back to
+  extracting the substring from the first `{` to the last `}`. Wired into
+  every AI-JSON parse site in the class — `parseIdentificationResult`,
+  `parseCarePlan`, `parseCureAdvice`, `parseDuplicateGroups` — all of which
+  shared the same fence vulnerability. Existing fallback behavior for
+  genuinely malformed output is unchanged; this only rescues
+  fenced/prose-wrapped-but-otherwise-valid JSON. 4 new regression tests
+  (`IdentificationServiceImplTest$AiJsonFenceRecovery`): fenced JSON now
+  parses to real values, bare JSON still works, prose-then-JSON works,
+  genuinely-garbage output still hits the fallback.
 - Gateway-routed PLANTNET identification (`IdentificationServiceImpl.runIdentification`)
   now attaches `organs`/`project`/`lang` to the `AiRequest` context so
   ai-gateway's `PlantNetAdapter` receives them — previously only the image made
