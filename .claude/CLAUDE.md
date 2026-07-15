@@ -533,23 +533,10 @@ open backend/target/site/jacoco/index.html
   (Hibernate's lazy loading breaks with Lombok `@Data`)
 - **No new direct cross-package injection that creates a cycle** — go through a Spring
   application event instead (see ARCHITECT.md's Treatment/Reminder completion-sync example)
-- **Vault sync is the last step of every phase implementation — always, automatically.**
-  After the final code commit, execute `.claude/VAULT_SYNC_TEMPLATE.md` steps (phase page,
-  decisions, learnings, hot.md, index.md, STATE.md, CLAUDE.md build table, TASK_PLAN.md).
-  The user does not need to ask. "Start Phase N" and "implement all" both include the vault sync.
-
----
-
-## Knowledge Vault
-Path: `../plants-vault`
-
-When you need project history or decision context not in `.claude/`:
-1. Read `../plants-vault/wiki/hot.md` first (recent context cache)
-2. If not enough, read `../plants-vault/wiki/index.md`
-3. Drill into the relevant `wiki/decisions/`, `wiki/phases/`, or `wiki/learnings/` page
-
-Rules:
-- Do NOT read the vault for general coding tasks
-- The `.claude/` files (STATE.md, TASK_PLAN.md, etc.) remain the authoritative
-  coordination layer — the vault is for exploration and history only
-- Only the Architect writes to the vault; Backend and Frontend agents read only
+- **Doc sync is the last step of every phase implementation — always, automatically.**
+  After the final code commit, update the `.claude/` files (STATE.md, CLAUDE.md build
+  table, TASK_PLAN.md; decisions/learnings go in ARCHITECT.md). The user does not need
+  to ask. "Start Phase N" and "implement all" both include this sync. Platform-delta
+  sessions additionally append their handoff to `PROGRESS.md` per `../CLAUDE.md`.
+  (The former external `plants-vault` was removed 2026-07-15 — `.claude/` is the
+  single memory layer; project memory follows the platform guidelines.)

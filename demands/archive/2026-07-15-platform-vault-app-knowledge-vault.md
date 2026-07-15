@@ -5,8 +5,15 @@ from: plantpal
 to: [platform-vault]
 capability: Rule on where a tenant app's own knowledge vault lives — plantpal's internal convention mandates a sibling folder (`../plants-vault`) that does not exist, and creating it would conflict with the "never create repos or folders outside your repo" standing order.
 needs-owner: true
-status: open
+status: archived
 ---
+
+> **Resolution (owner ruling, in-session, 2026-07-15):** superseded before dispatch —
+> the owner ruled directly: the plants-vault is **removed**; app memory follows the
+> platform guidelines (in-repo `.claude/` files + `PROGRESS.md` for platform-delta).
+> Option 2 executed same session: `.claude/CLAUDE.md`, `ARCHITECT.md`, `README.md`,
+> `/save` command amended; `VAULT_SYNC_TEMPLATE.md` deleted; D6 superseded. No
+> platform-vault work needed — archived without dispatch.
 
 # Demand — ruling on per-app knowledge vaults (plants-vault doesn't exist)
 

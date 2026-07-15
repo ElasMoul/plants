@@ -118,7 +118,7 @@ Three frontend UX fixes (commit 6c10241):
 - **Species page botanical facts** — "Botanical facts" section (family/genus/IUCN badge) added to species-detail overview; visible regardless of `descriptionStatus`. `gbifId`/`powoId`/`iucnCategory` added to frontend `SpeciesResponse` model.
 
 Backend race condition fix (commit d2c03e3):
-- **`@Async` + `@Transactional` race in `SpeciesEnrichmentServiceImpl`** — `createSpecies()` was firing `enrich()` inline before the outer transaction committed; `enrich()`'s own `findById` returned null → enrichment silently skipped → `descriptionStatus` stuck at PENDING forever. Fixed with `TransactionSynchronizationManager.registerSynchronization(afterCommit)` in both `createSpecies()` and `regenerateDescription()`. See vault: [[async-transactional-race-condition]].
+- **`@Async` + `@Transactional` race in `SpeciesEnrichmentServiceImpl`** — `createSpecies()` was firing `enrich()` inline before the outer transaction committed; `enrich()`'s own `findById` returned null → enrichment silently skipped → `descriptionStatus` stuck at PENDING forever. Fixed with `TransactionSynchronizationManager.registerSynchronization(afterCommit)` in both `createSpecies()` and `regenerateDescription()`.
 
 ---
 

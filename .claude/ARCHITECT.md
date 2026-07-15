@@ -639,13 +639,12 @@ Scan initiated from...
   any of them — that's what the Archive is for.
 - **Output SESSION SUMMARY block** (format defined in AGENTS.md) at end of every response
   so the user can paste it back and trigger a .claude/ sync
-- **Vault sync is AUTOMATIC after every phase completion — never wait to be told.**
-  Once the final code commit lands, immediately execute all steps in
-  `.claude/VAULT_SYNC_TEMPLATE.md` as part of the same session. The user does NOT need
-  to say "update the vault" or "do the vault update" — it is always the last step of
-  "start Phase N" / "implement all". The sync covers: phase page, decision pages,
-  learnings pages, hot.md, index.md, STATE.md, CLAUDE.md build table, TASK_PLAN.md header.
-  Read VAULT_SYNC_TEMPLATE.md for the exact 6-step checklist.
+- **Doc sync is AUTOMATIC after every phase completion — never wait to be told.**
+  Once the final code commit lands, immediately update the `.claude/` files as part of
+  the same session: STATE.md, CLAUDE.md build table, TASK_PLAN.md header, plus new
+  decision/learning entries in this file. It is always the last step of
+  "start Phase N" / "implement all". (The former external plants-vault was removed
+  2026-07-15 — `.claude/` is the single memory layer.)
 
 
 
@@ -874,24 +873,14 @@ deliberate. Documented here (not as code comments) to prevent future re-investig
 
 ---
 
-## Knowledge Vault
+## Project Memory
 
-The Obsidian knowledge vault lives at `../plants-vault` (relative to the project root).
-
-**The Architect maintains it in step with `.claude/` files:**
-- When a new decision is logged in this file (`ARCHITECT.md`) → create or update `wiki/decisions/` in the vault.
-- When a phase completes in `STATE.md` → update `wiki/phases/` in the vault.
-- When a hard-won debugging insight is found → add a `wiki/learnings/` page.
-- The vault `wiki/hot.md` is updated alongside every major `.claude/` sync.
-
-**Backend and Frontend agents read the vault but do not write to it.** Reading path:
-1. `../plants-vault/wiki/hot.md` (recent context cache — always start here)
-2. `../plants-vault/wiki/index.md` (master catalog)
-3. `wiki/decisions/` / `wiki/phases/` / `wiki/learnings/` (drill-down)
-
-**D6** is the decision record for why the vault was added — see `../plants-vault/wiki/decisions/d6-knowledge-vault-setup.md`.
-
-The `.claude/` files (this file, STATE.md, TASK_PLAN.md, BACKEND.md, FRONTEND.md) remain the **authoritative coordination layer** for task execution. The vault is for long-term history and exploration only — do not duplicate authoritative state there.
+The `.claude/` files (this file, STATE.md, TASK_PLAN.md, BACKEND.md, FRONTEND.md) are the
+**single, authoritative memory layer** for this repo. Decisions live as D-entries in this
+file; learnings and phase history live in STATE.md (archived snapshots in `.claude/Archive/`).
+The former external Obsidian vault (`../plants-vault`, D6) was **removed on 2026-07-15** —
+D6 is superseded; do not look for or write to any external vault. Platform-delta session
+outcomes go to `PROGRESS.md` per the platform standing orders (`../CLAUDE.md`).
 
 ---
 

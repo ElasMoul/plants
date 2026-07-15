@@ -81,12 +81,11 @@ project knowledge lives in `.claude/`, not scattered across ad hoc docs:
 | `.claude/BACKEND.md` / `.claude/FRONTEND.md` | File-by-file inventories for each side |
 | `.claude/STATE.md` | Session-by-session history |
 | `.claude/TASK_PLAN.md` | Full build-task list with prompts |
-| `.claude/VAULT_SYNC_TEMPLATE.md` | End-of-phase sync steps into `../plants-vault` |
 | `.claude/commands/`, `.claude/design pages/`, `.claude/Archive/` | Slash commands, design references, archived snapshots |
 
-Project history/decisions beyond `.claude/` live in the knowledge vault at
-`../plants-vault` (see `.claude/CLAUDE.md`'s "Knowledge Vault" section for the
-read order — `wiki/hot.md` first).
+`.claude/` is the single memory layer — all project history, decisions, and
+learnings live there (session memory follows the platform guidelines in
+`../CLAUDE.md`).
 
 ---
 
