@@ -142,7 +142,8 @@ public class PlantNetGatewayClient {
     } catch (PlantPalException e) {
       throw e;
     } catch (RestClientException e) {
-      throw new PlantPalException("ai-gateway unreachable fetching PlantNet " + description, 503, e);
+      throw new PlantPalException(
+          "ai-gateway unreachable fetching PlantNet " + description, 503, e);
     }
   }
 
@@ -151,7 +152,8 @@ public class PlantNetGatewayClient {
       return List.of();
     }
     try {
-      CollectionType type = objectMapper.getTypeFactory().constructCollectionType(List.class, elementType);
+      CollectionType type =
+          objectMapper.getTypeFactory().constructCollectionType(List.class, elementType);
       return objectMapper.readValue(raw, type);
     } catch (JsonProcessingException e) {
       throw new PlantPalException("Failed to parse PlantNet gateway " + description, 502, e);

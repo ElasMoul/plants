@@ -23,10 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
  * identify quota on these calls.
  *
  * <p>Gap G4 follow-up (ai-gateway full-coverage demand): when {@code platform.gateway.enabled} is
- * on, these three lookups route through ai-gateway's {@code /ai/plantnet/*} endpoints instead
- * (D022 — PlantNet's API key never leaves the gateway); same additive if/else shape used
- * throughout the identification module for the gateway swap. The direct {@link PlantNetClient}
- * path — including its caching — remains unchanged for standalone/dev (D009).
+ * on, these three lookups route through ai-gateway's {@code /ai/plantnet/*} endpoints instead (D022
+ * — PlantNet's API key never leaves the gateway); same additive if/else shape used throughout the
+ * identification module for the gateway swap. The direct {@link PlantNetClient} path — including
+ * its caching — remains unchanged for standalone/dev (D009).
  */
 @RestController
 @RequestMapping("/api/v1/plantnet")

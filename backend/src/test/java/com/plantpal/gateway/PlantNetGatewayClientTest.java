@@ -120,8 +120,7 @@ class PlantNetGatewayClientTest {
 
   @Test
   void checkDisease_match_parsesEnvelopeThenInnerJson() throws IOException {
-    String innerJson =
-        "{\"results\":[],\"remainingIdentificationRequests\":42}";
+    String innerJson = "{\"results\":[],\"remainingIdentificationRequests\":42}";
     PlantNetGatewayClient client = clientReturning("/ai/plantnet/disease-check", 200, innerJson);
 
     PlantNetDiseaseResponse response =
@@ -147,7 +146,9 @@ class PlantNetGatewayClientTest {
     assertThat(response.remainingIdentificationRequests()).isZero();
   }
 
-  /** Wraps {@code innerJson} in ai-gateway's {@code ApiResponse<String>} envelope: {"data": "..."} */
+  /**
+   * Wraps {@code innerJson} in ai-gateway's {@code ApiResponse<String>} envelope: {"data": "..."}
+   */
   private PlantNetGatewayClient clientReturning(String path, int status, String innerJson)
       throws IOException {
     String envelope = "{\"data\":" + objectMapper.writeValueAsString(innerJson) + "}";

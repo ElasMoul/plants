@@ -2,7 +2,6 @@ package com.plantpal.identification.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,8 +24,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Gap G4 follow-up: verifies {@link PlantNetConfigController} branches between the direct {@link
- * PlantNetClient} and {@link PlantNetGatewayClient} purely on {@code platform.gateway.enabled},
- * the same additive if/else shape used throughout the identification module for the gateway swap.
+ * PlantNetClient} and {@link PlantNetGatewayClient} purely on {@code platform.gateway.enabled}, the
+ * same additive if/else shape used throughout the identification module for the gateway swap.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlantNetConfigController — gateway routing (gap G4 follow-up)")
@@ -95,7 +94,9 @@ class PlantNetConfigControllerTest {
     @Test
     void getProjects_usesGatewayClient() {
       when(plantNetGatewayClient.getProjects(1.0, 2.0, "en"))
-          .thenReturn(List.of(new PlantNetProjectDto("k-world-flora", "World flora", Map.of(), List.of("en"))));
+          .thenReturn(
+              List.of(
+                  new PlantNetProjectDto("k-world-flora", "World flora", Map.of(), List.of("en"))));
 
       var response = controller.getProjects(1.0, 2.0, "en");
 
