@@ -1,0 +1,19 @@
+# Runtime-only image for Railway (T-DEPLOY.5).
+#
+# The regular backend/Dockerfile builds from source and needs the "contracts-m2"
+# host build-context (private contracts repo, D031) — Railway can't provide that.
+# CI (.github/workflows/deploy.yml) builds the JAR with contracts installed from
+# the pinned tag, downloads it into backend/target/, and `railway up` ships this
+# image, which only has to run it.
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# deploy.yml guarantees exactly one JAR in target/ (fresh download-artifact dir)
+COPY target/plantpal-backend-*.jar app.jar
+
+# Railway injects PORT; Spring reads it via SERVER_PORT below.
+ENV SERVER_PORT=8080
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]

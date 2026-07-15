@@ -59,6 +59,18 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
+  # ── Identification transport (T-DEPLOY.5) ────────────────────────────────────
+  # 'kafka' (default): identification runs through the async Kafka pipeline (identification
+  # .requested topic + IdentificationConsumer) — unchanged dev/local/test behavior.
+  # 'in-process': no Kafka broker required. IdentificationServiceImpl.processIdentification(...)
+  # runs directly on aiTaskExecutor instead — see IdentificationDispatcher. v1.0.0 ships prod/
+  # staging on 'in-process' (see application-prod.yml / application-staging.yml); async-at-scale
+  # via Kafka is revisited later. This same toggle also gates every other Kafka producer in the
+  # app (plant_count dimension events, the identification.completed notification) — see
+  # KafkaTransportProperties.
+  identification:
+    transport: ${APP_IDENTIFICATION_TRANSPORT:kafka}
+
 # ──── Sentry ──────────────────────────────────────────────────────────────────
 # Empty DSN disables Sentry. Set SENTRY_DSN in production environment.
 sentry:

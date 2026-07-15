@@ -39,11 +39,14 @@ spring:
     contexts: staging
     change-log: classpath:db/changelog/db.changelog-master.xml
 
-  # ── Kafka — async identification pipeline ──────────────────────────────────
-  # No fallback default: prod/staging Kafka topology is still an open decision
-  # (T-DEPLOY.5) — an unset value should fail fast, not silently point at localhost.
+  # ── Kafka — inert in staging (T-DEPLOY.5: v1.0.0 ships without a Kafka broker in production) ──
+  # app.identification.transport=in-process below means none of our own Kafka producer/consumer/
+  # topic beans are created, so this section is never actually dialed — but Spring Boot's
+  # KafkaProperties still binds spring.kafka.bootstrap-servers eagerly at startup regardless of
+  # bean conditions, so an unset KAFKA_BOOTSTRAP_SERVERS must not fail placeholder resolution.
+  # Safe to fall back to localhost:9092 here precisely because nothing ever connects to it.
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: plantpal-identification
       auto-offset-reset: earliest
@@ -88,6 +91,13 @@ app:
   cors:
     # No insecure localhost fallback in staging/prod — must be set explicitly.
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+  # ── Identification transport (T-DEPLOY.5) ────────────────────────────────────
+  # v1.0.0 ships without a Kafka broker in production: identification runs in-process on
+  # aiTaskExecutor instead of via the identification.requested Kafka topic. See
+  # application.yml's app.identification.transport comment and KafkaTransportProperties.
+  identification:
+    transport: in-process
 
   jwt:
     secret: ${JWT_SECRET}

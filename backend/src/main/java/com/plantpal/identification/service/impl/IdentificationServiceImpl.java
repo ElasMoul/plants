@@ -14,6 +14,7 @@ import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.PlantNetDiseaseClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dispatch.IdentificationDispatcher;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
@@ -54,6 +55,7 @@ import com.plantpal.plant.service.PlantService;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
+import com.plantpal.shared.config.KafkaTransportProperties;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -172,7 +174,9 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final PlantNetDiseaseClient plantNetDiseaseClient;
   private final OllamaClient ollamaClient;
   private final AnthropicClient anthropicClient;
+  private final IdentificationDispatcher identificationDispatcher;
   private final KafkaTemplate<String, Object> kafkaTemplate;
+  private final KafkaTransportProperties kafkaTransportProperties;
   private final CacheManager cacheManager;
   private final SpeciesRepository speciesRepository;
   private final SpeciesService speciesService;
@@ -201,7 +205,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       PlantNetDiseaseClient plantNetDiseaseClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
+      IdentificationDispatcher identificationDispatcher,
       KafkaTemplate<String, Object> kafkaTemplate,
+      KafkaTransportProperties kafkaTransportProperties,
       CacheManager cacheManager,
       SpeciesRepository speciesRepository,
       SpeciesService speciesService,
@@ -225,7 +231,9 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.plantNetDiseaseClient = plantNetDiseaseClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
+    this.identificationDispatcher = identificationDispatcher;
     this.kafkaTemplate = kafkaTemplate;
+    this.kafkaTransportProperties = kafkaTransportProperties;
     this.cacheManager = cacheManager;
     this.speciesRepository = speciesRepository;
     this.speciesService = speciesService;
@@ -300,8 +308,8 @@ public class IdentificationServiceImpl implements IdentificationService {
             .requestedAt(Instant.now())
             .userContext(trimmedContext)
             .build();
-    kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC, event);
-    log.info("Published IdentificationRequestedEvent: id={}", identification.getId());
+    identificationDispatcher.dispatch(event);
+    log.info("Dispatched IdentificationRequestedEvent: id={}", identification.getId());
 
     return CompletableFuture.completedFuture(
         IdentificationPendingResponse.builder()
@@ -978,7 +986,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               .organs(null)
               .requestedAt(Instant.now())
               .build();
-      kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC, event);
+      identificationDispatcher.dispatch(event);
       log.info("Retried failed identification (core): id={}", identification.getId());
     } else {
       // Core COMPLETED — re-queue only the failed enrichment stages.
@@ -1827,7 +1835,16 @@ public class IdentificationServiceImpl implements IdentificationService {
             .status(status.name())
             .completedAt(Instant.now())
             .build();
-    kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC, event);
+    // T-DEPLOY.5: this topic has no in-repo consumer (cross-repo/platform notification only), so
+    // in in-process mode it's simply skipped rather than routed through IdentificationDispatcher —
+    // unlike the identification-requested dispatch, there's no local processing waiting on it.
+    if (kafkaTransportProperties.isKafkaEnabled()) {
+      kafkaTemplate.send(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC, event);
+    } else {
+      log.debug(
+          "Skipping identification.completed Kafka publish (transport=in-process): id={}",
+          identificationId);
+    }
     // Also published as a Spring application event (in addition to the Kafka message above) so
     // in-process listeners — e.g. com.plantpal.statefeed.StateFeedEmitter — can react without a
     // Kafka consumer or a new cross-package injection.

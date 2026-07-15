@@ -22,6 +22,7 @@ import com.plantpal.identification.client.PlantNetClient;
 import com.plantpal.identification.client.PlantNetDiseaseClient;
 import com.plantpal.identification.client.VisionAnnotationClient;
 import com.plantpal.identification.config.KafkaTopicConfig;
+import com.plantpal.identification.dispatch.IdentificationDispatcher;
 import com.plantpal.identification.dto.AddCareCardRequest;
 import com.plantpal.identification.dto.AnnotationRegionDto;
 import com.plantpal.identification.dto.CarePlanDto;
@@ -45,6 +46,7 @@ import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
+import com.plantpal.shared.config.KafkaTransportProperties;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.storage.FileStorageService;
@@ -90,6 +92,7 @@ class IdentificationServiceImplTest {
   @Mock private PlantNetDiseaseClient plantNetDiseaseClient;
   @Mock private OllamaClient ollamaClient;
   @Mock private AnthropicClient anthropicClient;
+  @Mock private IdentificationDispatcher identificationDispatcher;
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
   @Mock private org.springframework.cache.CacheManager cacheManager;
   @Mock private org.springframework.cache.Cache plantsCache;
@@ -123,7 +126,9 @@ class IdentificationServiceImplTest {
             plantNetDiseaseClient,
             ollamaClient,
             anthropicClient,
+            identificationDispatcher,
             kafkaTemplate,
+            new KafkaTransportProperties(KafkaTransportProperties.KAFKA),
             cacheManager,
             speciesRepository,
             speciesService,
@@ -146,6 +151,17 @@ class IdentificationServiceImplTest {
         identificationService,
         "gatewayProperties",
         new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
+  }
+
+  /**
+   * Switches this test's instance to {@code transport=in-process} (T-DEPLOY.5) so tests can assert
+   * the identification.completed Kafka publish is skipped without a broker.
+   */
+  private void disableKafkaTransport() {
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        identificationService,
+        "kafkaTransportProperties",
+        new KafkaTransportProperties(KafkaTransportProperties.IN_PROCESS));
   }
 
   private MockMultipartFile validImage() {
@@ -201,14 +217,13 @@ class IdentificationServiceImplTest {
         """;
   }
 
-  /** Submits the identification request and captures the event published to Kafka. */
+  /** Submits the identification request and captures the event handed to the dispatcher. */
   private IdentificationRequestedEvent submitAndCaptureEvent(
       List<MultipartFile> images, List<String> organs, Long plantId, Long userId) throws Exception {
     identificationService.submitIdentification(images, plantId, null, userId, organs, null).get();
     ArgumentCaptor<IdentificationRequestedEvent> captor =
         ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
-    verify(kafkaTemplate)
-        .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), captor.capture());
+    verify(identificationDispatcher).dispatch(captor.capture());
     return captor.getValue();
   }
 
@@ -595,8 +610,7 @@ class IdentificationServiceImplTest {
 
       ArgumentCaptor<IdentificationRequestedEvent> eventCaptor =
           ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
-      verify(kafkaTemplate)
-          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), eventCaptor.capture());
+      verify(identificationDispatcher).dispatch(eventCaptor.capture());
       assertThat(eventCaptor.getValue().getUserContext()).isEqualTo("Why is this leaf yellow?");
     }
 
@@ -1116,8 +1130,7 @@ class IdentificationServiceImplTest {
 
       ArgumentCaptor<IdentificationRequestedEvent> eventCaptor =
           ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
-      verify(kafkaTemplate)
-          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), eventCaptor.capture());
+      verify(identificationDispatcher).dispatch(eventCaptor.capture());
       assertThat(eventCaptor.getValue().getIdentificationId()).isEqualTo(1L);
     }
 
@@ -1146,8 +1159,7 @@ class IdentificationServiceImplTest {
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
-      verify(kafkaTemplate, times(20))
-          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), any());
+      verify(identificationDispatcher, times(20)).dispatch(any());
     }
 
     @Test
@@ -1178,8 +1190,7 @@ class IdentificationServiceImplTest {
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
-      verify(kafkaTemplate, times(2))
-          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), any());
+      verify(identificationDispatcher, times(2)).dispatch(any());
     }
 
     @Test
@@ -1221,6 +1232,44 @@ class IdentificationServiceImplTest {
       assertThat(saved.getAnnotationRegions()).contains("Monstera");
 
       verify(kafkaTemplate).send(eq(KafkaTopicConfig.IDENTIFICATION_COMPLETED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName(
+        "processIdentification: skips the identification.completed Kafka publish when"
+            + " transport=in-process, but still fires the in-process ApplicationEvent (T-DEPLOY.5)")
+    void shouldSkipCompletedKafkaPublishWhenInProcess() throws Exception {
+      disableKafkaTransport();
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
+
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(pendingEntity));
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      IdentificationRequestedEvent event =
+          IdentificationRequestedEvent.builder()
+              .identificationId(1L)
+              .userId(USER_ID)
+              .photoUrl("/photos/uuid.jpg")
+              .aiModelPreference("GITHUB_GPT4O")
+              .requestedAt(Instant.now())
+              .build();
+
+      identificationService.processIdentification(event);
+
+      verify(kafkaTemplate, never()).send(any(), any());
+      verify(eventPublisher)
+          .publishEvent(
+              org.mockito.ArgumentMatchers.any(
+                  com.plantpal.identification.event.IdentificationCompletedEvent.class));
     }
 
     @Test
@@ -2577,12 +2626,7 @@ class IdentificationServiceImplTest {
       assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.PENDING);
       assertThat(ident.getStatus()).isEqualTo(IdentificationStatus.PENDING);
       assertThat(ident.getFailureReason()).isNull();
-      verify(kafkaTemplate)
-          .send(
-              eq(
-                  com.plantpal.identification.config.KafkaTopicConfig
-                      .IDENTIFICATION_REQUESTED_TOPIC),
-              any());
+      verify(identificationDispatcher).dispatch(any());
     }
 
     @Test
@@ -2605,6 +2649,7 @@ class IdentificationServiceImplTest {
 
       assertThat(ident.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
       assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      verify(identificationDispatcher, never()).dispatch(any());
       verify(kafkaTemplate, never()).send(any(), any());
     }
 

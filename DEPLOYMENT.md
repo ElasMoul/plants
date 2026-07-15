@@ -15,7 +15,39 @@ deploy, on its own cadence; the platform observes via `app.health`).
 - **Database** — PostgreSQL 15, schema managed by **Liquibase** migrations
   (`backend/src/main/resources/db/changelog`), not owned or touched by the platform.
 - **Cache / rate limiting** — Redis (Bucket4j).
-- **Async pipeline** — Kafka (identification pipeline).
+- **Async pipeline** — Kafka locally/dev; **production runs WITHOUT Kafka**
+  (owner decision 2026-07-15, v1.0.0): `app.identification.transport=in-process`
+  in the prod/staging profiles dispatches the identification pipeline on the
+  in-app async executor instead of a broker. The 202+poll HTTP contract is
+  unchanged. Revisit brokered async at scale.
+
+### First-time production setup (T-DEPLOY.5 runbook)
+
+1. **Railway** — create a project with two add-ons (PostgreSQL, Redis) and one
+   service for the backend. The service builds via `backend/railway.json` →
+   `backend/Dockerfile.railway` (runtime-only image; CI supplies the prebuilt
+   JAR — the regular Dockerfile needs the contracts-m2 host context Railway
+   doesn't have). Set the service env vars (see `backend/.env.example`,
+   "Staging / Production" section): `SPRING_PROFILES_ACTIVE=prod`,
+   `DATABASE_URL` (⚠️ Railway's native `postgres://` URI must be translated to
+   JDBC form: `jdbc:postgresql://host:port/db?user=...&password=...`),
+   `REDIS_URL`, `JWT_SECRET` (≥64 chars), `GITHUB_TOKEN` (rotated 2026-07-15),
+   `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, `CORS_ALLOWED_ORIGINS` (the Vercel
+   domain, no trailing slash), optional `ANTHROPIC_API_KEY`/`PLANTNET_API_KEY`.
+   Do NOT set `KAFKA_BOOTSTRAP_SERVERS` — prod is in-process by design.
+2. **Vercel** — create the project once (`vercel link` locally or via
+   dashboard); no build settings needed (CI deploys a prebuilt `dist/`).
+3. **GitHub repo secrets** — `RAILWAY_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
+   `VERCEL_PROJECT_ID`, `VAPID_PUBLIC_KEY`, `SENTRY_DSN` (last two are baked
+   into the frontend build); repo **variable** `BACKEND_PUBLIC_URL` = the
+   Railway service's public URL (deploy.yml writes the Vercel `/api/*` rewrite
+   from it and fails fast if unset).
+4. **Deploy** — push to `main`; `.github/workflows/deploy.yml` builds and
+   deploys both sides.
+5. **Verify** — `GET <railway>/actuator/health` = UP; register/login on the
+   Vercel domain; run one full identification (photo → 202 → poll → result)
+   to prove the in-process pipeline; watch Railway logs (structured JSON with
+   correlationId) while doing it.
 
 ## Local (Docker Compose)
 
