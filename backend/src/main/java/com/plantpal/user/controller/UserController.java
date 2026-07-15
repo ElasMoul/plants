@@ -6,6 +6,7 @@ import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,6 +31,14 @@ public class UserController {
   }
 
   @Operation(summary = "Get current user AI model preference")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Preferences retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/me/preferences")
   public ResponseEntity<ApiResponse<UserPreferencesResponse>> getPreferences() {
     Long userId = getCurrentUserId();
@@ -38,6 +47,17 @@ public class UserController {
   }
 
   @Operation(summary = "Update current user AI model preference")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Preferences updated successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @PutMapping("/me/preferences")
   public ResponseEntity<ApiResponse<UserPreferencesResponse>> updatePreferences(
       @Valid @RequestBody UserPreferencesRequest request) {

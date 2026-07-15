@@ -2,6 +2,8 @@ package com.plantpal.shared.controller;
 
 import com.plantpal.shared.storage.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +21,18 @@ public class PhotoController {
     this.fileStorageService = fileStorageService;
   }
 
-  @Operation(summary = "Get a previously uploaded photo by filename")
+  @Operation(summary = "Get a previously uploaded photo by filename (public — no auth required)")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Photo bytes returned"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Photo not found")
+  })
   @GetMapping("/api/v1/photos/{filename}")
-  public ResponseEntity<byte[]> getPhoto(@PathVariable String filename) {
+  public ResponseEntity<byte[]> getPhoto(
+      @Parameter(description = "Stored photo filename") @PathVariable String filename) {
     byte[] bytes = fileStorageService.loadPhotoBytes("/photos/" + filename);
     return ResponseEntity.ok().contentType(resolveContentType(filename)).body(bytes);
   }

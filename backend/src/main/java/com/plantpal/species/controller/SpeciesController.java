@@ -6,6 +6,8 @@ import com.plantpal.species.dto.SpeciesSummaryDto;
 import com.plantpal.species.service.SpeciesService;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -36,12 +38,32 @@ public class SpeciesController {
   }
 
   @Operation(summary = "Get a species by ID (public read, no ownership check)")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Species retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Species not found")
+  })
   @GetMapping("/{id}")
-  public ResponseEntity<ApiResponse<SpeciesResponse>> getSpecies(@PathVariable Long id) {
+  public ResponseEntity<ApiResponse<SpeciesResponse>> getSpecies(
+      @Parameter(description = "Species ID") @PathVariable Long id) {
     return ResponseEntity.ok(ApiResponse.success(speciesService.getSpecies(id)));
   }
 
   @Operation(summary = "List the distinct species the current user owns at least one plant of")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Species list retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/mine")
   public ResponseEntity<ApiResponse<Page<SpeciesSummaryDto>>> getMySpecies(
       @PageableDefault(size = 20) Pageable pageable) {
@@ -51,8 +73,20 @@ public class SpeciesController {
   }
 
   @Operation(summary = "Re-fire async prose description generation (T9.B)")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "202",
+        description = "Regeneration queued"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Species not found")
+  })
   @PostMapping("/{id}/regenerate-description")
-  public ResponseEntity<ApiResponse<SpeciesResponse>> regenerateDescription(@PathVariable Long id) {
+  public ResponseEntity<ApiResponse<SpeciesResponse>> regenerateDescription(
+      @Parameter(description = "Species ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     return ResponseEntity.accepted()
         .body(ApiResponse.success(speciesService.regenerateDescription(id, userId)));

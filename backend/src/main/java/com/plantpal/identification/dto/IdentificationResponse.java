@@ -2,6 +2,7 @@ package com.plantpal.identification.dto;
 
 import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -19,12 +20,24 @@ public class IdentificationResponse {
 
   private Long id;
   private Long plantId;
+
+  @Schema(example = "Monstera deliciosa")
   private String scientificName;
+
+  @Schema(example = "Swiss Cheese Plant")
   private String commonName;
+
+  @Schema(example = "0.92")
   private Double confidence;
+
+  @Schema(example = "ISSUES_DETECTED")
   private String healthStatus;
+
   private String healthNotes;
+
+  @Schema(example = "COMPLETED")
   private IdentificationStatus status;
+
   private String photoUrl;
   private Instant createdAt;
   private CarePlanDto carePlan;

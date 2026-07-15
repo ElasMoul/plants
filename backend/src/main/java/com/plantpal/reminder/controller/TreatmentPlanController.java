@@ -6,6 +6,8 @@ import com.plantpal.reminder.service.TreatmentPlanService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,6 +37,17 @@ public class TreatmentPlanController {
       summary =
           "Create a treatment plan from a TREATMENT action plan, generating one"
               + " reminder per step")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "201",
+        description = "Treatment plan created"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @PostMapping
   public ResponseEntity<ApiResponse<TreatmentPlanResponse>> createTreatmentPlan(
       @Valid @RequestBody TreatmentPlanRequest request) {
@@ -51,9 +64,20 @@ public class TreatmentPlanController {
   }
 
   @Operation(summary = "Get a treatment plan and its steps")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Treatment plan retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Treatment plan not found")
+  })
   @GetMapping("/{id}")
   public ResponseEntity<ApiResponse<TreatmentPlanResponse>> getTreatmentPlan(
-      @PathVariable Long id) {
+      @Parameter(description = "Treatment plan ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     TreatmentPlanResponse response = treatmentPlanService.getTreatmentPlan(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response));

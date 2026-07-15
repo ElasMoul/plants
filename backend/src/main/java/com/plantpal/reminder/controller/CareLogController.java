@@ -6,6 +6,8 @@ import com.plantpal.reminder.service.CareLogService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,6 +38,20 @@ public class CareLogController {
   }
 
   @Operation(summary = "Mark a reminder as done — logs the care action and reschedules it")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "201",
+        description = "Care logged successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Reminder not found")
+  })
   @PostMapping("/done")
   public ResponseEntity<ApiResponse<CareLogResponse>> markCareDone(
       @Valid @RequestBody MarkCareDoneRequest request) {
@@ -46,9 +62,17 @@ public class CareLogController {
   }
 
   @Operation(summary = "Get the care history for a plant")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Care logs retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/plant/{plantId}")
   public ResponseEntity<ApiResponse<Page<CareLogResponse>>> getPlantCareLogs(
-      @PathVariable Long plantId,
+      @Parameter(description = "Plant ID") @PathVariable Long plantId,
       @PageableDefault(size = 20, sort = "performedAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     Long userId = getCurrentUserId();
