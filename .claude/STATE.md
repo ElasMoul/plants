@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-15 (Phase 10 closure verified: T10.A–I merged to dev; stale "pending merge" rows reconciled; next = Phase DEPLOY)
+> Last updated: 2026-07-15 (Phase DEPLOY started: T-DEPLOY.1 implemented on feature/PP-089-prod-config, CI verdict pending — see session entry at bottom)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -170,3 +170,40 @@ Production (Railway/Vercel) is unchanged — they already terminate TLS.
   infrastructure entirely; needs a fast-forward). Demand archived to `demands/archive/`.
 - Next step: architect review/merge; `dev` fast-forward; runtime `AI_MANIFEST_DIR` mount + contracts
   v0.9.0 defect fixes are prerequisites before the manifest is actually consumed.
+
+## 2026-07-15 — Phase 10 closed, plants-vault removed, Phase DEPLOY started (T-DEPLOY.1)
+
+**Phase 10 closure:** verified T10.A–I fully merged to dev (PHASE10 ancestor check + file-level
+verification by agents); reconciled stale build-table/state rows (main `9a8667c`). dev was
+fast-forwarded to main twice this session (last: `13f00c3`) — dev == main at session start of
+DEPLOY work.
+
+**plants-vault REMOVED (owner ruling, in-session):** the external vault never existed on disk;
+owner ruled it removed — `.claude/` is the single memory layer, platform guidelines apply
+(PROGRESS.md for platform-delta). Scrubbed CLAUDE.md/ARCHITECT.md/README/save-command, deleted
+VAULT_SYNC_TEMPLATE.md, D6 superseded (main `aa1c7dc`). The vault-ruling demand raised earlier
+was deleted entirely per owner (`13f00c3`). Phase-end rule is now "doc sync" (.claude files only).
+
+**T-DEPLOY.1 (PP-089, `feature/PP-089-prod-config`, pushed, commits `2cbe5ab`+`77eb127`+`ba5ad5e`):**
+staging/prod YAML (HikariCP 20/5/20000, ${DATABASE_URL}/${REDIS_URL}, env-driven CORS no-fallback,
+actuator health+info), logback-spring.xml (JSON logstash-encoder 7.4 in staging/prod, pattern
+elsewhere; needed `defaults.xml` include — %wEx is Spring-Boot-registered, first CI run
+29385043867 failed all ITs on it), chat rate limit now `app.rate-limit.chat-messages-per-hour`
+(default 10/h — was hardcoded 30/h; behavior change) via constructor @Value + 2 new unit tests.
+295 unit tests + spotless green; frontend CI green.
+
+**⏳ NEXT STEP (checkpoint — rate limit):**
+1. Check CI run **29385261980** (`gh run view 29385261980`) — was in_progress at checkpoint;
+   only the IT leg was unproven (unit/spotless/frontend already green on run 1).
+2. If green: PR `feature/PP-089-prod-config` → dev, then T-DEPLOY.2–4 on `feature/PP-090-...`
+   (branch off PP-089 or off dev after merge): migration **032** (TASK_PLAN's "031" is stale)
+   composite/partial indexes; @Cacheable garden/species + eviction; security headers; wire the
+   DEAD config keys `ai-calls-per-hour`/`auth-attempts-per-minute` (nothing reads them —
+   hardcoded constants in IdentificationServiceImpl instead); OWASP sanitizer on plant fields;
+   chat 2000-char cap; OpenAPI annotations everywhere. Backend + frontend (OnPush/trackBy)
+   agents can run in parallel — file sets don't overlap.
+3. If red: fix logback/IT leg first, re-dispatch `gh workflow run ci.yml --ref feature/PP-089-prod-config`
+   (CI does NOT auto-run on feature branches — push/PR to main only + workflow_dispatch).
+
+**Tech debt found:** Testcontainers can't discover Docker locally (Docker 29.6.1 running, CLI
+fine, discovery fails even unsandboxed) — full `mvn verify` gate currently only provable in CI.
