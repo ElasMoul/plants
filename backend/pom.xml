@@ -28,6 +28,7 @@
         <springdoc.version>2.5.0</springdoc.version>
         <spotless.version>2.43.0</spotless.version>
         <google-java-format.version>1.19.2</google-java-format.version>
+        <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
     </properties>
 
     <dependencies>
@@ -151,6 +152,15 @@
             <groupId>io.sentry</groupId>
             <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
             <version>8.47.0</version>
+        </dependency>
+
+        <!-- ── Observability – JSON console logging (staging/prod) ────────── -->
+        <!-- Structured JSON encoder for logback-spring.xml's staging/prod profile block;
+             dev/test keep the human-readable pattern. See T-DEPLOY.1. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback-encoder.version}</version>
         </dependency>
 
         <!-- ── Test Dependencies ──────────────────────────────────────────── -->

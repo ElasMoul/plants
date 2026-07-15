@@ -43,10 +43,12 @@ management:
       show-details: when-authorized
 
 # ──── Logging ─────────────────────────────────────────────────────────────────
-# Includes correlationId from MDC — populated by CorrelationIdFilter
+# Actual console format is owned by logback-spring.xml (T-DEPLOY.1): human-readable
+# pattern with correlationId/userId from MDC everywhere except staging/prod, which get
+# structured JSON instead. logging.level.* below still applies normally — Spring Boot sets
+# logger levels programmatically after the logging system initializes, independent of the
+# custom logback file.
 logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
   level:
     root: INFO
 
