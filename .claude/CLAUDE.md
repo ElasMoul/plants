@@ -513,7 +513,7 @@ open backend/target/site/jacoco/index.html
 | 9 — Quality, Testing & Hardening | ✅ Complete (T9.1–T9.8, merged to dev) |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete (T9.A–T9.F, merged to dev) |
 | 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–I, PP-071–078, merged to dev incl. post-phase bugfixes) |
-| DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–4 ✅ merged (PP-089/090, PR #125); T-DEPLOY.5–8 manual — Kafka decision + token rotation pending |
+| DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–5(code) ✅ merged (PRs #125/#126, no Kafka in prod); remaining: account setup → deploy → beta → v1.0.0 |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ---

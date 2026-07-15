@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-15 (T-DEPLOY.1–4 complete and merged to dev, PR #125 — remaining DEPLOY tasks are manual-gated; see session entry at bottom)
+> Last updated: 2026-07-15 (T-DEPLOY.5 code-prep merged, PR #126: in-process transport — v1.0.0 ships without Kafka — + Railway/Vercel plumbing; next = account-side runbook in DEPLOYMENT.md)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -9,10 +9,10 @@
 
 | Branch | Status |
 |---|---|
-| `dev` | Clean — phases 0–10 + T-DEPLOY.1–4 merged ✅ (PR #125, e5a9bf4) |
+| `dev` | Clean — phases 0–10 + T-DEPLOY.1–5(code) merged ✅ (PR #125 e5a9bf4, PR #126 e932b4a) |
 
 **Migration sequence:** 001–032 applied. Next free: **033**.
-**Next free PP branch number:** PP-091 (PP-089 = T-DEPLOY.1 prod config; PP-090 = T-DEPLOY.2–4 perf/security/docs; (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–088 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, PP-086 = self-declared business-tier, PP-087 = CI fix, PP-088 = ai-gateway full-coverage demand follow-ups (G1/G4/G5 gateway routing) — see PROGRESS.md's 2026-07-10 entry).
+**Next free PP branch number:** PP-092 (PP-089 = T-DEPLOY.1 prod config; PP-090 = T-DEPLOY.2–4 perf/security/docs; PP-091 = T-DEPLOY.5 in-process transport + deploy plumbing; (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–088 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, PP-086 = self-declared business-tier, PP-087 = CI fix, PP-088 = ai-gateway full-coverage demand follow-ups (G1/G4/G5 gateway routing) — see PROGRESS.md's 2026-07-10 entry).
 
 ---
 
@@ -33,7 +33,7 @@
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
 | 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–I, PP-071–078) — merged to dev incl. post-phase bugfixes |
-| DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–4 ✅ merged to dev (PP-089/PP-090, PR #125); T-DEPLOY.5–8 manual (Kafka decision + Railway/Vercel + beta + release) |
+| DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–5(code) ✅ merged (PRs #125/#126); remaining: Railway/Vercel account setup (DEPLOYMENT.md runbook) → deploy → beta (T-DEPLOY.6–7) → v1.0.0 (T-DEPLOY.8) |
 
 ---
 
@@ -65,12 +65,14 @@
 
 ## Next Tasks (ordered)
 
-1. **T-DEPLOY.5 — Production deployment (manual):** decide the Kafka prod story FIRST
-   (managed add-on vs synchronous identification fallback for v1.0.0), rotate
-   GITHUB_TOKEN (T9.7 — still outstanding), then Railway (Postgres+Redis add-ons,
-   env vars per backend/.env.example staging/prod section; Railway's postgres:// URL
-   must be translated to JDBC form for ${DATABASE_URL}) + Vercel. T-DEPLOY.1–4 are
-   done and merged (PR #125).
+1. **T-DEPLOY.5 — account-side deployment (manual, runbook in DEPLOYMENT.md):**
+   Kafka decision DONE (in-process, PR #126); GITHUB_TOKEN rotation DONE (owner,
+   2026-07-15). Remaining: create Railway project (Postgres+Redis add-ons, env
+   vars per backend/.env.example — postgres://→JDBC translation for DATABASE_URL,
+   do NOT set KAFKA_BOOTSTRAP_SERVERS) + Vercel project + GitHub secrets
+   (RAILWAY_TOKEN, VERCEL_*, VAPID_PUBLIC_KEY, SENTRY_DSN) + repo variable
+   BACKEND_PUBLIC_URL; push to main auto-deploys; verify health/login/one full
+   identification (that boot doubles as the no-Kafka smoke test).
 2. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 3. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 4. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
@@ -83,7 +85,9 @@
 - **D10.1 — Annotation strategy:** Conservative skip chosen (skip when healthStatus ≠ ISSUES_DETECTED). Full merge-into-single-call is a follow-up option. ✅ Implemented.
 - **D10.2 — Health-scan card draft state:** Client-side only confirmed. `@Input() isDraft` + `@Input() treatmentActive` on CareCardComponent. ✅ Implemented.
 - **D10.3 — Treatment auto-progression:** Root cause was H3 (CareCardComponent + plant-detail chaining craftPlan). Fixed in T10.C + T10.F. ✅ Resolved.
-- **Kafka prod story:** still open, blocks T-DEPLOY.5.
+- **Kafka prod story:** ✅ RESOLVED (owner, 2026-07-15) — v1.0.0 ships WITHOUT Kafka:
+  `app.identification.transport=in-process` in prod/staging (PP-091, PR #126). Kafka stays
+  the dev/local default. Brokered async revisited at scale.
 
 ---
 
@@ -147,7 +151,7 @@ Production (Railway/Vercel) is unchanged — they already terminate TLS.
 - JaCoCo gate at 80% (restored in T9.5 — verify still holds after Phase 9.5 additions).
 - E2E disabled in CI (needs `ng serve + wait-on` setup).
 - Lighthouse CI disabled (dist path issue).
-- GITHUB_TOKEN: rotate before prod (T9.7 reminder).
+- ~~GITHUB_TOKEN: rotate before prod (T9.7 reminder).~~ ✅ Rotated (owner, 2026-07-15).
 - `generateCarePlan()` in DeepSeekClient is dead code (never called — safe to remove in a cleanup pass).
 - `PlantNetClient` PLANTNET enum: if a future cleanup removes it, remove from both backend enum and frontend type simultaneously.
 - SSE streaming (chat): written and unit-tested but never confirmed against a live Docker stack with actual incremental token delivery — re-verify before DEPLOY.
@@ -226,3 +230,26 @@ fine, discovery fails even unsandboxed) — full `mvn verify` gate currently onl
 Also: CI triggers only on push/PR to main + workflow_dispatch — feature branches need manual
 `gh workflow run ci.yml --ref <branch>`; main pushes earlier on 2026-07-15 were red (stale
 gateway IT) and nobody noticed.
+
+**T-DEPLOY.5 code-prep (PP-091, `feature/PP-091-sync-identification-fallback`, merged PR #126):**
+Owner decisions: Kafka = in-process transport for v1.0.0; GITHUB_TOKEN rotation confirmed done.
+- `app.identification.transport` (kafka default; in-process in prod/staging YAML).
+  IdentificationDispatcher: Kafka impl = old publish; InProcess impl calls
+  processIdentification() cross-bean (existing @Async proxies; @Lazy breaks the bean cycle;
+  202+poll contract unchanged). KafkaConfig/topic configs/IdentificationConsumer gated
+  @ConditionalOnProperty(transport=kafka). Residual sends (identification.completed topic,
+  PlantCountDimensionEmitter's plant_count dimension event) guarded by
+  KafkaTransportProperties.isKafkaEnabled() — an autoconfigured KafkaTemplate send against a
+  dead broker blocks up to 60s (max.block.ms), so the property guard, not bean-presence, is
+  the safety. bootstrap-servers has an inert localhost default (KafkaProperties binds eagerly).
+  Note: "BatchScanService" from Phase-7 docs does not exist as a backend class — batch scan is
+  a frontend UX over the same submit path; inherits the dispatcher automatically.
+- Deploy plumbing: backend/Dockerfile.railway (runtime-only; regular Dockerfile needs the
+  contracts-m2 host context Railway lacks) + railway.json (healthcheck /actuator/health);
+  deploy.yml now injects VAPID_PUBLIC_KEY/SENTRY_DSN into environment.prod.ts pre-build and
+  generates vercel.json in dist (api rewrite from repo var BACKEND_PUBLIC_URL — fails fast if
+  unset — + SPA fallback); DEPLOYMENT.md has the full first-time runbook.
+- Verification: 349 unit tests green (16 new), spotless clean, CI run 29452096127 fully green.
+  Residual risk: a real prod boot without KAFKA_BOOTSTRAP_SERVERS was annotation-tested but not
+  executed — the first Railway staging boot is the definitive smoke test (watch for absence of
+  Kafka connection-retry noise).

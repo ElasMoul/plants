@@ -701,7 +701,7 @@ export class SpeechService implements OnDestroy {
 ```
 
 ### T-DEPLOY.3 — Security hardening 🤖 AI ✅ (PP-090)
-**Branch:** `feature/PP-090-perf-security-docs` (same branch). GITHUB_TOKEN rotation (#4) still manual/outstanding.
+**Branch:** `feature/PP-090-perf-security-docs` (same branch). GITHUB_TOKEN rotation (#4) ✅ done (owner, 2026-07-15).
 ```
 1. Security headers in SecurityConfig: X-Content-Type-Options nosniff, X-Frame-Options
    DENY, HSTS (prod only), basic CSP for own origins.
@@ -720,11 +720,14 @@ PlantNet proxy/quota endpoints). @ApiResponse for 200/201/400/401/403/404/429/50
 button, dev + prod server URLs.
 ```
 
-### T-DEPLOY.5 — Production deployment 👤 Manual
+### T-DEPLOY.5 — Production deployment 👤 Manual — 🟡 code-prep ✅ (PP-091, PR #126)
 Railway (Postgres + Redis add-ons, env vars from `.env.example`, auto-deploy on `main`)
 + Vercel (Angular build, prod API URL). Verify `/actuator/health` UP, login works, identification completes.
-> **Decide first:** Kafka/Zookeeper production story — managed add-on, or synchronous
-> identification fallback for v1.0.0 (revisit async at scale). Still open.
+> **Kafka DECIDED (owner, 2026-07-15):** in-process identification transport for v1.0.0 —
+> no broker in prod (`app.identification.transport=in-process`, PP-091). Deploy plumbing
+> shipped: Dockerfile.railway + railway.json, Vercel /api rewrite generation, VAPID/Sentry
+> injection, DEPLOYMENT.md runbook. GITHUB_TOKEN rotated (owner, 2026-07-15).
+> Remaining: account-side setup + first deploy + smoke test — see DEPLOYMENT.md.
 
 ### T-DEPLOY.6 — Beta testing 👤 Manual
 5–10 plant owners. Full journey (Flow 1/2/3), disease path, mobile (Chrome Android +
