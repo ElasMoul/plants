@@ -109,6 +109,13 @@
             <version>${bucket4j.version}</version>
         </dependency>
 
+        <!-- ── Input Sanitization – strips HTML from free-text user input (T-DEPLOY.3) ─ -->
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>20240325.1</version>
+        </dependency>
+
         <!-- ── Kafka – async identification pipeline ──────────────────────── -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

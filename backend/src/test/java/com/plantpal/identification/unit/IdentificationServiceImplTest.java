@@ -133,6 +133,11 @@ class IdentificationServiceImplTest {
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
             plantNetGatewayClient);
+    // T-DEPLOY.3: aiCallsPerHour is now an injected @Value field (was a hardcoded constant), so
+    // the constructor above never sets it — restore the same default the old
+    // DEEPSEEK_RATE_LIMIT constant carried, matching application.yml's default.
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        identificationService, "aiCallsPerHour", 20);
   }
 
   /** Flips the gateway flag on for a single test — mirrors the plantNetAlwaysOn flip below. */
@@ -1142,6 +1147,38 @@ class IdentificationServiceImplTest {
           .hasMessageContaining("rate limit");
 
       verify(kafkaTemplate, times(20))
+          .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), any());
+    }
+
+    @Test
+    @DisplayName(
+        "submitIdentification: honors a custom app.rate-limit.ai-calls-per-hour instead of a"
+            + " hardcoded constant (T-DEPLOY.3)")
+    void shouldHonorConfiguredAiCallsPerHour() {
+      org.springframework.test.util.ReflectionTestUtils.setField(
+          identificationService, "aiCallsPerHour", 2);
+      List<MultipartFile> images = List.of(validImage());
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      Identification pendingEntity =
+          Identification.builder()
+              .id(1L)
+              .userId(USER_ID)
+              .status(IdentificationStatus.PENDING)
+              .build();
+      when(identificationRepository.save(any())).thenReturn(pendingEntity);
+
+      for (int i = 0; i < 2; i++) {
+        identificationService.submitIdentification(images, null, null, USER_ID, null, null);
+      }
+
+      assertThatThrownBy(
+              () ->
+                  identificationService.submitIdentification(
+                      images, null, null, USER_ID, null, null))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+
+      verify(kafkaTemplate, times(2))
           .send(eq(KafkaTopicConfig.IDENTIFICATION_REQUESTED_TOPIC), any());
     }
 

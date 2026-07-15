@@ -112,7 +112,6 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   private static final int MAX_IMAGES = 5;
   private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
-  private static final int DEEPSEEK_RATE_LIMIT = 20;
   private static final int CURE_ADVICE_RATE_LIMIT = 10;
   private static final int SOURCE_IMAGE_MAX_SIDE_PX = 1024;
   private static final String PLANTS_CACHE = "plants";
@@ -152,6 +151,12 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Value("${app.plantnet.auto-confirm-score:0.90}")
   private double autoConfirmScore;
+
+  // T-DEPLOY.3: wires the previously-dead app.rate-limit.ai-calls-per-hour config key. Semantics
+  // match exactly — this gates submitIdentification()'s per-user AI identification calls/hour,
+  // which is what that key has always described (see application.yml).
+  @Value("${app.rate-limit.ai-calls-per-hour:20}")
+  private int aiCallsPerHour;
 
   private final DeepSeekClient deepSeekClient;
   private final GitHubModelsClient gitHubModelsClient;
@@ -1327,8 +1332,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                 Bucket.builder()
                     .addLimit(
                         Bandwidth.builder()
-                            .capacity(DEEPSEEK_RATE_LIMIT)
-                            .refillIntervally(DEEPSEEK_RATE_LIMIT, Duration.ofHours(1))
+                            .capacity(aiCallsPerHour)
+                            .refillIntervally(aiCallsPerHour, Duration.ofHours(1))
                             .build())
                     .build());
     return bucket.tryConsumeAndReturnRemaining(1);

@@ -1,6 +1,8 @@
 package com.plantpal.chat.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +17,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ChatRequest {
 
-  @NotBlank private String message;
+  @NotBlank
+  @Size(max = 2000, message = "Message must be at most 2000 characters")
+  @Schema(example = "Why are my monstera's leaves turning yellow?")
+  private String message;
 
   private Long plantId;
 

@@ -105,6 +105,7 @@ app:
   rate-limit:
     ai-calls-per-hour: 20
     auth-attempts-per-minute: 5
+    register-per-hour: 3
     chat-messages-per-hour: 10
 
   plantnet:
