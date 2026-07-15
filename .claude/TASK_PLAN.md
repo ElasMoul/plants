@@ -34,7 +34,8 @@
 
 ## PHASE 10 — Contextual Scanning, Scan Redesign & Treatment Polish
 
-> **T10.A–I:** ✅ Complete on PHASE10 branch (PP-071–078). Pending merge to dev.
+> **T10.A–I:** ✅ Complete (PP-071–078), merged to dev — incl. post-phase bugfixes
+> (frontend UX `6c10241`, `@Async`+`@Transactional` race `d2c03e3`).
 >
 > **Goal:** Three interconnected improvements:
 > 1. **Contextual input** — user attaches text or voice ("this leaf is very yellow, I put the

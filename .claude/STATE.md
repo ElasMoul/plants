@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-10 (ai-gateway full-coverage demand follow-ups, PP-088 — platform-delta, see PROGRESS.md)
+> Last updated: 2026-07-15 (Phase 10 closure verified: T10.A–I merged to dev; stale "pending merge" rows reconciled; next = Phase DEPLOY)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -32,7 +32,7 @@
 | 8.5 — Identification Pipeline Resilience | ✅ Complete (T8.A–T8.G) |
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
-| 10 — Contextual Scanning & Treatment Polish | ✅ T10.A–I complete on PHASE10 branch (PP-071–078); pending merge to dev |
+| 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–I, PP-071–078) — merged to dev incl. post-phase bugfixes |
 | DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
 
 ---
@@ -65,12 +65,15 @@
 
 ## Next Tasks (ordered)
 
-1. **Merge PHASE10 → dev** — Phase 10 fully complete (T10.A–I, PP-071–078). Open PR to merge PHASE10 branch to dev.
-2. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
-4. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
-5. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
-6. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
-7. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
+1. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
+   (PHASE10 → dev merge is DONE — verified 2026-07-15: `origin/PHASE10` is an
+   ancestor of `dev`, and `dev` is itself a strict subset of `main`, which is
+   9 commits ahead with the platform-delta/gateway work. Consider fast-forwarding
+   `dev` to `main` before branching DEPLOY work.)
+2. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
+3. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
+4. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
+5. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
 
 ---
 
