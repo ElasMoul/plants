@@ -982,3 +982,21 @@ both empty — no demand traffic pending either direction.
   parked, not ruled, so nothing new for `platform-vault` to record).
 - No background processes or servers were started in this session; nothing to
   stop.
+
+## Session — 2026-07-15 (architect: dockerized gateway reachability fix)
+- State: Fixed "ai-gateway unreachable" on the dockerized backend. Root cause
+  was config, not code: `PLATFORM_GATEWAY_URL=http://localhost:8085` inside the
+  container dials the container itself; the D040 loopback-bound platform
+  services live on the host, reachable only via `host.docker.internal`.
+  Fixed the committed platform-profile defaults (application-platform.yml,
+  commit 5871c1f) and the local gitignored backend/.env; hard-recreated the
+  backend container (compose --force-recreate was unreliable with the pinned
+  container_name + restart:unless-stopped, so `docker rm -f` was needed).
+  Proven: `POST host.docker.internal:8085/ai/request` as appId plantpal → 200 ok.
+  Also regenerated the frontend's self-signed cert (self.crt had gone missing
+  on disk, crash-looping nginx) from the surviving self.key.
+- Next step: verify the full identification flow through the UI (the direct
+  gateway path is proven; the app-level retry is not yet re-exercised).
+- Standing: platform AI path needs `PLATFORM_GATEWAY_ENABLED=true` + a
+  reachable `PLATFORM_GATEWAY_URL` (host.docker.internal when dockerized).
+- Vault-sync: demand raised plantpal-20260715-tenant-app-networking-d040
