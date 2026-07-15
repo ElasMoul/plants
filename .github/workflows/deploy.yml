@@ -78,6 +78,18 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # environment.prod.ts ships with empty vapidPublicKey/sentryDsn placeholders —
+      # fill them from repository secrets before the production build bakes them in.
+      # Empty/unset secrets leave the placeholders empty (features degrade gracefully).
+      - name: Inject production runtime config
+        working-directory: frontend
+        env:
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" src/environments/environment.prod.ts
+          sed -i "s|sentryDsn: ''|sentryDsn: '${SENTRY_DSN}'|" src/environments/environment.prod.ts
+
       - name: Build (production)
         working-directory: frontend
         run: npm run build:prod
@@ -137,6 +149,26 @@ jobs:
 
       - name: Install Vercel CLI
         run: npm install -g vercel
+
+      # The Angular app calls the API with a RELATIVE apiUrl (/api/v1) — on Vercel that
+      # only works if /api/* is rewritten to the Railway backend. BACKEND_PUBLIC_URL is a
+      # repository *variable* (Settings → Variables), e.g. https://plantpal.up.railway.app —
+      # no trailing slash. The second rewrite is the SPA fallback for client-side routes.
+      - name: Write vercel.json (API proxy + SPA fallback)
+        env:
+          BACKEND_PUBLIC_URL: ${{ vars.BACKEND_PUBLIC_URL }}
+        run: |
+          test -n "$BACKEND_PUBLIC_URL" || { echo "::error::BACKEND_PUBLIC_URL repository variable is not set"; exit 1; }
+          cat > frontend/dist/plantpal/vercel.json <<EOF
+          {
+            "version": 2,
+            "rewrites": [
+              { "source": "/api/(.*)", "destination": "${BACKEND_PUBLIC_URL}/api/\$1" },
+              { "source": "/((?!api/).*)", "destination": "/index.html" }
+            ]
+          }
+          EOF
+          cat frontend/dist/plantpal/vercel.json
 
       - name: Deploy to Vercel
         # Requires: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID set in GitHub secrets
