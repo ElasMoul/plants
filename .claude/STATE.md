@@ -76,7 +76,6 @@
 2. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 3. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 4. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
-5. **Kafka/Zookeeper production story** — managed add-on or synchronous fallback for v1.0.0.
 
 ---
 
