@@ -1,19 +1,22 @@
 package com.plantpal.plant.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.plantpal.plant.config.PlantKafkaTopicConfig;
 import com.plantpal.plant.event.PlantCountChangedEvent;
 import com.plantpal.plant.event.PlantCountDimensionEmitter;
+import com.plantpal.shared.config.KafkaTransportProperties;
 import io.platform.contracts.events.DimensionEvent;
 import java.lang.reflect.Method;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,7 +29,14 @@ class PlantCountDimensionEmitterTest {
 
   @Mock private KafkaTemplate<String, Object> kafkaTemplate;
 
-  @InjectMocks private PlantCountDimensionEmitter emitter;
+  private PlantCountDimensionEmitter emitter;
+
+  @BeforeEach
+  void setUp() {
+    emitter =
+        new PlantCountDimensionEmitter(
+            kafkaTemplate, new KafkaTransportProperties(KafkaTransportProperties.KAFKA));
+  }
 
   @Test
   @DisplayName("should forward a +1 plant_count delta to Kafka as a contracts DimensionEvent")
@@ -54,6 +64,20 @@ class PlantCountDimensionEmitterTest {
     DimensionEvent event = captor.getValue();
     assertThat(event.getUserId()).isEqualTo("42");
     assertThat(event.getDelta()).isEqualTo(-1);
+  }
+
+  @Test
+  @DisplayName(
+      "should skip the Kafka send entirely when transport=in-process (T-DEPLOY.5, no broker"
+          + " expected)")
+  void shouldSkipSendWhenTransportIsInProcess() {
+    PlantCountDimensionEmitter inProcessEmitter =
+        new PlantCountDimensionEmitter(
+            kafkaTemplate, new KafkaTransportProperties(KafkaTransportProperties.IN_PROCESS));
+
+    inProcessEmitter.onPlantCountChanged(new PlantCountChangedEvent(1L, 1));
+
+    verify(kafkaTemplate, never()).send(any(), any());
   }
 
   @Test
