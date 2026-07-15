@@ -249,4 +249,25 @@ class SpeciesEnrichmentServiceImplTest {
       assertThat(captor.getValue().getModelHint()).isEqualTo("gemma3:4b");
     }
   }
+
+  @Nested
+  @DisplayName("species cache wiring (T-DEPLOY.2)")
+  class SpeciesCacheWiring {
+
+    @Test
+    @DisplayName(
+        "enrich() should evict \"species\" keyed by speciesId — this async write is the actual"
+            + " staleness risk for a cached getSpecies(id) response")
+    void enrichShouldEvictSpeciesCache() throws NoSuchMethodException {
+      java.lang.reflect.Method method =
+          SpeciesEnrichmentServiceImpl.class.getMethod(
+              "enrich", Long.class, AiModelPreference.class);
+      org.springframework.cache.annotation.CacheEvict evict =
+          method.getAnnotation(org.springframework.cache.annotation.CacheEvict.class);
+
+      assertThat(evict).isNotNull();
+      assertThat(evict.value()).containsExactly("species");
+      assertThat(evict.key()).isEqualTo("#speciesId");
+    }
+  }
 }

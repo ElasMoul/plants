@@ -24,6 +24,7 @@ import com.plantpal.species.repository.SpeciesRepository;
 import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.impl.SpeciesServiceImpl;
 import com.plantpal.user.entity.AiModelPreference;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +37,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -397,6 +400,75 @@ class SpeciesServiceTest {
 
       // Then
       assertThat(result.getContent().get(0).getLastScanAt()).isNull();
+    }
+  }
+
+  @Nested
+  @DisplayName("species cache wiring (T-DEPLOY.2)")
+  class SpeciesCacheWiring {
+
+    // A Redis-backed round-trip needs a Spring context + Testcontainers (can't run locally —
+    // see backend/BACKEND.md), so these assert the annotations themselves are present and
+    // correctly configured, same reflection style used elsewhere for these mutation points.
+    @Test
+    @DisplayName("getSpecies() should be @Cacheable(\"species\") keyed by id")
+    void getSpeciesShouldBeCacheable() throws NoSuchMethodException {
+      Method method = SpeciesServiceImpl.class.getMethod("getSpecies", Long.class);
+      Cacheable cacheable = method.getAnnotation(Cacheable.class);
+
+      assertThat(cacheable).isNotNull();
+      assertThat(cacheable.value()).containsExactly("species");
+      assertThat(cacheable.key()).isEqualTo("#id");
+    }
+
+    @Test
+    @DisplayName("every findOrCreate() overload should evict \"species\" keyed by the result's id")
+    void findOrCreateOverloadsShouldEvictSpeciesCache() throws NoSuchMethodException {
+      Method threeArg =
+          SpeciesServiceImpl.class.getMethod(
+              "findOrCreate", String.class, String.class, AiModelPreference.class);
+      Method sixArg =
+          SpeciesServiceImpl.class.getMethod(
+              "findOrCreate",
+              String.class,
+              String.class,
+              AiModelPreference.class,
+              String.class,
+              String.class,
+              String.class);
+      Method elevenArg =
+          SpeciesServiceImpl.class.getMethod(
+              "findOrCreate",
+              String.class,
+              String.class,
+              AiModelPreference.class,
+              String.class,
+              String.class,
+              String.class,
+              String.class,
+              String.class,
+              String.class,
+              String.class,
+              String.class);
+
+      for (Method method : List.of(threeArg, sixArg, elevenArg)) {
+        CacheEvict evict = method.getAnnotation(CacheEvict.class);
+        assertThat(evict).as("findOrCreate(%s)", method).isNotNull();
+        assertThat(evict.value()).containsExactly("species");
+        assertThat(evict.key()).isEqualTo("#result.id");
+      }
+    }
+
+    @Test
+    @DisplayName("regenerateDescription() should evict \"species\" keyed by speciesId")
+    void regenerateDescriptionShouldEvictSpeciesCache() throws NoSuchMethodException {
+      Method method =
+          SpeciesServiceImpl.class.getMethod("regenerateDescription", Long.class, Long.class);
+      CacheEvict evict = method.getAnnotation(CacheEvict.class);
+
+      assertThat(evict).isNotNull();
+      assertThat(evict.value()).containsExactly("species");
+      assertThat(evict.key()).isEqualTo("#speciesId");
     }
   }
 }

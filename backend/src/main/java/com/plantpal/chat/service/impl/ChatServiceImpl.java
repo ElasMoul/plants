@@ -4,13 +4,13 @@ import com.plantpal.chat.dto.ChatMessageDto;
 import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.ChatService;
+import com.plantpal.chat.service.GardenContextService;
 import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
-import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.ai.PromptSanitizer;
 import com.plantpal.shared.exception.PlantPalException;
@@ -29,8 +29,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -38,7 +36,6 @@ public class ChatServiceImpl implements ChatService {
 
   private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
 
-  private static final int GARDEN_CONTEXT_PAGE_SIZE = 50;
   // Bounds an ever-growing client-side history array from blowing up the prompt -- never trust
   // unbounded client input, same convention as ActionPlanValidator's step-list truncation.
   private static final int MAX_HISTORY_MESSAGES = 10;
@@ -61,6 +58,7 @@ public class ChatServiceImpl implements ChatService {
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
   private final TreatmentRepository treatmentRepository;
+  private final GardenContextService gardenContextService;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
   private final int chatMessagesPerHour;
@@ -72,6 +70,7 @@ public class ChatServiceImpl implements ChatService {
       PlantRepository plantRepository,
       IdentificationRepository identificationRepository,
       TreatmentRepository treatmentRepository,
+      GardenContextService gardenContextService,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties,
       @Value("${app.rate-limit.chat-messages-per-hour:10}") int chatMessagesPerHour) {
@@ -79,6 +78,7 @@ public class ChatServiceImpl implements ChatService {
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.treatmentRepository = treatmentRepository;
+    this.gardenContextService = gardenContextService;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
     this.chatMessagesPerHour = chatMessagesPerHour;
@@ -138,8 +138,10 @@ public class ChatServiceImpl implements ChatService {
   private String buildSystemPromptBlock(ChatRequest request, Long userId) {
     String contextBlock =
         request.getPlantId() != null
-            ? buildPlantContext(request.getPlantId(), userId) + "\n\n" + buildGardenContext(userId)
-            : buildGardenContext(userId);
+            ? buildPlantContext(request.getPlantId(), userId)
+                + "\n\n"
+                + gardenContextService.buildGardenContext(userId)
+            : gardenContextService.buildGardenContext(userId);
     String historyBlock = buildHistoryBlock(request.getHistory());
     return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock) + historyBlock;
   }
@@ -173,16 +175,6 @@ public class ChatServiceImpl implements ChatService {
       return role;
     }
     return Character.toUpperCase(role.charAt(0)) + role.substring(1);
-  }
-
-  private String buildGardenContext(Long userId) {
-    Page<Plant> plants =
-        plantRepository.findAllByUserIdAndStatus(
-            userId, PlantStatus.ACTIVE, PageRequest.of(0, GARDEN_CONTEXT_PAGE_SIZE));
-    if (plants.isEmpty()) {
-      return "No plants in the garden yet.";
-    }
-    return plants.getContent().stream().map(this::formatPlant).collect(Collectors.joining("\n"));
   }
 
   private String buildPlantContext(Long plantId, Long userId) {
@@ -228,14 +220,6 @@ public class ChatServiceImpl implements ChatService {
     }
 
     return context.toString();
-  }
-
-  private String formatPlant(Plant plant) {
-    String label =
-        plant.getCommonName() != null
-            ? plant.getCommonName()
-            : (plant.getSpecies() != null ? plant.getSpecies() : "unknown species");
-    return "- " + plant.getNickname() + " (" + label + ")";
   }
 
   private boolean consumeRateLimit(Long userId) {
