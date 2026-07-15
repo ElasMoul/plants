@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,6 @@ public class ChatServiceImpl implements ChatService {
 
   private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
 
-  private static final int CHAT_RATE_LIMIT = 30;
   private static final int GARDEN_CONTEXT_PAGE_SIZE = 50;
   // Bounds an ever-growing client-side history array from blowing up the prompt -- never trust
   // unbounded client input, same convention as ActionPlanValidator's step-list truncation.
@@ -63,6 +63,7 @@ public class ChatServiceImpl implements ChatService {
   private final TreatmentRepository treatmentRepository;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
+  private final int chatMessagesPerHour;
 
   private final Map<Long, Bucket> chatBuckets = new ConcurrentHashMap<>();
 
@@ -72,13 +73,15 @@ public class ChatServiceImpl implements ChatService {
       IdentificationRepository identificationRepository,
       TreatmentRepository treatmentRepository,
       GatewayClient gatewayClient,
-      GatewayProperties gatewayProperties) {
+      GatewayProperties gatewayProperties,
+      @Value("${app.rate-limit.chat-messages-per-hour:10}") int chatMessagesPerHour) {
     this.ollamaClient = ollamaClient;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.treatmentRepository = treatmentRepository;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
+    this.chatMessagesPerHour = chatMessagesPerHour;
   }
 
   @Override
@@ -243,8 +246,8 @@ public class ChatServiceImpl implements ChatService {
                 Bucket.builder()
                     .addLimit(
                         Bandwidth.builder()
-                            .capacity(CHAT_RATE_LIMIT)
-                            .refillIntervally(CHAT_RATE_LIMIT, Duration.ofHours(1))
+                            .capacity(chatMessagesPerHour)
+                            .refillIntervally(chatMessagesPerHour, Duration.ofHours(1))
                             .build())
                     .build());
     return bucket.tryConsume(1);

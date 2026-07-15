@@ -114,6 +114,7 @@ app:
     ai-calls-per-hour: 20              # Per authenticated user
     auth-attempts-per-minute: 5        # Brute-force protection on /api/auth/**
     github-models-tokens-per-minute: 40000  # Global token-budget bucket for outbound GitHub Models calls
+    chat-messages-per-hour: 10         # Per authenticated user — ChatServiceImpl
 
   plantnet:
     api-key: ${PLANTNET_API_KEY}

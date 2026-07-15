@@ -50,6 +50,7 @@ class ChatServiceImplTest {
   private ChatServiceImpl chatService;
 
   private static final Long USER_ID = 1L;
+  private static final int CHAT_RATE_LIMIT = 10;
 
   @BeforeEach
   void setUp() {
@@ -60,7 +61,8 @@ class ChatServiceImplTest {
             identificationRepository,
             treatmentRepository,
             gatewayClient,
-            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+            CHAT_RATE_LIMIT);
   }
 
   /** Flips the gateway flag on for a single test. */
@@ -142,11 +144,73 @@ class ChatServiceImplTest {
           .thenReturn(new PageImpl<>(List.of()));
       when(ollamaClient.chat(any())).thenReturn("reply");
 
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < CHAT_RATE_LIMIT; i++) {
         chatService.chat(request("msg " + i), USER_ID);
       }
 
       assertThatThrownBy(() -> chatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+  }
+
+  @Nested
+  @DisplayName("chat-messages-per-hour (app.rate-limit.chat-messages-per-hour, T-DEPLOY.1)")
+  class ConfigurableChatRateLimit {
+
+    @Test
+    @DisplayName("should honor a custom configured limit instead of a hardcoded constant")
+    void shouldHonorConfiguredLimit() {
+      int customLimit = 2;
+      ChatServiceImpl customLimitedChatService =
+          new ChatServiceImpl(
+              ollamaClient,
+              plantRepository,
+              identificationRepository,
+              treatmentRepository,
+              gatewayClient,
+              new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              customLimit);
+      when(plantRepository.findAllByUserIdAndStatus(
+              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(ollamaClient.chat(any())).thenReturn("reply");
+
+      for (int i = 0; i < customLimit; i++) {
+        customLimitedChatService.chat(request("msg " + i), USER_ID);
+      }
+
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+
+    @Test
+    @DisplayName("should track rate limits independently per user")
+    void shouldTrackLimitsPerUser() {
+      int customLimit = 1;
+      ChatServiceImpl customLimitedChatService =
+          new ChatServiceImpl(
+              ollamaClient,
+              plantRepository,
+              identificationRepository,
+              treatmentRepository,
+              gatewayClient,
+              new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              customLimit);
+      when(plantRepository.findAllByUserIdAndStatus(
+              any(), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(ollamaClient.chat(any())).thenReturn("reply");
+
+      Long otherUserId = 2L;
+      customLimitedChatService.chat(request("msg"), USER_ID);
+      customLimitedChatService.chat(request("msg"), otherUserId);
+
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), otherUserId))
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
     }
@@ -290,7 +354,7 @@ class ChatServiceImplTest {
               eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < CHAT_RATE_LIMIT; i++) {
         chatService.chatStream(request("msg " + i), USER_ID, token -> {});
       }
 
@@ -299,8 +363,9 @@ class ChatServiceImplTest {
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
-      // 30 legitimate calls went through; the 31st was rejected before reaching ollamaClient.
-      verify(ollamaClient, org.mockito.Mockito.times(30)).chatStream(any(), any());
+      // CHAT_RATE_LIMIT legitimate calls went through; the next one was rejected before
+      // reaching ollamaClient.
+      verify(ollamaClient, org.mockito.Mockito.times(CHAT_RATE_LIMIT)).chatStream(any(), any());
     }
   }
 
