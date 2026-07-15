@@ -11,7 +11,7 @@
 platform:
   gateway:
     enabled: ${PLATFORM_GATEWAY_ENABLED:true}
-    url: ${PLATFORM_GATEWAY_URL:http://localhost:8085}
+    url: ${PLATFORM_GATEWAY_URL:http://host.docker.internal:8085}
   statefeed:
     enabled: ${PLATFORM_STATEFEED_ENABLED:true}
-    url: ${PLATFORM_STATEFEED_URL:http://localhost:8080}
+    url: ${PLATFORM_STATEFEED_URL:http://host.docker.internal:8080}
