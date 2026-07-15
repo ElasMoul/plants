@@ -664,13 +664,17 @@ export class SpeechService implements OnDestroy {
 
 ---
 
-## PHASE DEPLOY — Launch Preparation 🔲 NOT STARTED (was Phase 10)
+## PHASE DEPLOY — Launch Preparation 🟡 IN PROGRESS
 > **Runs last** — after all numbered phases merged to dev.
 > Goal: deploy to production, beta-test, release v1.0.0.
-> Next free PP after Phase 10: PP-079.
+> **T-DEPLOY.1–4 ✅ complete, merged to dev (PR #125, 2026-07-15)** — actual branches were
+> PP-089 (T-DEPLOY.1) + PP-090 (T-DEPLOY.2–4); the PP-079/080 numbers below were consumed
+> by platform-delta work in the meantime. Migration used was 032, not 031 (031 = business
+> tier). T-DEPLOY.5–8 remain — all manual-gated (Kafka decision, GITHUB_TOKEN rotation,
+> Railway/Vercel, beta, release).
 
-### T-DEPLOY.1 — Production configuration 🤖 AI
-**Branch:** `feature/PP-079-prod-config`
+### T-DEPLOY.1 — Production configuration 🤖 AI ✅ (PP-089)
+**Branch:** `feature/PP-089-prod-config` (plan said PP-079)
 ```
 1. application-staging.yml + application-prod.yml: ${DATABASE_URL}, HikariCP
    (max 20/min 5/timeout 20000), ${REDIS_URL}, Liquibase enabled, show-sql false,
@@ -683,8 +687,8 @@ export class SpeechService implements OnDestroy {
    chat-messages-per-hour 10).
 ```
 
-### T-DEPLOY.2 — Performance optimizations 🤝 Assisted
-**Branch:** `feature/PP-080-performance`
+### T-DEPLOY.2 — Performance optimizations 🤝 Assisted ✅ (PP-090)
+**Branch:** `feature/PP-090-perf-security-docs` (plan said PP-080)
 ```
 1. Migration (VERIFY next free — 030 used by T10.A user_context; so 031 here):
    composite idx identifications(plant_id, created_at DESC); partial idx
@@ -696,8 +700,8 @@ export class SpeechService implements OnDestroy {
    trackBy on *ngFor. (Lighthouse budgets from T9.3 now guard this.)
 ```
 
-### T-DEPLOY.3 — Security hardening 🤖 AI
-**Branch:** `feature/PP-080-performance` (same branch)
+### T-DEPLOY.3 — Security hardening 🤖 AI ✅ (PP-090)
+**Branch:** `feature/PP-090-perf-security-docs` (same branch). GITHUB_TOKEN rotation (#4) still manual/outstanding.
 ```
 1. Security headers in SecurityConfig: X-Content-Type-Options nosniff, X-Frame-Options
    DENY, HSTS (prod only), basic CSP for own origins.
@@ -707,8 +711,8 @@ export class SpeechService implements OnDestroy {
 4. Confirm GITHUB_TOKEN rotation from T9.7 happened before prod.
 ```
 
-### T-DEPLOY.4 — Complete API documentation 🤖 AI
-**Branch:** `feature/PP-080-performance` (same branch)
+### T-DEPLOY.4 — Complete API documentation 🤖 AI ✅ (PP-090)
+**Branch:** `feature/PP-090-perf-security-docs` (same branch)
 ```
 @Operation/@ApiResponse/@Parameter on every controller (all modules including Phase 8
 PlantNet proxy/quota endpoints). @ApiResponse for 200/201/400/401/403/404/429/500.
@@ -741,7 +745,7 @@ exists). Fix. PR with root cause.
 | Phase | Status |
 |---|---|
 | 0–10 | ✅ All complete (merged to dev) |
-| DEPLOY — Launch | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
+| DEPLOY — Launch | 🟡 T-DEPLOY.1–4 ✅ (PP-089/090, PR #125); 5–8 manual-gated |
 
 ---
 

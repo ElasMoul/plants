@@ -1,6 +1,6 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-15 (Phase DEPLOY started: T-DEPLOY.1 implemented on feature/PP-089-prod-config, CI verdict pending — see session entry at bottom)
+> Last updated: 2026-07-15 (T-DEPLOY.1–4 complete and merged to dev, PR #125 — remaining DEPLOY tasks are manual-gated; see session entry at bottom)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -9,10 +9,10 @@
 
 | Branch | Status |
 |---|---|
-| `dev` | Clean — all phases 0–10 merged ✅ (PR #81, bb9b0a8) |
+| `dev` | Clean — phases 0–10 + T-DEPLOY.1–4 merged ✅ (PR #125, e5a9bf4) |
 
-**Migration sequence:** 001–031 applied. Next free: **032**.
-**Next free PP branch number:** PP-089 (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–088 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, PP-086 = self-declared business-tier, PP-087 = CI fix, PP-088 = ai-gateway full-coverage demand follow-ups (G1/G4/G5 gateway routing) — see PROGRESS.md's 2026-07-10 entry).
+**Migration sequence:** 001–032 applied. Next free: **033**.
+**Next free PP branch number:** PP-091 (PP-089 = T-DEPLOY.1 prod config; PP-090 = T-DEPLOY.2–4 perf/security/docs; (PP-071–075 = T10.A–F; PP-076 = T10.G voice fix; PP-077 = T10.H TTS; PP-078 = T10.I mic bug; PP-082–088 consumed by platform-delta/integration work — not phase-numbered T-tasks — namely the landing page, contracts/state-feed wiring, AI block-state UI, the SecretConfigValidator CI fix, PP-086 = self-declared business-tier, PP-087 = CI fix, PP-088 = ai-gateway full-coverage demand follow-ups (G1/G4/G5 gateway routing) — see PROGRESS.md's 2026-07-10 entry).
 
 ---
 
@@ -33,7 +33,7 @@
 | 9 — Quality, Testing & Hardening | ✅ Complete — merged to dev |
 | 9.5 — Species Card Harvest + Async Reliability | ✅ Complete — merged to dev |
 | 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–I, PP-071–078) — merged to dev incl. post-phase bugfixes |
-| DEPLOY — Launch Preparation | 🔲 Not started (T-DEPLOY.1–8, PP-079+) |
+| DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–4 ✅ merged to dev (PP-089/PP-090, PR #125); T-DEPLOY.5–8 manual (Kafka decision + Railway/Vercel + beta + release) |
 
 ---
 
@@ -65,11 +65,12 @@
 
 ## Next Tasks (ordered)
 
-1. **Phase DEPLOY** — production config, Railway/Vercel deploy, beta, v1.0.0.
-   (PHASE10 → dev merge is DONE — verified 2026-07-15: `origin/PHASE10` is an
-   ancestor of `dev`, and `dev` is itself a strict subset of `main`, which is
-   9 commits ahead with the platform-delta/gateway work. Consider fast-forwarding
-   `dev` to `main` before branching DEPLOY work.)
+1. **T-DEPLOY.5 — Production deployment (manual):** decide the Kafka prod story FIRST
+   (managed add-on vs synchronous identification fallback for v1.0.0), rotate
+   GITHUB_TOKEN (T9.7 — still outstanding), then Railway (Postgres+Redis add-ons,
+   env vars per backend/.env.example staging/prod section; Railway's postgres:// URL
+   must be translated to JDBC form for ${DATABASE_URL}) + Vercel. T-DEPLOY.1–4 are
+   done and merged (PR #125).
 2. **Re-enable E2E in CI** — need `ng serve + wait-on` before Playwright runs (deferred T9.2).
 3. **Re-enable Lighthouse CI** — fix dist path `dist/frontend` → `dist/plantpal` (deferred T9.3).
 4. **T3.3** — manual on-device push/PWA testing — folded into Phase DEPLOY beta.
@@ -192,18 +193,36 @@ elsewhere; needed `defaults.xml` include — %wEx is Spring-Boot-registered, fir
 (default 10/h — was hardcoded 30/h; behavior change) via constructor @Value + 2 new unit tests.
 295 unit tests + spotless green; frontend CI green.
 
-**⏳ NEXT STEP (checkpoint — rate limit):**
-1. Check CI run **29385261980** (`gh run view 29385261980`) — was in_progress at checkpoint;
-   only the IT leg was unproven (unit/spotless/frontend already green on run 1).
-2. If green: PR `feature/PP-089-prod-config` → dev, then T-DEPLOY.2–4 on `feature/PP-090-...`
-   (branch off PP-089 or off dev after merge): migration **032** (TASK_PLAN's "031" is stale)
-   composite/partial indexes; @Cacheable garden/species + eviction; security headers; wire the
-   DEAD config keys `ai-calls-per-hour`/`auth-attempts-per-minute` (nothing reads them —
-   hardcoded constants in IdentificationServiceImpl instead); OWASP sanitizer on plant fields;
-   chat 2000-char cap; OpenAPI annotations everywhere. Backend + frontend (OnPush/trackBy)
-   agents can run in parallel — file sets don't overlap.
-3. If red: fix logback/IT leg first, re-dispatch `gh workflow run ci.yml --ref feature/PP-089-prod-config`
-   (CI does NOT auto-run on feature branches — push/PR to main only + workflow_dispatch).
+**T-DEPLOY.1 CI aftermath (resolved same day):** run 29385261980 exposed two reds — (1) %wEx
+is a Spring-Boot-registered logback conversion word, fixed by including defaults.xml in
+logback-spring.xml (`ba5ad5e`); (2) pre-existing red inherited from main: GatewayPlatformProfileIT
+asserted the pre-D045 localhost gateway default, stale since `5871c1f` — aligned (`b3fe65b`).
+Run 29414291746 = fully green.
+
+**T-DEPLOY.2–4 (PP-090, `feature/PP-090-perf-security-docs`, merged to dev via PR #125):**
+- Migration **032**: idx identifications(plant_id, created_at DESC), care_logs(user_id,
+  performed_at DESC), treatments(plant_id, status). reminders/species indexes NOT added —
+  already covered (004's idx_reminders_due, 016's unique + idx_species_scientific_name).
+- `GardenContextService` bean extracted from ChatServiceImpl (self-invocation can't proxy —
+  same rule as @Async) with @Cacheable garden 5min; species::{id} 10min; @CacheEvict wired at
+  plant create/update/archive/saveFromIdentification, species findOrCreate/regenerate/enrich,
+  treatment create/craftPlan/complete.
+- Security: nosniff/frame-deny/HSTS + same-origin CSP (Swagger paths get scoped 'unsafe-inline');
+  AuthRateLimitFilter login 5/min/IP + register 3/h/IP (X-Forwarded-For aware, LRU-bounded,
+  429+Retry-After) — `auth-attempts-per-minute` + new `register-per-hour` keys now REAL;
+  `ai-calls-per-hour` now injected in IdentificationServiceImpl (was hardcoded 20);
+  OWASP html-sanitizer on plant nickname/notes/location (HtmlSanitizer util, entity-unescape
+  preserves emoji); ChatRequest @Size(2000). GITHUB_TOKEN rotation still MANUAL, outstanding.
+- OpenAPI: all 13 controllers annotated, @Schema examples on key DTOs, dev+prod servers.
+- Frontend: 9 components → OnPush (+markForCheck at async mutations) + trackBy; chat stream
+  list & plant-detail intentionally NOT converted (in-place SSE mutation / out-of-zone
+  IntersectionObserver); lazy loading verified per-module via stats build.
+- Verification: backend 333/333 units (38 new), frontend 41/41 Jest + lint + prod build,
+  CI run 29417796281 fully green (ITs + JaCoCo 80% + spotless). Behavior change shipped in
+  T-DEPLOY.1: chat rate limit 30/h hardcoded → 10/h configurable.
 
 **Tech debt found:** Testcontainers can't discover Docker locally (Docker 29.6.1 running, CLI
 fine, discovery fails even unsandboxed) — full `mvn verify` gate currently only provable in CI.
+Also: CI triggers only on push/PR to main + workflow_dispatch — feature branches need manual
+`gh workflow run ci.yml --ref <branch>`; main pushes earlier on 2026-07-15 were red (stale
+gateway IT) and nobody noticed.
