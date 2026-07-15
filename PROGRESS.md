@@ -4,6 +4,31 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-15 — gateway max_tokens truncation bug fixed (identification fallback root cause)
+
+**Context:** live bug — gateway-routed identification JSON was truncated mid-array (fence-fix
+from a prior session was already working; this was pure truncation) because ai-gateway's
+`AnthropicAdapter` defaults `max_tokens` to 2048 when the request context has no `maxTokens`,
+silently halving the direct-client budget of 4096. Fixed in `IdentificationServiceImpl`: added
+`GATEWAY_MAX_TOKENS = 4096` and `GATEWAY_IDENTIFICATION_MAX_TOKENS = 8192` (main identify+care-plan
+request only — bigger payload), wired into `identificationGatewayRequest`, the cure-advice
+reasoning request, and `runAnnotation`. PlantNet's gateway passthrough untouched (REST proxy, not
+LLM-capped). 69/69 unit tests pass (`IdentificationServiceImplTest`, 3 new/extended
+`context.maxTokens >= 4096` assertions); integration tests skipped (Testcontainers npipe,
+box-blocked on Windows). Vault-sync: none — plantpal-local, no spec/decision change.
+
+**Possible future platform demand (not raised — just noting per instructions):** ai-gateway's
+`AnthropicAdapter` 2048-token default is low enough to silently truncate any structured-JSON
+consumer that forgets to set `context.maxTokens` explicitly — worth a platform-level discussion
+about raising the default or having the gateway reject/flag responses that hit the token cap
+instead of returning a truncated body. Not raised as a demand this session; PlantPal's own fix
+covers its call sites.
+
+**Handoff:** identification/cure-advice/annotation gateway paths now request 4096–8192 tokens;
+committed and pushed to `main`. Next: resume Phase 10 / DEPLOY work per `.claude/STATE.md`.
+
+---
+
 ## 2026-07-15 — tenant-app networking demand closed (D045 minted), archived
 
 **Context:** session-start demand check (`GET /satisfied/plantpal` on the demand-coordinator,

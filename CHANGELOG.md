@@ -64,6 +64,23 @@
   the trip on the gateway path, silently dropping the user's PlantNet flora/lang
   preference and any explicit `organs` list. Direct (non-gateway) path was
   already correct and unaffected.
+- **Gateway-routed identification JSON was truncated mid-array, falling back to "Unknown
+  Plant"** (live: `WARN IdentificationServiceImpl - Malformed identification JSON ...
+  Unexpected end-of-input: expected close marker for Array`) — the fence-stripping fix above
+  was already working; this failure was pure truncation. Root cause: ai-gateway's
+  `AnthropicAdapter` defaults `max_tokens` to 2048 when the request `context` carries no
+  `maxTokens` entry, but none of `IdentificationServiceImpl`'s gateway request builders set
+  one, silently halving the budget the direct clients use
+  (`AnthropicClient.DEFAULT_MAX_TOKENS` / `DeepSeekClient.O4_MINI_MAX_COMPLETION_TOKENS`, both
+  4096). Added `.putContextItem("maxTokens", ...)` to every gateway `AiRequest` whose response
+  is parsed as structured JSON: the main identification+care-plan request
+  (`identificationGatewayRequest`, new `GATEWAY_IDENTIFICATION_MAX_TOKENS = 8192` — its response
+  nests species/confidence/health fields plus a full multi-card care plan, comfortably bigger
+  than the others), the cure-advice reasoning request and the annotation (region polygons)
+  request (both `GATEWAY_MAX_TOKENS = 4096`, matching the direct-path floor). PlantNet's gateway
+  passthrough is unaffected — it's a REST proxy, not an LLM call, so the extra context field is
+  a no-op there. New regression assertions in `IdentificationServiceImplTest` (identification,
+  cure-advice, and annotation gateway-routing tests) assert `context.maxTokens >= 4096`.
 - `deploy.yml`'s `build-backend` job ran a plain `mvn package`, which fails on a
   GitHub runner since `backend/pom.xml` unconditionally depends on
   `io.platform:contracts:0.5.0` (no registry, built from a pinned tag per D031).

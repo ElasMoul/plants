@@ -127,6 +127,20 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final Pattern FENCED_JSON =
       Pattern.compile("(?:```|~~~)(?:json)?\\s*(.*?)\\s*(?:```|~~~)", Pattern.DOTALL);
 
+  // ai-gateway's AnthropicAdapter defaults max_tokens to 2048 when the request context carries no
+  // "maxTokens" entry (ctx.containsKey("maxTokens") ? ... : 2048) — half the budget the direct
+  // clients use (AnthropicClient.DEFAULT_MAX_TOKENS / DeepSeekClient.O4_MINI_MAX_COMPLETION_TOKENS
+  // are both 4096), which was silently truncating gateway-routed structured-JSON responses mid
+  // array and falling back to "Unknown Plant". Every gateway AiRequest whose response is parsed as
+  // JSON must set this explicitly; never go below the direct-path floor of 4096.
+  private static final int GATEWAY_MAX_TOKENS = 4096;
+
+  // The main identification response nests species/confidence/health fields plus a full
+  // multi-card care plan (each card carrying its own nested actionPlan) — comfortably larger than
+  // the baseline reasoning/annotation payloads below, so it gets extra headroom above
+  // GATEWAY_MAX_TOKENS instead of sharing the bare 4096 floor.
+  private static final int GATEWAY_IDENTIFICATION_MAX_TOKENS = 8192;
+
   @Value("${app.plantnet.always-on-candidates:true}")
   private boolean plantNetAlwaysOn;
 
@@ -1393,7 +1407,8 @@ public class IdentificationServiceImpl implements IdentificationService {
               .modelHint(modelHintForReasoning(preference))
               .appId("plantpal")
               .userId(String.valueOf(userId))
-              .putContextItem("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT);
+              .putContextItem("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT)
+              .putContextItem("maxTokens", GATEWAY_MAX_TOKENS);
       return gatewayClient.request(request).getResult();
     }
     return switch (preference) {
@@ -1577,6 +1592,7 @@ public class IdentificationServiceImpl implements IdentificationService {
         .appId("plantpal")
         .userId(String.valueOf(userId))
         .putContextItem("systemPrompt", GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT)
+        .putContextItem("maxTokens", GATEWAY_IDENTIFICATION_MAX_TOKENS)
         .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
   }
 
@@ -1595,6 +1611,7 @@ public class IdentificationServiceImpl implements IdentificationService {
               .appId("plantpal")
               .userId(userId != null ? String.valueOf(userId) : "system")
               .putContextItem("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT)
+              .putContextItem("maxTokens", GATEWAY_MAX_TOKENS)
               .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
       return gatewayClient.request(request).getResult();
     }

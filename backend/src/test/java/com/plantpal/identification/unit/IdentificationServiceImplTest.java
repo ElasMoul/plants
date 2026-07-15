@@ -1714,6 +1714,13 @@ class IdentificationServiceImplTest {
           .containsEntry("systemPrompt", GitHubModelsClient.PLANT_IDENTIFICATION_SYSTEM_PROMPT);
       assertThat(sent.getMedia()).hasSize(1);
       assertThat(sent.getMedia().get(0).getMimeType()).isEqualTo("image/jpeg");
+      // Regression guard for the truncation bug: ai-gateway's AnthropicAdapter defaults
+      // max_tokens to 2048 when the request context has no "maxTokens" entry, which was cutting
+      // the identification+care-plan JSON off mid-array and falling back to "Unknown Plant". Must
+      // stay >= the direct-path floor (AnthropicClient.DEFAULT_MAX_TOKENS /
+      // DeepSeekClient.O4_MINI_MAX_COMPLETION_TOKENS, both 4096).
+      assertThat(sent.getContext().get("maxTokens")).isInstanceOf(Integer.class);
+      assertThat((Integer) sent.getContext().get("maxTokens")).isGreaterThanOrEqualTo(4096);
 
       ArgumentCaptor<Identification> saveCaptor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository, times(2)).save(saveCaptor.capture());
@@ -1845,6 +1852,8 @@ class IdentificationServiceImplTest {
       assertThat(captor.getValue().getModelHint()).isEqualTo("claude-sonnet-4-6");
       assertThat(captor.getValue().getContext())
           .containsEntry("systemPrompt", DeepSeekClient.CURE_ADVICE_SYSTEM_PROMPT);
+      assertThat((Integer) captor.getValue().getContext().get("maxTokens"))
+          .isGreaterThanOrEqualTo(4096);
     }
 
     @Test
@@ -2065,10 +2074,15 @@ class IdentificationServiceImplTest {
       ArgumentCaptor<io.platform.contracts.aigateway.AiRequest> captor =
           ArgumentCaptor.forClass(io.platform.contracts.aigateway.AiRequest.class);
       verify(gatewayClient, times(2)).request(captor.capture());
+      io.platform.contracts.aigateway.AiRequest identifyRequest = captor.getAllValues().get(0);
+      assertThat((Integer) identifyRequest.getContext().get("maxTokens"))
+          .isGreaterThanOrEqualTo(4096);
       io.platform.contracts.aigateway.AiRequest annotationRequest = captor.getAllValues().get(1);
       assertThat(annotationRequest.getModelHint()).isEqualTo("gpt-4o-mini");
       assertThat(annotationRequest.getContext())
           .containsEntry("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT);
+      assertThat((Integer) annotationRequest.getContext().get("maxTokens"))
+          .isGreaterThanOrEqualTo(4096);
       assertThat(annotationRequest.getMedia()).hasSize(1);
     }
 
