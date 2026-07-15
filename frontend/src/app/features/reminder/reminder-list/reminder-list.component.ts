@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -16,6 +16,7 @@ import { CreateReminderFormComponent } from '../components/create-reminder-form/
   selector: 'app-reminder-list',
   templateUrl: './reminder-list.component.html',
   styleUrls: ['./reminder-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReminderListComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;
@@ -39,6 +40,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
     private readonly dialog: MatDialog,
     private readonly snackBar: MatSnackBar,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -107,6 +109,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
           }
           this.inFlightOrDoneIds.delete(reminder.id);
           this.snackBar.open('Could not update reminder.', 'Dismiss', { duration: 4000 });
+          this.cdr.markForCheck();
         },
       });
   }
@@ -123,6 +126,10 @@ export class ReminderListComponent implements OnInit, OnDestroy {
     this.daySelection = selection;
   }
 
+  trackByReminderId(_index: number, reminder: ReminderResponse): number {
+    return reminder.id;
+  }
+
   private loadReminders(): void {
     this.loading = true;
     this.completingId = null;
@@ -134,9 +141,11 @@ export class ReminderListComponent implements OnInit, OnDestroy {
             (a, b) => new Date(a.nextDueAt).getTime() - new Date(b.nextDueAt).getTime(),
           );
           this.loading = false;
+          this.cdr.markForCheck();
         },
         error: () => {
           this.loading = false;
+          this.cdr.markForCheck();
         },
       });
   }

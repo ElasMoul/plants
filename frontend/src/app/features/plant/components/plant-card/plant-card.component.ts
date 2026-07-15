@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { PlantResponse } from '../../models/plant.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
@@ -9,6 +9,7 @@ import { healthBadgeClass } from '../../../../shared/utils/health-badge.util';
   selector: 'app-plant-card',
   templateUrl: './plant-card.component.html',
   styleUrls: ['./plant-card.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlantCardComponent {
   @Input() plant!: PlantResponse;

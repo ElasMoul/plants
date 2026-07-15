@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,7 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { DashboardService } from '../../services/dashboard.service';
-import { CareType, DashboardResponse, ReminderSummaryDto } from '../../models/dashboard.model';
+import { CareType, DashboardResponse, RecentScanDto, ReminderSummaryDto } from '../../models/dashboard.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { UserService } from '../../../../core/services/user.service';
 import { IdentificationService } from '../../../identification/services/identification.service';
@@ -31,6 +31,7 @@ const CARE_ICONS: Record<CareType, string> = {
   selector: 'app-home',
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;
@@ -50,6 +51,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -59,9 +61,11 @@ export class HomeComponent implements OnInit, OnDestroy {
         next: res => {
           this.dashboard = res.data;
           this.loading = false;
+          this.cdr.markForCheck();
         },
         error: () => {
           this.loading = false;
+          this.cdr.markForCheck();
         },
       });
 
@@ -70,6 +74,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           this.businessTier = res.data.businessTier ?? false;
+          this.cdr.markForCheck();
         },
         // Non-critical for the dashboard itself — the upgrade prompt just stays hidden.
         error: () => undefined,
@@ -98,6 +103,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   careIcon(careType: CareType): string {
     return CARE_ICONS[careType];
+  }
+
+  trackByReminderId(_index: number, reminder: ReminderSummaryDto): number {
+    return reminder.reminderId;
+  }
+
+  trackByScanId(_index: number, scan: RecentScanDto): number {
+    return scan.identificationId;
   }
 
   reminderReadText(reminder: ReminderSummaryDto): string {

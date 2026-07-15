@@ -171,4 +171,8 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     this.draft = chip;
   }
 
+  trackByMessageId(_index: number, message: ChatMessage): number {
+    return message.id;
+  }
+
 }

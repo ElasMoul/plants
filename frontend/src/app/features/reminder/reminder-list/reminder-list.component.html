@@ -45,7 +45,7 @@
     <!-- Reminder cards — sorted by nextDueAt, overdue highlighted -->
     <div
       class="reminder-card"
-      *ngFor="let reminder of displayedReminders"
+      *ngFor="let reminder of displayedReminders; trackBy: trackByReminderId"
       [class.overdue]="isOverdue(reminder)"
       [class.done]="isDone(reminder)"
       (click)="goToPlant(reminder.plantId)"

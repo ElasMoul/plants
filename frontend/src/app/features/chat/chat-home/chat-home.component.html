@@ -25,7 +25,7 @@
 
   <!-- Messages -->
   <div class="chat-messages" data-testid="chat-messages">
-    <div *ngFor="let message of messages" class="message-row" [class.row-user]="message.sender === 'user'">
+    <div *ngFor="let message of messages; trackBy: trackByMessageId" class="message-row" [class.row-user]="message.sender === 'user'">
 
       <div class="ai-avatar" *ngIf="message.sender === 'ai'">
         <mat-icon>local_florist</mat-icon>

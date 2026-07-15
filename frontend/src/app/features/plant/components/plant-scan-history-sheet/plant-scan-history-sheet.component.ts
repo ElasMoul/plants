@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Inject, OnInit } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { IdentificationResponse } from '../../../identification/models/identification.model';
@@ -12,6 +12,7 @@ export interface PlantScanHistorySheetData {
   selector: 'app-plant-scan-history-sheet',
   templateUrl: './plant-scan-history-sheet.component.html',
   styleUrls: ['./plant-scan-history-sheet.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlantScanHistorySheetComponent implements OnInit {
   readonly placeholderImage = PLACEHOLDER_IMAGE;
@@ -22,6 +23,7 @@ export class PlantScanHistorySheetComponent implements OnInit {
     private readonly identificationService: IdentificationService,
     private readonly sheetRef: MatBottomSheetRef<PlantScanHistorySheetComponent, IdentificationResponse>,
     @Inject(MAT_BOTTOM_SHEET_DATA) private readonly data: PlantScanHistorySheetData,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -31,11 +33,17 @@ export class PlantScanHistorySheetComponent implements OnInit {
         // unlike the horizontal timeline strip which reverses to oldest-to-newest.
         this.scans = res.data.content;
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  trackByScanId(_index: number, scan: IdentificationResponse): number {
+    return scan.id;
   }
 
   select(scan: IdentificationResponse): void {

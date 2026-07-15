@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ReminderResponse } from '../../../features/reminder/models/reminder.model';
@@ -12,6 +12,7 @@ import { ReminderService } from '../../../features/reminder/services/reminder.se
   selector: 'app-treatment-step-list',
   templateUrl: './treatment-step-list.component.html',
   styleUrls: ['./treatment-step-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TreatmentStepListComponent {
   @Input() steps: ReminderResponse[] = [];
@@ -26,6 +27,7 @@ export class TreatmentStepListComponent {
   constructor(
     private readonly router: Router,
     private readonly reminderService: ReminderService,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   get completedCount(): number {
@@ -61,6 +63,10 @@ export class TreatmentStepListComponent {
     return `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
   }
 
+  trackByStepId(_index: number, step: ReminderResponse): number {
+    return step.id;
+  }
+
   markStepDone(step: ReminderResponse): void {
     if (this.markingDoneId !== null || !step.enabled) return;
     this.markingDoneId = step.id;
@@ -68,6 +74,7 @@ export class TreatmentStepListComponent {
       next: () => {
         this.markingDoneId = null;
         this.stepCompleted.emit();
+        this.cdr.markForCheck();
       },
       error: (err: HttpErrorResponse) => {
         this.markingDoneId = null;
@@ -76,6 +83,7 @@ export class TreatmentStepListComponent {
           // really is done, just re-sync the parent's view of it instead of leaving it stuck.
           this.stepCompleted.emit();
         }
+        this.cdr.markForCheck();
       },
     });
   }

@@ -11,7 +11,7 @@
     <button
       type="button"
       class="history-row"
-      *ngFor="let scan of scans"
+      *ngFor="let scan of scans; trackBy: trackByScanId"
       (click)="select(scan)"
     >
       <img [src]="scan.photoUrl || placeholderImage" [alt]="scan.commonName || scan.scientificName" class="history-thumb" />

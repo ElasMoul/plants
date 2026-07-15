@@ -263,6 +263,10 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  trackByScanId(_index: number, scan: IdentificationResponse): number {
+    return scan.id;
+  }
+
   scanHealthClass(scan: IdentificationResponse): string {
     switch (scan.healthStatus) {
       case 'HEALTHY': return 'health-healthy';

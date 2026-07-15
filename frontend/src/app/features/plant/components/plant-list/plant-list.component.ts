@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
@@ -17,6 +17,7 @@ import { IdentificationUploadDialogComponent } from '../../../identification/com
   selector: 'app-plant-list',
   templateUrl: './plant-list.component.html',
   styleUrls: ['./plant-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlantListComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];
@@ -34,6 +35,7 @@ export class PlantListComponent implements OnInit, OnDestroy {
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -68,12 +70,18 @@ export class PlantListComponent implements OnInit, OnDestroy {
         this.page = res.data;
         this.plants = res.data?.content ?? [];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.snackBar.open('Failed to load plants. Is the backend running?', 'Dismiss', { duration: 5000 });
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  trackByPlantId(_index: number, plant: PlantResponse): number {
+    return plant.id;
   }
 
   onPageChange(event: PageEvent): void {

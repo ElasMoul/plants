@@ -71,7 +71,7 @@
   <!-- Species grid -->
   <div *ngIf="!loading && filteredSpecies.length > 0" class="species-grid">
     <app-species-card
-      *ngFor="let item of filteredSpecies"
+      *ngFor="let item of filteredSpecies; trackBy: trackBySpeciesId"
       [species]="item"
     ></app-species-card>
   </div>
