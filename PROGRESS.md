@@ -4,6 +4,24 @@ Platform-delta work only. PlantPal's own feature work continues in `.claude/STAT
 
 ---
 
+## 2026-07-15 — tenant-app networking demand closed (D045 minted), archived
+
+**Context:** session-start demand check (`GET /satisfied/plantpal` on the demand-coordinator,
+`localhost:8082`) showed the D040 tenant-app-networking demand
+(`demands/2026-07-15-platform-vault-tenant-app-networking-d040.md`) FULFILLED AND
+OWNER-APPROVED by `platform-vault`. Ruling: option 1 — `host.docker.internal:<port>` sanctioned
+as THE tenant-app → platform-service address for local-first dev (D045, new decision entry;
+`PLATFORM_ARCHITECTURE.md` §11 now documents it with the example
+`PLATFORM_GATEWAY_URL=http://host.docker.internal:8085`; D040 cross-references D045). No
+`runtime` change needed, no follow-up work generated — PlantPal's own earlier fix (defaulting
+platform-profile URLs to `host.docker.internal`) *is* the platform convention now. Archived the
+demand file to `demands/archive/`; nothing else owed.
+
+**Handoff:** demand loop fully closed, no code changes this session. Next: resume Phase 10 /
+DEPLOY work per `.claude/STATE.md`.
+
+---
+
 ## 2026-07-10 — ai-gateway full-coverage demand closed: PlantPal's own follow-ups (PP-088)
 
 **Context:** `demands/2026-07-09-ai-gateway-full-ai-coverage.md` came back FULFILLED AND
