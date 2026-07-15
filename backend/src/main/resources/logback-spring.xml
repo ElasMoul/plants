@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PlantPal — Logging Configuration (T-DEPLOY.1)
+
+  - staging/prod: structured JSON on stdout (net.logstash.logback.encoder.LogstashEncoder),
+    consumed by Railway's log pipeline. Every event carries @timestamp, level, message,
+    logger_name, thread_name, stack_trace (on exceptions), plus the full MDC — which is
+    exactly {correlationId} (CorrelationIdFilter, every request) and {userId} (JwtAuthFilter,
+    only once authenticated) — LogstashEncoder includes MDC content by default.
+  - dev/test/platform (anything not staging or prod): human-readable console pattern,
+    unchanged from the previous application.yml-only "logging.pattern.console" setup, with
+    a stack-trace token added so exceptions are never silently dropped from the console.
+
+  logging.level.* in application*.yml still applies as before — Spring Boot sets logger
+  levels programmatically after the logging system initializes, independent of this file.
+-->
+<configuration>
+
+  <!-- Registers Spring Boot's logback conversion words (%wEx, %clr, ...) — without this
+       include they are undefined in a custom logback file and the pattern below fails to
+       parse, killing application startup (caught by CI ITs, run 29385043867). -->
+  <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+  <springProfile name="staging,prod">
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"service":"plantpal-backend"}</customFields>
+      </encoder>
+    </appender>
+
+    <!-- com.plantpal=INFO / org.springframework=WARN come from application-staging.yml /
+         application-prod.yml's logging.level.*, applied by Spring Boot after this file is
+         parsed — not hardcoded here, so the YAML stays the single source of truth. -->
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON" />
+    </root>
+  </springProfile>
+
+  <springProfile name="!staging &amp; !prod">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n%wEx</pattern>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE" />
+    </root>
+  </springProfile>
+
+</configuration>

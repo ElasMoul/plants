@@ -5,6 +5,7 @@ import com.plantpal.dashboard.service.DashboardService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,14 @@ public class DashboardController {
   }
 
   @Operation(summary = "Get the garden health dashboard for the current user")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Dashboard retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping
   public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard() {
     Long userId = getCurrentUserId();

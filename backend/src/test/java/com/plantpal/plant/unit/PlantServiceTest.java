@@ -26,6 +26,7 @@ import com.plantpal.plant.service.impl.PlantServiceImpl;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -652,6 +653,102 @@ class PlantServiceTest {
           .isInstanceOf(ResourceNotFoundException.class);
 
       verify(plantRepository, never()).save(any(Plant.class));
+    }
+  }
+
+  @Nested
+  @DisplayName("input sanitization (T-DEPLOY.3)")
+  class InputSanitization {
+
+    @Test
+    @DisplayName("createPlant() should strip a script tag from nickname/location/notes")
+    void shouldSanitizeOnCreate() {
+      var request = com.plantpal.testdata.PlantTestDataBuilder.aCreatePlantRequest().build();
+      request.setNickname("<script>alert(1)</script>Monty");
+      request.setLocation("<img src=x onerror=alert(1)>Living room");
+      request.setNotes("Notes with <b>bold</b> and a 🌿 emoji");
+
+      Plant mapped =
+          Plant.builder()
+              .nickname(request.getNickname())
+              .location(request.getLocation())
+              .notes(request.getNotes())
+              .build();
+      when(plantMapper.toEntity(request)).thenReturn(mapped);
+      when(plantRepository.save(any(Plant.class))).thenAnswer(inv -> inv.getArgument(0));
+      when(plantMapper.toResponse(any(Plant.class))).thenReturn(PlantResponse.builder().build());
+
+      plantService.createPlant(request, 1L);
+
+      ArgumentCaptor<Plant> captor = ArgumentCaptor.forClass(Plant.class);
+      verify(plantRepository).save(captor.capture());
+      assertThat(captor.getValue().getNickname()).doesNotContain("<script>").contains("Monty");
+      assertThat(captor.getValue().getLocation()).doesNotContain("<img").contains("Living room");
+      assertThat(captor.getValue().getNotes())
+          .doesNotContain("<b>")
+          .contains("Notes with")
+          .contains("bold")
+          .contains("🌿");
+    }
+
+    @Test
+    @DisplayName("updatePlant() should strip HTML from updated free-text fields")
+    void shouldSanitizeOnUpdate() {
+      var existing = aPlant().withId(1L).withUserId(1L).withStatus(PlantStatus.ACTIVE).build();
+      var request = new UpdatePlantRequest();
+      request.setNickname("<script>evil()</script>Renamed");
+
+      when(plantRepository.findByIdAndUserIdAndStatus(1L, 1L, PlantStatus.ACTIVE))
+          .thenReturn(Optional.of(existing));
+      when(plantRepository.save(existing)).thenReturn(existing);
+      when(plantMapper.toResponse(existing)).thenReturn(PlantResponse.builder().id(1L).build());
+
+      plantService.updatePlant(1L, request, 1L);
+
+      assertThat(existing.getNickname()).doesNotContain("<script>").contains("Renamed");
+    }
+  }
+
+  @Nested
+  @DisplayName("garden cache wiring (T-DEPLOY.2)")
+  class GardenCacheWiring {
+
+    @Test
+    @DisplayName(
+        "createPlant(), updatePlant(), archivePlant(), saveFromIdentification() should evict"
+            + " both \"plants\" (allEntries) and \"garden\" (keyed by userId)")
+    void mutationsShouldEvictBothCaches() throws NoSuchMethodException {
+      java.lang.reflect.Method createPlant =
+          PlantServiceImpl.class.getMethod(
+              "createPlant", com.plantpal.plant.dto.CreatePlantRequest.class, Long.class);
+      java.lang.reflect.Method updatePlant =
+          PlantServiceImpl.class.getMethod(
+              "updatePlant", Long.class, UpdatePlantRequest.class, Long.class);
+      java.lang.reflect.Method archivePlant =
+          PlantServiceImpl.class.getMethod("archivePlant", Long.class, Long.class);
+      java.lang.reflect.Method saveFromIdentification =
+          PlantServiceImpl.class.getMethod(
+              "saveFromIdentification", SaveIdentificationAsPlantRequest.class, Long.class);
+
+      for (java.lang.reflect.Method method :
+          List.of(createPlant, updatePlant, archivePlant, saveFromIdentification)) {
+        org.springframework.cache.annotation.Caching caching =
+            method.getAnnotation(org.springframework.cache.annotation.Caching.class);
+        assertThat(caching).as("%s", method).isNotNull();
+        assertThat(caching.evict()).hasSize(2);
+        assertThat(caching.evict())
+            .anySatisfy(
+                evict -> {
+                  assertThat(evict.value()).containsExactly("plants");
+                  assertThat(evict.allEntries()).isTrue();
+                });
+        assertThat(caching.evict())
+            .anySatisfy(
+                evict -> {
+                  assertThat(evict.value()).containsExactly("garden");
+                  assertThat(evict.key()).isEqualTo("#userId");
+                });
+      }
     }
   }
 }

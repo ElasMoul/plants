@@ -1,4 +1,12 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, Subject, Subscription, interval, of } from 'rxjs';
 import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
@@ -13,6 +21,7 @@ const POLL_INTERVAL_MS = 3000;
   selector: 'app-identification-list',
   templateUrl: './identification-list.component.html',
   styleUrls: ['./identification-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IdentificationListComponent implements OnInit, OnDestroy {
   @Output() readonly hasItemsChange = new EventEmitter<boolean>();
@@ -28,6 +37,7 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
   constructor(
     private readonly identificationService: IdentificationService,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -42,6 +52,7 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
   trackNew(id: number): void {
     if (!this.items.some(item => item.id === id)) {
       this.items = [this.placeholder(id), ...this.items];
+      this.cdr.markForCheck();
     }
     this.fetchPage().subscribe(() => this.ensurePolling());
   }
@@ -66,10 +77,12 @@ export class IdentificationListComponent implements OnInit, OnDestroy {
         this.loading = false;
         this.loadError = false;
         this.hasItemsChange.emit(this.items.length > 0);
+        this.cdr.markForCheck();
       }),
       catchError(() => {
         this.loading = false;
         this.loadError = true;
+        this.cdr.markForCheck();
         return of(undefined);
       }),
     );

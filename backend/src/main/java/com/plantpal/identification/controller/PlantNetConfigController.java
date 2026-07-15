@@ -7,6 +7,8 @@ import com.plantpal.identification.dto.plantnet.PlantNetProjectDto;
 import com.plantpal.identification.dto.plantnet.PlantNetQuotaDto;
 import com.plantpal.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -48,11 +50,22 @@ public class PlantNetConfigController {
   }
 
   @Operation(summary = "List available PlantNet floras (projects), optionally ranked by location")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Projects retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/projects")
   public ResponseEntity<ApiResponse<List<PlantNetProjectDto>>> getProjects(
-      @RequestParam @Nullable Double lat,
-      @RequestParam @Nullable Double lon,
-      @RequestParam(defaultValue = "en") String lang) {
+      @Parameter(description = "Latitude, for location-ranked results") @RequestParam @Nullable
+          Double lat,
+      @Parameter(description = "Longitude, for location-ranked results") @RequestParam @Nullable
+          Double lon,
+      @Parameter(description = "Language code for common names") @RequestParam(defaultValue = "en")
+          String lang) {
     List<PlantNetProjectDto> projects =
         gatewayProperties.enabled()
             ? plantNetGatewayClient.getProjects(lat, lon, lang)
@@ -61,6 +74,14 @@ public class PlantNetConfigController {
   }
 
   @Operation(summary = "List all language codes supported by PlantNet common-name responses")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Languages retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/languages")
   public ResponseEntity<ApiResponse<List<String>>> getLanguages() {
     List<String> languages =
@@ -71,6 +92,14 @@ public class PlantNetConfigController {
   }
 
   @Operation(summary = "Fetch today's remaining Pl@ntNet identify quota (cached 5 min)")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Quota retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/quota")
   public ResponseEntity<ApiResponse<PlantNetQuotaDto>> getQuota() {
     PlantNetQuotaDto quota =

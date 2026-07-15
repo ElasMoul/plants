@@ -3,7 +3,6 @@ package com.plantpal.chat.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,12 +10,12 @@ import static org.mockito.Mockito.when;
 import com.plantpal.chat.dto.ChatMessageDto;
 import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
+import com.plantpal.chat.service.GardenContextService;
 import com.plantpal.chat.service.impl.ChatServiceImpl;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
-import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -33,9 +32,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ChatServiceImpl — Unit Tests")
@@ -45,11 +41,14 @@ class ChatServiceImplTest {
   @Mock private PlantRepository plantRepository;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private TreatmentRepository treatmentRepository;
+  @Mock private GardenContextService gardenContextService;
   @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
   private ChatServiceImpl chatService;
 
   private static final Long USER_ID = 1L;
+  private static final int CHAT_RATE_LIMIT = 10;
+  private static final String EMPTY_GARDEN = "No plants in the garden yet.";
 
   @BeforeEach
   void setUp() {
@@ -59,8 +58,10 @@ class ChatServiceImplTest {
             plantRepository,
             identificationRepository,
             treatmentRepository,
+            gardenContextService,
             gatewayClient,
-            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+            new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+            CHAT_RATE_LIMIT);
   }
 
   /** Flips the gateway flag on for a single test. */
@@ -92,15 +93,10 @@ class ChatServiceImplTest {
   class Chat {
 
     @Test
-    @DisplayName("should build garden context from active plants and return Ollama's reply")
+    @DisplayName("should delegate garden context to GardenContextService and return Ollama's reply")
     void shouldReturnReplyWithGardenContext() {
-      Plant monstera =
-          Plant.builder().id(1L).userId(USER_ID).nickname("Monty").commonName("Monstera").build();
-      Plant unidentified = Plant.builder().id(2L).userId(USER_ID).nickname("Mystery Plant").build();
-      Page<Plant> page = new PageImpl<>(List.of(monstera, unidentified));
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(page);
+      String garden = "- Monty (Monstera)\n- Mystery Plant (unknown species)";
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(garden);
       when(ollamaClient.chat(any())).thenReturn("Your Monstera looks happy!");
 
       ChatResponse response = chatService.chat(request("How is my Monstera doing?"), USER_ID);
@@ -118,11 +114,10 @@ class ChatServiceImplTest {
     }
 
     @Test
-    @DisplayName("should use placeholder garden context when user has no active plants")
+    @DisplayName(
+        "should pass through the placeholder garden context when user has no active plants")
     void shouldHandleEmptyGarden() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("General plant care advice.");
 
       ChatResponse response = chatService.chat(request("What plant should I get?"), USER_ID);
@@ -131,22 +126,80 @@ class ChatServiceImplTest {
 
       ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
       verify(ollamaClient).chat(promptCaptor.capture());
-      assertThat(promptCaptor.getValue()).contains("No plants in the garden yet.");
+      assertThat(promptCaptor.getValue()).contains(EMPTY_GARDEN);
     }
 
     @Test
     @DisplayName("should throw 429 when chat rate limit is exceeded")
     void shouldThrowWhenRateLimited() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("reply");
 
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < CHAT_RATE_LIMIT; i++) {
         chatService.chat(request("msg " + i), USER_ID);
       }
 
       assertThatThrownBy(() -> chatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+  }
+
+  @Nested
+  @DisplayName("chat-messages-per-hour (app.rate-limit.chat-messages-per-hour, T-DEPLOY.1)")
+  class ConfigurableChatRateLimit {
+
+    @Test
+    @DisplayName("should honor a custom configured limit instead of a hardcoded constant")
+    void shouldHonorConfiguredLimit() {
+      int customLimit = 2;
+      ChatServiceImpl customLimitedChatService =
+          new ChatServiceImpl(
+              ollamaClient,
+              plantRepository,
+              identificationRepository,
+              treatmentRepository,
+              gardenContextService,
+              gatewayClient,
+              new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              customLimit);
+      when(gardenContextService.buildGardenContext(any())).thenReturn(EMPTY_GARDEN);
+      when(ollamaClient.chat(any())).thenReturn("reply");
+
+      for (int i = 0; i < customLimit; i++) {
+        customLimitedChatService.chat(request("msg " + i), USER_ID);
+      }
+
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+    }
+
+    @Test
+    @DisplayName("should track rate limits independently per user")
+    void shouldTrackLimitsPerUser() {
+      int customLimit = 1;
+      ChatServiceImpl customLimitedChatService =
+          new ChatServiceImpl(
+              ollamaClient,
+              plantRepository,
+              identificationRepository,
+              treatmentRepository,
+              gardenContextService,
+              gatewayClient,
+              new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              customLimit);
+      when(gardenContextService.buildGardenContext(any())).thenReturn(EMPTY_GARDEN);
+      when(ollamaClient.chat(any())).thenReturn("reply");
+
+      Long otherUserId = 2L;
+      customLimitedChatService.chat(request("msg"), USER_ID);
+      customLimitedChatService.chat(request("msg"), otherUserId);
+
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), USER_ID))
+          .isInstanceOf(PlantPalException.class)
+          .hasMessageContaining("rate limit");
+      assertThatThrownBy(() -> customLimitedChatService.chat(request("one too many"), otherUserId))
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
     }
@@ -176,9 +229,7 @@ class ChatServiceImplTest {
           .thenReturn(List.of(scan));
       Treatment treatment = Treatment.builder().id(9L).diseaseName("Root Rot").build();
       when(treatmentRepository.findById(9L)).thenReturn(Optional.of(treatment));
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("Here's what's going on with Monty.");
 
       ChatResponse response = chatService.chat(request("How is Monty doing?", PLANT_ID), USER_ID);
@@ -210,9 +261,7 @@ class ChatServiceImplTest {
 
     @BeforeEach
     void stubEmptyGarden() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("reply");
     }
 
@@ -271,9 +320,7 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("should delegate to ollamaClient.chatStream() with the same prompt as chat()")
     void shouldDelegateToOllamaClientStream() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
 
       List<String> tokens = new java.util.ArrayList<>();
       chatService.chatStream(request("How often should I water?"), USER_ID, tokens::add);
@@ -286,11 +333,9 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("should check the rate limit before any streaming starts")
     void shouldCheckRateLimitBeforeStreaming() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
 
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < CHAT_RATE_LIMIT; i++) {
         chatService.chatStream(request("msg " + i), USER_ID, token -> {});
       }
 
@@ -299,8 +344,9 @@ class ChatServiceImplTest {
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("rate limit");
 
-      // 30 legitimate calls went through; the 31st was rejected before reaching ollamaClient.
-      verify(ollamaClient, org.mockito.Mockito.times(30)).chatStream(any(), any());
+      // CHAT_RATE_LIMIT legitimate calls went through; the next one was rejected before
+      // reaching ollamaClient.
+      verify(ollamaClient, org.mockito.Mockito.times(CHAT_RATE_LIMIT)).chatStream(any(), any());
     }
   }
 
@@ -310,9 +356,7 @@ class ChatServiceImplTest {
 
     @BeforeEach
     void stubEmptyGarden() {
-      when(plantRepository.findAllByUserIdAndStatus(
-              eq(USER_ID), eq(PlantStatus.ACTIVE), any(PageRequest.class)))
-          .thenReturn(new PageImpl<>(List.of()));
+      when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
     }
 
     private io.platform.contracts.aigateway.AiResponse gatewayResponse(String result) {

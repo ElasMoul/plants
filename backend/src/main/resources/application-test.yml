@@ -72,6 +72,8 @@ app:
     # Effectively unlimited in tests to avoid rate-limiter interference
     ai-calls-per-hour: 10000
     auth-attempts-per-minute: 10000
+    register-per-hour: 10000
+    chat-messages-per-hour: 10000
 
 # ──── Logging (test: quieter, highlight app logs) ─────────────────────────────
 logging:

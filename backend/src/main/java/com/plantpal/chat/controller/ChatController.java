@@ -6,6 +6,7 @@ import com.plantpal.chat.service.ChatService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,6 +44,20 @@ public class ChatController {
   }
 
   @Operation(summary = "Send a message to the PlantPal chat assistant")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Reply generated successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error (e.g. message over 2000 characters)"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "429",
+        description = "Chat rate limit reached")
+  })
   @PostMapping
   public ResponseEntity<ApiResponse<ChatResponse>> chat(@RequestBody @Valid ChatRequest request) {
     Long userId = getCurrentUserId();
@@ -51,6 +66,20 @@ public class ChatController {
   }
 
   @Operation(summary = "Send a message to the chat assistant, streaming the reply token-by-token")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "SSE stream of reply tokens"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error (e.g. message over 2000 characters)"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "429",
+        description = "Chat rate limit reached")
+  })
   @PostMapping("/stream")
   public SseEmitter chatStream(@RequestBody @Valid ChatRequest request) {
     Long userId = getCurrentUserId();

@@ -43,6 +43,7 @@ import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class TreatmentServiceImpl implements TreatmentService {
 
   private static final Logger log = LoggerFactory.getLogger(TreatmentServiceImpl.class);
+
+  // T-DEPLOY.2: buildGardenContext (ChatServiceImpl/GardenContextServiceImpl) only ever formats
+  // nickname + species/commonName today — it does not read treatment status — so these evictions
+  // are defensive/future-proofing per the task's explicit ask rather than fixing an observed
+  // staleness bug. dismissActiveTreatmentForDisease(plantId, diseaseName) and
+  // syncFromTreatmentPlanCompletion(treatmentPlanId) are deliberately NOT wired: neither carries a
+  // userId in its signature, and looking one up via an extra plant/treatment fetch would add a
+  // query for no observable cache-correctness benefit given the above.
+  private static final String GARDEN_CACHE = "garden";
 
   private static final List<TreatmentStatus> ACTIVE_STATUSES =
       List.of(TreatmentStatus.DRAFT, TreatmentStatus.IN_PROGRESS);
@@ -105,6 +115,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   @Override
   @Transactional
+  @CacheEvict(value = GARDEN_CACHE, key = "#userId")
   public TreatmentResponse createTreatment(CreateTreatmentRequest request, Long userId) {
     Plant plant =
         plantRepository
@@ -165,6 +176,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   @Override
   @Async("aiTaskExecutor")
   @Transactional
+  @CacheEvict(value = GARDEN_CACHE, key = "#userId")
   public CompletableFuture<TreatmentResponse> craftPlan(Long id, Long userId) {
     Treatment treatment = findOwnedTreatment(id, userId);
     if (treatment.getStatus() != TreatmentStatus.DRAFT) {
@@ -240,6 +252,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   @Override
   @Transactional
+  @CacheEvict(value = GARDEN_CACHE, key = "#userId")
   public TreatmentResponse completeTreatment(Long id, Long userId) {
     Treatment treatment = findOwnedTreatment(id, userId);
     if (treatment.getStatus() != TreatmentStatus.IN_PROGRESS) {

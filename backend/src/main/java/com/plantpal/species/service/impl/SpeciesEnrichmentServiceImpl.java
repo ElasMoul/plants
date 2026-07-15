@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,11 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   @Override
   @Async("aiTaskExecutor")
   @Transactional
+  // T-DEPLOY.2: this async write is the actual staleness risk for the "species" cache —
+  // SpeciesServiceImpl.getSpecies(id) may already be cached with a PENDING descriptionStatus
+  // from right after creation; without this eviction the cached response would never pick up
+  // the enrichment result (or the FAILED status) until the 10-minute TTL expires.
+  @CacheEvict(value = "species", key = "#speciesId")
   public void enrich(Long speciesId, AiModelPreference preference) {
     Species species = speciesRepository.findById(speciesId).orElse(null);
     if (species == null) {

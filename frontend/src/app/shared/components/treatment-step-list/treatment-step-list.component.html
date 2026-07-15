@@ -8,7 +8,7 @@
 
 <!-- Step list -->
 <div class="step-list">
-  <div class="step-row" *ngFor="let step of steps; let last = last">
+  <div class="step-row" *ngFor="let step of steps; let last = last; trackBy: trackByStepId">
     <div class="step-marker">
       <div class="step-circle" [class.completed]="!step.enabled">
         <mat-icon *ngIf="!step.enabled">check</mat-icon>

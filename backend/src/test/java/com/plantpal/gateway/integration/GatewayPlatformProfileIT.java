@@ -28,6 +28,7 @@ class GatewayPlatformProfileIT extends AbstractIntegrationTest {
   void contextLoadsWithGatewayEnabled() {
     assertThat(gatewayClient).isNotNull();
     assertThat(gatewayProperties.enabled()).isTrue();
-    assertThat(gatewayProperties.url()).isEqualTo("http://localhost:8085");
+    // D045: host.docker.internal is the sanctioned tenant-app -> platform-service default
+    assertThat(gatewayProperties.url()).isEqualTo("http://host.docker.internal:8085");
   }
 }

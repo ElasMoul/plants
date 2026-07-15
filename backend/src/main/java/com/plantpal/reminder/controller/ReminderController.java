@@ -6,6 +6,8 @@ import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +36,17 @@ public class ReminderController {
   }
 
   @Operation(summary = "Create a new care reminder")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "201",
+        description = "Reminder created successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @PostMapping
   public ResponseEntity<ApiResponse<ReminderResponse>> createReminder(
       @Valid @RequestBody CreateReminderRequest request) {
@@ -44,6 +57,14 @@ public class ReminderController {
   }
 
   @Operation(summary = "List enabled reminders for the current user, sorted by next due date")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Reminders retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping
   public ResponseEntity<ApiResponse<List<ReminderResponse>>> getUserReminders() {
     Long userId = getCurrentUserId();
@@ -52,16 +73,40 @@ public class ReminderController {
   }
 
   @Operation(summary = "Mark a reminder as done — logs the care action and reschedules it")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Reminder completed"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Reminder not found")
+  })
   @PostMapping("/{id}/complete")
-  public ResponseEntity<ApiResponse<ReminderResponse>> completeReminder(@PathVariable Long id) {
+  public ResponseEntity<ApiResponse<ReminderResponse>> completeReminder(
+      @Parameter(description = "Reminder ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     ReminderResponse response = reminderService.completeReminder(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response, "Reminder completed"));
   }
 
   @Operation(summary = "Disable a reminder (soft delete)")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "204",
+        description = "Reminder disabled successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Reminder not found")
+  })
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteReminder(@PathVariable Long id) {
+  public ResponseEntity<Void> deleteReminder(
+      @Parameter(description = "Reminder ID") @PathVariable Long id) {
     reminderService.deleteReminder(id, getCurrentUserId());
     return ResponseEntity.noContent().build();
   }

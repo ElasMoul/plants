@@ -16,6 +16,8 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,13 +58,38 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Submit one or more photos for async plant identification")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "202",
+        description = "Analysis started — poll for result"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error (e.g. too many images, unsupported type)"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "429",
+        description = "AI identification rate limit reached"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "500",
+        description = "Identification failed or was interrupted")
+  })
   @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<IdentificationPendingResponse>> analyze(
-      @RequestPart("images") List<MultipartFile> images,
-      @RequestParam(value = "organs", required = false) List<String> organs,
-      @RequestParam(required = false) Long plantId,
-      @RequestParam(required = false) Long speciesId,
-      @RequestParam(required = false) String userContext) {
+      @Parameter(description = "1-5 photos of the plant") @RequestPart("images")
+          List<MultipartFile> images,
+      @Parameter(description = "Plant organs shown, e.g. leaf/flower/fruit (PlantNet hint)")
+          @RequestParam(value = "organs", required = false)
+          List<String> organs,
+      @Parameter(description = "Existing plant to attach this scan to, if any")
+          @RequestParam(required = false)
+          Long plantId,
+      @Parameter(description = "Pre-selected species, if any") @RequestParam(required = false)
+          Long speciesId,
+      @Parameter(description = "Free-text context from the user, e.g. symptoms observed")
+          @RequestParam(required = false)
+          String userContext) {
 
     Long userId = getCurrentUserId();
     log.info(
@@ -91,6 +118,14 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Get all identifications for the current user")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Identifications retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping
   public ResponseEntity<ApiResponse<Page<IdentificationResponse>>> getUserIdentifications(
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
@@ -102,18 +137,37 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Get a single identification by id")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Identification retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @GetMapping("/{id}")
   public ResponseEntity<ApiResponse<IdentificationResponse>> getIdentification(
-      @PathVariable Long id) {
+      @Parameter(description = "Identification ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     IdentificationResponse response = identificationService.getIdentification(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response));
   }
 
   @Operation(summary = "Get all identifications for a specific plant")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Identifications retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
   @GetMapping("/plant/{plantId}")
   public ResponseEntity<ApiResponse<Page<IdentificationResponse>>> getPlantIdentifications(
-      @PathVariable Long plantId,
+      @Parameter(description = "Plant ID") @PathVariable Long plantId,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     Long userId = getCurrentUserId();
@@ -123,9 +177,30 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Get cure advice for an identified disease region")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "202",
+        description = "Cure advice generated successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "429",
+        description = "Cure advice rate limit reached"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "500",
+        description = "Cure advice generation failed or was interrupted")
+  })
   @PostMapping("/{id}/cure-advice")
   public ResponseEntity<ApiResponse<CureAdviceResponse>> getCureAdvice(
-      @PathVariable Long id, @RequestBody @Valid CureAdviceRequest req) {
+      @Parameter(description = "Identification ID") @PathVariable Long id,
+      @RequestBody @Valid CureAdviceRequest req) {
     Long userId = getCurrentUserId();
     log.info("Cure advice requested: userId={}, identificationId={}", userId, id);
     try {
@@ -144,9 +219,24 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Add a generated care card (e.g. from cure advice) to the care plan")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Added to care plan"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @PostMapping("/{id}/care-plan/cards")
   public ResponseEntity<ApiResponse<CarePlanDto>> addCareCard(
-      @PathVariable Long id, @RequestBody @Valid AddCareCardRequest req) {
+      @Parameter(description = "Identification ID") @PathVariable Long id,
+      @RequestBody @Valid AddCareCardRequest req) {
     Long userId = getCurrentUserId();
     log.info("Add care card requested: userId={}, identificationId={}", userId, id);
     CarePlanDto response = identificationService.addCareCard(id, req, userId);
@@ -154,17 +244,44 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Check whether the identified species already exists in the catalog")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Species match retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @GetMapping("/{id}/species-match")
-  public ResponseEntity<ApiResponse<SpeciesMatchDto>> getSpeciesMatch(@PathVariable Long id) {
+  public ResponseEntity<ApiResponse<SpeciesMatchDto>> getSpeciesMatch(
+      @Parameter(description = "Identification ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     SpeciesMatchDto response = identificationService.getSpeciesMatch(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response));
   }
 
   @Operation(summary = "Confirm or reject the matched/suggested species for an identification")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Species resolved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @PostMapping("/{id}/resolve-species")
   public ResponseEntity<ApiResponse<SpeciesMatchDto>> resolveSpecies(
-      @PathVariable Long id, @RequestBody @Valid ResolveSpeciesRequest req) {
+      @Parameter(description = "Identification ID") @PathVariable Long id,
+      @RequestBody @Valid ResolveSpeciesRequest req) {
     Long userId = getCurrentUserId();
     log.info("Resolve species requested: userId={}, identificationId={}", userId, id);
     SpeciesMatchDto response = identificationService.resolveSpecies(id, req, userId);
@@ -172,8 +289,20 @@ public class IdentificationController {
   }
 
   @Operation(summary = "List the user's existing plants of the identification's matched species")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Plant match retrieved successfully"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @GetMapping("/{id}/plant-match")
-  public ResponseEntity<ApiResponse<PlantMatchDto>> getPlantMatch(@PathVariable Long id) {
+  public ResponseEntity<ApiResponse<PlantMatchDto>> getPlantMatch(
+      @Parameter(description = "Identification ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     PlantMatchDto response = identificationService.getPlantMatch(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response));
@@ -185,9 +314,20 @@ public class IdentificationController {
           "Re-runs only the stages that failed. Core-FAILED: resets all stages and re-queues"
               + " processing via Kafka. Enrichment-only failures (annotation/candidates):"
               + " re-fires just the failed async stages. Returns 409 if already PENDING.")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "202",
+        description = "Retry queued"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @PostMapping("/{id}/retry")
   public ResponseEntity<ApiResponse<IdentificationResponse>> retryIdentification(
-      @PathVariable Long id) {
+      @Parameter(description = "Identification ID") @PathVariable Long id) {
     Long userId = getCurrentUserId();
     log.info("Identification retry requested: userId={}, identificationId={}", userId, id);
     IdentificationResponse response = identificationService.retryIdentification(id, userId);
@@ -196,9 +336,24 @@ public class IdentificationController {
   }
 
   @Operation(summary = "Attach an identification to an existing plant, or create a new one")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Plant linked"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
   @PostMapping("/{id}/resolve-plant")
   public ResponseEntity<ApiResponse<IdentificationResponse>> resolvePlant(
-      @PathVariable Long id, @RequestBody @Valid ResolvePlantRequest req) {
+      @Parameter(description = "Identification ID") @PathVariable Long id,
+      @RequestBody @Valid ResolvePlantRequest req) {
     Long userId = getCurrentUserId();
     log.info("Resolve plant requested: userId={}, identificationId={}", userId, id);
     IdentificationResponse response = identificationService.resolvePlant(id, req, userId);

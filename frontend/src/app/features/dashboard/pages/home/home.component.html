@@ -54,7 +54,7 @@
         <h2 class="section-heading">Needs attention</h2>
         <div
           class="row-card row-overdue"
-          *ngFor="let reminder of dashboard.overdueReminders"
+          *ngFor="let reminder of dashboard.overdueReminders; trackBy: trackByReminderId"
           (click)="goToPlant(reminder.plantId)"
         >
           <img
@@ -81,7 +81,7 @@
         <h2 class="section-heading">Care due today</h2>
         <div
           class="row-card"
-          *ngFor="let reminder of topTodayReminders"
+          *ngFor="let reminder of topTodayReminders; trackBy: trackByReminderId"
           (click)="goToPlant(reminder.plantId)"
         >
           <img
@@ -110,7 +110,7 @@
         <div class="scans-strip">
           <div
             class="scan-card"
-            *ngFor="let scan of dashboard.recentScans"
+            *ngFor="let scan of dashboard.recentScans; trackBy: trackByScanId"
             (click)="goToScan(scan.identificationId)"
           >
             <img

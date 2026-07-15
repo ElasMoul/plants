@@ -112,7 +112,7 @@
         <div class="scan-history-list" *ngIf="scanHistoryLoaded && scanHistory.length > 0">
           <div
             class="scan-history-item"
-            *ngFor="let scan of scanHistory"
+            *ngFor="let scan of scanHistory; trackBy: trackByScanId"
             (click)="openScanDetail(scan)"
             role="button"
             tabindex="0"

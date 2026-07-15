@@ -104,4 +104,7 @@
     <include file="db/changelog/migrations/031_add_business_tier.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/032_add_perf_indexes.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

@@ -20,6 +20,7 @@ import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import com.plantpal.shared.util.HtmlSanitizer;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -42,6 +44,7 @@ public class PlantServiceImpl implements PlantService {
   private static final Logger log = LoggerFactory.getLogger(PlantServiceImpl.class);
 
   private static final String PLANTS_CACHE = "plants";
+  private static final String GARDEN_CACHE = "garden";
   private static final String NOT_FOUND_MSG = "Plant not found or not owned by user";
 
   private final PlantRepository plantRepository;
@@ -68,11 +71,16 @@ public class PlantServiceImpl implements PlantService {
 
   @Override
   @Transactional
-  @CacheEvict(value = PLANTS_CACHE, allEntries = true)
+  @Caching(
+      evict = {
+        @CacheEvict(value = PLANTS_CACHE, allEntries = true),
+        @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+      })
   public PlantResponse createPlant(CreatePlantRequest request, Long userId) {
     Plant plant = plantMapper.toEntity(request);
     plant.setUserId(userId);
     plant.setStatus(PlantStatus.ACTIVE);
+    sanitizeFreeTextFields(plant);
 
     plant = plantRepository.save(plant);
     log.info("Plant created: id={}, userId={}", plant.getId(), userId);
@@ -84,11 +92,16 @@ public class PlantServiceImpl implements PlantService {
 
   @Override
   @Transactional
-  @CacheEvict(value = PLANTS_CACHE, allEntries = true)
+  @Caching(
+      evict = {
+        @CacheEvict(value = PLANTS_CACHE, allEntries = true),
+        @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+      })
   public PlantResponse updatePlant(Long id, UpdatePlantRequest request, Long userId) {
     Plant plant = findOwnedPlant(id, userId);
 
     applyUpdates(plant, request);
+    sanitizeFreeTextFields(plant);
     plant = plantRepository.save(plant);
     log.info("Plant updated: id={}, userId={}", id, userId);
 
@@ -97,7 +110,11 @@ public class PlantServiceImpl implements PlantService {
 
   @Override
   @Transactional
-  @CacheEvict(value = PLANTS_CACHE, allEntries = true)
+  @Caching(
+      evict = {
+        @CacheEvict(value = PLANTS_CACHE, allEntries = true),
+        @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+      })
   public void archivePlant(Long id, Long userId) {
     // findOwnedPlant only matches ACTIVE plants, so an already-archived plant is unreachable
     // here and this transition is always ACTIVE -> ARCHIVED — no double-emit guard needed.
@@ -211,7 +228,11 @@ public class PlantServiceImpl implements PlantService {
 
   @Override
   @Transactional
-  @CacheEvict(value = PLANTS_CACHE, allEntries = true)
+  @Caching(
+      evict = {
+        @CacheEvict(value = PLANTS_CACHE, allEntries = true),
+        @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+      })
   public PlantResponse saveFromIdentification(
       SaveIdentificationAsPlantRequest request, Long userId) {
     Identification identification =
@@ -296,6 +317,19 @@ public class PlantServiceImpl implements PlantService {
             .enabled(true)
             .build());
     log.info("Auto-created reminders from care plan: plantId={}, userId={}", plantId, userId);
+  }
+
+  /**
+   * T-DEPLOY.3: strips any HTML/script markup from the free-text fields a user directly types —
+   * nickname, location, notes. Runs after mapping/applyUpdates so it covers both the create and
+   * update path from a single call site. {@code species}/{@code commonName}/{@code photoUrl} are
+   * out of scope here: species/commonName are AI-identification-sourced labels, not user prose, and
+   * photoUrl is a generated storage path.
+   */
+  private void sanitizeFreeTextFields(Plant plant) {
+    plant.setNickname(HtmlSanitizer.sanitize(plant.getNickname()));
+    plant.setLocation(HtmlSanitizer.sanitize(plant.getLocation()));
+    plant.setNotes(HtmlSanitizer.sanitize(plant.getNotes()));
   }
 
   private Plant findOwnedPlant(Long id, Long userId) {

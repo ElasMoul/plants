@@ -87,11 +87,19 @@ public class CacheConfig implements CachingConfigurer {
     // 10-minute default above.
     RedisCacheConfiguration longLivedConfig = config.entryTtl(Duration.ofHours(24));
     RedisCacheConfiguration quotaConfig = config.entryTtl(Duration.ofMinutes(5));
+    // T-DEPLOY.2: "garden" backs ChatServiceImpl's per-user garden-context prompt block
+    // (GardenContextServiceImpl) — short TTL since a stale garden listing is low-stakes but
+    // still worth bounding. "species" backs SpeciesServiceImpl.getSpecies(id) — species rows
+    // change rarely (enrichment runs once, factual-field patches are one-time fills).
+    RedisCacheConfiguration gardenConfig = config.entryTtl(Duration.ofMinutes(5));
+    RedisCacheConfiguration speciesConfig = config.entryTtl(Duration.ofMinutes(10));
     return RedisCacheManager.builder(connectionFactory)
         .cacheDefaults(config)
         .withCacheConfiguration("plantnet-projects", longLivedConfig)
         .withCacheConfiguration("plantnet-languages", longLivedConfig)
         .withCacheConfiguration("plantnet-quota", quotaConfig)
+        .withCacheConfiguration("garden", gardenConfig)
+        .withCacheConfiguration("species", speciesConfig)
         .build();
   }
 

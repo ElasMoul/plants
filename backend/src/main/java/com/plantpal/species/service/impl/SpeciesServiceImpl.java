@@ -27,6 +27,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +42,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   private static final Logger log = LoggerFactory.getLogger(SpeciesServiceImpl.class);
   private static final String ISSUES_DETECTED = "ISSUES_DETECTED";
+  private static final String SPECIES_CACHE = "species";
 
   private final SpeciesRepository speciesRepository;
   private final SpeciesMapper speciesMapper;
@@ -65,6 +68,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional
+  @CacheEvict(value = SPECIES_CACHE, key = "#result.id")
   public Species findOrCreate(
       String scientificName, String commonName, AiModelPreference preference) {
     return findOrCreate(scientificName, commonName, preference, null, null, null);
@@ -72,6 +76,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional
+  @CacheEvict(value = SPECIES_CACHE, key = "#result.id")
   public Species findOrCreate(
       String scientificName,
       String commonName,
@@ -95,6 +100,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional
+  @CacheEvict(value = SPECIES_CACHE, key = "#result.id")
   public Species findOrCreate(
       String scientificName,
       String commonName,
@@ -139,6 +145,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional(readOnly = true)
+  @Cacheable(value = SPECIES_CACHE, key = "#id")
   public SpeciesResponse getSpecies(Long id) {
     Species species =
         speciesRepository
@@ -260,6 +267,7 @@ public class SpeciesServiceImpl implements SpeciesService {
 
   @Override
   @Transactional
+  @CacheEvict(value = SPECIES_CACHE, key = "#speciesId")
   public SpeciesResponse regenerateDescription(Long speciesId, Long userId) {
     Species species =
         speciesRepository

@@ -572,4 +572,37 @@ class TreatmentServiceTest {
       verify(plantRepository, never()).findById(any());
     }
   }
+
+  @Nested
+  @DisplayName("garden cache wiring (T-DEPLOY.2)")
+  class GardenCacheWiring {
+
+    // Defensive/future-proofing eviction — buildGardenContext (GardenContextServiceImpl) doesn't
+    // read treatment status today, but the task explicitly calls out treatment mutations as
+    // affecting garden context, so these three (which do carry a userId) are wired anyway. See
+    // the class-level comment on TreatmentServiceImpl.GARDEN_CACHE for the full reasoning,
+    // including why dismissActiveTreatmentForDisease/syncFromTreatmentPlanCompletion are not.
+    @Test
+    @DisplayName(
+        "createTreatment(), craftPlan(), completeTreatment() should evict \"garden\" keyed"
+            + " by userId")
+    void mutationsShouldEvictGardenCache() throws NoSuchMethodException {
+      java.lang.reflect.Method createTreatment =
+          TreatmentServiceImpl.class.getMethod(
+              "createTreatment", CreateTreatmentRequest.class, Long.class);
+      java.lang.reflect.Method craftPlan =
+          TreatmentServiceImpl.class.getMethod("craftPlan", Long.class, Long.class);
+      java.lang.reflect.Method completeTreatment =
+          TreatmentServiceImpl.class.getMethod("completeTreatment", Long.class, Long.class);
+
+      for (java.lang.reflect.Method method :
+          List.of(createTreatment, craftPlan, completeTreatment)) {
+        org.springframework.cache.annotation.CacheEvict evict =
+            method.getAnnotation(org.springframework.cache.annotation.CacheEvict.class);
+        assertThat(evict).as("%s", method).isNotNull();
+        assertThat(evict.value()).containsExactly("garden");
+        assertThat(evict.key()).isEqualTo("#userId");
+      }
+    }
+  }
 }

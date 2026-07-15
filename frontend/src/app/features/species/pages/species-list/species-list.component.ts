@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,6 +19,7 @@ type SpeciesFilter = 'all' | 'issues' | 'recent';
   selector: 'app-species-list',
   templateUrl: './species-list.component.html',
   styleUrls: ['./species-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SpeciesListComponent implements OnInit, OnDestroy {
   species: SpeciesSummaryDto[] = [];
@@ -37,6 +38,7 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -90,12 +92,18 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
         this.page = res.data;
         this.species = res.data?.content ?? [];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.snackBar.open('Failed to load your garden. Is the backend running?', 'Dismiss', { duration: 5000 });
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  trackBySpeciesId(_index: number, item: SpeciesSummaryDto): number {
+    return item.speciesId;
   }
 
   onPageChange(event: PageEvent): void {

@@ -38,7 +38,7 @@
   <!-- Plant grid -->
   <div *ngIf="!loading && plants.length > 0" class="plant-grid">
     <app-plant-card
-      *ngFor="let plant of plants"
+      *ngFor="let plant of plants; trackBy: trackByPlantId"
       [plant]="plant"
       (archive)="onArchive($event)"
     ></app-plant-card>
