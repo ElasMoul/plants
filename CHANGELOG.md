@@ -4,7 +4,7 @@
 > its git log and `.claude/STATE.md`/`TASK_PLAN.md` — this file tracks only the
 > **platform-delta** work (D013), starting from Chunk 0.
 
-## [Unreleased]
+## [Unreleased] (opened 2026-07-04)
 
 ### Added
 - Chunk 0 — platform Room bootstrap: `HEXAGON.md` and `DEPLOYMENT.md` added
