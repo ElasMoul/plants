@@ -16,16 +16,18 @@ TypeScript strict mode, Angular Material, SCSS, @angular/pwa,
 RxJS, ReactiveFormsModule
 
 ## Current Status
-**Phases 0–4, 6, and 7 are all shipped, plus a pre-Phase-5 cleanup pass
-(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
-T7.1 (backend) through T7.4 are all complete — model control UI, structured
-AI-error/rate-limit UX, "powered by" badges, multi-select batch scanning, the
-multi-treatment picker, and the disease-description poll fix. T7.2 shipped on
-its own `feature/PP-040-model-control-frontend` (merged to `dev`); T7.3 and
-T7.4 both shipped on `feature/PP-041-batch-scan`. Phase 5 (Launch prep) is the
-only phase left unstarted** — see TASK_PLAN.md. Full session-by-session
-history of how each feature was built lives in STATE.md and git log, not
-here — this file is a durable reference to what exists *now*.
+**Phases 0–4 and 6–10 are all shipped — Species & Treatment Restructure
+(T6.1–T6.14), Model Control/Batch/Multi-Treatment (T7.1–T7.4), PlantNet
+First-Class Provider (T8.0–T8.7), Identification Pipeline Resilience
+(T8.A–T8.G), Quality/Testing/Hardening (T9.1–T9.8), Species Card Harvest +
+Async Reliability (T9.A–T9.F), and Contextual Scanning & Treatment Polish
+(T10.A–I) — all merged to `dev`/`main`, plus the pre-Phase-5 cleanup pass.
+Phase DEPLOY (formerly Phase 5, Launch Preparation): T-DEPLOY.1–5(code)
+merged (PRs #125/#126); remaining: Railway/Vercel account setup → deploy →
+beta (T-DEPLOY.6–7) → v1.0.0 (T-DEPLOY.8)** — see TASK_PLAN.md. Full
+session-by-session history of how each feature was built lives in STATE.md
+and git log, not here — this file is a durable reference to what exists
+*now*. *(Current Status synced from STATE.md 2026-07-16.)*
 
 ## Non-Negotiable Conventions
 - NgModules only — no standalone components

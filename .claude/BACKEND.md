@@ -20,14 +20,18 @@ Spotless 2.43.0, springdoc-openapi 2.5.0, BouncyCastle 1.78.1 (web-push ECDH),
 OkHttp MockWebServer (unit-testing RestClient), testcontainers-redis 2.2.2
 
 ## Current Status
-**Phases 0–4 and 6 are shipped, plus a pre-Phase-5 cleanup pass
-(`feature/PP-038-pre-phase5-cleanup`) closing every flagged gap. Phase 7's
-backend task (T7.1, `feature/PP-039-model-control-backend`) is also shipped —
-see below. Phase 5 (Launch prep) and Phase 7's remaining frontend tasks
-(T7.2–T7.4) are next** — see TASK_PLAN.md for the full task breakdown. Full
-session-by-session history of how Phases 0–6 were built lives in STATE.md and
-git log, not here — this file is a durable reference to what exists *now*, not
-a diary.
+**Phases 0–4 and 6–10 are all shipped — Species & Treatment Restructure
+(T6.1–T6.14), Model Control/Batch/Multi-Treatment (T7.1–T7.4), PlantNet
+First-Class Provider (T8.0–T8.7), Identification Pipeline Resilience
+(T8.A–T8.G), Quality/Testing/Hardening (T9.1–T9.8), Species Card Harvest +
+Async Reliability (T9.A–T9.F), and Contextual Scanning & Treatment Polish
+(T10.A–I) — all merged to `dev`/`main`, plus the pre-Phase-5 cleanup pass.
+Phase DEPLOY (formerly Phase 5, Launch Preparation): T-DEPLOY.1–5(code)
+merged (PRs #125/#126); remaining: Railway/Vercel account setup → deploy →
+beta (T-DEPLOY.6–7) → v1.0.0 (T-DEPLOY.8)** — see TASK_PLAN.md for the full
+task breakdown. Full session-by-session history lives in STATE.md and git
+log, not here — this file is a durable reference to what exists *now*, not a
+diary. *(Current Status synced from STATE.md 2026-07-16.)*
 
 ## AI Provider Map (current — updated T8.0, 2026-06-23)
 | Client | Model | Purpose | Endpoint |
