@@ -1,5 +1,7 @@
 backend/.env
 backend/.idea/
+# Root Compose env file — per-machine paths (e.g. CONTRACTS_M2_0_17_0), see DEPLOYMENT.md.
+/.env
 # Per-machine self-signed dev TLS pair for the nginx frontend container —
 # regenerated on each machine (see DEPLOYMENT.md), never committed.
 frontend/nginx/certs/
