@@ -1,0 +1,26 @@
+# .brain/config.yml -- hand-maintained
+#
+# classifier: frontier | local | rules-only
+#   Controls the tier-3 (nightly, ambiguous-remainder) citation classifier.
+#   - frontier (default): the ambiguous remainder of citations route
+#     through a frontier model, always via ai-gateway's claude-code
+#     provider -- no toolkit exception to the all-AI-through-gateway law,
+#     no direct provider calls, no provider keys held by the structurer
+#     itself.
+#   - local: tier-3 routes to a local model via Ollama instead (weaker;
+#     every local-tier3 run is caveated in graph.md).
+#   - rules-only: unresolved-after-tier-1/2 citations are treated as
+#     `mentioned` rather than `applied` -- no model call at all, cheapest
+#     and most conservative.
+#
+#   This switch is repo-local, git-versioned law -- it overrides any
+#   ai-gateway per-hexagon model-policy `force:<model>` setting for this
+#   repo's structurer runs.
+classifier: frontier
+
+# progress_standing -- `brain session close` reads this key verbatim and
+# writes it as the generated PROGRESS.md handoff block's "Standing" line
+# (a fixed per-repo string, no other mechanical source). FRESH ADOPTION: no
+# repo convention has been established yet -- replace this placeholder with
+# this repo's own standing reminder once one exists.
+progress_standing: "TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)"

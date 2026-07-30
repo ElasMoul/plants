@@ -1,0 +1,4 @@
+index.db
+derived/embeddings/
+.current_session
+.structurer.lock

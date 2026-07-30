@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""
+Thin pinned-worktree shim onto `brain-toolkit` (FP-3, D042 precedent --
+`docs/AGENT_MEMORY_FLEET_PLAN.md`). GENERATED-BY-CONVENTION: this file is
+byte-identical across every `.brain`-enabled repo that carries it and across
+both `.brain/bin/brain` and `.brain/bin/structurer` in this repo -- it never
+hardcodes a repo name or a tool name, so a fix or a version bump never
+touches this file. Edits belong in `brain-toolkit`, not here; a version bump
+is a one-line edit to the sibling `.brain/toolkit-pin` file, never this one.
+
+Resolution (three steps, in order):
+  1. Which tool am I? -- this file's own name (Path(__file__).name), i.e.
+     "brain" or "structurer" -- never hardcoded, so one template serves both.
+  2. Which version am I pinned to? -- read verbatim from `.brain/toolkit-pin`
+     (a one-line data file, e.g. "v0.2.0"), sibling to this `bin/` directory.
+  3. Where does the pinned tool live? --
+     <platform-root>/brain-toolkit-worktrees/<pin>/bin/<tool-name>
+     (a `git worktree` checkout of that exact tag -- see brain-toolkit's own
+     DEPLOYMENT.md for how that worktree is created/maintained).
+
+Then: set BRAIN_REPO_ROOT (brain-toolkit v0.1.0+) to THIS repo's own root
+(derived the same way the original byte-copied scripts derived it: two
+levels up from `.brain/bin/`) unless the caller already set it, and run the
+pinned script via `subprocess.run`, passing argv/stdin/stdout/stderr through
+untouched and exiting with its exact return code. Deliberately NOT
+`os.exec*` (unreliable on Windows); deliberately NOT a silent fallback if
+the pinned worktree is missing -- that fails loudly, naming the exact
+missing path and the one-line fix.
+
+Python stdlib only -- no third-party dependencies (same constraint as every
+other `.brain` tool on this platform).
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).resolve()
+TOOL_NAME = SCRIPT_PATH.name                       # "brain" or "structurer"
+BIN_DIR = SCRIPT_PATH.parent                        # <repo>/.brain/bin
+BRAIN_DIR = BIN_DIR.parent                          # <repo>/.brain
+REPO_ROOT = BRAIN_DIR.parent                        # <repo> (two levels up from .brain/bin)
+PLATFORM_ROOT = REPO_ROOT.parent                    # platform root (sibling of brain-toolkit)
+
+PIN_FILE = BRAIN_DIR / "toolkit-pin"
+
+try:
+    PIN = PIN_FILE.read_text(encoding="utf-8").strip()
+except OSError as exc:
+    sys.stderr.write(f"[{TOOL_NAME} shim] cannot read pin file {PIN_FILE}: {exc}\n")
+    sys.exit(1)
+
+if not PIN:
+    sys.stderr.write(f"[{TOOL_NAME} shim] {PIN_FILE} is empty -- no toolkit version pinned\n")
+    sys.exit(1)
+
+TOOLKIT_WORKTREE = PLATFORM_ROOT / "brain-toolkit-worktrees" / PIN
+TARGET = TOOLKIT_WORKTREE / "bin" / TOOL_NAME
+
+if not TARGET.exists():
+    sys.stderr.write(
+        f"[{TOOL_NAME} shim] pinned worktree not found: {TARGET}\n"
+        f"[{TOOL_NAME} shim] fix: git -C \"{PLATFORM_ROOT / 'brain-toolkit'}\" "
+        f"worktree add \"{TOOLKIT_WORKTREE}\" {PIN}\n"
+    )
+    sys.exit(1)
+
+env = os.environ.copy()
+env.setdefault("BRAIN_REPO_ROOT", str(REPO_ROOT))
+
+result = subprocess.run([sys.executable, str(TARGET), *sys.argv[1:]], env=env)
+sys.exit(result.returncode)
