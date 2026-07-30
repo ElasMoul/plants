@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iconography · Herbarium</title>
+  <meta name="description" content="Herbarium has no icon library — meaning is carried by a small set of drawn marks that components own, and every mark is labelled in text.">
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body data-page="iconography" data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ds-shell">
+    <main id="main" class="ds-main">
+      <div class="ds-article">
+
+        <header class="ds-page-header">
+          <p class="ds-kicker">Foundations</p>
+          <h1>Iconography</h1>
+          <p class="ds-lede">Herbarium ships no icon set. What looks like an icon in PlantPal is a drawn mark that a component owns — a leaf, three rungs, a dot, a ring around a leaf spot — and every one of them is read aloud as text.</p>
+          <div class="ds-page-header__meta">
+            <span class="hbm-badge hbm-badge--positive"><span class="hbm-dot"></span>Stable</span>
+            <span class="hbm-badge hbm-badge--outline">v1.0.0</span>
+          </div>
+        </header>
+
+        <section class="ds-section">
+          <h2>Overview</h2>
+          <p>You will not find a pictogram font, an SVG sprite or an <code>hbm-icon</code> class in this system, and you must not add one. PlantPal is a paper register, not a console: on a herbarium sheet a mark means something because of where it sits and what it is drawn from, so the marks here are shapes cut from the same tokens as everything else.</p>
+          <p>Use a mark when the mark is the meaning — health, confidence, position, an unloaded region. Use words when the meaning is an instruction. A mark never replaces the word next to it; it stands beside it so the state can be found by glance and confirmed by reading.</p>
+          <div class="hbm-callout hbm-callout--tip">
+            <p class="hbm-callout__title">The rule in one line</p>
+            <p>Every mark has a text equivalent in the same component. If you cannot write that text, you do not have a mark — you have decoration, and it does not ship.</p>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>The mark inventory</h2>
+          <p>These are all of them. Each belongs to a component, is drawn by that component's CSS, and is documented in full on that component's page.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <span class="hbm-health hbm-health--thriving"><span class="hbm-health__leaf"></span>Thriving</span>
+              <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span>Needs attention</span>
+              <span class="hbm-health hbm-health--ailing"><span class="hbm-health__leaf"></span>Ailing</span>
+            </div>
+            <figcaption class="ds-specimen__caption">The leaf is the health mark. It changes colour, never shape — so the five states stay one family and the word beside it stays the thing you actually read.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-health hbm-health--thriving"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Thriving&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--watch"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Needs attention&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--ailing"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Ailing&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <span class="hbm-confidence hbm-confidence--high"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>High</span>
+              <span class="hbm-confidence hbm-confidence--low"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>Low</span>
+            </div>
+            <figcaption class="ds-specimen__caption">Three rungs are the confidence mark — counted, not sized, so a low reading is quieter but never smaller or harder to see.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-confidence hbm-confidence--high"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;High&lt;/span&gt;
+&lt;span class="hbm-confidence hbm-confidence--low"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;Low&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <span class="hbm-badge hbm-badge--caution"><span class="hbm-dot"></span>Due today</span>
+              <span class="hbm-stale-note"><span class="hbm-dot"></span>Last scan 6 days ago</span>
+              <span class="hbm-hedge">This looks like a peace lily, but the leaf edge is unclear.</span>
+            </div>
+            <figcaption class="ds-specimen__caption">The dot inherits its colour from the text it sits in, so a badge and a stale note need no mark of their own; the hedge draws its own <em>cf.</em> — the collector's abbreviation for a specimen not yet certain.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-badge hbm-badge--caution"&gt;&lt;span class="hbm-dot"&gt;&lt;/span&gt;Due today&lt;/span&gt;
+&lt;span class="hbm-stale-note"&gt;&lt;span class="hbm-dot"&gt;&lt;/span&gt;Last scan 6 days ago&lt;/span&gt;
+&lt;span class="hbm-hedge"&gt;This looks like a peace lily, but the leaf edge is unclear.&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <h3>Where each mark lives</h3>
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Mark</th><th>Class</th><th>Colour token</th><th>What it says</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Leaf</td>
+                  <td><code>.hbm-health__leaf</code></td>
+                  <td><code>--hbm-health-thriving</code> … <code>--hbm-health-lost</code></td>
+                  <td>How the plant is doing. Documented on <a href="../components/health-confidence.html">Health &amp; confidence</a>.</td>
+                </tr>
+                <tr>
+                  <td>Rungs</td>
+                  <td><code>.hbm-confidence__rung</code></td>
+                  <td><code>--hbm-confidence-high</code>, <code>--hbm-confidence-medium</code>, <code>--hbm-confidence-low</code></td>
+                  <td>How sure the system is about an identification or diagnosis.</td>
+                </tr>
+                <tr>
+                  <td>Dot</td>
+                  <td><code>.hbm-dot</code></td>
+                  <td><code>currentColor</code></td>
+                  <td>Nothing on its own — it takes the meaning of the badge or note around it.</td>
+                </tr>
+                <tr>
+                  <td>Hedge</td>
+                  <td><code>.hbm-hedge</code></td>
+                  <td><code>--hbm-info</code></td>
+                  <td>We are not certain. See <a href="../patterns/uncertainty.html">Uncertainty</a>.</td>
+                </tr>
+                <tr>
+                  <td>Ring</td>
+                  <td><code>.hbm-plate__region</code></td>
+                  <td><code>--hbm-caution</code>, <code>--hbm-danger</code> when severe</td>
+                  <td>The part of the photo being talked about. See <a href="../components/plate.html">Plate</a>.</td>
+                </tr>
+                <tr>
+                  <td>You-are-here</td>
+                  <td><code>.hbm-marker</code></td>
+                  <td><code>--hbm-marker</code></td>
+                  <td>Your position in the garden. See <a href="../components/world-and-nodes.html">World &amp; nodes</a>.</td>
+                </tr>
+                <tr>
+                  <td>Hatch</td>
+                  <td><code>.hbm-unknown-region</code></td>
+                  <td><code>--hbm-unknown-hatch</code></td>
+                  <td>Not loaded yet — which is not the same as empty.</td>
+                </tr>
+                <tr>
+                  <td>Arrow</td>
+                  <td><code>.hbm-nav</code>, <code>.hbm-nav--origin</code></td>
+                  <td><code>--hbm-text-muted</code></td>
+                  <td>This is a way out of here. See <a href="../components/edges.html">Edges</a>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Every colour in that table is a semantic role. Never reach past it to a primitive — the reasoning is on <a href="../foundations/colors.html">Colors</a>.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>The direction arrow</h2>
+          <p>The one glyph in the system is the arrow an edge draws after itself. It is a character in CSS, not an image, and the component chooses it: a forward edge draws <code>→</code>, an edge back to where you came from draws <code>↖</code>, and under a right-to-left locale the forward arrow flips to <code>←</code> on its own.</p>
+          <p>Because of that, you must never type an arrow into your own copy. Write the destination; the edge draws the direction.</p>
+          <div class="ds-code">
+            <pre><code>&lt;!-- correct: the edge draws its own arrow, in the reader's own direction --&gt;
+&lt;a class="hbm-nav" href="#"&gt;Monstera&lt;/a&gt;
+
+&lt;!-- wrong: a hard-coded arrow points the wrong way in Arabic --&gt;
+&lt;a class="hbm-nav" href="#"&gt;Monstera →&lt;/a&gt;</code></pre>
+          </div>
+          <p>The full locale rules are on <a href="../guidelines/rtl.html">RTL &amp; locale</a>.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Icon-only actions</h2>
+          <p>An action may drop to a mark alone when space is genuinely short and the same action is spelled out somewhere on the same view. Use <code>.hbm-act--icon</code>, put a single character inside it, and give it a real name with <code>.hbm-visually-hidden</code>.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--icon" title="Add a plant">+<span class="hbm-visually-hidden">Add a plant to my garden</span></button>
+              <button type="button" class="hbm-act hbm-act--icon hbm-act--quiet" title="More">…<span class="hbm-visually-hidden">More options for Fern</span></button>
+              <button type="button" class="hbm-act hbm-act--primary">Add a plant</button>
+            </div>
+            <figcaption class="ds-specimen__caption">The icon-only form is a shorthand for an action that is already written out — never the only place a task is offered.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--icon" title="Add a plant"&gt;+&lt;span class="hbm-visually-hidden"&gt;Add a plant to my garden&lt;/span&gt;&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--icon hbm-act--quiet" title="More"&gt;…&lt;span class="hbm-visually-hidden"&gt;More options for Fern&lt;/span&gt;&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--primary"&gt;Add a plant&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+
+          <p>An icon-only control is still an action, so it still obeys the action rules on <a href="../components/actions.html">Actions</a>: it mutates something, it never navigates, and it never borrows the form of an edge.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Sizing, colour and motion</h2>
+          <p>Marks are sized from the space scale, not from a font size, so they hold their proportion when a reader enlarges text. The leaf is <code>--hbm-space-3</code> square, a rung is <code>--hbm-space-3</code> by <code>--hbm-space-2</code>, the dot is <code>--hbm-space-2</code>, the you-are-here marker is <code>--hbm-space-4</code>. Those values live in the components; do not restate them on a page.</p>
+          <p>Three constraints apply to every mark:</p>
+          <ul>
+            <li><strong>No mark carries its own colour.</strong> It takes a semantic role, or it takes <code>currentColor</code> from the text around it, so both themes are correct without a second definition.</li>
+            <li><strong>No mark animates.</strong> Marks are drawn, not performed — nothing here spins, pulses or pops. The only moving mark is the you-are-here marker, and it travels with <code>--hbm-motion-travel</code> because it is reporting a real change of position.</li>
+            <li><strong>No mark is decorative.</strong> If it does not report state, it is not in the system.</li>
+          </ul>
+          <p>Under <code>prefers-reduced-motion</code> the motion durations collapse to near zero, so the marker updates without a journey and every mark stays drawn and readable. Nothing disappears in reduced motion.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Accessibility</h2>
+          <p>The marks are the part of this system most likely to fail a reader, so they carry the strictest rules.</p>
+          <h3>Never colour alone</h3>
+          <p>Health and confidence both change colour between states, and colour alone is not a reading. That is why <code>.hbm-health</code> and <code>.hbm-confidence</code> both include their label inside the component: the leaf and the rungs are a second, faster channel on top of the word, never a substitute for it. A reader with a colour-vision difference gets the state from the text; a reader in a hurry gets it from the mark.</p>
+          <h3>Naming and announcement</h3>
+          <p>Marks are empty <code>&lt;span&gt;</code> elements with no text, so a screen reader passes over them silently and announces the label instead — <span class="hbm-caption">"Needs attention"</span>, not <span class="hbm-caption">"image, yellow"</span>. Keep it that way: never put <code>aria-label</code> on a mark, and never add <code>role="img"</code> to one.</p>
+          <p>An icon-only action is the exception, because there is no visible word to read. Give it a <code>.hbm-visually-hidden</code> name that says the object as well as the verb — "Add a plant to my garden", not "Add" — so the announcement makes sense out of context.</p>
+          <h3>Contrast and target size</h3>
+          <p>Every mark colour is a semantic role that is contrast-checked against its own surface in both paper and dusk, so a mark stays legible in either theme without a page-level override. Marks are never interactive on their own; when a mark sits inside a control, the control provides the hit target and the focus ring — <code>.hbm-act--icon</code> is a full-size button, not a bare glyph.</p>
+          <h3>Keyboard</h3>
+          <p>Nothing on this page introduces a new keyboard path. A mark is not focusable and never appears in the tab order. An icon-only action is a real <code>&lt;button&gt;</code>: it is reached by <kbd>Tab</kbd>, fired by <kbd>Enter</kbd> or <kbd>Space</kbd>, and shows the same focus outline as any other action.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Usage guidance</h2>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span>Needs attention</span>
+              </div>
+              <p>Keep the mark and its word together, so the state can be seen at a glance and confirmed by reading.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span></span>
+              </div>
+              <p>Strip the word and leave the mark to carry the state alone — a reader who cannot separate the colours learns nothing.</p>
+            </div>
+          </div>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-badge hbm-badge--info"><span class="hbm-dot"></span>Recent scans</span>
+              </div>
+              <p>Let the dot take its colour from the badge it sits in, so one mark serves every tone without a new class.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-badge hbm-badge--info"><span class="hbm-health__leaf"></span>Recent scans</span>
+              </div>
+              <p>Borrow the health leaf for something that is not a health reading — the mark then means two things and reports neither.</p>
+            </div>
+          </div>
+
+          <div class="hbm-callout hbm-callout--caution">
+            <p class="hbm-callout__title">If you need a mark that is not here</p>
+            <p>Write the page or the screen without it and raise the gap. A new mark is a change to the system, and this file is frozen for v1.0.0 — see <a href="../PRINCIPLES.md">the principles</a> for why the vocabulary stays small.</p>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+</body>
+</html>

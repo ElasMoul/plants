@@ -1,0 +1,24 @@
+{
+  "name": "Herbarium",
+  "pages": {
+    "components": [
+      "sheet",
+      "plant-tag",
+      "plate",
+      "health-confidence",
+      "edges",
+      "actions",
+      "care-log",
+      "world-and-nodes"
+    ],
+    "patterns": [
+      "traversal",
+      "uncertainty",
+      "due-today"
+    ],
+    "guidelines": [
+      "rtl",
+      "voice"
+    ]
+  }
+}

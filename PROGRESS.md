@@ -120,3 +120,18 @@ committed and pushed to `main`. Next: resume Phase 10 / DEPLOY work per `.claude
   the live memory layer for PlantPal's own feature work, untouched by this session except
   the two "Current Status" sections named above.
 - Vault-sync: none.
+
+## Session 1 (2026-07-30)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-07-30_0254_i-reverted-all-the-wave-7-changes-the-st.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: I REVERTED ALL THE WAVE 7 CHANGES ( THE STAGE PAGE ) and i want you to bump plantpal to contract v0.17.0 -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-07-30_0254_i-reverted-all-the-wave-7-changes-the-st.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-07-30_0254_i-reverted-all-the-wave-7-changes-the-st

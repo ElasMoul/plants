@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Health &amp; confidence · Herbarium</title>
+  <meta name="description" content="How a plant's condition and the system's certainty about a claim are drawn, worded and announced.">
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body data-page="health-confidence" data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ds-shell">
+    <main id="main" class="ds-main">
+      <div class="ds-article">
+
+        <header class="ds-page-header">
+          <p class="ds-kicker">Components</p>
+          <h1>Health &amp; confidence</h1>
+          <p class="ds-lede">Two separate readings, always shown together: how the plant is doing, and how sure PlantPal is about what it just told you. One is about the plant; the other is about the system.</p>
+          <div class="ds-page-header__meta">
+            <span class="hbm-badge hbm-badge--positive"><span class="hbm-dot"></span>Stable</span>
+            <span class="hbm-badge hbm-badge--outline">v1.0.0</span>
+          </div>
+        </header>
+
+        <section class="ds-section">
+          <h2>Overview</h2>
+          <p>A health reading is a claim about your plant: thriving, stable, watch, ailing, lost. A confidence reading is a claim about the claim: how much evidence PlantPal had when it made it. Keep them apart. A confident diagnosis of an ailing plant and an uncertain guess at a healthy one look nothing alike, and the person holding the phone needs to tell them apart before deciding whether to act.</p>
+          <p>Use <code>.hbm-health</code> wherever a plant's condition appears — on a plant tag, in a node, at the head of a sheet. Use <code>.hbm-confidence</code> on every identification or diagnosis the system produced, without exception. When confidence is low, add <code>.hbm-hedge</code> and say what you are unsure about in words.</p>
+          <p>Do not use either for progress, for a rating, or for anything the person entered themselves. What someone typed is not a claim PlantPal needs to hedge, and a health leaf next to their own note reads as the system doubting them.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Health levels</h2>
+          <p>Five levels, no more. Each is a leaf mark plus its word — the mark alone is never enough, because colour is not readable by everyone and "watch" and "ailing" sit close together in hue.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <span class="hbm-health hbm-health--thriving"><span class="hbm-health__leaf"></span>Thriving</span>
+              <span class="hbm-health hbm-health--stable"><span class="hbm-health__leaf"></span>Stable</span>
+              <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span>Needs attention</span>
+              <span class="hbm-health hbm-health--ailing"><span class="hbm-health__leaf"></span>Ailing</span>
+              <span class="hbm-health hbm-health--lost"><span class="hbm-health__leaf"></span>Lost</span>
+            </div>
+            <figcaption class="ds-specimen__caption">The five health levels. Always the leaf and the word together, in that order.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-health hbm-health--thriving"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Thriving&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--stable"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Stable&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--watch"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Needs attention&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--ailing"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Ailing&lt;/span&gt;
+&lt;span class="hbm-health hbm-health--lost"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Lost&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Modifier</th><th>Token</th><th>Say</th><th>Use when</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>.hbm-health--thriving</code></td>
+                  <td><code>--hbm-health-thriving</code></td>
+                  <td>Thriving</td>
+                  <td>New growth since the last check, and no care overdue.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-health--stable</code></td>
+                  <td><code>--hbm-health-stable</code></td>
+                  <td>Stable</td>
+                  <td>Nothing has changed and nothing is due. The resting state of most plants in my garden.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-health--watch</code></td>
+                  <td><code>--hbm-health-watch</code></td>
+                  <td>Needs attention</td>
+                  <td>Something is drifting — care overdue, or a sign worth a second look. Not an emergency.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-health--ailing</code></td>
+                  <td><code>--hbm-health-ailing</code></td>
+                  <td>Ailing</td>
+                  <td>A diagnosed problem is spreading and the plant will get worse without care.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-health--lost</code></td>
+                  <td><code>--hbm-health-lost</code></td>
+                  <td>Lost</td>
+                  <td>The person recorded that the plant died. Kept in the garden, never deleted quietly.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="hbm-callout hbm-callout--caution">
+            <p class="hbm-callout__title">Health is recorded, not guessed</p>
+            <p>A level only changes from a scan, a logged care event, or something the person told PlantPal. Never derive a level from how long the app has been open or how long since a photo — an absence of information is not a decline, and drawing it as one teaches people to distrust the leaf.</p>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>Confidence rungs</h2>
+          <p>Three rungs, drawn as a small ladder with its word beside it. Three rung elements are always present; the modifier fills one, two or three of them, so the unfilled rungs show how much certainty is missing rather than hiding it.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <span class="hbm-confidence hbm-confidence--high"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>High confidence</span>
+              <span class="hbm-confidence hbm-confidence--medium"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>Fairly sure</span>
+              <span class="hbm-confidence hbm-confidence--low"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>Not sure</span>
+            </div>
+            <figcaption class="ds-specimen__caption">Three rungs are always drawn. The empty ones are the point.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-confidence hbm-confidence--high"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;High confidence&lt;/span&gt;
+&lt;span class="hbm-confidence hbm-confidence--medium"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;Fairly sure&lt;/span&gt;
+&lt;span class="hbm-confidence hbm-confidence--low"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;Not sure&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Modifier</th><th>Token</th><th>Say</th><th>Use when</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>.hbm-confidence--high</code></td>
+                  <td><code>--hbm-confidence-high</code></td>
+                  <td>High confidence</td>
+                  <td>One clear match and no close rival. Safe to name the plant plainly.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-confidence--medium</code></td>
+                  <td><code>--hbm-confidence-medium</code></td>
+                  <td>Fairly sure</td>
+                  <td>A leading match with others behind it. Name it, and offer the alternatives.</td>
+                </tr>
+                <tr>
+                  <td><code>.hbm-confidence--low</code></td>
+                  <td><code>--hbm-confidence-low</code></td>
+                  <td>Not sure</td>
+                  <td>Several matches, or a poor photo. Pair with <code>.hbm-hedge</code> and ask for what would help.</td>
+                </tr>
+                <tr>
+                  <td>—</td>
+                  <td><code>--hbm-confidence-track</code></td>
+                  <td>—</td>
+                  <td>The unfilled rung. Present at every level, so the ladder's height never changes.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>The hedge</h3>
+          <p>The hedge is the herbarium label's <em>cf.</em> — the collector's mark for "compare with, but I could not confirm". It carries its own mark, so you never write "cf." into the text yourself. Use it whenever confidence is low, and say in the same breath what would raise it.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <span class="hbm-hedge">This looks like a <span class="hbm-binomial">Monstera deliciosa</span>, but the leaves are young. A photo of the whole plant would settle it.</span>
+            </div>
+            <figcaption class="ds-specimen__caption">Plain about the doubt, and specific about what would resolve it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-hedge"&gt;This looks like a &lt;span class="hbm-binomial"&gt;Monstera deliciosa&lt;/span&gt;, but the leaves are young. A photo of the whole plant would settle it.&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Both readings in place</h2>
+          <p>On a real sheet the two sit side by side under the name: the plant's condition first, the system's certainty second. Read left to right in English, they say "here is how it is doing, and here is how much to trust me".</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <article class="hbm-sheet hbm-sheet--mounted">
+                <div class="hbm-sheet__header">
+                  <h3 class="hbm-sheet__title">Kitchen Fern</h3>
+                  <span class="hbm-plate-no">No. 014</span>
+                </div>
+                <div class="hbm-sheet__body">
+                  <p class="hbm-binomial">Nephrolepis exaltata</p>
+                  <div class="hbm-row">
+                    <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span>Needs attention</span>
+                    <span class="hbm-confidence hbm-confidence--medium"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>Fairly sure</span>
+                  </div>
+                  <p class="hbm-caption">Browning tips on the outer fronds since your last scan. Dry air is the usual cause.</p>
+                </div>
+                <div class="hbm-sheet__footer">
+                  <button type="button" class="hbm-act hbm-act--primary">Log watering</button>
+                  <a class="hbm-nav" href="../patterns/uncertainty.html">Other possibilities</a>
+                </div>
+              </article>
+            </div>
+            <figcaption class="ds-specimen__caption">Condition, then certainty, then what you can do about it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;article class="hbm-sheet hbm-sheet--mounted"&gt;
+  &lt;div class="hbm-sheet__header"&gt;
+    &lt;h3 class="hbm-sheet__title"&gt;Kitchen Fern&lt;/h3&gt;
+    &lt;span class="hbm-plate-no"&gt;No. 014&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="hbm-sheet__body"&gt;
+    &lt;p class="hbm-binomial"&gt;Nephrolepis exaltata&lt;/p&gt;
+    &lt;div class="hbm-row"&gt;
+      &lt;span class="hbm-health hbm-health--watch"&gt;&lt;span class="hbm-health__leaf"&gt;&lt;/span&gt;Needs attention&lt;/span&gt;
+      &lt;span class="hbm-confidence hbm-confidence--medium"&gt;&lt;span class="hbm-confidence__rungs"&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;&lt;/span&gt;Fairly sure&lt;/span&gt;
+    &lt;/div&gt;
+    &lt;p class="hbm-caption"&gt;Browning tips on the outer fronds since your last scan. Dry air is the usual cause.&lt;/p&gt;
+  &lt;/div&gt;
+  &lt;div class="hbm-sheet__footer"&gt;
+    &lt;button type="button" class="hbm-act hbm-act--primary"&gt;Log watering&lt;/button&gt;
+    &lt;a class="hbm-nav" href="../patterns/uncertainty.html"&gt;Other possibilities&lt;/a&gt;
+  &lt;/div&gt;
+&lt;/article&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Behaviour</h2>
+          <p>Neither reading is interactive. They are labels, not controls: nothing here is focusable, nothing responds to hover, and neither is ever the thing a person clicks. If you want the person to act on a reading, put an <code>.hbm-act</code> or an <code>.hbm-nav</code> next to it and let that carry the interaction.</p>
+          <p>A change of level is a non-structural change, so it updates in place. The leaf changes colour and the word changes with it; the reading does not move, the sheet does not re-order, and nothing around it reflows. The same holds for a rung count: the ladder keeps its height and its position, and only the fill changes.</p>
+          <p>Under <code>prefers-reduced-motion</code> nothing on this page behaves differently, because neither component animates at any setting. Both are drawn states, not transitions — a plant that started ailing overnight simply is ailing when you open the app.</p>
+          <p>When a reading has not loaded yet, do not draw a health level or a confidence level at all. Use the honesty states instead: an unloaded region is unknown, not thriving, and a stale reading is marked stale rather than silently shown as current.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Accessibility</h2>
+          <p>Both components carry their own text, and that text is the accessible name. Never ship a bare leaf or a bare ladder: a mark on its own is unreadable to a screen reader, to anyone who cannot separate the greens and yellows, and to anyone reading in bright sun beside a plant.</p>
+          <p>Colour is a second channel here, never the only one. The leaf and the rungs repeat what the word already says, so a person who sees no colour difference between "needs attention" and "ailing" still reads them correctly. The words carry text colour at body or caption weight and meet contrast against the sheet in both the paper and dusk themes; the leaf and rung marks are decoration and are exempt.</p>
+          <p>Neither component is focusable and neither is in the tab order, which is correct — there is nothing to operate. The keyboard path runs through the actions and edges beside them. Do not add <code>tabindex</code> to make a reading reachable; if it needs reaching, it needs an action.</p>
+          <p>When a level changes while the page is open, announce it once through the region that owns the sheet, in the same words shown on screen: "Kitchen Fern, needs attention". Do not announce the confidence rungs as a number out of three — say "fairly sure", the same phrase a sighted person reads.</p>
+          <p>Where the reading is drawn inside a graphic rather than as text — a leaf on a node in the world view — pair it with <code>.hbm-visually-hidden</code> text carrying the same word, so the node's name and its condition are announced together.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Usage guidance</h2>
+          <p>Show confidence on every claim PlantPal makes, including the confident ones. A rung ladder that only appears when the system is unsure teaches people that its presence means trouble, and they stop reading it.</p>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-health hbm-health--ailing"><span class="hbm-health__leaf"></span>Ailing</span>
+                <span class="hbm-confidence hbm-confidence--low"><span class="hbm-confidence__rungs"><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span><span class="hbm-confidence__rung"></span></span>Not sure</span>
+              </div>
+              <p>Show the condition and the certainty together, so a serious-sounding reading arrives with the caveat that PlantPal is guessing.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-health hbm-health--ailing"><span class="hbm-health__leaf"></span>Ailing</span>
+              </div>
+              <p>Show a diagnosis alone — the person reads a guess as a verdict and repots a plant that was fine.</p>
+            </div>
+          </div>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-hedge">Possibly leaf spot. A close photo of one marked leaf would help.</span>
+              </div>
+              <p>Say what is uncertain and what would resolve it, so the next step belongs to the person and is easy to take.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-badge hbm-badge--danger"><span class="hbm-dot"></span>Leaf spot 62%</span>
+              </div>
+              <p>Hand over a raw percentage in an alarm-coloured badge — it reads as urgent, and a beginner cannot act on 62%.</p>
+            </div>
+          </div>
+
+          <p>Keep the wording fixed. "Needs attention", "fairly sure" and "not sure" are the system's words for these levels everywhere in PlantPal; rewriting them per screen makes the same reading look like two different things. The full rules for phrasing an uncertain claim live on <a href="../patterns/uncertainty.html">Uncertainty</a>, and the voice these phrases come from is set out on <a href="../guidelines/voice.html">Voice &amp; copy</a>.</p>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+</body>
+</html>

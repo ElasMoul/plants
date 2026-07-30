@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion · Herbarium</title>
+  <meta name="description" content="The duration, easing and motion-role tokens that make change in PlantPal travel rather than pop.">
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body data-page="motion" data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ds-shell">
+    <main id="main" class="ds-main">
+      <div class="ds-article">
+
+        <header class="ds-page-header">
+          <p class="ds-kicker">Foundations</p>
+          <h1>Motion</h1>
+          <p class="ds-lede">Motion in PlantPal is growth: slow, continuous, and always travelling from somewhere to somewhere. Four durations, two easings, three roles — you compose from the roles, never from a number you chose yourself.</p>
+          <div class="ds-page-header__meta">
+            <span class="hbm-badge hbm-badge--positive"><span class="hbm-dot"></span>Stable</span>
+            <span class="hbm-badge hbm-badge--outline">v1.0.0</span>
+          </div>
+        </header>
+
+        <section class="ds-section">
+          <h2>Overview</h2>
+          <p>Every transition in this system answers one question: what moved, and from where. A plant that was on the left is still on the left after you look at it. A count that changed is still in the same line of the same sheet. When the camera does travel — you tapped an edge, you opened a plate — the movement shows you the distance you crossed, so you never have to rebuild the map in your head.</p>
+          <p>Use motion when something changes <em>place</em>: the camera moving between nodes, a menu unfurling from its trigger, a toast arriving from the view it belongs to. Do not use motion for a value that merely changed: a new watering count, a health leaf turning from stable to watch, a photo finishing its upload. Those update where they already are, at once. This is the sixth principle in <a href="../PRINCIPLES.md">the principles</a>, and it is enforced by the components — see <a href="../patterns/traversal.html">Traversal</a> for how the world moves and <a href="../components/edges.html">Edges</a> for how arrivals are announced.</p>
+          <p>You will not write a duration or a curve on a component. The components already carry theirs. Your job on a page is to know which role a change belongs to, and to leave the rest alone.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Duration scale</h2>
+          <p>Four steps, and nothing between them. Each one is a kind of change, not a speed: reach for the one that describes what is happening, not the one that feels right.</p>
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>--hbm-dur-1</code></td>
+                  <td>120ms</td>
+                  <td>A control answering your finger — hover, press, focus, a switch settling.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-dur-2</code></td>
+                  <td>240ms</td>
+                  <td>A small element appearing or leaving in place, such as a hint under a field.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-dur-3</code></td>
+                  <td>420ms</td>
+                  <td>Something unfurling from its own origin — a menu, a toast, a drawer.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-dur-4</code></td>
+                  <td>700ms</td>
+                  <td>The camera crossing the world, and the you-are-here marker travelling with it.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>Easing curves</h2>
+          <p>Two curves. Both start gently and end without a bounce, because a plant does not snap back. There is no linear easing in this system and no overshoot: an element that overshoots reads as a pop, and a pop is the one thing motion here must never be.</p>
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>--hbm-ease-unfurl</code></td>
+                  <td><code>cubic-bezier(0.22, 0.61, 0.20, 1)</code></td>
+                  <td>Something growing into the view: it leaves fast and arrives slowly, so the end of the movement is the part you read.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-ease-settle</code></td>
+                  <td><code>cubic-bezier(0.33, 0, 0.15, 1)</code></td>
+                  <td>Something already on screen changing state. Symmetrical and quiet — it draws no attention to itself.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>Motion roles</h2>
+          <p>These three are the layer you use. Each pairs a duration with the curve that belongs to it, so a state change and a camera move can never be given each other's timing by accident. Write the role into a <code>transition</code> shorthand; the property list is yours, the timing is not.</p>
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>--hbm-motion-state</code></td>
+                  <td><code>--hbm-dur-1</code> + <code>--hbm-ease-settle</code></td>
+                  <td>Colour, border and background changes on a control that stays where it is.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-motion-unfurl</code></td>
+                  <td><code>--hbm-dur-3</code> + <code>--hbm-ease-unfurl</code></td>
+                  <td>Menus, toasts and anything else that grows out of a point you can see.</td>
+                </tr>
+                <tr>
+                  <td><code>--hbm-motion-travel</code></td>
+                  <td><code>--hbm-dur-4</code> + <code>--hbm-ease-unfurl</code></td>
+                  <td>The world canvas, the you-are-here marker, and the app shrinking as a drawer opens.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="ds-code">
+            <pre><code>.my-page-demo {
+  transition: border-color var(--hbm-motion-state),
+              background var(--hbm-motion-state);
+}</code></pre>
+          </div>
+          <div class="hbm-callout hbm-callout--caution">
+            <p class="hbm-callout__title">One role per element</p>
+            <p>Never mix two roles in one transition list. If part of an element settles while another part travels, the element is doing two jobs and should be two elements.</p>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>State motion in place</h2>
+          <p>The commonest motion in PlantPal is the smallest: a control acknowledging you without moving. Press the action below. It changes colour, becomes its own reversal for a few seconds, and returns — the button never leaves its position, and nothing around it reflows.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--primary" data-hbm-undo="Watered Fern" data-hbm-undo-seconds="5">Water Fern</button>
+            </div>
+            <figcaption class="ds-specimen__caption">A mutation offers its reversal where it happened, at state timing — you never chase it across the screen.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary" data-hbm-undo="Watered Fern" data-hbm-undo-seconds="5"&gt;Water Fern&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+          <p>Hovering an edge shows the same principle from the other side: the rule under it takes the accent, and its arrow steps one space along the direction it will take you. That step is the shortest promise the system makes, and it is made before you commit.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <a class="hbm-nav" href="../patterns/traversal.html">My garden</a>
+              <a class="hbm-nav hbm-nav--origin" href="../components/edges.html">Recent scans</a>
+            </div>
+            <figcaption class="ds-specimen__caption">An edge animates its own direction on hover. The arrow is drawn by the component, so it flips correctly in Arabic without a second markup.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;a class="hbm-nav" href="../patterns/traversal.html"&gt;My garden&lt;/a&gt;
+&lt;a class="hbm-nav hbm-nav--origin" href="../components/edges.html"&gt;Recent scans&lt;/a&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Unfurling from an origin</h2>
+          <p>Anything that appears over the page grows from the point that opened it, at <code>--hbm-motion-unfurl</code>. It does not fade in from nowhere, and it does not slide in from an edge of the screen it has no relationship with. Open the menu below and watch where it starts.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <span class="hbm-menu-wrap">
+                <button type="button" class="hbm-act hbm-act--quiet" data-hbm-menu-trigger>Care options</button>
+                <div class="hbm-menu">
+                  <button type="button" class="hbm-menu__item">Log watering</button>
+                  <button type="button" class="hbm-menu__item">Log feeding</button>
+                  <button type="button" class="hbm-menu__item">Change nickname</button>
+                </div>
+              </span>
+            </div>
+            <figcaption class="ds-specimen__caption">The menu unfurls downward from its trigger, so the thing you pressed is visibly the thing that produced it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-menu-wrap"&gt;
+  &lt;button type="button" class="hbm-act hbm-act--quiet" data-hbm-menu-trigger&gt;Care options&lt;/button&gt;
+  &lt;div class="hbm-menu"&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Log watering&lt;/button&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Log feeding&lt;/button&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Change nickname&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+          <p>Travel motion — the world canvas panning, the marker following it — belongs to <code>--hbm-motion-travel</code> and is demonstrated where it lives, on <a href="../patterns/traversal.html">Traversal</a> and <a href="../components/world-and-nodes.html">World &amp; nodes</a>. Do not rebuild a travelling camera on any other page.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Reduced motion</h2>
+          <p>When the reader has asked their device for reduced motion, all four durations collapse to a single millisecond at the token layer. Nothing else changes: transitions still run, so no property is left mid-way; direction arrows are still drawn; the you-are-here marker is still redrawn at its new position; the focus ring still appears. The reader arrives at exactly the same picture, without the journey.</p>
+          <p>One thing is switched off rather than shortened — the looping shimmer on <code>.hbm-growing</code>, which would otherwise repeat forever at a millisecond. It becomes a still, dimmed block that still says <em>this value has not arrived yet</em>.</p>
+          <div class="ds-code">
+            <pre><code>@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme="light"] {
+    --hbm-dur-1: 1ms;
+    --hbm-dur-2: 1ms;
+    --hbm-dur-3: 1ms;
+    --hbm-dur-4: 1ms;
+  }
+}</code></pre>
+          </div>
+          <p>Because the collapse happens in <code>tokens.css</code>, you get it by using a role. A duration written by hand on a page would survive the query and keep moving for a reader who asked it not to — which is the whole reason hand-written durations are not allowed here.</p>
+          <div class="hbm-callout hbm-callout--tip">
+            <p class="hbm-callout__title">Checking your work</p>
+            <p>Read <code>herbarium.reducedMotion()</code> if a behaviour genuinely needs to know. Never use it to substitute a different animation — the answer is always less motion, never other motion.</p>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>Accessibility</h2>
+          <p><strong>Reduced motion is honoured everywhere.</strong> The durations collapse system-wide, and no component reintroduces one. If you add a page-scoped diagram, give it a motion role or no transition at all.</p>
+          <p><strong>Nothing moves for longer than three quarters of a second.</strong> The longest role is <code>--hbm-motion-travel</code> at 700ms, well inside the five seconds after which movement must be pausable. Nothing in the system moves on a loop except the loading shimmer, which stops under reduced motion.</p>
+          <p><strong>Motion never carries meaning alone.</strong> The arrow on an edge, the halo on the focal node and the accent on an active edge are all drawn statically as well as animated, so a reader who sees no movement still sees direction, focus and state. Colour is never the only signal either — see <a href="colors.html">Colors</a>.</p>
+          <p><strong>Focus is never animated away.</strong> The focus ring appears at full strength immediately and follows the keyboard, not the camera. When the world travels, focus stays on the element the reader chose.</p>
+          <p><strong>Arrivals are announced, not just shown.</strong> The toast rail is a polite live region, so a change that travelled into view is also read aloud with the view it came from. Motion is the visual half of that announcement, never the whole of it.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Usage guidance</h2>
+          <p>Confine motion to the thing that is actually changing. A single value still loading is a single quiet block; a whole sheet set shimmering tells the reader the page is broken when only one number is late.</p>
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-health hbm-health--watch"><span class="hbm-health__leaf"></span>Needs attention</span>
+                <span class="hbm-growing">Last watered 3 days ago</span>
+              </div>
+              <p>Move only the value that has not arrived, so the rest of the sheet stays readable while it resolves.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-growing">Needs attention</span>
+                <span class="hbm-growing">Last watered 3 days ago</span>
+              </div>
+              <p>Set the whole sheet shimmering for one late value — the reader loses the information you already had.</p>
+            </div>
+          </div>
+          <p>The second rule is about place. A count, a status or a new photo updates where it already is; if the layout reflows to celebrate it, the reader has to find their plant again.</p>
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-badge hbm-badge--positive"><span class="hbm-dot"></span>Due today · 2</span>
+                <button type="button" class="hbm-act hbm-act--sm" data-hbm-undo="Watered" data-hbm-undo-seconds="4">Water</button>
+              </div>
+              <p>Let the count change in place at state timing, so the row the reader is looking at stays under their thumb.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <span class="hbm-badge hbm-badge--caution"><span class="hbm-dot"></span>Due today · 2</span>
+                <span class="hbm-hedge">Re-sorting your garden…</span>
+              </div>
+              <p>Reorder the garden because one count changed — the plant the reader came for is now somewhere else.</p>
+            </div>
+          </div>
+          <p>If you are writing any page-scoped CSS at all, use logical properties for anything that moves, so a transition that steps forward in English steps forward in Arabic too. <a href="../guidelines/rtl.html">RTL &amp; locale</a> has the full rule.</p>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+</body>
+</html>

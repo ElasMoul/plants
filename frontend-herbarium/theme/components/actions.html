@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actions · Herbarium</title>
+  <meta name="description" content="The filled, stake-shaped controls that change your garden in PlantPal — their variants, their undo, their menus, and the form fields they submit.">
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body data-page="actions" data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ds-shell">
+    <main id="main" class="ds-main">
+      <div class="ds-article">
+
+        <header class="ds-page-header">
+          <p class="ds-kicker">Components</p>
+          <h1>Actions</h1>
+          <p class="ds-lede">An action changes your garden. It is drawn as a filled stake so it can never be mistaken for a way of getting somewhere, and it stays where you left it — nothing moves because you tapped it.</p>
+          <div class="ds-page-header__meta">
+            <span class="hbm-badge hbm-badge--positive"><span class="hbm-dot"></span>Stable</span>
+            <span class="hbm-badge hbm-badge--outline">v1.0.0</span>
+          </div>
+        </header>
+
+        <section class="ds-section">
+          <h2>Overview</h2>
+          <p>Use an action for anything that writes: watering a plant, filing a scan, renaming a nickname, deleting a bed. An action changes something you own, offers you the way back, and leaves you standing where you were.</p>
+          <p>Do not use an action to go somewhere. A destination is an edge, drawn as a ruled line with its arrow already showing — see <a href="../components/edges.html">Edges</a>. The two vocabularies are deliberately unalike: you should be able to tell a change from a journey by shape alone, before you touch either.</p>
+          <p>This page also owns the fields an action submits — text, select, notes, switch, segmented control. A field without an action beside it is a form you cannot finish, so they are documented together.</p>
+          <div class="hbm-callout hbm-callout--tip">
+            <p class="hbm-callout__title">Rule of thumb</p>
+            <p>If a tap changes your garden, it is an action. If it changes where you are, it is an edge.</p>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>The primary action</h2>
+          <p>Use one primary action per view — the thing you came to do. A second filled action of the same weight makes you read both to find out which one the screen is about.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--primary">Water Fern</button>
+            </div>
+            <figcaption class="ds-specimen__caption">One primary action per view — the thing you came to do.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary"&gt;Water Fern&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+          <p>Name the change, not the mechanism. <em>Water Fern</em> says what will be true afterwards; <em>Submit</em> says only that something happened. Keep the plant's nickname in the label when the view holds more than one plant.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Variants</h2>
+          <p>Five weights, and each one means something. Pick by what the change does, never by how much attention you would like it to get.</p>
+
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--primary">Water Fern</button>
+              <button type="button" class="hbm-act hbm-act--grow">Add to my garden</button>
+              <button type="button" class="hbm-act">Rename</button>
+              <button type="button" class="hbm-act hbm-act--quiet">Not today</button>
+              <button type="button" class="hbm-act hbm-act--danger">Remove from garden</button>
+            </div>
+            <figcaption class="ds-specimen__caption">Primary, grow, default, quiet, danger. Only one of these may be primary in a view.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary"&gt;Water Fern&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--grow"&gt;Add to my garden&lt;/button&gt;
+&lt;button type="button" class="hbm-act"&gt;Rename&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--quiet"&gt;Not today&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--danger"&gt;Remove from garden&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Variant</th><th>Class</th><th>Use it for</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Primary</td>
+                  <td><code>hbm-act--primary</code></td>
+                  <td>The one change this view exists for. Filled in the accent, one per view.</td>
+                </tr>
+                <tr>
+                  <td>Grow</td>
+                  <td><code>hbm-act--grow</code></td>
+                  <td>Something joins your garden — a plant added, a scan kept, a bed created.</td>
+                </tr>
+                <tr>
+                  <td>Default</td>
+                  <td><code>hbm-act</code></td>
+                  <td>An ordinary change sitting beside others: rename, re-scan, mark done.</td>
+                </tr>
+                <tr>
+                  <td>Quiet</td>
+                  <td><code>hbm-act--quiet</code></td>
+                  <td>Declining or dismissing. It is a real change, so it is still an action, not an edge.</td>
+                </tr>
+                <tr>
+                  <td>Danger</td>
+                  <td><code>hbm-act--danger</code></td>
+                  <td>A change that removes something. Never the primary action of a view.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Sizes and shapes</h3>
+          <p>Three modifiers adjust an action's footprint without changing its meaning. Combine them with any variant.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--sm">Mark watered</button>
+              <button type="button" class="hbm-act hbm-act--icon" aria-label="Rename Fern"><span class="hbm-dot"></span></button>
+            </div>
+            <figcaption class="ds-specimen__caption">The small action sits inside a row or a toast; the icon action must carry its own label for anyone who cannot see the glyph.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--sm"&gt;Mark watered&lt;/button&gt;
+&lt;button type="button" class="hbm-act hbm-act--icon" aria-label="Rename Fern"&gt;&lt;span class="hbm-dot"&gt;&lt;/span&gt;&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <button type="button" class="hbm-act hbm-act--primary hbm-act--block">Water all four plants due today</button>
+            </div>
+            <figcaption class="ds-specimen__caption">Use the block action only when it is the sole change on offer, as at the foot of a sheet.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary hbm-act--block"&gt;Water all four plants due today&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Tokens</h2>
+          <p>An action reads only semantic roles. Never reach past them to a colour primitive, and never pick a padding or a radius that is not on the scale.</p>
+          <div class="ds-table-scroll">
+            <table class="hbm-table">
+              <thead>
+                <tr><th>Token</th><th>Where it lands</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>--hbm-accent</code></td><td>Primary fill</td><td>The resident's own voice. One per view.</td></tr>
+                <tr><td><code>--hbm-accent-ink</code></td><td>Label on the primary fill</td><td>Paired with the fill so contrast holds in both themes.</td></tr>
+                <tr><td><code>--hbm-accent-hover</code></td><td>Primary fill under the pointer</td><td>A settling, not a flash.</td></tr>
+                <tr><td><code>--hbm-growth</code>, <code>--hbm-growth-quiet</code></td><td>Grow variant border, label, fill</td><td>Also the colour the undo state borrows while it counts down.</td></tr>
+                <tr><td><code>--hbm-danger</code>, <code>--hbm-danger-quiet</code></td><td>Danger variant border, label, fill</td><td>Quiet by construction — a removal is stated, not shouted.</td></tr>
+                <tr><td><code>--hbm-bg-hover</code>, <code>--hbm-bg-selected</code></td><td>Default variant rest and hover fill</td><td>The same two roles used everywhere a surface responds.</td></tr>
+                <tr><td><code>--hbm-border-rule</code></td><td>Quiet variant outline</td><td>Keeps a transparent action legible on any surface.</td></tr>
+                <tr><td><code>--hbm-focus</code>, <code>--hbm-focus-width</code>, <code>--hbm-focus-offset</code></td><td>Focus ring</td><td>Drawn by the base <code>:focus-visible</code> rule; never remove it.</td></tr>
+                <tr><td><code>--hbm-radius-pill</code></td><td>Action shape</td><td>The stake shape that separates a change from an edge.</td></tr>
+                <tr><td><code>--hbm-radius-control</code></td><td>Field and input shape</td><td>Fields are square-shouldered; actions are not.</td></tr>
+                <tr><td><code>--hbm-space-3</code> / <code>--hbm-space-5</code></td><td>Action padding</td><td>Reduced to <code>--hbm-space-2</code> / <code>--hbm-space-3</code> for the small size.</td></tr>
+                <tr><td><code>--hbm-motion-state</code></td><td>Fill, colour and border transitions</td><td>State only. An action never travels.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="ds-section">
+          <h2>Behaviour</h2>
+          <p>An action has four states you can see — rest, hover, focus and disabled — and one it enters after it fires.</p>
+
+          <h3>Disabled</h3>
+          <p>Disable an action only when the change is genuinely unavailable, and say why beside it. A disabled action with no explanation reads as a fault in the app.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--primary" disabled>Water Fern</button>
+              <span class="hbm-caption">Fern was watered this morning.</span>
+            </div>
+            <figcaption class="ds-specimen__caption">The reason sits next to the action, in plain words, at the moment you would reach for it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary" disabled&gt;Water Fern&lt;/button&gt;
+&lt;span class="hbm-caption"&gt;Fern was watered this morning.&lt;/span&gt;</code></pre>
+            </details>
+          </figure>
+
+          <h3>The change offers its own undo</h3>
+          <p>A completed change becomes its own way back for a few seconds, in place. Add <code>data-hbm-undo</code> with the past-tense label and <code>data-hbm-undo-seconds</code> with the window; the system wires the countdown on page load. Nothing scrolls, nothing opens, and the camera does not move — the button you pressed is where the reversal is.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--primary" data-hbm-undo="Watered Fern" data-hbm-undo-seconds="5">Water Fern</button>
+            </div>
+            <figcaption class="ds-specimen__caption">Press it: the label becomes the confirmation and the countdown, then returns. Reversal lives where the change happened, never in a banner elsewhere.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--primary" data-hbm-undo="Watered Fern" data-hbm-undo-seconds="5"&gt;Water Fern&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+          <p>When a change is worth confirming somewhere you can see from anywhere, raise an arrival instead of a banner. An arrival names where it came from, so you are never told about a change without being told where it landed.</p>
+          <div class="ds-code">
+            <pre><code>herbarium.toast("Watered Fern", { tone: "positive", origin: "Garden", actionLabel: "Undo" });</code></pre>
+          </div>
+
+          <h3>Extra changes in a menu</h3>
+          <p>An action that opens a menu holds only more actions. Never put a destination in one — a menu is a shelf of changes, and travelling from inside it leaves you unable to say where you came from.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <div class="hbm-menu-wrap">
+                <button type="button" class="hbm-act hbm-act--quiet" data-hbm-menu-trigger>More for Fern</button>
+                <div class="hbm-menu">
+                  <button type="button" class="hbm-menu__item">Rename</button>
+                  <button type="button" class="hbm-menu__item">Change watering day</button>
+                  <button type="button" class="hbm-menu__item">Remove from garden</button>
+                </div>
+              </div>
+            </div>
+            <figcaption class="ds-specimen__caption">Three changes, no destinations. The menu closes on Escape and returns focus to the action that opened it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;div class="hbm-menu-wrap"&gt;
+  &lt;button type="button" class="hbm-act hbm-act--quiet" data-hbm-menu-trigger&gt;More for Fern&lt;/button&gt;
+  &lt;div class="hbm-menu"&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Rename&lt;/button&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Change watering day&lt;/button&gt;
+    &lt;button type="button" class="hbm-menu__item"&gt;Remove from garden&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+            </details>
+          </figure>
+
+          <h3>Keyboard</h3>
+          <p>Every action is a real <code>&lt;button&gt;</code>, so Tab reaches it and Enter or Space fires it. Inside a menu, Escape closes and puts focus back on the trigger. The switch and the segmented control below take Enter or Space too. Do not add key handlers of your own; the ones the system wires are the whole contract.</p>
+
+          <h3>Reduced motion</h3>
+          <p>Under <code>prefers-reduced-motion</code> the durations collapse in the tokens, so an action's fill and border change without a visible transition, and the menu opens without unfurling. Nothing an action tells you is carried by movement — the countdown is text, the state is colour and border. See <a href="../foundations/motion.html">Motion</a>.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Fields and inputs</h2>
+          <p>A field is where you type what the action will save. Every field carries a visible label; a placeholder is an example, never the label, because it disappears exactly when you need it.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <label class="hbm-field">
+                <span class="hbm-field__label">Nickname</span>
+                <input class="hbm-input" type="text" value="Fern" placeholder="Fern by the sink">
+                <span class="hbm-field__hint">Call it whatever you call it out loud.</span>
+              </label>
+              <label class="hbm-field">
+                <span class="hbm-field__label">Where it lives</span>
+                <select class="hbm-select">
+                  <option>Kitchen windowsill</option>
+                  <option>Living room shelf</option>
+                  <option>Back step</option>
+                </select>
+              </label>
+              <label class="hbm-field">
+                <span class="hbm-field__label">Note for the care log</span>
+                <textarea class="hbm-textarea" placeholder="New leaf on the north side."></textarea>
+              </label>
+            </div>
+            <figcaption class="ds-specimen__caption">Label, control, hint. The hint says something the label cannot, or it is left out.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;label class="hbm-field"&gt;
+  &lt;span class="hbm-field__label"&gt;Nickname&lt;/span&gt;
+  &lt;input class="hbm-input" type="text" value="Fern" placeholder="Fern by the sink"&gt;
+  &lt;span class="hbm-field__hint"&gt;Call it whatever you call it out loud.&lt;/span&gt;
+&lt;/label&gt;
+&lt;label class="hbm-field"&gt;
+  &lt;span class="hbm-field__label"&gt;Where it lives&lt;/span&gt;
+  &lt;select class="hbm-select"&gt;
+    &lt;option&gt;Kitchen windowsill&lt;/option&gt;
+    &lt;option&gt;Living room shelf&lt;/option&gt;
+    &lt;option&gt;Back step&lt;/option&gt;
+  &lt;/select&gt;
+&lt;/label&gt;
+&lt;label class="hbm-field"&gt;
+  &lt;span class="hbm-field__label"&gt;Note for the care log&lt;/span&gt;
+  &lt;textarea class="hbm-textarea" placeholder="New leaf on the north side."&gt;&lt;/textarea&gt;
+&lt;/label&gt;</code></pre>
+            </details>
+          </figure>
+
+          <h3>When a field is wrong</h3>
+          <p>Say what to do next, not what went wrong. Mark the control with <code>aria-invalid</code> and point its <code>aria-describedby</code> at the message, so the correction is read out with the field rather than found later.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <label class="hbm-field">
+                <span class="hbm-field__label">Nickname</span>
+                <input class="hbm-input" type="text" value="" aria-invalid="true" aria-describedby="nickname-error">
+                <span class="hbm-field__error" id="nickname-error">Give this plant a name so you can find it in my garden.</span>
+              </label>
+            </div>
+            <figcaption class="ds-specimen__caption">The error is an instruction, in the same calm voice as the rest of the page.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;label class="hbm-field"&gt;
+  &lt;span class="hbm-field__label"&gt;Nickname&lt;/span&gt;
+  &lt;input class="hbm-input" type="text" value="" aria-invalid="true" aria-describedby="nickname-error"&gt;
+  &lt;span class="hbm-field__error" id="nickname-error"&gt;Give this plant a name so you can find it in my garden.&lt;/span&gt;
+&lt;/label&gt;</code></pre>
+            </details>
+          </figure>
+
+          <h3>Switch and segmented control</h3>
+          <p>A switch is a change that takes effect as you flip it — there is no save. A segmented control chooses between a few named options that are all visible at once; if there are more than four, use a select.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <span class="hbm-switch" role="switch" aria-checked="true" aria-label="Remind me when Fern is due today"><span class="hbm-switch__thumb"></span></span>
+              <div class="hbm-segmented">
+                <button type="button" class="hbm-segmented__option" aria-pressed="true">Every day</button>
+                <button type="button" class="hbm-segmented__option" aria-pressed="false">Twice a week</button>
+                <button type="button" class="hbm-segmented__option" aria-pressed="false">Weekly</button>
+              </div>
+            </div>
+            <figcaption class="ds-specimen__caption">Both are live: click or press Enter. The switch carries its own label because there is no visible text beside it.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-switch" role="switch" aria-checked="true" aria-label="Remind me when Fern is due today"&gt;&lt;span class="hbm-switch__thumb"&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;div class="hbm-segmented"&gt;
+  &lt;button type="button" class="hbm-segmented__option" aria-pressed="true"&gt;Every day&lt;/button&gt;
+  &lt;button type="button" class="hbm-segmented__option" aria-pressed="false"&gt;Twice a week&lt;/button&gt;
+  &lt;button type="button" class="hbm-segmented__option" aria-pressed="false"&gt;Weekly&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Actions on an uncertain claim</h2>
+          <p>When the system is unsure, the action next to the claim must not be. Keep the hedge on the claim and let the action stay plainly worded, so agreeing or correcting is a choice you make with the doubt in front of you. The full pattern lives in <a href="../patterns/uncertainty.html">Uncertainty</a>.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview ds-specimen__preview--stack">
+              <span class="hbm-hedge">This looks like a heartleaf philodendron, <span class="hbm-binomial">Philodendron hederaceum</span>.</span>
+              <span class="hbm-confidence hbm-confidence--low">Confidence
+                <span class="hbm-confidence__rungs">
+                  <span class="hbm-confidence__rung"></span>
+                  <span class="hbm-confidence__rung"></span>
+                  <span class="hbm-confidence__rung"></span>
+                </span>
+              </span>
+              <div class="hbm-row">
+                <button type="button" class="hbm-act hbm-act--grow">Add as philodendron</button>
+                <button type="button" class="hbm-act hbm-act--quiet">Name it myself</button>
+              </div>
+            </div>
+            <figcaption class="ds-specimen__caption">The doubt is stated once, in the claim. The two actions are equally easy to take, because the system does not know which is right.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;span class="hbm-hedge"&gt;This looks like a heartleaf philodendron, &lt;span class="hbm-binomial"&gt;Philodendron hederaceum&lt;/span&gt;.&lt;/span&gt;
+&lt;span class="hbm-confidence hbm-confidence--low"&gt;Confidence
+  &lt;span class="hbm-confidence__rungs"&gt;
+    &lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;
+    &lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;
+    &lt;span class="hbm-confidence__rung"&gt;&lt;/span&gt;
+  &lt;/span&gt;
+&lt;/span&gt;
+&lt;div class="hbm-row"&gt;
+  &lt;button type="button" class="hbm-act hbm-act--grow"&gt;Add as philodendron&lt;/button&gt;
+  &lt;button type="button" class="hbm-act hbm-act--quiet"&gt;Name it myself&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+            </details>
+          </figure>
+        </section>
+
+        <section class="ds-section">
+          <h2>Accessibility</h2>
+          <p>Every action is a native <code>&lt;button type="button"&gt;</code>. Never build one from a <code>div</code> or a link: a link that changes your garden is announced as a destination, and someone using a screen reader will be told they are about to travel when they are about to water a plant.</p>
+          <h3>Contrast and focus</h3>
+          <p>The label and fill of each variant are paired roles, so contrast holds in both the paper and dusk themes; do not re-colour an action with a token of your own choosing. The focus ring comes from the base <code>:focus-visible</code> rule and is never removed or narrowed — it is the only thing a keyboard user has to see where they are.</p>
+          <h3>Names</h3>
+          <p>An icon-only action carries <code>aria-label</code> naming the change and its subject — <em>Rename Fern</em>, not <em>Edit</em>. Where a longer name helps but would crowd the label, add it with the <code>.hbm-visually-hidden</code> utility rather than a title attribute.</p>
+          <figure class="ds-specimen">
+            <div class="ds-specimen__preview">
+              <button type="button" class="hbm-act hbm-act--sm">Water<span class="hbm-visually-hidden"> Fern, due today</span></button>
+            </div>
+            <figcaption class="ds-specimen__caption">The button reads as "Water Fern, due today" aloud and as "Water" in a crowded row.</figcaption>
+            <details class="ds-specimen__code">
+              <summary>HTML</summary>
+              <pre><code>&lt;button type="button" class="hbm-act hbm-act--sm"&gt;Water&lt;span class="hbm-visually-hidden"&gt; Fern, due today&lt;/span&gt;&lt;/button&gt;</code></pre>
+            </details>
+          </figure>
+          <h3>Keyboard path</h3>
+          <p>Tab reaches every action in the order it is written, so write the primary action last in a footer and first in a row where it is the point. A menu returns focus to its trigger on Escape. A disabled action stays out of the tab order, which is why its reason must be readable beside it rather than on hover.</p>
+          <h3>What is announced</h3>
+          <p>The arrival rail is a polite live region, so a change confirmed by <code>herbarium.toast</code> is read out without interrupting. A field's error is tied to its control by <code>aria-describedby</code> and is read as part of the field. The switch reports its own state through <code>aria-checked</code>, and each segmented option through <code>aria-pressed</code> — keep those attributes truthful, because they are what a screen reader reads instead of the colour.</p>
+        </section>
+
+        <section class="ds-section">
+          <h2>Usage guidance</h2>
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <a class="hbm-nav" href="#main">Monstera</a>
+                <button type="button" class="hbm-act hbm-act--primary">Log watering</button>
+              </div>
+              <p>Draw navigation as an edge and mutation as a filled action, so the two are told apart by form before either is activated.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <button type="button" class="hbm-act hbm-act--primary">Monstera</button>
+                <button type="button" class="hbm-act hbm-act--primary">Log watering</button>
+              </div>
+              <p>Give a destination and a mutation the same form — the user cannot tell what will change their garden.</p>
+            </div>
+          </div>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <button type="button" class="hbm-act hbm-act--primary">Water Fern</button>
+                <button type="button" class="hbm-act hbm-act--quiet">Not today</button>
+              </div>
+              <p>Keep one primary action and let the alternative sit quietly beside it, so the view says plainly what it is for.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <button type="button" class="hbm-act hbm-act--primary">Water Fern</button>
+                <button type="button" class="hbm-act hbm-act--primary">Not today</button>
+              </div>
+              <p>Fill two competing actions at the same weight — the choice has to be read twice before it can be made.</p>
+            </div>
+          </div>
+
+          <div class="ds-dodont">
+            <div class="ds-dodont__panel ds-dodont__panel--do">
+              <span class="ds-dodont__tag">Do</span>
+              <div class="ds-dodont__demo">
+                <button type="button" class="hbm-act hbm-act--danger">Remove Fern from garden</button>
+              </div>
+              <p>Name what a destructive change removes, so nobody presses it to find out.</p>
+            </div>
+            <div class="ds-dodont__panel ds-dodont__panel--dont">
+              <span class="ds-dodont__tag">Don't</span>
+              <div class="ds-dodont__demo">
+                <button type="button" class="hbm-act hbm-act--danger">Delete</button>
+              </div>
+              <p>Label a removal with the mechanism alone — the label has to say what leaves your garden.</p>
+            </div>
+          </div>
+
+          <p>Two more rules that have no rendered counterexample worth showing. Write labels in sentence case and in PlantPal's own words — <em>due today</em>, <em>my garden</em>, <em>needs attention</em>; the wording rules are in <a href="../guidelines/voice.html">Voice &amp; copy</a>. And never place an action so that using it scrolls, re-orders or re-lays-out what is around it: a change updates in place, and the entries it writes appear in the <a href="../components/care-log.html">Care log</a> where they belong. The principle behind both is <a href="../PRINCIPLES.md">the six principles</a>.</p>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+</body>
+</html>
