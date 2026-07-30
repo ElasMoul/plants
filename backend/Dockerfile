@@ -10,8 +10,8 @@ WORKDIR /api
 # local .m2 (see the "contracts-m2" additional_context in docker-compose.yml,
 # or --build-context on the CLI) straight into this image's own .m2 cache.
 # Requires a "contracts-m2" build context pointing at
-# ~/.m2/repository/io/platform/contracts/0.7.0 on the host — see DEPLOYMENT.md.
-COPY --from=contracts-m2 . /root/.m2/repository/io/platform/contracts/0.7.0/
+# ~/.m2/repository/io/platform/contracts/0.17.0 on the host — see DEPLOYMENT.md.
+COPY --from=contracts-m2 . /root/.m2/repository/io/platform/contracts/0.17.0/
 
 COPY pom.xml .
 COPY src/ src/

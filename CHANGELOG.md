@@ -90,6 +90,21 @@
   stays disabled (owner re-enables after review) — only the build steps changed.
 
 ### Changed
+- Re-pinned `contracts` `v0.7.0` → `v0.17.0` (2026-07-30). Of the intervening
+  releases only **v0.12.0** is breaking, and it only pattern-constrains
+  `hexagon.descriptor.json`'s `contracts.used` items — PlantPal's `HEXAGON.md`
+  frontmatter ids (`app.health`, `app.manifest`, `ai.request`, `ai.response`,
+  `dimension.event`, `state.event`) all already conform, so nothing to fix.
+  Everything PlantPal actually consumes in Java (`AiRequest`,
+  `AiRequestMediaInner`, `AiResponse`, `BlockedResponse`, `DimensionEvent`,
+  `AppStatusEvent`/`AppStatusPayload`, `ActivityCountEvent`/`ActivityCountPayload`)
+  is additive-only across the range; v0.13.0's `AiResponse` widening
+  (`result`/`model`/`provider` now optional, new `skipped` field) is
+  source-compatible with PlantPal's usage. `HEXAGON.md` frontmatter pin bumped
+  to match; Docker build-context wiring (`docker-compose.yml`,
+  `backend/Dockerfile`, `DEPLOYMENT.md`) renamed `CONTRACTS_M2_0_7_0` →
+  `CONTRACTS_M2_0_17_0`. CI workflows read the pin dynamically off
+  `backend/pom.xml` — unaffected.
 - Re-pinned `contracts` `v0.5.1` → `v0.7.0` (all intervening releases —
   v0.6.0/v0.6.1/v0.6.2/v0.7.0 — are additive or patch-only per contracts'
   `CHANGELOG.md`; no breaking change touches anything PlantPal consumes).
