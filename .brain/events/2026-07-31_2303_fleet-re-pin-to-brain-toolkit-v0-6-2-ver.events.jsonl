@@ -1,0 +1,2 @@
+{"ev": "session_start", "ts": "2026-07-31T23:03:44+01:00", "agent": "plantpal", "model": "claude-code"}
+{"ev": "session_stop", "ts": "2026-07-31T23:03:48+01:00"}

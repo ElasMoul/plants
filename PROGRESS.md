@@ -135,3 +135,16 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-07-30_0254_i-reverted-all-the-wave-7-changes-the-st
+
+## Session 2 (2026-07-31)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-07-31_2303_fleet-re-pin-to-brain-toolkit-v0-6-2-ver.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: fleet re-pin to brain-toolkit v0.6.2 verification -- status: done.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-07-31_2303_fleet-re-pin-to-brain-toolkit-v0-6-2-ver
