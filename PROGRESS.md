@@ -148,3 +148,31 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-07-31_2303_fleet-re-pin-to-brain-toolkit-v0-6-2-ver
+
+## Session 3 (2026-07-31)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-07-31_2302_you-are-the-plantpal-hexagon-s-agent-a-d.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: You are the plantpal hexagon's agent. A demand raised by platform-vault has been dispatched to you. Work it in your own repo only, per your CLAUDE.md standing orders and ../DEMAND_SYSTEM.md. When done, write demands/fulfilled/<demand-id>-report.md and commit+push it. FRONTMATTER RULES -- the coordin... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-07-31_2302_you-are-the-plantpal-hexagon-s-agent-a-d.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-07-31_2302_you-are-the-plantpal-hexagon-s-agent-a-d
+
+## Session 4 (2026-07-31)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-07-31_2341_commit-the-v0-6-2-re-pin-handoff-you-are.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Commit the v0.6.2 re-pin handoff. You are the plantpal hexagon's agent. A demand from platform-vault has been dispatched to you. Work it in your own repo only. THE WHOLE JOB: your working tree is dirty with a modified .brain/sessions/<...>.md and a modified PROGRESS.md, left by tonight's re-pin run.... -- status: partial.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-07-31_2341_commit-the-v0-6-2-re-pin-handoff-you-are
