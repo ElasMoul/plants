@@ -41,4 +41,4 @@ Before re-deriving anything, run `python .brain/bin/brain query "<terms>"` once 
 
 Full rules: `.brain/conventions.md`. Cite knowledge-unit ids inline at the moment of use, prefix `## Log` entries with `HH:MM`, never hand-edit a generated file -- propose changes via `.brain/overrides.md` instead.
 
-<!-- structurer run: 2026-07-31T23:03:50+01:00 -- manifest: K-0001,K-0002 -->
+<!-- structurer run: 2026-08-04T04:48:40+01:00 -- manifest: K-0001,K-0002 -->
