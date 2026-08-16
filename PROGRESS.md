@@ -206,3 +206,18 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-08-16_2325_write-copy-the-design-system-snapshot-at
+
+## Session 7 (2026-08-16)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-08-16_2328_read-only-answer-these-questions-about-p.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: read-only: answer these questions about plantpal's interface from its code/docs -- data outputs, workflows, settings, and any spec detail that helps -- write nothing. 1. plantpal's self-description exposes '/api/v1/plants/**' as a wildcard family with no per-endpoint detail -- which endpoints, paylo... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-08-16_2328_read-only-answer-these-questions-about-p.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-08-16_2328_read-only-answer-these-questions-about-p
