@@ -14,10 +14,11 @@ import { AnalyzeEmitPayload } from '../../../identification/models/identificatio
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
 
 @Component({
-  selector: 'app-plant-list',
-  templateUrl: './plant-list.component.html',
-  styleUrls: ['./plant-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-plant-list',
+    templateUrl: './plant-list.component.html',
+    styleUrls: ['./plant-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class PlantListComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];

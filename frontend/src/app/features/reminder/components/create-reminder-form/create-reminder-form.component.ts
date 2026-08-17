@@ -10,9 +10,10 @@ import { ReminderService } from '../../services/reminder.service';
 import { CareType } from '../../models/reminder.model';
 
 @Component({
-  selector: 'app-create-reminder-form',
-  templateUrl: './create-reminder-form.component.html',
-  styleUrls: ['./create-reminder-form.component.scss'],
+    selector: 'app-create-reminder-form',
+    templateUrl: './create-reminder-form.component.html',
+    styleUrls: ['./create-reminder-form.component.scss'],
+    standalone: false
 })
 export class CreateReminderFormComponent implements OnInit, OnDestroy {
   readonly careTypes: { value: CareType; label: string }[] = [

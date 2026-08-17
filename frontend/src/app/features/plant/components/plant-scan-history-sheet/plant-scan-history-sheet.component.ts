@@ -9,10 +9,11 @@ export interface PlantScanHistorySheetData {
 }
 
 @Component({
-  selector: 'app-plant-scan-history-sheet',
-  templateUrl: './plant-scan-history-sheet.component.html',
-  styleUrls: ['./plant-scan-history-sheet.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-plant-scan-history-sheet',
+    templateUrl: './plant-scan-history-sheet.component.html',
+    styleUrls: ['./plant-scan-history-sheet.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class PlantScanHistorySheetComponent implements OnInit {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

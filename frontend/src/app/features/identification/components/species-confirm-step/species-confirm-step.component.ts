@@ -14,9 +14,10 @@ import {
 } from '../../models/identification.model';
 
 @Component({
-  selector: 'app-species-confirm-step',
-  templateUrl: './species-confirm-step.component.html',
-  styleUrls: ['./species-confirm-step.component.scss'],
+    selector: 'app-species-confirm-step',
+    templateUrl: './species-confirm-step.component.html',
+    styleUrls: ['./species-confirm-step.component.scss'],
+    standalone: false
 })
 export class SpeciesConfirmStepComponent implements OnInit, OnDestroy {
   @Input() identificationId!: number;

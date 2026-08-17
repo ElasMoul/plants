@@ -30,9 +30,10 @@ type DetailState =
 const BLOCKED_FAILURE_REASON = 'AI_LIMIT_REACHED';
 
 @Component({
-  selector: 'app-identification-detail-page',
-  templateUrl: './identification-detail-page.component.html',
-  styleUrls: ['./identification-detail-page.component.scss'],
+    selector: 'app-identification-detail-page',
+    templateUrl: './identification-detail-page.component.html',
+    styleUrls: ['./identification-detail-page.component.scss'],
+    standalone: false
 })
 export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

@@ -4,9 +4,10 @@ import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-imag
 import { healthBadgeClass } from '../../../../shared/utils/health-badge.util';
 
 @Component({
-  selector: 'app-species-plant-row',
-  templateUrl: './species-plant-row.component.html',
-  styleUrls: ['./species-plant-row.component.scss'],
+    selector: 'app-species-plant-row',
+    templateUrl: './species-plant-row.component.html',
+    styleUrls: ['./species-plant-row.component.scss'],
+    standalone: false
 })
 export class SpeciesPlantRowComponent {
   @Input() plant!: PlantResponse;

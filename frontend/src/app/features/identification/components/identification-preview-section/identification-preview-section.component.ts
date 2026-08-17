@@ -8,9 +8,10 @@ import {
 } from '../../models/identification.model';
 
 @Component({
-  selector: 'app-identification-preview-section',
-  templateUrl: './identification-preview-section.component.html',
-  styleUrls: ['./identification-preview-section.component.scss'],
+    selector: 'app-identification-preview-section',
+    templateUrl: './identification-preview-section.component.html',
+    styleUrls: ['./identification-preview-section.component.scss'],
+    standalone: false
 })
 export class IdentificationPreviewSectionComponent {
   @Input() result!: IdentificationResponse;

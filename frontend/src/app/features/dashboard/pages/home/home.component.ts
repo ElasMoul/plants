@@ -28,10 +28,11 @@ const CARE_ICONS: Record<CareType, string> = {
 };
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-home',
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class HomeComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

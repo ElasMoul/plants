@@ -18,9 +18,10 @@ function modelLabel(model: string | null | undefined): string | null {
 // nothing if neither model is known, so it's safe to drop in ahead of the backend fields that
 // populate it (T7.1) without ever showing a blank/broken badge.
 @Component({
-  selector: 'app-model-usage-badge',
-  templateUrl: './model-usage-badge.component.html',
-  styleUrls: ['./model-usage-badge.component.scss'],
+    selector: 'app-model-usage-badge',
+    templateUrl: './model-usage-badge.component.html',
+    styleUrls: ['./model-usage-badge.component.scss'],
+    standalone: false
 })
 export class ModelUsageBadgeComponent {
   @Input() visionModel: string | null | undefined = null;

@@ -21,9 +21,10 @@ const DESCRIPTION_POLL_INTERVAL_MS = 3000;
 const DESCRIPTION_POLL_TIMEOUT_MS = 30000;
 
 @Component({
-  selector: 'app-treatment-detail',
-  templateUrl: './treatment-detail.component.html',
-  styleUrls: ['./treatment-detail.component.scss'],
+    selector: 'app-treatment-detail',
+    templateUrl: './treatment-detail.component.html',
+    styleUrls: ['./treatment-detail.component.scss'],
+    standalone: false
 })
 export class TreatmentDetailComponent implements OnInit, OnDestroy {
   // Same IntersectionObserver-driven collapse pattern as plant-detail.component.ts (T6.10) —

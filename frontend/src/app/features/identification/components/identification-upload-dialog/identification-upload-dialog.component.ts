@@ -15,9 +15,10 @@ export interface IdentificationUploadDialogData {
 }
 
 @Component({
-  selector: 'app-identification-upload-dialog',
-  templateUrl: './identification-upload-dialog.component.html',
-  styleUrls: ['./identification-upload-dialog.component.scss'],
+    selector: 'app-identification-upload-dialog',
+    templateUrl: './identification-upload-dialog.component.html',
+    styleUrls: ['./identification-upload-dialog.component.scss'],
+    standalone: false
 })
 export class IdentificationUploadDialogComponent {
   @ViewChild(PhotoUploadComponent) photoUpload?: PhotoUploadComponent;

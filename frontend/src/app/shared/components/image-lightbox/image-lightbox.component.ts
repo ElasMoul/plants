@@ -7,9 +7,10 @@ export interface ImageLightboxData {
 }
 
 @Component({
-  selector: 'app-image-lightbox',
-  templateUrl: './image-lightbox.component.html',
-  styleUrls: ['./image-lightbox.component.scss'],
+    selector: 'app-image-lightbox',
+    templateUrl: './image-lightbox.component.html',
+    styleUrls: ['./image-lightbox.component.scss'],
+    standalone: false
 })
 export class ImageLightboxComponent {
   constructor(

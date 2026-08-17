@@ -12,9 +12,10 @@ interface LogEntry {
 }
 
 @Component({
-  selector: 'app-voice-test',
-  templateUrl: './voice-test.component.html',
-  styleUrls: ['./voice-test.component.scss'],
+    selector: 'app-voice-test',
+    templateUrl: './voice-test.component.html',
+    styleUrls: ['./voice-test.component.scss'],
+    standalone: false
 })
 export class VoiceTestComponent implements OnDestroy {
   readonly hasSpeechAPI = !!SpeechRecognitionAPI;

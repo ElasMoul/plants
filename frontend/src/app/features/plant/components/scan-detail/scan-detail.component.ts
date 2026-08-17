@@ -11,9 +11,10 @@ import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-imag
 type PageState = 'loading' | 'ready' | 'error';
 
 @Component({
-  selector: 'app-scan-detail',
-  templateUrl: './scan-detail.component.html',
-  styleUrls: ['./scan-detail.component.scss'],
+    selector: 'app-scan-detail',
+    templateUrl: './scan-detail.component.html',
+    styleUrls: ['./scan-detail.component.scss'],
+    standalone: false
 })
 export class ScanDetailComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

@@ -6,9 +6,10 @@ import { IdentificationResponse } from '../../../identification/models/identific
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 @Component({
-  selector: 'app-plant-photo-timeline',
-  templateUrl: './plant-photo-timeline.component.html',
-  styleUrls: ['./plant-photo-timeline.component.scss'],
+    selector: 'app-plant-photo-timeline',
+    templateUrl: './plant-photo-timeline.component.html',
+    styleUrls: ['./plant-photo-timeline.component.scss'],
+    standalone: false
 })
 export class PlantPhotoTimelineComponent implements OnInit, OnDestroy {
   @Input() plantId!: number;

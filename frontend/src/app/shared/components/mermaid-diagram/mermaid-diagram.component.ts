@@ -12,9 +12,10 @@ const THEME_VARIABLES = {
 };
 
 @Component({
-  selector: 'app-mermaid-diagram',
-  templateUrl: './mermaid-diagram.component.html',
-  styleUrls: ['./mermaid-diagram.component.scss'],
+    selector: 'app-mermaid-diagram',
+    templateUrl: './mermaid-diagram.component.html',
+    styleUrls: ['./mermaid-diagram.component.scss'],
+    standalone: false
 })
 export class MermaidDiagramComponent implements OnChanges {
   @Input() definition = '';

@@ -28,9 +28,10 @@ interface ImageEntry {
 }
 
 @Component({
-  selector: 'app-photo-upload',
-  templateUrl: './photo-upload.component.html',
-  styleUrls: ['./photo-upload.component.scss'],
+    selector: 'app-photo-upload',
+    templateUrl: './photo-upload.component.html',
+    styleUrls: ['./photo-upload.component.scss'],
+    standalone: false
 })
 export class PhotoUploadComponent implements OnInit, OnDestroy {
   @Input() lockedPlantId?: number;
