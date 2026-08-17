@@ -4,17 +4,17 @@
 // ── Angular Material Theme ─────────────────────────────────────
 @include mat.core();
 
-$plantpal-primary: mat.define-palette(mat.$green-palette, 900, 700, 900);
-$plantpal-accent:  mat.define-palette(mat.$light-green-palette, 400, 200, 600);
-$plantpal-warn:    mat.define-palette(mat.$red-palette, 400, 200, 700);
+$plantpal-primary: mat.m2-define-palette(mat.$m2-green-palette, 900, 700, 900);
+$plantpal-accent:  mat.m2-define-palette(mat.$m2-light-green-palette, 400, 200, 600);
+$plantpal-warn:    mat.m2-define-palette(mat.$m2-red-palette, 400, 200, 700);
 
-$plantpal-theme: mat.define-light-theme((
+$plantpal-theme: mat.m2-define-light-theme((
   color: (
     primary: $plantpal-primary,
     accent:  $plantpal-accent,
     warn:    $plantpal-warn,
   ),
-  typography: mat.define-typography-config(
+  typography: mat.m2-define-typography-config(
     $font-family: "'Inter', 'Roboto', sans-serif",
   ),
   density: 0,
