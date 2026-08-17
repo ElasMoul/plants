@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-08-02T04:32:05.306008+00:00",
+  "pagesChecked": 28,
+  "checks": [
+    {
+      "id": "skeleton-conformance",
+      "issues": [],
+      "passed": true
+    },
+    {
+      "id": "escaped-code-blocks",
+      "issues": [],
+      "passed": true
+    },
+    {
+      "id": "only-existing-classes",
+      "issues": [],
+      "passed": true
+    },
+    {
+      "id": "accessibility-section-present",
+      "issues": [],
+      "passed": true
+    },
+    {
+      "id": "do-dont-pairs",
+      "issues": [],
+      "passed": true
+    },
+    {
+      "id": "link-integrity",
+      "issues": [],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,679 @@
+/* ==========================================================================
+   RHIZOME — system.css                        PlantPal · atlas-class · v1.0.0
+   --------------------------------------------------------------------------
+   Component classes. Every class in this file is prefixed .rz-.
+   Documentation-SITE scaffolding is NOT here — it lives in docs.css.
+
+   No raw colour or size appears below: every value is a token reference.
+   Logical properties throughout (inline-start / block-start), so nothing
+   points the wrong way in RTL (C18).
+
+   ORDER
+     0  reset-ish bases                    7  aggregate + collections
+     1  the world, the plane, the veins    8  degradation materials
+     2  the node contract                  9  arrange mode
+     3  rank + the graduation             10  the settings exit (overview)
+     4  node interior parts               11  probe panel
+     5  the two forms: stake / chip       12  vitals + treatment course
+     6  the chrome register
+   ========================================================================== */
+
+
+/* == 0. BASES ============================================================ */
+
+.rz-root {
+  background: var(--rz-void);
+  color: var(--rz-ink);
+  font-family: var(--rz-face-body);
+  font-size: var(--rz-rung-30);
+  line-height: var(--rz-lead-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* C17 — nothing other than the focused node's body scrolls. */
+.rz-root[data-rz-app] { overflow: hidden; height: 100%; }
+
+.rz-sr {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+.rz-label {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  color: var(--rz-ink-muted);
+}
+
+.rz-binomial {
+  font-family: var(--rz-face-latin);
+  font-style: italic;
+  color: var(--rz-binomial);
+}
+
+:where(.rz-root) :focus-visible {
+  outline: var(--rz-focus-width) solid var(--rz-focus);
+  outline-offset: var(--rz-focus-offset);
+}
+
+
+/* == 1. THE WORLD ======================================================== */
+
+/* The viewport onto the plane. It pans; it does not scroll. */
+.rz-world {
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  cursor: grab;                      /* L9 — the board pans */
+  touch-action: none;
+  background: radial-gradient(120% 90% at 50% 0%,
+              var(--rz-void) 0%, var(--rz-void-deep) 100%);
+}
+.rz-world[data-panning="true"] { cursor: grabbing; }
+
+/* The single transformed subtree. EVERYTHING that belongs to the world —
+   veins, motes, nodes — is a child of this element and is therefore scaled
+   and translated with it (L11). Anything that belongs to the viewport is a
+   sibling of .rz-plane, never a child. */
+.rz-plane {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* The vein layer is a CHILD of the plane and paints beneath the cards. */
+.rz-veins {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: visible;
+  z-index: var(--rz-z-vein);
+  pointer-events: none;
+}
+.rz-vein {
+  fill: none;
+  stroke: var(--rz-vein);
+  stroke-width: var(--rz-vein-width);
+  transition: stroke var(--rz-dur-settle) var(--rz-ease-rest),
+              stroke-width var(--rz-dur-settle) var(--rz-ease-rest);
+}
+.rz-vein[data-live="true"] {
+  stroke: var(--rz-vein-live);
+  stroke-width: var(--rz-vein-width-live);
+}
+.rz-vein[data-unknown="true"] {
+  stroke: var(--rz-vein-unknown);
+  stroke-dasharray: 6 7;
+}
+.rz-vein-node { fill: var(--rz-vein-node); opacity: 0.5; }
+.rz-vein-node[data-live="true"] { opacity: 1; }
+
+/* The trail: the route just travelled, drawn along the real edges. */
+.rz-trail {
+  fill: none;
+  stroke: var(--rz-vital-bright);
+  stroke-width: var(--rz-vein-width-live);
+  stroke-linecap: round;
+  opacity: 0;
+}
+.rz-trail[data-on="true"] { opacity: 1; }
+
+/* The decorative field. Belongs to whichever surface it decorates (L11):
+   in app mode the viewport, in overview mode the shrunken app card. */
+.rz-motes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--rz-z-world);
+}
+
+
+/* == 2. THE NODE CONTRACT ================================================
+   Attributes the system owns and any theme fills:
+     data-kind, data-kind-key, data-name, data-recap, data-cell="col,row",
+     data-rank, data-focus, data-show (recap | skel | full), data-state
+   Position is set by system.js from cell + persisted offset (C7).
+   ======================================================================== */
+
+.rz-n {
+  position: absolute;
+  box-sizing: border-box;
+  z-index: var(--rz-z-node);
+  transform: translate(-50%, -50%);
+  inline-size: var(--rz-card-near);
+  padding: var(--rz-gutter-card);
+  background: var(--rz-sheet);
+  border: var(--rz-hair) solid var(--rz-membrane);
+  border-radius: var(--rz-corner-card);
+  box-shadow: var(--rz-halo-quiet);
+  color: var(--rz-ink);
+  cursor: pointer;                   /* a non-focused card travels */
+  transition: inline-size var(--rz-dur-nav) var(--rz-ease-travel),
+              opacity var(--rz-dur-nav) var(--rz-ease-travel),
+              box-shadow var(--rz-dur-settle) var(--rz-ease-rest),
+              border-color var(--rz-dur-settle) var(--rz-ease-rest);
+}
+.rz-n:hover { border-color: var(--rz-membrane-lit); }
+
+/* The focused card: full, always, top edge to bottom edge, at any zoom.
+   If it does not fit, the ZOOM gives way — system.js's fitFocus(). */
+.rz-n[data-focus="true"] {
+  inline-size: var(--rz-card-focus);
+  background: var(--rz-sheet);
+  border-color: var(--rz-membrane-lit);
+  box-shadow: var(--rz-halo-lit);
+  cursor: default;                   /* it is a document, not a target */
+}
+.rz-n[data-focus="true"] :where(a, button) { cursor: pointer; }
+.rz-n[data-focus="true"] :where(p, li, td, h1, h2, h3) { cursor: default; }
+
+/* A node passed THROUGH during a multi-hop: lit, never opened. */
+.rz-n[data-passing="true"] { border-color: var(--rz-vital); }
+
+/* Only the focused node's body scrolls (C17). */
+.rz-n__body {
+  max-block-size: none;
+  overflow: hidden;
+}
+.rz-n[data-focus="true"] .rz-n__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-block-size: calc(70vh / var(--rz-cam-k));   /* the camera bridge */
+}
+
+
+/* == 3. RANK + THE GRADUATION ============================================
+   Rank is computed (breadth-first distance) and spent on SIZE (C12).
+   Four widths, four ink strengths, four height caps, four graduation
+   lengths. The graduation is the signature channel: a 2px rule on the
+   card's head whose LENGTH is the rank and whose COLOUR is the kind (L4/L5).
+   ======================================================================== */
+
+.rz-n[data-rank="near"]   { inline-size: var(--rz-card-near);   max-block-size: var(--rz-cap-near);   opacity: 1; }
+.rz-n[data-rank="far"]    { inline-size: var(--rz-card-far);    max-block-size: var(--rz-cap-far);    opacity: 0.86; }
+.rz-n[data-rank="fringe"] { inline-size: var(--rz-card-fringe); max-block-size: var(--rz-cap-fringe); opacity: 0.62; }
+.rz-n[data-rank="far"], .rz-n[data-rank="fringe"] { padding: var(--rz-gutter); }
+
+/* A progressive recap: the second line goes at the fringe. */
+.rz-n[data-rank="fringe"] .rz-n__recap-second { display: none; }
+
+.rz-n__grad {
+  display: block;
+  block-size: var(--rz-grad-weight);
+  inline-size: var(--rz-grad-near);
+  border-radius: var(--rz-radius-pill);
+  background: var(--rz-kind-collection);
+  margin-block-end: var(--rz-gutter);
+  transition: inline-size var(--rz-dur-nav) var(--rz-ease-travel);
+}
+.rz-n[data-rank="focus"]  .rz-n__grad,
+.rz-n[data-focus="true"]  .rz-n__grad { inline-size: var(--rz-grad-focus); }
+.rz-n[data-rank="far"]    .rz-n__grad { inline-size: var(--rz-grad-far); }
+.rz-n[data-rank="fringe"] .rz-n__grad { inline-size: var(--rz-grad-fringe); }
+
+/* KIND is a channel (L5). One colour per domain node kind. */
+.rz-n[data-kind-key="collection"] .rz-n__grad { background: var(--rz-kind-collection); }
+.rz-n[data-kind-key="species"]    .rz-n__grad { background: var(--rz-kind-species); }
+.rz-n[data-kind-key="plant"]      .rz-n__grad { background: var(--rz-kind-plant); }
+.rz-n[data-kind-key="guide"]      .rz-n__grad { background: var(--rz-kind-guide); }
+.rz-n[data-kind-key="problem"]    .rz-n__grad { background: var(--rz-kind-problem); }
+.rz-n[data-kind-key="journal"]    .rz-n__grad { background: var(--rz-kind-journal); }
+.rz-n[data-kind-key="platform"]   .rz-n__grad { background: var(--rz-kind-platform); }
+.rz-n[data-kind-key="region"]     .rz-n__grad { background: var(--rz-kind-region); }
+
+
+/* == 4. NODE INTERIOR ==================================================== */
+
+.rz-n__kind {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  color: var(--rz-ink-muted);
+}
+.rz-n__name {
+  font-family: var(--rz-face-name);
+  font-size: var(--rz-rung-55);
+  line-height: var(--rz-lead-name);
+  letter-spacing: var(--rz-track-name);
+  font-weight: var(--rz-weight-medium);
+  margin-block: var(--rz-gutter-tight) 0;
+  color: var(--rz-ink);
+}
+.rz-n[data-focus="true"] .rz-n__name { font-size: var(--rz-rung-100); }
+.rz-n[data-rank="far"] .rz-n__name    { font-size: var(--rz-rung-30); }
+.rz-n[data-rank="fringe"] .rz-n__name { font-size: var(--rz-rung-25); }
+
+.rz-n__recap {
+  margin-block-start: var(--rz-gutter-tight);
+  color: var(--rz-ink-second);
+  font-size: var(--rz-rung-25);
+  line-height: var(--rz-lead-snug);
+}
+.rz-n__section {
+  margin-block-start: var(--rz-gutter-wide);
+  padding-block-start: var(--rz-gutter);
+  border-block-start: var(--rz-hair) solid var(--rz-membrane-rule);
+}
+.rz-n__well {
+  background: var(--rz-well);
+  border-radius: var(--rz-corner-well);
+  padding: var(--rz-gutter);
+}
+
+/* show-modes: recap | skel | full */
+.rz-n[data-show="recap"] .rz-n__full,
+.rz-n[data-show="skel"]  .rz-n__full { display: none; }
+.rz-n[data-show="full"]  .rz-n__full { display: block; }
+.rz-n[data-show="skel"]  .rz-n__recap { display: none; }
+.rz-n[data-show="skel"]  .rz-n__skel  { display: block; }
+.rz-n__skel { display: none; }
+
+
+/* == 5. THE TWO FORMS ====================================================
+   L2 / C14. A FILLED STAKE changes data. An OUTLINED CHIP WITH A CARET
+   travels. There is no third form inside a node. Neither form may appear in
+   chrome — see .rz-chrome__item, where the same two meanings become a
+   leading mark.
+   ======================================================================== */
+
+.rz-stake,
+.rz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rz-gutter-tight);
+  font-family: var(--rz-face-body);
+  font-size: var(--rz-rung-25);
+  padding: var(--rz-space-2) var(--rz-space-4);
+  cursor: pointer;
+  transition: background var(--rz-dur-quick) var(--rz-ease-rest),
+              border-color var(--rz-dur-quick) var(--rz-ease-rest);
+}
+
+/* MUTATION — filled, squared, with a heavy bottom rule: a stake in soil. */
+.rz-stake {
+  background: var(--rz-mutate);
+  color: var(--rz-mutate-ink);
+  border: 0;
+  border-block-end: var(--rz-strong) solid var(--rz-mutate);
+  border-radius: var(--rz-corner-inner);
+  font-weight: var(--rz-weight-medium);
+}
+.rz-stake:hover { filter: brightness(1.08); }
+.rz-stake[aria-disabled="true"],
+.rz-stake[data-refused="true"] {
+  cursor: not-allowed;
+  background: var(--rz-mutate-quiet);
+  color: var(--rz-ink-muted);
+  border-block-end-color: var(--rz-mutate-quiet);
+}
+
+/* TRAVERSAL — outlined, pill, with a directional caret. */
+.rz-chip {
+  background: transparent;
+  color: var(--rz-vital);
+  border: var(--rz-hair) solid var(--rz-vital-edge);
+  border-radius: var(--rz-corner-chip);
+}
+.rz-chip::after { content: "\203A"; margin-inline-start: var(--rz-space-1); }
+.rz-chip:hover { background: var(--rz-vital-quiet); border-color: var(--rz-vital); }
+
+/* CAMERA — a third category that changes neither data nor focus (L2). */
+.rz-cam-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: transparent;
+  color: var(--rz-chrome-ink-lit);
+  border: var(--rz-hair) solid var(--rz-chrome-rule);
+  border-radius: var(--rz-chrome-corner);
+  font-family: var(--rz-chrome-face);
+  cursor: pointer;
+}
+.rz-cam-btn:hover { background: var(--rz-chrome-hover); }
+
+
+/* == 6. THE CHROME REGISTER ==============================================
+   L1 / C14 / C16 / C17. Chrome is a MATERIAL, not a layer. One class carries
+   the whole family so it cannot drift per component. Chrome:
+     · sits flush to a viewport edge and bleeds off it
+     · never moves with the camera (it is a sibling of .rz-plane)
+     · takes NO shadow at any depth
+     · speaks monospace, uppercase, ONE rung, tracked wider than any label
+     · inks below a card's strength
+     · admits no stakes and no chips — only .rz-chrome__item marks
+   ======================================================================== */
+
+.rz-chrome {
+  position: fixed;
+  z-index: var(--rz-z-chrome);
+  background: var(--rz-chrome-fill);
+  color: var(--rz-chrome-ink);
+  border: 0 solid var(--rz-chrome-rule);
+  border-radius: var(--rz-chrome-corner);
+  box-shadow: var(--rz-chrome-lift);          /* none. always. */
+  padding: var(--rz-chrome-pad);
+  font-family: var(--rz-chrome-face);
+  font-size: var(--rz-chrome-size);
+  letter-spacing: var(--rz-chrome-track);
+  text-transform: uppercase;
+  backdrop-filter: none;
+}
+.rz-chrome :where(h1, h2, h3, p, span, button, a) {
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+/* Members, each flush to the edge it owns and bleeding off it. */
+.rz-chrome--top    { inset-block-start: 0; inset-inline: 0; border-block-end-width: var(--rz-strong); border-block-end-color: var(--rz-chrome-key); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--rz-gutter); }
+.rz-chrome--rail   { inset-inline-end: 0; inset-block: 3rem auto; inline-size: 15rem; border-inline-start-width: var(--rz-strong); border-inline-start-color: var(--rz-chrome-key); }
+.rz-chrome--actions{ inset-inline-start: 0; inset-block-end: 0; inline-size: 15rem; border-block-start-width: var(--rz-strong); border-inline-end-width: var(--rz-hair); border-color: var(--rz-chrome-key); }
+.rz-chrome--map    { inset-inline-end: 0; inset-block-end: 0; border-block-start-width: var(--rz-strong); border-inline-start-width: var(--rz-hair); border-color: var(--rz-chrome-key); }
+.rz-chrome--camera { inset-inline-start: 50%; inset-block-end: 0; transform: translateX(-50%); display: flex; gap: var(--rz-gutter-tight); border-block-start-width: var(--rz-hair); }
+.rz-chrome--gesture{ inset-inline-start: 0; inset-block-end: 0; color: var(--rz-chrome-ink-faint); background: transparent; }
+.rz-chrome--probe  { inset-inline-end: 0; inset-block-start: 3rem; inline-size: 13rem; border-inline-start-width: var(--rz-hair); }
+.rz-chrome--live   { inset-inline: 0; inset-block-end: 0; z-index: var(--rz-z-live); text-align: center; }
+
+/* YOU-ARE-HERE is the top bar's CENTRE COLUMN, not a second element above
+   it (L1). C5 is answered by the world-view marker; this is its wording. */
+.rz-chrome__here {
+  color: var(--rz-chrome-ink-lit);
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: var(--rz-gutter-tight);
+}
+.rz-chrome__here-sep { color: var(--rz-chrome-ink-faint); }
+
+.rz-chrome__title { color: var(--rz-chrome-key); }
+.rz-chrome__head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--rz-chrome-ink-faint);
+  padding-block-end: var(--rz-chrome-pad);
+  border-block-end: var(--rz-hair) solid var(--rz-chrome-rule);
+}
+
+/* Inside chrome the two meanings become a LEADING MARK, never a form. */
+.rz-chrome__item {
+  display: flex;
+  align-items: center;
+  gap: var(--rz-space-2);
+  inline-size: 100%;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--rz-chrome-ink-lit);
+  font: inherit;
+  letter-spacing: inherit;
+  padding: var(--rz-space-2);
+  cursor: pointer;
+}
+.rz-chrome__item:hover { background: var(--rz-chrome-hover); }
+.rz-chrome__item::before {
+  content: "";
+  inline-size: 0.55em;
+  block-size: 0.55em;
+  flex: none;
+}
+.rz-chrome__item[data-means="mutate"]::before { background: var(--rz-mutate); }
+.rz-chrome__item[data-means="travel"]::before {
+  content: "\2192";
+  background: none;
+  color: var(--rz-vital);
+  inline-size: auto;
+  block-size: auto;
+}
+.rz-chrome__item[data-refused="true"] { cursor: not-allowed; color: var(--rz-chrome-ink-faint); }
+.rz-chrome__item small {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--rz-face-body);
+  color: var(--rz-chrome-ink);
+}
+
+/* The world view (minimap). Its extent deliberately ignores the camera, so
+   panning never rescales the map under the user (L16). */
+.rz-map { display: block; }
+.rz-map__edge { stroke: var(--rz-chrome-rule); stroke-width: 1; }
+.rz-map__dot  { fill: var(--rz-chrome-ink); }
+.rz-map__dot[data-rank="near"] { fill: var(--rz-chrome-ink-lit); }
+.rz-map__dot[data-moved="true"] { fill: var(--rz-mutate); }
+.rz-map__view { fill: none; stroke: var(--rz-chrome-ink-faint); stroke-dasharray: 3 3; }
+.rz-map__you  { fill: var(--rz-chrome-key); }
+.rz-map__you-halo { fill: none; stroke: var(--rz-chrome-key); opacity: 0.5; }
+
+/* The live region. Polite, held longer under reduced motion. */
+.rz-live { opacity: 0; transition: opacity var(--rz-dur-settle) var(--rz-ease-rest); }
+.rz-live[data-on="true"] { opacity: 1; }
+
+
+/* == 7. AGGREGATE ========================================================
+   L3. A first-class node: own cell, own veins, own count, traversable.
+   Solid rim and a real count — which is what distinguishes it from an
+   unknown region (C23).
+   ======================================================================== */
+
+.rz-n[data-aggregate="true"] {
+  border-style: solid;
+  border-color: var(--rz-membrane-lit);
+  background: var(--rz-sheet-quiet);
+}
+.rz-n__count {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-55);
+  color: var(--rz-ink);
+}
+
+
+/* == 8. DEGRADATION MATERIALS ============================================
+   L14. Never a spinner. Never the word "loading". Never a global overlay.
+   Never a modal. Each state is material on the node it belongs to.
+   ======================================================================== */
+
+/* loading / slow — a skeleton shaped like the content, at real row heights */
+.rz-skel { display: grid; gap: var(--rz-gutter-tight); }
+.rz-skel__row {
+  block-size: 1.2em;
+  border-radius: var(--rz-corner-inner);
+  background: linear-gradient(90deg,
+    var(--rz-skeleton), var(--rz-skeleton-lit), var(--rz-skeleton));
+}
+.rz-skel__row[data-w="short"] { inline-size: 40%; }
+.rz-skel__row[data-w="mid"]   { inline-size: 70%; }
+.rz-n[data-pending="true"] { border-color: var(--rz-membrane); }
+.rz-n[data-pending="true"] .rz-n__wait {
+  display: block;
+  color: var(--rz-ink-muted);
+  font-size: var(--rz-rung-18);
+}
+.rz-n__wait { display: none; }
+
+/* unknown — dashed, no count it will stand behind, traversable */
+.rz-n[data-state="unknown"] {
+  border-style: dashed;
+  border-color: var(--rz-unknown);
+  background: var(--rz-unknown-fill);
+  color: var(--rz-ink-muted);
+}
+/* empty — loaded, and we KNOW there is nothing: a designed plot */
+.rz-n[data-state="empty"] {
+  border-style: dashed;
+  border-color: var(--rz-empty);
+  background: transparent;
+}
+/* failure — a state inside the node that failed; the camera is undisturbed */
+.rz-n[data-state="error"] { border-color: var(--rz-error); }
+.rz-n__error {
+  border-inline-start: var(--rz-strong) solid var(--rz-error);
+  background: var(--rz-error-quiet);
+  padding: var(--rz-gutter);
+  border-radius: var(--rz-corner-inner);
+}
+/* archived — a soft delete is a state a node wears, not a removal */
+.rz-n[data-state="archived"] { border-style: dotted; color: var(--rz-archived); }
+
+/* staleness, per node, in that node's own words */
+.rz-n__stale { display: none; color: var(--rz-stale); font-size: var(--rz-rung-18); }
+.rz-root[data-net="offline"] .rz-n__stale { display: block; }
+.rz-root[data-net="offline"] .rz-stake { cursor: not-allowed; }
+
+
+/* == 9. ARRANGE MODE =====================================================
+   L16. A MODE, not a toggle over normal behaviour: the camera fits every
+   node, every card renders full, the whole card is the handle, and every
+   other interaction goes inert. It changes no data and performs no traversal.
+   ======================================================================== */
+
+.rz-root[data-arrange="on"] .rz-n {
+  cursor: move;                       /* deliberately NOT grab (L9) */
+  inline-size: var(--rz-card-near);
+  opacity: 1;
+}
+.rz-root[data-arrange="on"] .rz-world { cursor: default; }
+.rz-root[data-arrange="on"] .rz-stake,
+.rz-root[data-arrange="on"] .rz-chip { pointer-events: none; opacity: 0.4; }
+.rz-n[data-dragging="true"] { box-shadow: var(--rz-halo-lit); z-index: calc(var(--rz-z-node) + 1); }
+
+
+/* == 10. THE SETTINGS EXIT ===============================================
+   L12 / C20. The camera pulls out and the WHOLE APPLICATION shrinks into a
+   floating card, laid out identically, its own field now covering the card
+   and nothing beyond it. The panel sits beside it on the same plane at the
+   same depth. Click the card to dive back in. No modal, no blur.
+
+   The shell transform is hand-tuned and is used VERBATIM. It is deliberately
+   not tokenised: it is not to be re-derived, rounded or themed.
+   ======================================================================== */
+
+.rz-shell {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  transition: transform var(--rz-dur-3) var(--rz-ease-travel),
+              border-radius var(--rz-dur-3) var(--rz-ease-travel);
+}
+.rz-root[data-mode="overview"] .rz-shell {
+  transform: scale(0.42) translateX(-25%);
+  border-radius: var(--rz-corner-card);
+  border: var(--rz-hair) solid var(--rz-membrane-lit);
+  box-shadow: var(--rz-halo-lit);          /* the card's own material */
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.rz-root[data-mode="overview"] .rz-shell .rz-chrome { position: absolute; }
+
+.rz-settings {
+  position: absolute;
+  inset-inline-end: 6%;
+  inset-block: 12%;
+  inline-size: 30rem;
+  display: none;
+  /* CONTENT, so it takes the NODE register, not the chrome register. */
+  background: var(--rz-sheet);
+  border: var(--rz-hair) solid var(--rz-membrane-lit);
+  border-radius: var(--rz-corner-card);
+  box-shadow: var(--rz-halo-lit);
+  padding: var(--rz-gutter-card);
+  overflow-y: auto;
+}
+.rz-root[data-mode="overview"] .rz-settings { display: block; }
+
+/* The overview bar beside it is CHROME: Move / Select / Zoom / Recentre. */
+.rz-overview-bar { display: none; }
+.rz-root[data-mode="overview"] .rz-overview-bar { display: flex; gap: var(--rz-gutter); }
+
+.rz-shell__caption {
+  display: none;
+  color: var(--rz-chrome-ink);
+}
+.rz-root[data-mode="overview"] .rz-shell__caption { display: block; }
+
+/* Live palette switching (L13). */
+.rz-palette {
+  display: flex;
+  align-items: center;
+  gap: var(--rz-gutter);
+  inline-size: 100%;
+  background: var(--rz-well);
+  border: var(--rz-hair) solid var(--rz-membrane);
+  border-radius: var(--rz-corner-inner);
+  padding: var(--rz-gutter);
+  color: var(--rz-ink);
+  cursor: pointer;
+}
+.rz-palette[aria-pressed="true"] { border-color: var(--rz-vital); }
+.rz-palette__swatch {
+  inline-size: 1.5rem; block-size: 1.5rem;
+  border-radius: var(--rz-radius-pill);
+  border: var(--rz-hair) solid var(--rz-membrane-lit);
+}
+
+
+/* == 11. THE PROBE PANEL =================================================
+   L15. Document-level state attributes, walkable from one artifact. Chrome,
+   so it carries marks and never a stake or a chip, and it holds no traversal.
+   ======================================================================== */
+
+.rz-probe__row { display: flex; justify-content: space-between; gap: var(--rz-gutter); }
+.rz-probe__btn {
+  background: transparent;
+  border: var(--rz-hair) solid var(--rz-chrome-rule);
+  border-radius: var(--rz-chrome-corner);
+  color: var(--rz-chrome-ink);
+  font: inherit;
+  letter-spacing: inherit;
+  padding: var(--rz-space-1) var(--rz-space-2);
+  cursor: pointer;
+}
+.rz-probe__btn[aria-pressed="true"] { color: var(--rz-chrome-ink-lit); border-color: var(--rz-chrome-key); }
+
+
+/* == 12. VITALS + TREATMENT COURSE =======================================
+   PlantPal's own domain instruments: health, confidence (HIGH/MEDIUM/LOW),
+   and a per-disease treatment course with checked-off steps.
+   ======================================================================== */
+
+.rz-vitals { display: grid; gap: var(--rz-gutter-tight); }
+.rz-vital-row { display: flex; align-items: baseline; gap: var(--rz-gutter); }
+.rz-vital-row__key { font-family: var(--rz-face-label); font-size: var(--rz-rung-18); letter-spacing: var(--rz-track-label); text-transform: uppercase; color: var(--rz-ink-muted); }
+
+.rz-health { display: inline-flex; align-items: center; gap: var(--rz-space-2); }
+.rz-health::before { content: ""; inline-size: 0.6em; block-size: 0.6em; border-radius: var(--rz-radius-pill); background: var(--rz-stable); }
+.rz-health[data-health="thriving"]::before { background: var(--rz-thriving); }
+.rz-health[data-health="watch"]::before    { background: var(--rz-watch); }
+.rz-health[data-health="ailing"]::before   { background: var(--rz-ailing); }
+.rz-health[data-health="lost"]::before     { background: var(--rz-lost); }
+
+.rz-conf { display: grid; gap: var(--rz-space-1); }
+.rz-conf__track { block-size: var(--rz-strong); background: var(--rz-conf-track); border-radius: var(--rz-radius-pill); }
+.rz-conf__fill  { block-size: 100%; border-radius: var(--rz-radius-pill); background: var(--rz-conf-medium); }
+.rz-conf[data-conf="high"]   .rz-conf__fill { background: var(--rz-conf-high);   inline-size: 100%; }
+.rz-conf[data-conf="medium"] .rz-conf__fill { background: var(--rz-conf-medium); inline-size: 62%; }
+.rz-conf[data-conf="low"]    .rz-conf__fill { background: var(--rz-conf-low);    inline-size: 30%; }
+
+.rz-course { display: grid; gap: var(--rz-gutter-tight); counter-reset: rz-step; }
+.rz-course__step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--rz-gutter);
+  padding: var(--rz-gutter);
+  background: var(--rz-well);
+  border-radius: var(--rz-corner-well);
+  border-inline-start: var(--rz-strong) solid var(--rz-membrane);
+}
+.rz-course__step[data-done="true"] { border-inline-start-color: var(--rz-thriving); color: var(--rz-ink-muted); }
+.rz-course__step[data-due="true"]  { border-inline-start-color: var(--rz-watch); }
+.rz-course__mark { font-family: var(--rz-face-label); color: var(--rz-ink-muted); }
+.rz-course__step[data-done="true"] .rz-course__mark { color: var(--rz-thriving); }

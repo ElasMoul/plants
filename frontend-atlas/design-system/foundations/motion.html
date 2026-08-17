@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Motion</h1>
+      <p class="doc-lede">There is one navigation timing in your garden — 300ms — and it is not yours to choose. This page is mostly a prohibition: it names the timings that exist, says which of them a hop may spend, and refuses the rest.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>When you travel from the Office Fig to the leaf spot it is being treated for, the camera pulls across your garden and settles on the new card. That crossing takes 300 milliseconds. It takes 300 milliseconds when you click a card, when you follow a link written inside a card's own prose, when you press an arrow key, when you pick an entry out of Navigate&nbsp;to, when a search result lands you six hops away, and when a notification tells you a treatment step is due. One number, one code path, every trigger.</p>
+        <p>That is the whole of this page's positive content. Everything else here is a fence around it, because the failure this system is written against is not slow motion or ugly easing — it is a <em>scale</em> of durations. A motion page that publishes fast, medium and slow reads to the next agent as permission to pick one per component, and once that is permitted, some transitions teleport and some animate, and the interface stops being a place you move through. Teleporting on some hops and animating on others is itself the defect, not a rough edge on it.</p>
+        <p>Two things that look like they belong here do not. <strong>How</strong> the camera crosses — along the vein's own path, lighting what it passes, opening only where it arrives — is the travel choreography, and it belongs to <a href="../patterns/traversal.html">traversal</a>; a hop that begins somewhere other than a card belongs to <a href="../patterns/arrivals.html">arrivals</a>. This page owns the clock they both run on, and the ban on any second clock.</p>
+        <div class="doc-note">
+          <p>If you are here because you want a card to animate on hover, or a panel to slide in, or a counter to tick: the answer is almost always one of the two resting timings below, and there is no rung between them and the navigation timing. If you are sure there is a gap, take it through <a href="../guidelines/extending-this-system.html">extending this system</a> as a named amendment. Do not open one on your page.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">L8 · C10</span></p>
+          <p class="doc-law__statement">Every focus change travels, and every focus change travels for the same length of time. The navigation timing is the declared parameter <code>nav_ms</code> = 300, read by the script and by the stylesheet from one source, and no component, page, trigger or theme may choose a different one.</p>
+          <p class="doc-check">Assert <code>RZ.PARAMS.nav_ms === 300</code> and that <code>getComputedStyle(document.documentElement).getPropertyValue("--rz-param-nav-ms")</code> resolves to <code>300ms</code>; then assert <code>RZ.verifyParameters()</code> returns <code>[]</code>, which is the same check run over every mirrored number at once. Then wrap <code>RZ.travel</code>, hop from each trigger in turn — card click, in-card link, Navigate&nbsp;to entry, arrow key, breadcrumb, search arrival, notification arrival — and assert each recorded crossing lasts <code>nav_ms</code> within one frame, and that all seven passed through the one wrapped function.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">L8 · C10 · C11</span></p>
+          <p class="doc-law__statement">Nothing about a hop is instantaneous and nothing about a hop is a fade. The camera is sampled moving; the destination is not cross-dissolved into place, and the card you left is not swapped out under cover of an opacity change.</p>
+          <p class="doc-check">Sample the camera transform on every frame of a hop: more than two distinct positions are recorded, and the first equals the pre-hop camera. Over the same hop, assert no element's computed <code>opacity</code> travels from <code>0</code> to <code>1</code> or back, and that the element set on the plane is identical before and after — nothing was mounted and nothing was removed.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">L8 · C11</span></p>
+          <p class="doc-law__statement">Only the camera may spend the navigation timing. The two remaining timings — quick and settle — are for state a hop did not cause: a hover, a pressed control, a vein lighting up, a halo going quiet. A resting timing may never be attached to the plane's own transform, and the navigation timing may never be attached to a hover.</p>
+          <p class="doc-check">Walk every rule in <code>system.css</code>: for each declaration whose <code>transition-property</code> includes <code>transform</code> on <code>.rz-plane</code>, assert the duration is <code>var(--rz-dur-nav)</code>; for every <code>:hover</code> rule, assert it is not. Then, at runtime, hover ten cards in turn and assert the camera transform is identical throughout — a hover is not a hop.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">L8 · C16</span></p>
+          <p class="doc-law__statement">A hop asked for while a hop is in flight is refused, and the refusal is spoken. It is never queued, never blended into the crossing already running, and never allowed to retarget the camera mid-flight — because a camera pulled two ways has no answer to “where am I”.</p>
+          <p class="doc-check">Call <code>RZ.go(a)</code> and, on the next frame, call <code>RZ.go(b)</code>. Assert <code>RZ.focus</code> is <code>a</code> when the first crossing lands, that the live region contains the refusal in words, that <code>b</code> was never focused, and that every camera sample stayed on the first route's polyline for the whole 300ms. Repeat with the second call fired one millisecond before the first lands: same result.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">L8 · C13</span></p>
+          <p class="doc-law__statement">Under reduced motion the timing collapses and the <em>direction</em> does not. The trail is still drawn along the real veins of the route and held long enough to read, the you-are-here still moves, and the hop is still announced — so distance and direction survive for a reader who cannot be moved across a screen.</p>
+          <p class="doc-check">Set <code>data-motion="reduced"</code> on the root, or turn the system preference on, and hop three veins. Assert the camera arrives in one step; assert <code>.rz-trail</code> carries <code>data-on="true"</code> with a <code>d</code> whose vertices are the route's real node positions, and that it is still on 500ms later; assert the world view's marker and its accessible label both moved. Then assert <code>--rz-dur-nav</code> is <em>not</em> zeroed — the trail is held for it.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">Three triggers, one clock</h3>
+        <p>A small garden with a real graph in it. Travel by clicking a card, by pressing an arrow key with the board focused, and by following the link written into the Office Fig's own prose. Watch the clock rather than the card: all three crossings take exactly as long as each other, because all three end up in <code>RZ.go</code>, which is the only thing in the system that moves the camera towards a focus. Ask for a second hop while one is in flight and it will be refused in words, which is Law 4 running.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0" role="application"
+                 aria-label="A small garden. Click a card to travel to it; arrow keys pick a vein; drag the dark to pan.">
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="3,3"
+                         data-kind="PlantPal" data-kind-key="platform"
+                         data-name="Your garden" data-recap="12 plants · 3 need something today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">PlantPal</p>
+                  <h3 class="rz-n__name">Your garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">3 need something today</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Everything you keep, on one plane. Travel out to <a href="#n-ficus" data-rz-goto="n-ficus">the Fiddle-leaf Figs</a> and back, and count: the crossing is the same length whichever way you set it off.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-study" data-cell="4,2"
+                         data-kind="Room" data-kind-key="collection"
+                         data-name="The Study" data-recap="Rooms · 5 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Room</p>
+                  <h3 class="rz-n__name">The Study</h3>
+                  <p class="rz-n__recap">5 plants
+                    <span class="rz-n__recap-second">North window, cool in winter</span></p>
+                </article>
+
+                <article class="rz-n" id="n-ficus" data-cell="4,4"
+                         data-kind="Species" data-kind-key="species"
+                         data-name="Fiddle-leaf Fig" data-recap="Species · 12 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Species</p>
+                  <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">12 plants</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office-fig" data-cell="5,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Watered 3 days ago · 1 problem open">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Watered 3 days ago
+                    <span class="rz-n__recap-second">1 problem open</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>There is <a href="#n-leaf-spot" data-rz-goto="n-leaf-spot">a leaf spot in its second week</a> on this one. That is an ordinary link in ordinary prose, and it crosses the same vein on the same clock as clicking the card would.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-leaf-spot" data-cell="6,0"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf spot" data-recap="Problems · in treatment">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf spot</h3>
+                  <p class="rz-n__recap">In treatment, second week
+                    <span class="rz-n__recap-second">Next step due tomorrow</span></p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="6,2"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="12 June" data-recap="Journal · repotted the Office Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">12 June</h3>
+                  <p class="rz-n__recap">Repotted the Office Fig
+                    <span class="rz-n__recap-second">New mix, one size up</span></p>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Every trigger, one timing</span><span>C10 · C11 · C16</span>
+          </figcaption>
+        </figure>
+        <p>The page declares the edge list and the starting focus. It does not declare a duration, an easing or a transition — there is nowhere on a page for those to be written:</p>
+        <pre class="doc-code"><code>RZ.mount({
+  edges: [
+    ["n-garden", "n-study"],
+    ["n-garden", "n-ficus"],
+    ["n-study", "n-office-fig"],
+    ["n-ficus", "n-office-fig"],
+    ["n-office-fig", "n-leaf-spot"],
+    ["n-office-fig", "n-journal"],
+    ["n-journal", "n-ficus"]
+  ],
+  focus: "n-garden"
+});</code></pre>
+
+        <h3 class="doc-h3">Walking into reduced motion</h3>
+        <p>Reduced motion is a document state like any other, so you can walk into it and back out without editing markup or changing a system preference. Press this and hop again in the garden above: the camera arrives at once, the trail along the real veins is drawn and held, and the announcement is unchanged.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-probe__btn" aria-pressed="false"
+                    data-rz-state="motion:reduced"
+                    data-rz-says="Reduced motion. The crossing is immediate; the trail along the veins is still drawn and held.">Reduced motion</button>
+            <button type="button" class="rz-probe__btn" aria-pressed="false"
+                    data-rz-state="speed:slow"
+                    data-rz-says="The garden is answering slowly. Nothing moved and nothing changed rank.">The garden is answering slowly</button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Motion state, reachable from a probe</span><span>C13 · C22</span>
+          </figcaption>
+        </figure>
+        <p>The second button is here to make the point that slowness is not a motion state. It changes what a node <em>says</em> while it waits; it changes no timing, no position and no rank at all, and it is settled on <a href="../patterns/degradation.html">degradation</a>, not here.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tokens</h2>
+
+        <h3 class="doc-h3">The three timings</h3>
+        <p>Three semantic timings exist, and only one of them may be spent on a hop. A theme restates them; a theme does not add a fourth, and may not change the navigation timing at all — it is a declared parameter, and changing it needs an owner ruling.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Semantic timings</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-dur-nav</code></td>
+                <td><code>var(--rz-param-nav-ms)</code> — <code>300ms</code></td>
+                <td>The navigation timing. Every hop, from every trigger. Locked to <code>nav_ms</code> in the constitution and to <code>RZ.PARAMS.nav_ms</code> in the script. A theme may not re-key it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-dur-quick</code></td>
+                <td><code>var(--rz-dur-1)</code> — <code>120ms</code></td>
+                <td>A control acknowledging your pointer: a stake or a chip taking its hover fill, a camera button's rim. Never the plane.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-dur-settle</code></td>
+                <td><code>var(--rz-dur-2)</code> — <code>240ms</code></td>
+                <td>Something settling into a new state without you having moved: a vein lighting as live, a halo going quiet, the live region fading up. Never the plane.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Two raw steps sit under those — <code>--rz-dur-3</code> and <code>--rz-dur-4</code> — and one of them has exactly one use in the whole system: the shell transform that pulls the camera out of the application when you open settings. That is not a hop; it is a change of which surface you are looking at, it is declared once in <code>system.css</code>, and it is described on <a href="../patterns/settings-exit.html">settings exit</a>. If you are reaching for <code>--rz-dur-3</code> for anything else, you are opening the scale this page exists to close. Say so plainly and take it to an amendment, rather than quietly writing a fourth timing into a component.</p>
+
+        <h3 class="doc-h3">The two easings</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Easing</caption>
+            <thead><tr><th>Token</th><th>Shape</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-ease-travel</code></td>
+                <td>Out-weighted — leaves briskly, arrives long</td>
+                <td>Anything the camera does, and anything sized by the camera. The long tail is what makes an arrival feel like coming to rest somewhere rather than stopping.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-ease-rest</code></td>
+                <td>In-weighted — a state changing under its own steam</td>
+                <td>Everything on the two resting timings. It is deliberately unremarkable: a state change is not an event.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What the script reads</h3>
+        <p>The stylesheet and the script hold the same number, and the system checks that they still agree rather than trusting that they do. Run this in a console on any page in this system:</p>
+        <pre class="doc-code"><code>RZ.PARAMS.nav_ms;          // 300
+RZ.verifyParameters();     // [] &mdash; the CSS mirror agrees with the script
+RZ.reduced();              // true under data-motion="reduced" or the OS setting</code></pre>
+        <p>A non-empty array from <code>verifyParameters()</code> means a mirror has drifted, and a drifted <code>nav_ms</code> is a hop whose stylesheet half and script half disagree — one of the two things this page is guarding. This page added no token and no class, so there is no amendment to record.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Reduced motion is a first-class path, not a degraded one.</strong> When the preference is set, or when <code>data-motion="reduced"</code> is on the root, the camera arrives in a single step — but the hop is not thereby made silent. The trail is drawn along the route's real veins and held, the you-are-here marker moves, the world view's accessible label is rewritten, and the announcement names where you came from, what you crossed without opening, and how many veins lead out from where you now are. Everything the crossing was carrying is still delivered; only the crossing itself is gone.</p>
+        <p><strong>The navigation timing is not zeroed under reduced motion, on purpose.</strong> The two resting timings collapse to a millisecond; <code>--rz-dur-nav</code> keeps its value, because the script spends it holding the trail instead of moving the camera. If you ever find yourself zeroing it to finish the job, you will have removed the last visible statement of direction from the reduced-motion path, and Law 5's check catches it — the trail will be gone 500ms later.</p>
+        <p><strong>A hop moves keyboard focus, deliberately and once.</strong> When a crossing lands, the destination card takes focus without scrolling the document, so a keyboard reader is standing where the camera is standing. Focus is never moved during the crossing, and never moved by a camera control — panning, zooming, fitting and recentring change the view and leave your focus exactly where it was. That separation is settled on <a href="../guidelines/interaction-and-cursors.html">interaction and cursors</a>.</p>
+        <p><strong>A refusal is spoken, not swallowed.</strong> Law 4's refusal reaches the live region in words. Silence would be worse than the queue it replaces: a reader who pressed a key twice and heard nothing has no way to tell a refused hop from an unresponsive page.</p>
+        <p><strong>Nothing on a resting timing carries information by itself.</strong> A halo, a live vein and a fading announcement all change on the settle timing, and every one of them says something that is also said in words, in position, or in size. That is the test to run when you add a transition: turn all motion off and check you have not just deleted a fact.</p>
+        <p><strong>Nothing animates without your asking.</strong> The camera never moves on a timer, on an incoming record, or on a status change; idle the page and the transform is unchanged. The one thing that moves on its own is the drifting field, which is decoration, is stopped entirely under reduced motion, and carries nothing.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Send every hop through <code>RZ.go</code>, whatever set it off — a card, a chip, a key, a link in a paragraph, a search result. One code path is what makes the one timing true rather than merely stated.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Give an arrival from search a shorter crossing because it is farther and 300ms feels long. Six hops on one clock is what tells you six hops happened; shortening it turns distance into a cut (C21).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Reach for <code>--rz-dur-quick</code> when a control acknowledges your pointer and <code>--rz-dur-settle</code> when a state settles, and leave the plane's transform alone.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Publish a duration scale — fast, medium, slow — and let each component pick from it. The next round reads that as permission, and half the garden starts teleporting while the other half animates (C10).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Refuse a hop asked for mid-crossing, and say so in the app's own voice in the live region.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Queue the second hop, or blend it into the crossing in flight. A camera pulled two ways lands somewhere neither route passed through, and the trail then describes a journey nobody took (C11, C16).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="../patterns/traversal.html">
+            <span class="doc-card__name">Traversal</span>
+            <span class="doc-card__note">The choreography this clock runs: the route, the polyline, and what lights on the way through.</span>
+          </a>
+          <a class="doc-card" href="../patterns/arrivals.html">
+            <span class="doc-card__name">Arrivals</span>
+            <span class="doc-card__note">A hop that starts somewhere other than a card — search, a notification — on the same 300ms.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/motion-and-scale.html">
+            <span class="doc-card__name">Motion and scale</span>
+            <span class="doc-card__note">How a crossing reads: direction, scale and ownership, and what a hop must never be mistaken for.</span>
+          </a>
+          <a class="doc-card" href="../components/edge.html">
+            <span class="doc-card__name">Edge</span>
+            <span class="doc-card__note">The veins the camera follows, and the one list they are all drawn from.</span>
+          </a>
+          <a class="doc-card" href="../components/world.html">
+            <span class="doc-card__name">World</span>
+            <span class="doc-card__note">The plane and the camera — the one transform the navigation timing is spent on.</span>
+          </a>
+          <a class="doc-card" href="../patterns/settings-exit.html">
+            <span class="doc-card__name">Settings exit</span>
+            <span class="doc-card__note">The one choreography that is not a hop, and the only other declared duration in the system.</span>
+          </a>
+          <a class="doc-card" href="../patterns/degradation.html">
+            <span class="doc-card__name">Degradation</span>
+            <span class="doc-card__note">Waiting, slowness and failure — states inside a node, never a timing.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/accessibility.html">
+            <span class="doc-card__name">Accessibility</span>
+            <span class="doc-card__note">The announcement after a hop, and keyboard traversal that follows the graph.</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <p class="rz-sr" id="rz-live" role="status" aria-live="polite"></p>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen garden, mounted from the system's own primitives. This page
+       declares an edge list and a starting focus; the timing, the easing and
+       the route all come from RZ. */
+    RZ.mount({
+      edges: [
+        ["n-garden", "n-study"],
+        ["n-garden", "n-ficus"],
+        ["n-study", "n-office-fig"],
+        ["n-ficus", "n-office-fig"],
+        ["n-office-fig", "n-leaf-spot"],
+        ["n-office-fig", "n-journal"],
+        ["n-journal", "n-ficus"]
+      ],
+      focus: "n-garden"
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interaction and cursors · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Guidelines</p>
+      <h1 class="doc-title">Interaction and cursors</h1>
+      <p class="doc-lede">The board pans and the node reads. This page settles
+        which cursor every surface in your garden shows, which gesture does
+        what, and which handler wins when a pointer goes down somewhere two
+        of them could claim it.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is one plane you move a camera over, and on that plane
+          sit cards you read. Those are two different things to do with a
+          mouse, and the pointer has to say which one you are about to do
+          before you commit to it. Drag the dark between the cards and the
+          world slides under you. Put the pointer on a card's paragraph and it
+          is a paragraph: an ordinary document, with an I-beam over its text, a
+          pointer over its links, and a bare wheel that scrolls it rather than
+          zooming the world out from under your hands.</p>
+        <p>That split is the whole of this page. It is the reason a plant's
+          own write-up can carry a real link to the disease it mentions and
+          still not fight the board it floats on, and the reason you can put
+          your pointer down anywhere on a distant card — anywhere at all, not
+          on a title you have to aim for — and travel there.</p>
+        <div class="doc-note">
+          <p>What a card <em>is</em> belongs to <a href="../components/node.html">node</a>;
+            what the plane is belongs to <a href="../components/world.html">world</a>.
+            The two forms a control may take, and the timing every hop runs on,
+            are owned by <a href="../components/action-rail.html">action rail</a>,
+            <a href="../components/navigate-to.html">navigate to</a> and
+            <a href="../patterns/traversal.html">traversal</a>. This page states
+            only what the pointer does and who gets the event.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C16, C17</span></p>
+          <p class="doc-law__statement">The board takes the grab cursor and the
+            node takes the document cursors. <code>grab</code> on the world,
+            <code>grabbing</code> while you are panning, and inside a card the
+            ordinary ones: default over text, pointer over anything you can
+            activate, <code>not-allowed</code> on a control that is genuinely
+            refused. There is no grab cursor inside a card anywhere, at any
+            rank, in any state.</p>
+          <p class="doc-check">Walk every element under <code>.rz-n</code> with
+            <code>getComputedStyle</code> and assert none computes
+            <code>cursor: grab</code> or <code>grabbing</code>. Assert
+            <code>.rz-world</code> computes <code>grab</code>, and that it
+            computes <code>grabbing</code> exactly while
+            <code>data-panning="true"</code> is set.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">Pointer precedence is declared, not
+            discovered. Three rules, in order: the pan handler returns
+            immediately if the pointer went down inside a card; a card's travel
+            listener stands aside for the card's own controls, in-card hops,
+            stakes and links; in arrange mode the card is the handle and
+            everything else is inert.</p>
+          <p class="doc-check">Press and drag from a card's own body: the camera
+            transform is unchanged and <code>data-panning</code> was never set.
+            Click a <code>.rz-chip</code>, a <code>.rz-stake</code> and a link
+            inside a non-focused card: the chip's own destination is reached,
+            the stake changes data without a hop, and neither activates the
+            card's own travel. Press and drag from the plane between cards: the
+            camera moved and <code>RZ.focus</code> did not.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C17</span></p>
+          <p class="doc-law__statement">A bare wheel belongs to the card.
+            <code>Alt</code> plus wheel zooms the world; a wheel with no
+            modifier is left alone, so it scrolls the focused card's own body —
+            the one thing on screen that scrolls. “Nothing other than the
+            focused node's body scrolls.”</p>
+          <p class="doc-check">Read <code>RZ.cam.k</code>, wheel over the world
+            with no modifier, read it again: unchanged. Wheel with
+            <code>altKey</code> and it has changed, clamped between
+            <code>zoom.min</code> and <code>zoom.max</code>. Then assert that
+            the only element in the document with
+            <code>scrollHeight &gt; clientHeight</code> is the focused node's
+            <code>.rz-n__body</code>, and that <code>document.body</code> has no
+            scrollbar.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">Looking around is not navigating. Pan,
+            zoom, fit and recentre are a third category of control: they move
+            the view and change neither your data nor where you are standing.
+            They are the only affordances on screen that are neither a filled
+            stake nor an outlined chip.</p>
+          <p class="doc-check">Record <code>RZ.focus</code> and every node's
+            <code>data-rank</code>. Pan, zoom both ways, fit, recentre. Read
+            both again: identical. Assert every camera control is a
+            <code>.rz-cam-btn</code> and that none of them calls
+            <code>RZ.go</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">The whole surface of a non-focused card
+            is the target, and the focused card is not a target at all. A card
+            you are not standing on takes <code>pointer</code> across its
+            entire face; the card you are standing on takes
+            <code>default</code>, because it is a document you are reading and
+            not somewhere to go.</p>
+          <p class="doc-check">Assert every <code>.rz-n</code> without
+            <code>data-focus="true"</code> computes <code>cursor: pointer</code>
+            on its own box, and that clicking its padding — not a heading, not
+            a link — reaches that node. Assert the element carrying
+            <code>data-focus="true"</code> computes <code>cursor: default</code>
+            and that clicking its prose does nothing.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C15</span></p>
+          <p class="doc-law__statement">Arrange mode takes <code>move</code>,
+            deliberately not <code>grab</code>. Grab means the board is about to
+            slide; move means this one card is about to be placed. Two different
+            promises, so two different cursors — and in arrange the world itself
+            drops to <code>default</code>, because the board is not what you are
+            dragging.</p>
+          <p class="doc-check">Run <code>RZ.setArrange(true)</code>. Assert every
+            <code>.rz-n</code> computes <code>cursor: move</code>, that
+            <code>.rz-world</code> computes <code>default</code>, and that every
+            <code>.rz-stake</code> and <code>.rz-chip</code> computes
+            <code>pointer-events: none</code>. Leave the mode and assert all
+            three revert.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws, running</h2>
+        <p>The same four plants, at the same cells, as everywhere else in this
+          system — but read this one with your hands. Drag the dark between the
+          cards and the world moves. Hold <code>Alt</code> and wheel, and it
+          scales around your pointer. Put the pointer on Studio Fig anywhere
+          and it is a target; put it on the paragraph inside Office Fig and it
+          is text, with a real link in it that travels without the card's own
+          travel firing underneath it. Nothing you do here with the camera
+          changes which plant you are standing on.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Drag the plane to pan; hold Alt and use the wheel to zoom; click any card you are not standing on to travel to it.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>This is an ordinary document. The pointer over this
+                          sentence is an arrow, not a hand, and the wheel over
+                          it scrolls this card and nothing else. The prose can
+                          carry a real link: the lower leaves have been dropping
+                          since the radiator came on, which is the same story as
+                          <a href="#" data-rz-goto="n-problems">the dry-air
+                          problem</a> you already have open.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>Below, the two forms: the filled stake changes this
+                          plant, the outlined chip travels. Both stand in front
+                          of the card's own travel — pressing either does its
+                          own job and never the card's.</p>
+                        <p>
+                          <button type="button" class="rz-stake">Log watering</button>
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                        </p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>Keep reading and this body will start to scroll while
+                          the world behind it holds perfectly still. That is the
+                          whole reason the bare wheel was left free: a plant's
+                          write-up, its watering history and its journal are
+                          long, and you should not have to think about which
+                          surface your wheel is aimed at.</p>
+                        <p>The card is also never clipped. If it grows past the
+                          room the viewport has, the zoom gives way and the card
+                          stays whole — which is why zooming is a deliberate,
+                          modified gesture and not something a stray scroll can
+                          do to you.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <p class="rz-chrome rz-chrome--gesture">Drag to pan · Alt + wheel to zoom · Arrows to travel</p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Every cursor and every gesture on one surface</span>
+            <span>C14 · C15 · C16 · C17</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>The gesture line at the lower start edge is a chrome member like any
+          other: it states the two gestures that are not discoverable by
+          looking, in chrome's own voice, and it never says anything that a
+          form on the board already says for itself.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ]
+});</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The cursor table</h2>
+        <p>One row per surface. A theme may not add a row and may not re-key
+          one: a cursor is a promise about what the next press will do, and a
+          seventh promise is a seventh thing to learn.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Cursor law</caption>
+            <thead><tr><th>Surface</th><th>Cursor</th><th>The promise it makes</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-world</code></td>
+                <td><code>grab</code></td>
+                <td>The board. Press here and the whole world slides with you.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-world[data-panning="true"]</code></td>
+                <td><code>grabbing</code></td>
+                <td>You have it. Set by the runtime for exactly the length of
+                  the drag.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n</code>, not focused</td>
+                <td><code>pointer</code></td>
+                <td>Somewhere you can go. The whole face of the card, not a
+                  target inside it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n[data-focus="true"]</code></td>
+                <td><code>default</code></td>
+                <td>Where you already are. A document to read, not a place to
+                  travel to.</td>
+              </tr>
+              <tr>
+                <td>Links and buttons inside the focused card</td>
+                <td><code>pointer</code></td>
+                <td>Ordinary document behaviour, restored explicitly so the
+                  card's own <code>default</code> does not swallow it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake[data-refused="true"]</code>,
+                    <code>[aria-disabled="true"]</code></td>
+                <td><code>not-allowed</code></td>
+                <td>This change is genuinely impossible right now — offline, or
+                  refused. Never used for merely discouraged.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__item[data-refused="true"]</code></td>
+                <td><code>not-allowed</code></td>
+                <td>The same refusal, in chrome's register, on the item you
+                  reached for rather than on a banner.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n</code> in arrange mode</td>
+                <td><code>move</code></td>
+                <td>This card is about to be placed. Deliberately not
+                  <code>grab</code>: the board is not what moves.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-shell</code> in overview mode</td>
+                <td><code>zoom-in</code></td>
+                <td>The whole application, shrunk to a card. Click it to dive
+                  back in.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The gesture map</h2>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What each gesture reaches</caption>
+            <thead><tr><th>Gesture</th><th>Handler</th><th>What it does, and what it does not</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Drag on the plane</td>
+                <td>The world's <code>pointerdown</code></td>
+                <td>Pans. Changes no data and no focus. Refuses to begin if the
+                  press landed inside a card.</td>
+              </tr>
+              <tr>
+                <td><code>Alt</code> + wheel</td>
+                <td>The world's <code>wheel</code>, non-passive</td>
+                <td>Zooms about the pointer, clamped to
+                  <code>zoom.min</code>…<code>zoom.max</code> by
+                  <code>RZ.clampZoom</code>. Without <code>Alt</code> the
+                  handler returns and the event is the card's.</td>
+              </tr>
+              <tr>
+                <td>Bare wheel</td>
+                <td>The browser</td>
+                <td>Scrolls the focused card's body, and only that. Nothing
+                  else in the document scrolls.</td>
+              </tr>
+              <tr>
+                <td>Click a card you are not on</td>
+                <td><code>RZ.wireNode</code> → <code>RZ.go(id)</code></td>
+                <td>Travels, on the one timing, along the real edges. Stands
+                  aside for the card's own controls.</td>
+              </tr>
+              <tr>
+                <td>Click your own card</td>
+                <td>Nothing</td>
+                <td>Returns at once. You cannot travel to where you are.</td>
+              </tr>
+              <tr>
+                <td>Camera cluster</td>
+                <td><code>RZ.zoomBy</code>, <code>RZ.fitAll</code>,
+                    <code>RZ.recentre</code></td>
+                <td>Moves the view. <code>RZ.focus</code> is untouched, and
+                  recentre says so out loud.</td>
+              </tr>
+              <tr>
+                <td>Arrow keys on the world</td>
+                <td><code>RZ.neighbourInDirection</code></td>
+                <td>Travels to the neighbour that actually lies that way,
+                  computed from real positions. A direction with no neighbour is
+                  spoken, not ignored.</td>
+              </tr>
+              <tr>
+                <td>Drag a card, arrange mode only</td>
+                <td><code>RZ.beginDrag</code></td>
+                <td>Stores an offset against that node's record. Changes no data
+                  and performs no traversal.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">Precedence, in one line each</h3>
+        <p>The pan handler's first act is to look up from the pointer's target
+          for a card, and give up if it finds one. The card's travel listener's
+          first act is to look for anything the user could have meant instead —
+          this is the stand-aside list, and it is the reason a link in a plant's
+          write-up works like a link:</p>
+
+        <pre class="doc-code"><code>var STAND_ASIDE = "[data-rz-goto], .rz-stake, .rz-chip, button, a, input, textarea, select";
+
+/* pan: rule 1 */
+if (ev.target.closest(".rz-n")) return;
+
+/* travel: rule 2 */
+if (ev.target.closest(STAND_ASIDE)) return;</code></pre>
+
+        <p>Rule three needs no test of its own: arrange is a mode, and both
+          handlers above return on <code>RZ.arrange</code> before they do
+          anything else. What the mode is for belongs to
+          <a href="../patterns/arrange-mode.html">arrange mode</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <ul>
+          <li><strong>No gesture is the only way to anything.</strong> Panning
+            has recentre and fit beside it in the camera cluster; zoom has two
+            buttons; travelling has the arrow keys, the destination panel and
+            the you-are-here trail. A pointer gesture is always the fast path
+            and never the path.</li>
+          <li><strong>The keyboard follows the graph, not the DOM.</strong> An
+            arrow key proposes the neighbour that genuinely lies that way, from
+            real positions. The behaviour and its announcement are owned by
+            <a href="accessibility.html">accessibility</a>; what belongs here is
+            that the pointer and the keyboard reach the same set of
+            destinations, because both read the one edge list.</li>
+          <li><strong>A direction with nothing in it is spoken.</strong> Silence
+            reads as a broken key. The live region says there is no vein that
+            way, and you are still where you were.</li>
+          <li><strong>Every target is the whole card.</strong> A card you are
+            not standing on is one large target, which is the easiest thing on
+            the surface to hit with an unsteady hand or a head pointer. Nothing
+            requires you to land on a word.</li>
+          <li><strong>Refusal is never cursor-only.</strong>
+            <code>not-allowed</code> is a hint for people who can see it, so
+            every refused control also carries <code>aria-disabled</code> or
+            <code>data-refused</code> and says its reason in the live region.</li>
+          <li><strong>Focus outlines are never removed.</strong> The system's
+            <code>:focus-visible</code> ring is drawn on the card, on every
+            chrome item and on every camera button, and a card reached by
+            travel takes focus at the end of the hop.</li>
+          <li><strong>Logical properties throughout.</strong> Nothing in this
+            page's rules names left or right, so a right-to-left garden pans,
+            arranges and reads the same way round.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Leave the bare wheel alone and put zoom behind
+              <code>Alt</code>. The card is the thing with reading in it, so
+              the unmodified gesture is the card's, and the world only scales
+              when you ask it to.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Bind a bare wheel to zoom. A user scrolling a plant's journal
+              would pull the whole garden away under the sentence they were
+              reading, and the card that must never be clipped would be the
+              first thing to go (C17).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the whole face of a distant card travel, and let its own
+              stake and chip stand in front of it. One target, one exception
+              list, both declared.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Make only the card's name clickable and leave the rest of it
+              inert. It shrinks the target to a word, and it teaches that some
+              of a card is live and some is not — which stops being true the
+              moment that card is focused and its prose carries links (C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Show <code>move</code> when a card is about to be placed and
+              <code>grab</code> when the board is about to slide. Two
+              promises, two cursors.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put a grab cursor on a card, in arrange mode or out of it. It
+              says the plane is coming with you, and then only the card moves —
+              which is the one thing arrange mode must never be ambiguous
+              about (C15).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="../components/world.html">world</a> — the plane the pan
+            gesture acts on, and the camera it carries.</li>
+          <li><a href="../components/node.html">node</a> — what a card is, what
+            scrolls in it, and why the focused one is never clipped.</li>
+          <li><a href="../components/action-rail.html">action rail</a> and
+            <a href="../components/navigate-to.html">navigate to</a> — the two
+            forms this page's stand-aside list defers to.</li>
+          <li><a href="../components/chrome.html">chrome</a> — the register the
+            gesture line and the camera cluster belong to.</li>
+          <li><a href="../patterns/traversal.html">traversal</a> — what happens
+            after a click that travels, and on what timing.</li>
+          <li><a href="../patterns/arrange-mode.html">arrange mode</a> — the
+            mode whose cursor and inertness this page states.</li>
+          <li><a href="../patterns/settings-exit.html">settings exit</a> — the
+            shrunken application card and its <code>zoom-in</code> cursor.</li>
+          <li><a href="accessibility.html">accessibility</a> — the keyboard
+            route to everything the pointer can reach.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log watering", "Note what you saw"],
+        "n-studio": ["Mark step 2 done"],
+        "n-garden": ["Add a plant"],
+        "n-problems": ["Note what you saw"]
+      }
+    });
+  </script>
+</body>
+</html>

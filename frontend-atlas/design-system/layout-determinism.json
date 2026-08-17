@@ -1,0 +1,76 @@
+{
+  "document": "layout-determinism",
+  "system": "Rhizome",
+  "slug": "plantpal-cae942ee",
+  "version": "1.0.0",
+  "regime": "atlas-class",
+  "doctrine_refs": ["Sec.11 R4", "Sec.11 R5", "Sec.8 C7", "Sec.8 C8", "Sec.8 C9", "Sec.8 C22", "Sec.8 C26"],
+  "invariant_refs": ["C7", "C8", "C9", "C22", "C23", "C26"],
+  "summary": "Node positions are lattice cells written into the markup, not the output of a simulation. Pixel position is a pure function of the cell, the system's pitch and the node's own persisted drag offset. Insertion never displaces an existing node, because a new node takes a free cell rather than a place in a flow. Density is bounded by one parameterised rule applied to every node-to-collection relationship on the board.",
+
+  "placement_rule": {
+    "statement": "px = origin + cell x pitch + persisted_offset",
+    "formula": {
+      "x": "PARAMS.lattice.origin_x + col * PARAMS.lattice.pitch_x + offset.dx",
+      "y": "PARAMS.lattice.origin_y + row * PARAMS.lattice.pitch_y + offset.dy"
+    },
+    "parameters_from": "constitution.json -> parameters.lattice (pitch_x 300, pitch_y 180, origin_x 200, origin_y 80, cols 12, rows 11). A theme may amend the pitch under the amendment policy; it may not replace the formula.",
+    "cell": "Declared per node in the markup as data-cell=\"col,row\". It is authored data, part of the record, read exactly once at load by RZ.place().",
+    "column_semantics": "Columns encode distance along the path actually travelled, left to right: col 0 is the collection the path started from, col 2 the species tier, col 4 the focus's own relations, col 6 their members, col 8 the tier beyond. Reading left is reading your own history; reading right is reading where you can go. The node you came FROM has a reserved column, so 'back' is a place rather than a guess.",
+    "row_semantics": "Rows separate siblings of one kind within a column. They carry no ranking beyond the drawn/aggregate distinction below.",
+    "no_simulation": "There is no force layout, no physics tick, no randomised seeding and no dependence on DOM order anywhere in assets/system.js. The only pseudo-random generator in the system is the particle field's, seeded with parameters.particles.seed, so even the decoration does not reshuffle between loads.",
+    "persistence": "A node dragged in Arrange mode acquires a persisted offset (dx, dy) held against its record, never a new cell. The cell stays the node's identity; the offset is the user's preference. Every consumer of position -- the veins, the world-view extent, Fit, keyboard direction-finding -- reads cell + offset from RZ.nodes, so none of them can disagree. In production the offset is written to the user's own profile; a mock keeps it on the record for the life of the page.",
+    "user_arrangement": "Arrange mode exists only to set those offsets. It changes no data and performs no traversal, and on exit it restores the camera the user had (C15, C16)."
+  },
+
+  "density_strategy": {
+    "name": "two-and-an-aggregate",
+    "statement": "For ANY node connected to a collection of sibling nodes of one kind: if the collection has fewer than THRESHOLD members, draw every member as its own node; if it has THRESHOLD or more, draw the SHOWN highest-ranked members as nodes plus exactly ONE aggregate node standing for all the rest, labelled '+N more', which opens the full list.",
+    "parameters": { "threshold": 4, "shown": 2 },
+    "stated_once": "This rule lives in the system, on components/aggregate.html and foundations/spacing.html only. No other page restates it; a page that needs it cites it. Species is an example of the rule, never a special case.",
+    "ranking": {
+      "source": "the user's own garden data -- never alphabetical, never insertion order",
+      "keys_in_order": [
+        "most overdue actions (days past due, descending)",
+        "needing treatment (an active problem or treatment course)",
+        "most accessed (the user's own open count, descending)"
+      ],
+      "tie_break": "stable by record id, so a tie does not reshuffle between loads"
+    },
+    "worked_examples": [
+      { "relationship": "My garden -> plants", "members": 12, "branch": ">= threshold", "drawn": ["Office Fig (overdue 2 days)", "Studio Fig (under treatment)"], "aggregate": "+10 more plants" },
+      { "relationship": "Problems -> problem records", "members": 3, "branch": "< threshold", "drawn": ["Underwatering", "Overwatering", "Root rot"], "aggregate": null },
+      { "relationship": "Species -> species records", "members": 28, "branch": ">= threshold", "drawn": ["Fiddle-leaf Fig", "Monstera"], "aggregate": "+26 more species" },
+      { "relationship": "Fiddle-leaf Fig -> its relations", "members": 6, "branch": "not a collection of siblings of one kind -- one node per kind, so all are drawn", "drawn": ["My garden", "Care guide", "Problems", "Journal", "Identification", "Platform link"], "aggregate": null }
+    ],
+    "both_branches_must_be_shown": "Any page or specimen demonstrating this rule shows BOTH branches side by side -- an under-threshold collection drawn in full and an at-threshold collection drawn as two-and-an-aggregate. One branch alone reads as an example rather than a rule.",
+    "no_silent_truncation": "An aggregate is a node, not a cut. It is traversable, states its own count, and its full list is one hop away. Every list endpoint in PlantPal is paged, so '+N more opens the full list' is implementable and a kept count the interface cannot reach is a defect, not an opinion.",
+    "why_two": "Two drawn members is the smallest number that still shows a collection is plural and lets the user compare its top-ranked items side by side; a third adds screen cost without adding that. Four is the smallest threshold at which an aggregate saves more than it costs."
+  },
+
+  "growth_ceiling": {
+    "drawn_nodes_bound": "For a focus of degree d whose neighbours are collections, the board draws at most d x (shown + 1) member nodes at rank 'near' and their own children at rank 'far'. With shown = 2 and threshold = 4 any collection contributes at most 3 nodes whether it holds 4 members or 40,000.",
+    "practical_ceiling": "About 30 nodes on screen at once -- the point at which the fringe rank stops being legible at zoom.min (0.28). The lattice is cols x rows = 12 x 11 = 132 cells, the hard ceiling on simultaneously placed nodes; beyond that the world extends by adding columns and the camera -- not the layout -- is what changes.",
+    "growth_direction": "The lattice grows rightward and downward from a fixed origin. Existing cells never renumber, so a node's position is stable for the life of the record."
+  },
+
+  "insertion_rule": {
+    "statement": "A new node takes the lowest free cell in the column its relationship to the focus assigns it, scanning rows top to bottom. Existing nodes are never renumbered, re-flowed or displaced (C8).",
+    "free_cell_search_order": "column fixed by relationship; rows ascending from 0; first cell not occupied by a live record wins; if the column is full the search moves to the next column of the same tier and the fact is recorded on the node.",
+    "worked_case": "Adding a 13th plant to My garden does not move Office Fig. Either the new plant outranks a drawn member -- in which case the loser moves into the aggregate, whose cell does not change and whose label goes from '+10 more' to '+11 more' -- or it does not, and only the aggregate's label changes. In both cases every drawn card keeps its cell.",
+    "non_structural_changes": "A status change, a count change, a new attachment or a health score arriving moves nothing at all (C9). Only two things change position: a user drag, and a genuinely new node taking a free cell.",
+    "day_zero": "An empty garden draws its first node at the cell it will keep forever, on a lattice with visible room around it. The world reads as a place with space in it rather than a failure to have data (C26)."
+  },
+
+  "slow_and_partial_interaction": {
+    "geography_first": "Cells come from the record list, which is small and arrives first. Every node is placed before any of its contents resolve, so a slow load fills cards in place and repositions nothing (C22).",
+    "unloaded_regions": "An unfetched region is a node with a cell of its own, drawn as explicitly unknown. Fetching it fills that node and adds new nodes into free cells; nothing already drawn moves (C23)."
+  },
+
+  "verification": {
+    "how_to_check_determinism": "Load the page twice and diff the computed left/top of every .rz-n element. They are equal. Then reload with the DOM order of the node elements reversed: positions are unchanged, because position is read from data-cell and not from document order.",
+    "how_to_check_insertion": "Append a node with a free data-cell and reload. Every pre-existing node's computed left/top is unchanged.",
+    "how_to_check_density": "For every collection node on the board, assert drawn_members === (members < 4 ? members : 2) and that an aggregate node exists exactly when members >= 4, with its label count equal to members - 2.",
+    "how_to_check_parameters": "Call RZ.verifyParameters(): it compares RZ.PARAMS against the --rz-param-* custom properties computed from assets/tokens.css and returns an empty mismatch list."
+  }
+}

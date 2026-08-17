@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minimap · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Minimap</h1>
+      <p class="doc-lede">The world view is the small map of your whole garden
+        that never leaves the corner of the screen. This page settles what it
+        draws, what it deliberately refuses to react to, and how it keeps
+        answering <em>where am I</em> at every zoom and in words as well as in
+        light.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is bigger than the screen. When the camera is close in on
+          one fig, you can see three or four of its neighbours and nothing else
+          — and if that were all there was, you would have no idea whether the
+          rest of your plants were up, down, near or far. The world view is the
+          answer: the whole garden shrunk into one small frame, one small mark
+          per body, a dashed rectangle showing how much of it you are currently
+          looking at, and a lit dot on the one you are standing in front of.
+          Glance at it and you know where you are, without hovering and without
+          reading.</p>
+        <p>It is a member of the chrome register, so it is fixed to the corner
+          of the viewport and takes no shadow — the register itself is settled
+          on <a href="chrome.html">chrome</a>, and this page does not restate
+          it. What is settled here is the map's own behaviour: it is drawn from
+          the same records the plane is drawn from, and it deliberately ignores
+          the camera.</p>
+        <div class="doc-note">
+          <p>The plane and its camera belong to <a href="world.html">world</a>;
+            the cards belong to <a href="node.html">node</a>; the lines belong
+            to <a href="edge.html">edge</a>; the lattice the cells are counted
+            on belongs to <a href="../foundations/spacing.html">spacing</a>. The
+            map only mirrors them. Its Arrange button opens the mode settled on
+            <a href="../patterns/arrange-mode.html">arrange mode</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C5</span></p>
+          <p class="doc-law__statement">“Where the user is, is answerable at
+            every zoom level without hovering or reading — by a position marker
+            in the persistent world view, not by a breadcrumb alone.” The map is
+            always present, and the you-are-here mark is always inside its
+            frame.</p>
+          <p class="doc-check">Zoom the specimen all the way out and all the way
+            in. At both clamps, read back
+            <code>document.querySelector("#rz-map-you")</code>’s
+            <code>cx</code>/<code>cy</code> and assert both fall inside
+            <code>0…208</code> and <code>0…104</code>, and that they equal
+            <code>RZ.mapPt(RZ.extent(), f.x + f.dx, f.y + f.dy)</code> for the
+            focused record. The mark does not drift and does not leave.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C5, C16</span></p>
+          <p class="doc-law__statement">The map's scale comes from the garden,
+            never from the camera. Panning and zooming move the dashed viewport
+            rectangle and nothing else on the map, so the ground never rescales
+            under the eye that is using it to navigate.</p>
+          <p class="doc-check">Record every <code>.rz-map__dot</code>’s
+            <code>x</code>/<code>y</code>, then drag the board and zoom twice.
+            Diff: every dot is unchanged, and only
+            <code>#rz-map-view</code>’s <code>x/y/width/height</code> moved.
+            <code>RZ.extent()</code> returns the same object shape before and
+            after.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">“No non-structural data change (status,
+            count, new attachment) moves anything.” A plant going thirsty, a
+            recap gaining a line, a treatment step ticked off — the map does not
+            twitch.</p>
+          <p class="doc-check">Change a record's <code>recap</code> and a card's
+            health, call <code>RZ.drawMap()</code>, and diff every
+            <code>.rz-map__dot</code> position and the four numbers on
+            <code>#rz-map-view</code>. All equal. The extent is unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C7, C9</span></p>
+          <p class="doc-law__statement">The map's extent is the union of the
+            lattice and every body's live position, the persisted drag offset
+            included — so a body arranged past the edge of the lattice is on the
+            map, in the place the user put it, and marks itself as moved.</p>
+          <p class="doc-check">Enter Arrange, drag a card well past the right of
+            the board, leave Arrange. Assert <code>RZ.extent().w</code> has
+            grown, that the dragged body's dot carries
+            <code>data-moved="true"</code>, and that its mapped point still
+            equals <code>RZ.mapPt(ex, r.x + r.dx, r.y + r.dy)</code>. Reload:
+            the same extent comes back.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C13, C18</span></p>
+          <p class="doc-law__statement">The map's accessible name is rewritten on
+            every hop, in lockstep with the visible you-are-here, and it never
+            speaks a cell, a row or a column — it names the body you are at, its
+            kind, how many veins lead out, and the path you took.</p>
+          <p class="doc-check">Read the map's <code>aria-label</code>, hop, and
+            read it again: it names the new body and the new degree, and its
+            body name matches the text of the <code>aria-current</code> entry in
+            you-are-here. Set <code>data-motion="reduced"</code> and hop again —
+            the label still changes. Assert it matches no
+            <code>/\d+\s*,\s*\d+/</code>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The map, running</h2>
+        <p>This is the same garden, at the same cells, as the one on
+          <a href="world.html">world</a>. Travel by clicking a card and watch
+          the lit mark move while the dots stay exactly where they are. Drag the
+          bare board to pan, hold <kbd>Alt</kbd> and use the wheel to zoom, and
+          watch the dashed rectangle be the only thing on the map that responds.
+          Press <em>Arrange</em>, drag a card out past the others, and come back
+          — the map grew to hold it, and that dot now marks itself as moved.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Wants water · 12 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Wants water
+                    <span class="rz-n__recap-second">· last watered 12 days ago</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <div class="rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-garden-more" data-cell="2,4"
+                         data-aggregate="true"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="10 more plants" data-recap="Opens the full list">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name"><span class="rz-n__count">+10</span> more plants</h3>
+                  <p class="rz-n__recap">Opens the full list</p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">World view</span>
+                  <button type="button" class="rz-probe__btn" id="rz-arrange"
+                          aria-pressed="false">Arrange</button>
+                </p>
+                <svg class="rz-map" id="rz-map" width="208" height="104"
+                     viewBox="0 0 208 104" role="img"
+                     aria-label="World view">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The world view beside the garden it mirrors</span><span>C5 · C9 · C16</span>
+          </figcaption>
+        </figure>
+
+        <p>The map is drawn by the runtime and never by hand. One call redraws
+          it from the records, and a second call re-fits only the dashed
+          rectangle after the camera has moved:</p>
+
+        <pre class="doc-code"><code>RZ.extent();        /* the union of the lattice and every live position */
+RZ.mapPt(ex, x, y); /* one garden point, mapped into the 208&#215;104 frame */
+RZ.drawMap();       /* edges, dots, you-are-here, and the accessible label */
+RZ.drawViewport();  /* the dashed rectangle alone — the camera moved */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills</h2>
+        <p>The map has five marks and one frame. A theme may re-key every colour
+          under it and change nothing about what is drawn.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Marks on the map</caption>
+            <thead><tr><th>Class</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-map__edge</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-rule)"></span></td>
+                <td>One vein, from the same edge list the board draws from. If a
+                  vein is on the board it is on the map, and the other way
+                  round.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-map__dot</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-ink)"></span></td>
+                <td>One body in your garden, at its live position.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-map__dot[data-rank="near"]</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-ink-lit)"></span></td>
+                <td>A body one hop from where you stand. Brighter, so the shape
+                  of what is immediately reachable reads without counting.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-map__dot[data-moved="true"]</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-mutate)"></span></td>
+                <td>A body you arranged by hand. It is honest about which
+                  positions are yours rather than the lattice's.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-map__view</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-ink-faint)"></span></td>
+                <td>The dashed rectangle: how much of the garden is on screen
+                  right now. The only mark the camera is allowed to move.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-map__you</code> / <code>.rz-map__you-halo</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-key)"></span></td>
+                <td>You are here. Exactly one per map, because there is exactly
+                  one focal body.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The frame this page expects</caption>
+            <thead><tr><th>Id</th><th>Element</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>#rz-map</code></td><td><code>svg.rz-map</code>, 208&#215;104</td>
+                <td>The frame. Its <code>aria-label</code> is written by the
+                  runtime on every hop; do not author one that will go
+                  stale.</td></tr>
+              <tr><td><code>#rz-map-edges</code></td><td><code>g</code></td>
+                <td>Where the veins are drawn. Emptied and refilled, never
+                  appended to.</td></tr>
+              <tr><td><code>#rz-map-dots</code></td><td><code>g</code></td>
+                <td>Where the bodies are drawn, on the same redraw.</td></tr>
+              <tr><td><code>#rz-map-view</code></td><td><code>rect</code></td>
+                <td>The viewport rectangle, re-fitted on every camera move.</td></tr>
+              <tr><td><code>#rz-arrange</code></td><td><code>button.rz-probe__btn</code></td>
+                <td>Enters and leaves Arrange. It changes no data and travels
+                  nowhere.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>The map speaks.</strong> The frame is
+          <code>role="img"</code> and its name is rewritten on every hop:
+          <em>“World view. You are at Office Fig, plant. 2 veins out. Path: My
+          garden, then Office Fig.”</em> That sentence carries the same three
+          facts the picture carries — where you are, how far you can go from
+          here, and how you got here — so the answer to <em>where am
+          I</em> does not depend on seeing a lit dot.</p>
+        <p><strong>Never a coordinate.</strong> The cell, the row and the column
+          are the system's private vocabulary. The label names bodies and
+          counts, in your garden's own words, and never a pair of numbers.</p>
+        <p><strong>Never colour alone.</strong> You-are-here is a larger mark
+          with a halo around it where every body is a small square; the viewport
+          is the only dashed mark; an arranged body is recoloured
+          <em>and</em> is the only dot that ever changes colour after load. Blur
+          the map or drop it to greyscale and the three still separate.</p>
+        <p><strong>No tab stop, and nothing lost.</strong> The map holds no
+          controls, so it does not sit in the keyboard path — every body it
+          draws is reachable in the world itself, by the arrow keys, following
+          the veins rather than document order
+          (<a href="../guidelines/accessibility.html">accessibility</a>). The
+          one control in this corner, <em>Arrange</em>, is an ordinary button
+          with an ordinary name.</p>
+        <p><strong>Reduced motion.</strong> The mark's move is the shortest
+          motion in the system and it still happens; what changes is that the
+          camera's trail is drawn and held rather than animated
+          (<a href="../patterns/traversal.html">traversal</a>). The label is
+          rewritten either way, so a reduced-motion reader loses no fact.</p>
+        <p>If you are unsure whether a map is pulling its weight on a given
+          surface, say so and test it the honest way: turn the label off and
+          navigate by the picture, then turn the picture off and navigate by the
+          label. Both have to work.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+        <p>One map per surface, in the same corner every time. It is worth its
+          space only once the reader stops looking for it.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the map answer where you are and let the world do the
+              travelling. Panning and zooming change the dashed rectangle only —
+              the garden keeps its scale in the frame, so the shape you learned
+              a minute ago is the shape you are still reading (C5, C16).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Rescale the map to the camera, so every zoom redraws the garden's
+              shape under the reader. The one instrument that exists to make
+              zooming safe becomes the thing that makes it disorienting, and
+              nothing on screen is stable enough to navigate by.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw every dot and every line from the records and the edge list,
+              and redraw the whole map rather than appending to it. A dot then
+              cannot outlive the body behind it, and a body cannot go
+              missing.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Hand-place a dot, or hide a body from the map to keep it tidy. A
+              body that is on the board and not on the map is a body your reader
+              cannot find; a dot with nothing behind it is a promise you cannot
+              keep (C3).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="chrome.html">chrome</a> — the register this map belongs
+            to: fixed to a viewport edge, no shadow, monospace voice.</li>
+          <li><a href="world.html">world</a> — the plane and the camera the map
+            mirrors, and the pan and zoom gestures that move only the
+            rectangle.</li>
+          <li><a href="edge.html">edge</a> — the single edge list the map's
+            lines are drawn from.</li>
+          <li><a href="../foundations/spacing.html">spacing</a> — the lattice
+            whose extent the map starts from.</li>
+          <li><a href="../patterns/arrange-mode.html">arrange mode</a> — the
+            mode the Arrange button opens, and where the drag offset the extent
+            reads is settled.</li>
+          <li><a href="../patterns/traversal.html">traversal</a> — the one
+            timing every hop travels on, which the mark moves with.</li>
+          <li><a href="../guidelines/accessibility.html">accessibility</a> — the
+            announcement rules this page's label obeys.</li>
+        </ul>
+      </section>
+
+      <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The map is drawn by RZ.drawMap();
+       nothing here re-implements extent, placement, rank or travel. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-garden-more"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+      }
+    });
+  </script>
+</body>
+</html>

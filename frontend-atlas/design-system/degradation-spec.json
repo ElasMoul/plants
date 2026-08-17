@@ -1,0 +1,105 @@
+{
+  "document": "degradation-spec",
+  "system": "Rhizome",
+  "slug": "plantpal-cae942ee",
+  "version": "1.0.0",
+  "regime": "atlas-class",
+  "doctrine_refs": ["Sec.11 R13", "Sec.8 C22", "Sec.8 C23", "Sec.8 C24", "Sec.8 C25"],
+  "invariant_refs": ["C9", "C13", "C22", "C23", "C24", "C25", "C26"],
+  "governing_principle": "The geography is the thing that never degrades. Whatever is slow, missing, absent or broken, the world keeps its layout, the you-are-here keeps its position, and the failure is drawn inside the thing that failed. No degraded state moves a node, and no degraded state moves the camera without the user asking.",
+
+  "how_to_see_each_state": {
+    "mechanism": "Document-level state attributes plus a chrome probe panel (.rz-probe), so every state is reachable in one artifact instead of one state per hand-authored specimen.",
+    "attributes": {
+      "data-speed": ["normal", "slow"],
+      "data-net": ["online", "offline"],
+      "data-motion": ["", "reduced"],
+      "data-graph": ["whole", "partial"],
+      "data-limit": ["", "reached"]
+    },
+    "per_node_attributes": {
+      "data-pending": "true -- this node's payload has not resolved",
+      "data-state": ["ok", "error", "empty", "unknown", "archived", "stale"],
+      "data-stale": "this node's own staleness sentence, in its own words"
+    },
+    "reviewer_walk": "Toggle every probe control in turn without editing markup. RZ.setState(name, value) is the single entry point; the probe panel is chrome and carries no traversal."
+  },
+
+  "states": {
+    "loading": {
+      "trigger": "a node's payload has not resolved yet",
+      "doctrine": "C22",
+      "material": "The recap is replaced IN PLACE by a skeleton shaped like the content it stands in for, at its real row heights.",
+      "forbidden": "The word 'loading'. A spinner. A global overlay. None of these may be shipped even as an anti-pattern illustration, because an illustration gets copied.",
+      "plantpal_content": "Identification is genuinely asynchronous for 5-15 seconds; chat streams token by token. Both are per-node, in place."
+    },
+    "slow": {
+      "trigger": ">= parameters.slow_threshold_ms (10000) to first content, or any node whose payload has not resolved by then",
+      "doctrine": "C22",
+      "what_holds": "Everything structural. Cells come from the record list, which is small and arrives first, so every node is PLACED before any of its contents resolve. The veins are drawn, the world view is complete, the degree counts are correct, and the camera is where it was.",
+      "no_repositioning": "As each node resolves it fills its own card. Nothing reflows, no card changes rank, no card changes cell. The screen at 10 seconds and at 10 seconds plus one is the same geography with more ink in it.",
+      "per_node_not_global": "Slowness is stated per node, so the user can see My garden is still arriving while Care guide is already whole. There is no global blocking overlay anywhere in this system.",
+      "expansion_placeholder": "The same mechanism covers the 300ms of a card expanding after a hop: the destination shows its own skeleton while it grows, and real content renders only once it is fully expanded."
+    },
+    "partial_graph": {
+      "trigger": "a region of the graph has not been fetched",
+      "doctrine": "C23",
+      "unloaded_is_not_empty": "An unfetched region is a node in its own right, with its own cell, marked explicitly unknown: dashed rim, the unknown colour, the tag 'Unknown', the words 'Not fetched yet'. A loaded-and-empty node is drawn as a designed empty plot -- dashed border and an invitation.",
+      "the_two_side_by_side": "Any page demonstrating this shows BOTH, deliberately, so the difference is demonstrable rather than asserted.",
+      "traversal_allowed": "Veins into the unknown region are drawn dashed and ARE traversable. Travelling in is what fetches it. It never dead-ends: the region node carries a real fetch control and states what it BELIEVES is inside, marked as a belief.",
+      "honest_about_the_count": "The region does not print a precise count it cannot vouch for.",
+      "arrival_moves_nothing": "When the region resolves its new nodes take free cells. Everything already drawn keeps its position -- the insertion rule in layout-determinism.json, not a separate promise.",
+      "aggregates_are_not_partial": "A '+N more' aggregate is loaded and complete; it is a density decision, not a gap. Solid rim and a real count, against the unknown region's dashed rim and no count."
+    },
+    "offline": {
+      "trigger": "no connectivity",
+      "doctrine": "C24",
+      "world_stays_navigable": "The last-known world is fully traversable offline. Every hop, every camera control, the world view, keyboard traversal and Arrange mode all work. Nothing is disabled because the network is gone.",
+      "geography_stays_put": "No node moves, is removed, or is greyed out of the layout. Going offline is not a change to the world's shape.",
+      "staleness_is_per_node_and_honest": "Each card reveals its own staleness line and they DIFFER, because the truth differs: 'Fresh at 09:12', 'Cached Jul 20 -- guides change rarely', 'Watering counts may be stale', 'Never fetched'. A single global banner would be a lie about the parts that are genuinely current.",
+      "mutations_refused_or_queued": "Every mutating control states which it is. Stakes inside nodes are visibly refused -- dimmed, cursor not-allowed -- rather than silently failing; actions from the action rail are explicitly QUEUED and the interface says so in words: 'Offline: \"Water plant\" is queued. It will run when you are back.' Nothing is accepted silently and nothing pretends to have succeeded.",
+      "banner": "One chrome status line states the mode and the moment the world was last true. It sits in the frame and covers no node.",
+      "returning": "Coming back online refreshes contents in place. It does not re-lay-out, re-rank or re-centre."
+    },
+    "failure": {
+      "trigger": "a request fails",
+      "doctrine": "C25",
+      "error_is_a_state_inside_the_node": "The failure is drawn inside the node that failed, in its own body, with its own rim colour.",
+      "camera_undisturbed": "The camera does not move, the focus does not change, no other node changes, nothing is unmounted. A failure is not an event that happens to the whole application.",
+      "retry_in_place": "Retry sits next to the failure it retries, with a second, different way through -- 'Try the scan again' and 'Identify by hand'. Every control drawn can be used.",
+      "says_what_happened_and_what_survived": "'PlantNet answered with a 503 at 09:14. Your photo is kept. Nothing was lost and nothing moved.' The fact, the time, and the consequence for the user's own data.",
+      "no_modal": "There is no error dialog anywhere in this system. A modal over a blur would break both the geography and the you-are-here.",
+      "partial_failure_is_normal": "One node failing while its neighbours are healthy is the expected shape and is drawn that way.",
+      "rate_limit": "PlantPal's AI endpoints are rate-limited per user, so 'you have reached your limit for today' is a first-class state of the node that asked, with the time it resets and a way through that does not need the model."
+    },
+    "empty": {
+      "trigger": "loaded, and there is genuinely nothing",
+      "doctrine": "C23, C26",
+      "material": "A designed plot: dashed border, room around it, an invitation in the app's own voice. It states that it KNOWS there is nothing, which is what distinguishes it from unknown.",
+      "archived": "Deletes in PlantPal are soft, so 'archived' is a state a node wears -- not a removal, and there is no delete confirmation dialog."
+    }
+  },
+
+  "reduced_motion": {
+    "doctrine": "C13",
+    "behaviour": "Direction is still shown and the you-are-here is still updated. The route's trail is drawn along the real edges and held, and the world-view marker moves, so the user still learns which edge was crossed and how far. No transition is replaced by an abrupt swap of geography.",
+    "live_region": "Announcements are held longer under reduced motion, since they carry more of the burden."
+  },
+
+  "what_never_degrades": [
+    "the position of every node",
+    "the you-are-here marker in the persistent world view",
+    "the drawn veins and their traversability",
+    "the ability to look around with the camera",
+    "keyboard traversal along the graph",
+    "the distinction between a mutation and a traversal"
+  ],
+
+  "verification": {
+    "geography_holds": "Snapshot every node's computed left/top, toggle each state attribute in turn, snapshot again and diff. The diff is empty in every state.",
+    "no_global_overlay": "In every state assert no element covers the world with a blocking layer, and that document.querySelector('[role=dialog]') is null.",
+    "per_node_staleness": "In the offline state assert at least two nodes carry data-stale values that are not equal.",
+    "no_spinner": "Grep the built artifact for 'spinner', for the standalone word 'Loading' and for any infinite rotation keyframe. All must be absent.",
+    "walkable": "Assert every state in states{} is reachable by activating one probe control, with no markup edit."
+  }
+}

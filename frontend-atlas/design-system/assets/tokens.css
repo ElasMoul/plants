@@ -1,0 +1,681 @@
+/* ==========================================================================
+   RHIZOME — tokens.css                       PlantPal · atlas-class · v1.0.0
+   --------------------------------------------------------------------------
+   THREE LAYERS, ONE DIRECTION OF REFERENCE.
+
+     LAYER 1  PRIMITIVES  --rz-<family>-<step>   raw values, no meaning
+     LAYER 2  SEMANTICS   --rz-<meaning>         what a layer-1 value MEANS
+     LAYER 3  SYSTEM      --rz-<system-thing>    this system's own decisions
+
+   A component never uses a layer-1 value directly. A page never uses a raw
+   colour or size at all. Layer 2 is re-declared IN FULL by every theme block
+   below, so a palette or theme switch re-keys the entire page — including the
+   canvas, which reads its colours back out of these properties.
+
+   LAYER 1 VALUES ORIGIN. The raw scale is adopted verbatim from the
+   Herbarium primitives (plantpal-e8e4b3e5 v1.0.0) — they are good, they are
+   PlantPal's own domain palette, and re-deriving them would have been churn.
+   They are re-prefixed --rz-* because Rhizome owns its own token layer; this
+   is an adoption, not a second parallel system.
+
+   PARAMETER MIRROR. --rz-param-* below mirrors constitution.json →
+   parameters. assets/system.js holds the same numbers as RZ.PARAMS and
+   RZ.verifyParameters() reads these properties back and reports any
+   disagreement. constitution.json is the source of record; these two are
+   copies that are checked, not opinions.
+   ========================================================================== */
+
+:root {
+
+  /* ======================================================================
+     LAYER 1 — PRIMITIVES
+     ====================================================================== */
+
+  /* -- paper: herbarium sheet, seed packet, care tag --------------------- */
+  --rz-paper-50:  #fdfbf6;
+  --rz-paper-100: #f8f4ea;
+  --rz-paper-200: #f0e9d9;
+  --rz-paper-300: #e4dac3;
+  --rz-paper-400: #d2c4a6;
+  --rz-paper-500: #b8a684;
+  --rz-paper-600: #93815f;
+
+  /* -- ink: the determination label's pencil ---------------------------- */
+  --rz-ink-100: #8a7f70;
+  --rz-ink-200: #6d6154;
+  --rz-ink-300: #52483d;
+  --rz-ink-400: #3d352c;
+  --rz-ink-500: #2c261f;
+  --rz-ink-600: #1e1a15;
+  --rz-ink-700: #14110e;
+
+  /* -- humus: potting soil, the ground of the world --------------------- */
+  --rz-humus-100: #6a6154;
+  --rz-humus-200: #4c463b;
+  --rz-humus-300: #38332a;
+  --rz-humus-400: #2a2620;
+  --rz-humus-500: #201d18;
+  --rz-humus-600: #191612;
+  --rz-humus-700: #12100d;
+
+  /* -- leaf: living tissue ---------------------------------------------- */
+  --rz-leaf-100: #dfe9d2;
+  --rz-leaf-200: #b9d09c;
+  --rz-leaf-300: #8fb26a;
+  --rz-leaf-400: #6b9247;
+  --rz-leaf-500: #4f7333;
+  --rz-leaf-600: #3a5626;
+  --rz-leaf-700: #27391a;
+
+  /* -- chlorosis: yellowing ---------------------------------------------- */
+  --rz-chlorosis-100: #f7ecc9;
+  --rz-chlorosis-200: #eed894;
+  --rz-chlorosis-300: #dcb94f;
+  --rz-chlorosis-400: #bf9a2c;
+  --rz-chlorosis-500: #97781f;
+  --rz-chlorosis-600: #6d5615;
+
+  /* -- necrosis: lesion, leaf-spot, dieback ------------------------------ */
+  --rz-necrosis-100: #efd8cd;
+  --rz-necrosis-200: #d9ab96;
+  --rz-necrosis-300: #b8735a;
+  --rz-necrosis-400: #96513a;
+  --rz-necrosis-500: #763c2a;
+  --rz-necrosis-600: #55291c;
+
+  /* -- terra: the pot itself --------------------------------------------- */
+  --rz-terra-100: #f6ddcd;
+  --rz-terra-200: #e6b494;
+  --rz-terra-300: #d08a61;
+  --rz-terra-400: #b96b40;
+  --rz-terra-500: #9a5330;
+  --rz-terra-600: #763d22;
+
+  /* -- sill: diffuse window light ---------------------------------------- */
+  --rz-sill-100: #dfe7e6;
+  --rz-sill-200: #b3c6c5;
+  --rz-sill-300: #86a3a3;
+  --rz-sill-400: #5f8080;
+  --rz-sill-500: #456060;
+
+  /* -- space --------------------------------------------------------------*/
+  --rz-space-0:  0;
+  --rz-space-1:  0.25rem;
+  --rz-space-2:  0.5rem;
+  --rz-space-3:  0.75rem;
+  --rz-space-4:  1rem;
+  --rz-space-5:  1.5rem;
+  --rz-space-6:  2rem;
+  --rz-space-7:  3rem;
+  --rz-space-8:  4rem;
+  --rz-space-9:  6rem;
+  --rz-space-10: 8rem;
+
+  /* -- families -----------------------------------------------------------*/
+  --rz-family-plate: "Iowan Old Style", "Palatino Linotype", Palatino,
+                     "Book Antiqua", Georgia, "Noto Naskh Arabic", serif;
+  --rz-family-hand:  ui-sans-serif, system-ui, "Segoe UI", Inter,
+                     "Noto Sans Arabic", "Helvetica Neue", Arial, sans-serif;
+  --rz-family-label: ui-monospace, "SFMono-Regular", "Cascadia Mono",
+                     "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* -- the prominence ladder, as raw sizes ------------------------------- */
+  --rz-size-100: 2.75rem;
+  --rz-size-75:  1.875rem;
+  --rz-size-55:  1.3125rem;
+  --rz-size-30:  1rem;
+  --rz-size-25:  0.875rem;
+  --rz-size-18:  0.75rem;
+  --rz-size-12:  0.6875rem;
+
+  --rz-weight-regular: 400;
+  --rz-weight-medium:  500;
+  --rz-weight-bold:    650;
+
+  --rz-leading-tight: 1.15;
+  --rz-leading-snug:  1.4;
+  --rz-leading-body:  1.65;
+
+  --rz-tracking-plate: 0.01em;
+  --rz-tracking-label: 0.14em;
+  --rz-tracking-chrome: 0.2em;
+
+  --rz-rule-hair:   1px;
+  --rz-rule-strong: 2px;
+  --rz-rule-mount:  4px;
+
+  --rz-radius-0:    0;
+  --rz-radius-1:    4px;
+  --rz-radius-2:    7px;
+  --rz-radius-3:    10px;
+  --rz-radius-4:    18px;
+  --rz-radius-pill: 999px;
+
+  --rz-lift-0: none;
+  --rz-lift-1: 0 1px 2px rgba(18, 16, 13, 0.24);
+  --rz-lift-2: 0 3px 10px rgba(18, 16, 13, 0.34);
+  --rz-lift-3: 0 12px 34px rgba(18, 16, 13, 0.46);
+
+  --rz-dur-1: 120ms;
+  --rz-dur-2: 240ms;
+  --rz-dur-3: 420ms;
+  --rz-dur-4: 700ms;
+  --rz-ease-unfurl: cubic-bezier(0.22, 0.61, 0.20, 1);
+  --rz-ease-settle: cubic-bezier(0.33, 0, 0.15, 1);
+
+  --rz-measure-prose: 64ch;
+  --rz-measure-note:  44ch;
+
+  --rz-z-world:  0;
+  --rz-z-vein:   1;
+  --rz-z-node:   10;
+  --rz-z-panel:  40;
+  --rz-z-chrome: 60;   /* the chrome rung — above every node, always */
+  --rz-z-live:   80;
+
+
+  /* ======================================================================
+     PARAMETER MIRROR — constitution.json → parameters
+     Read by CSS below; checked against RZ.PARAMS by RZ.verifyParameters().
+     ====================================================================== */
+
+  --rz-param-density-threshold: 4;
+  --rz-param-density-shown: 2;
+  --rz-param-nav-ms: 300ms;
+  --rz-param-pitch-x: 300px;
+  --rz-param-pitch-y: 180px;
+  --rz-param-origin-x: 200px;
+  --rz-param-origin-y: 80px;
+  --rz-param-cols: 12;
+  --rz-param-rows: 11;
+  --rz-param-rank-count: 4;
+  --rz-param-zoom-min: 0.28;
+  --rz-param-zoom-max: 1.9;
+  --rz-param-zoom-step: 1.12;
+  --rz-param-slow-threshold-ms: 10000ms;
+  --rz-param-card-air: 80px;
+  --rz-param-card-reach: 0.96;
+  --rz-param-shell-transform: scale(0.42) translateX(-25%);
+
+
+  /* ======================================================================
+     LAYER 2 — SEMANTICS       default key: "POTTING BENCH" (dark)
+     ----------------------------------------------------------------------
+     The key is chalk on clay: the STRUCTURE of the screen — traversal,
+     focus, veins, rims — is bone/chalk-white, the bloom on a terracotta pot.
+     That leaves every chromatic mark on screen meaning-bearing: leaf is
+     health and only health, terracotta is mutation and only mutation, amber
+     is attention, and necrosis is failure.
+     ====================================================================== */
+
+  /* -- ground ----------------------------------------------------------- */
+  --rz-void:        var(--rz-humus-700);
+  --rz-void-deep:   #0b0a08;
+  --rz-sheet:       var(--rz-humus-500);
+  --rz-sheet-quiet: var(--rz-humus-600);
+  --rz-well:        var(--rz-humus-600);
+  --rz-hover:       var(--rz-humus-300);
+
+  /* -- ink -------------------------------------------------------------- */
+  --rz-ink:         var(--rz-paper-100);
+  --rz-ink-second:  var(--rz-paper-300);
+  --rz-ink-muted:   var(--rz-paper-500);
+  --rz-ink-faint:   var(--rz-humus-100);
+  --rz-ink-on-fill: var(--rz-humus-700);
+  --rz-binomial:    var(--rz-paper-400);
+
+  /* -- CHROME REGISTER (L1). Its own family, inherited through .rz-chrome,
+        so the material separation cannot drift into a per-component choice.
+        Chrome takes NO shadow, at any depth, in any theme. --------------- */
+  --rz-chrome-fill:     #0a0907;
+  --rz-chrome-rule:     rgba(248, 244, 234, 0.14);
+  --rz-chrome-rule-lit: var(--rz-paper-400);
+  --rz-chrome-key:      var(--rz-paper-200);
+  --rz-chrome-ink:      var(--rz-paper-500);
+  --rz-chrome-ink-lit:  var(--rz-paper-100);
+  --rz-chrome-ink-faint: var(--rz-humus-100);
+  --rz-chrome-hover:    rgba(248, 244, 234, 0.07);
+  --rz-chrome-lift:     var(--rz-lift-0);          /* never anything else  */
+  --rz-chrome-corner:   var(--rz-radius-0);
+  --rz-chrome-pad:      var(--rz-space-2);
+  --rz-chrome-track:    var(--rz-tracking-chrome);
+  --rz-chrome-face:     var(--rz-family-label);
+  --rz-chrome-size:     var(--rz-size-18);
+
+  /* -- traversal / focus voice (chalk) ---------------------------------- */
+  --rz-vital:        var(--rz-paper-200);
+  --rz-vital-bright: var(--rz-paper-50);
+  --rz-vital-deep:   var(--rz-paper-500);
+  --rz-vital-quiet:  rgba(240, 233, 217, 0.09);
+  --rz-vital-edge:   rgba(240, 233, 217, 0.36);
+
+  /* -- mutation voice (clay). Nowhere else on screen. -------------------- */
+  --rz-mutate:       var(--rz-terra-300);
+  --rz-mutate-quiet: rgba(208, 138, 97, 0.14);
+  --rz-mutate-ink:   var(--rz-humus-700);
+
+  /* -- node material: corner, halo, membrane hairline -------------------- */
+  --rz-membrane:      rgba(240, 233, 217, 0.15);
+  --rz-membrane-lit:  rgba(240, 233, 217, 0.40);
+  --rz-membrane-rule: rgba(240, 233, 217, 0.09);
+  --rz-halo-quiet:    0 1px 2px rgba(11, 10, 8, 0.55);
+  --rz-halo-lit:      0 0 0 1px rgba(240, 233, 217, 0.26),
+                      0 14px 40px rgba(11, 10, 8, 0.72);
+
+  /* -- veins ------------------------------------------------------------ */
+  --rz-vein:            rgba(240, 233, 217, 0.20);
+  --rz-vein-live:       var(--rz-paper-200);
+  --rz-vein-unknown:    rgba(147, 129, 95, 0.42);
+  --rz-vein-width:      1.5px;
+  --rz-vein-width-live: 2.5px;
+  --rz-vein-node:       var(--rz-paper-400);
+
+  /* -- the decorative field (read back by the canvas) -------------------- */
+  --rz-mote:      rgba(240, 233, 217, 0.34);
+  --rz-mote-link: rgba(240, 233, 217, 0.10);
+
+  /* -- focus ring ------------------------------------------------------- */
+  --rz-focus:        var(--rz-chlorosis-200);
+  --rz-focus-width:  var(--rz-rule-strong);
+  --rz-focus-offset: 2px;
+
+  /* -- health (the only green on screen) -------------------------------- */
+  --rz-thriving: var(--rz-leaf-300);
+  --rz-stable:   var(--rz-leaf-200);
+  --rz-watch:    var(--rz-chlorosis-300);
+  --rz-ailing:   var(--rz-necrosis-300);
+  --rz-lost:     var(--rz-ink-100);
+
+  /* -- confidence (HIGH / MEDIUM / LOW) --------------------------------- */
+  --rz-conf-high:   var(--rz-leaf-300);
+  --rz-conf-medium: var(--rz-chlorosis-300);
+  --rz-conf-low:    var(--rz-paper-500);
+  --rz-conf-track:  rgba(240, 233, 217, 0.14);
+
+  /* -- degradation ------------------------------------------------------ */
+  --rz-unknown:      var(--rz-paper-600);
+  --rz-unknown-fill: rgba(147, 129, 95, 0.07);
+  --rz-stale:        var(--rz-chlorosis-300);
+  --rz-offline:      var(--rz-paper-400);
+  --rz-error:        var(--rz-necrosis-300);
+  --rz-error-quiet:  rgba(184, 115, 90, 0.12);
+  --rz-empty:        var(--rz-humus-100);
+  --rz-archived:     var(--rz-ink-100);
+  --rz-skeleton:     rgba(240, 233, 217, 0.05);
+  --rz-skeleton-lit: rgba(240, 233, 217, 0.10);
+
+  /* -- KIND (L5): one colour per domain node kind, a first-class group --- */
+  --rz-kind-collection: var(--rz-paper-300);
+  --rz-kind-species:    var(--rz-leaf-200);
+  --rz-kind-plant:      var(--rz-leaf-300);
+  --rz-kind-guide:      var(--rz-sill-200);
+  --rz-kind-problem:    var(--rz-necrosis-300);
+  --rz-kind-journal:    var(--rz-paper-500);
+  --rz-kind-platform:   var(--rz-chlorosis-300);
+  --rz-kind-region:     var(--rz-humus-100);
+
+
+  /* ======================================================================
+     LAYER 3 — RHIZOME'S OWN SYSTEM
+     Not re-declared per theme: a palette changes the key, never the
+     density, the ladder or the geometry.
+     ====================================================================== */
+
+  /* -- type ladder. The RATIOS are the law (C12); the absolute pitch is a
+        theme variable — a theme may drop --rz-rung-100 an octave and stay
+        conformant, provided the five steps stay visibly five. ----------- */
+  --rz-rung-100: var(--rz-size-100);
+  --rz-rung-75:  var(--rz-size-75);
+  --rz-rung-55:  var(--rz-size-55);
+  --rz-rung-30:  var(--rz-size-30);
+  --rz-rung-25:  var(--rz-size-25);
+  --rz-rung-18:  var(--rz-size-18);
+  --rz-rung-12:  var(--rz-size-12);
+
+  --rz-face-name:  var(--rz-family-hand);
+  --rz-face-body:  var(--rz-family-hand);
+  --rz-face-label: var(--rz-family-label);
+  --rz-face-latin: var(--rz-family-plate);   /* the italic binomial, only  */
+
+  --rz-lead-name: var(--rz-leading-tight);
+  --rz-lead-body: var(--rz-leading-body);
+  --rz-lead-snug: var(--rz-leading-snug);
+  --rz-track-label: var(--rz-tracking-label);
+  --rz-track-name:  0;
+
+  /* -- density: MEDIUM. Warm, not compressed: PlantPal is reassuring. --- */
+  --rz-gutter-tight: var(--rz-space-1);
+  --rz-gutter:       var(--rz-space-3);
+  --rz-gutter-card:  var(--rz-space-5);      /* 24px inside a card        */
+  --rz-gutter-wide:  var(--rz-space-6);
+  --rz-gutter-air:   var(--rz-space-7);
+
+  /* -- the lattice (from the parameter mirror) -------------------------- */
+  --rz-pitch-x: var(--rz-param-pitch-x);
+  --rz-pitch-y: var(--rz-param-pitch-y);
+  --rz-origin-x: var(--rz-param-origin-x);
+  --rz-origin-y: var(--rz-param-origin-y);
+  --rz-lattice-cols: var(--rz-param-cols);
+  --rz-lattice-rows: var(--rz-param-rows);
+
+  /* -- card widths by rank: four steps, visibly four (C12) -------------- */
+  --rz-card-focus:  clamp(27rem, 36vw, 34rem);
+  --rz-card-near:   13rem;
+  --rz-card-far:    10rem;
+  --rz-card-fringe: 7rem;
+
+  --rz-cap-near:   15rem;
+  --rz-cap-far:    11rem;
+  --rz-cap-fringe: 7.5rem;
+
+  --rz-card-air:   var(--rz-param-card-air);
+  --rz-card-reach: var(--rz-param-card-reach);
+
+  /* -- the live camera scale, published by system.js so a card can
+        compensate for zoom in pure CSS. --------------------------------- */
+  --rz-cam-k: 1;
+
+  /* -- the signature channel (L4): the GRADUATION. A 2px rule on the
+        card's head whose LENGTH is the rank and whose COLOUR is the kind.
+        Rank survives at fringe scale where no text is legible. ---------- */
+  --rz-grad-weight:  var(--rz-rule-strong);
+  --rz-grad-focus:   72px;
+  --rz-grad-near:    46px;
+  --rz-grad-far:     28px;
+  --rz-grad-fringe:  14px;
+
+  /* -- geometry: soft. A pot has no sharp edges. ------------------------ */
+  --rz-corner-card:  var(--rz-radius-3);   /* 10px */
+  --rz-corner-inner: var(--rz-radius-1);   /*  4px */
+  --rz-corner-chip:  var(--rz-radius-pill);
+  --rz-corner-well:  var(--rz-radius-1);
+
+  --rz-hair:   var(--rz-rule-hair);
+  --rz-strong: var(--rz-rule-strong);
+  --rz-mount:  var(--rz-rule-mount);
+
+  /* -- motion: ONE navigation timing. Not a scale. ---------------------- */
+  --rz-dur-nav:    var(--rz-param-nav-ms);
+  --rz-dur-quick:  var(--rz-dur-1);
+  --rz-dur-settle: var(--rz-dur-2);
+  --rz-ease-travel: var(--rz-ease-unfurl);
+  --rz-ease-rest:   var(--rz-ease-settle);
+}
+
+
+/* ==========================================================================
+   [data-theme="light"] — EVERY layer-2 semantic token, restated.
+   "PRESSED SHEET": the herbarium sheet under daylight. Layer 3 does not move.
+   ========================================================================== */
+
+[data-theme="light"] {
+  --rz-void:        var(--rz-paper-200);
+  --rz-void-deep:   var(--rz-paper-300);
+  --rz-sheet:       var(--rz-paper-50);
+  --rz-sheet-quiet: var(--rz-paper-100);
+  --rz-well:        var(--rz-paper-100);
+  --rz-hover:       var(--rz-paper-200);
+
+  --rz-ink:         var(--rz-ink-600);
+  --rz-ink-second:  var(--rz-ink-400);
+  --rz-ink-muted:   var(--rz-ink-200);
+  --rz-ink-faint:   var(--rz-paper-500);
+  --rz-ink-on-fill: var(--rz-paper-50);
+  --rz-binomial:    var(--rz-ink-300);
+
+  --rz-chrome-fill:     var(--rz-ink-700);
+  --rz-chrome-rule:     rgba(253, 251, 246, 0.18);
+  --rz-chrome-rule-lit: var(--rz-paper-200);
+  --rz-chrome-key:      var(--rz-paper-100);
+  --rz-chrome-ink:      var(--rz-paper-400);
+  --rz-chrome-ink-lit:  var(--rz-paper-50);
+  --rz-chrome-ink-faint: var(--rz-ink-100);
+  --rz-chrome-hover:    rgba(253, 251, 246, 0.09);
+  --rz-chrome-lift:     var(--rz-lift-0);
+  --rz-chrome-corner:   var(--rz-radius-0);
+  --rz-chrome-pad:      var(--rz-space-2);
+  --rz-chrome-track:    var(--rz-tracking-chrome);
+  --rz-chrome-face:     var(--rz-family-label);
+  --rz-chrome-size:     var(--rz-size-18);
+
+  --rz-vital:        var(--rz-ink-500);
+  --rz-vital-bright: var(--rz-ink-700);
+  --rz-vital-deep:   var(--rz-ink-300);
+  --rz-vital-quiet:  rgba(44, 38, 31, 0.08);
+  --rz-vital-edge:   rgba(44, 38, 31, 0.34);
+
+  --rz-mutate:       var(--rz-terra-500);
+  --rz-mutate-quiet: rgba(154, 83, 48, 0.12);
+  --rz-mutate-ink:   var(--rz-paper-50);
+
+  --rz-membrane:      rgba(30, 26, 21, 0.16);
+  --rz-membrane-lit:  rgba(30, 26, 21, 0.38);
+  --rz-membrane-rule: rgba(30, 26, 21, 0.10);
+  --rz-halo-quiet:    0 1px 2px rgba(30, 26, 21, 0.10);
+  --rz-halo-lit:      0 0 0 1px rgba(30, 26, 21, 0.30), var(--rz-lift-2);
+
+  --rz-vein:            rgba(44, 38, 31, 0.28);
+  --rz-vein-live:       var(--rz-ink-500);
+  --rz-vein-unknown:    rgba(147, 129, 95, 0.46);
+  --rz-vein-width:      1.5px;
+  --rz-vein-width-live: 2.5px;
+  --rz-vein-node:       var(--rz-ink-300);
+
+  --rz-mote:      rgba(44, 38, 31, 0.26);
+  --rz-mote-link: rgba(44, 38, 31, 0.08);
+
+  --rz-focus:        var(--rz-chlorosis-500);
+  --rz-focus-width:  var(--rz-rule-strong);
+  --rz-focus-offset: 2px;
+
+  --rz-thriving: var(--rz-leaf-500);
+  --rz-stable:   var(--rz-leaf-400);
+  --rz-watch:    var(--rz-chlorosis-500);
+  --rz-ailing:   var(--rz-necrosis-400);
+  --rz-lost:     var(--rz-ink-200);
+
+  --rz-conf-high:   var(--rz-leaf-500);
+  --rz-conf-medium: var(--rz-chlorosis-500);
+  --rz-conf-low:    var(--rz-ink-200);
+  --rz-conf-track:  rgba(30, 26, 21, 0.14);
+
+  --rz-unknown:      var(--rz-paper-600);
+  --rz-unknown-fill: rgba(147, 129, 95, 0.09);
+  --rz-stale:        var(--rz-chlorosis-500);
+  --rz-offline:      var(--rz-ink-200);
+  --rz-error:        var(--rz-necrosis-400);
+  --rz-error-quiet:  rgba(150, 81, 58, 0.10);
+  --rz-empty:        var(--rz-paper-500);
+  --rz-archived:     var(--rz-paper-600);
+  --rz-skeleton:     rgba(30, 26, 21, 0.05);
+  --rz-skeleton-lit: rgba(30, 26, 21, 0.10);
+
+  --rz-kind-collection: var(--rz-ink-300);
+  --rz-kind-species:    var(--rz-leaf-500);
+  --rz-kind-plant:      var(--rz-leaf-600);
+  --rz-kind-guide:      var(--rz-sill-500);
+  --rz-kind-problem:    var(--rz-necrosis-400);
+  --rz-kind-journal:    var(--rz-paper-600);
+  --rz-kind-platform:   var(--rz-chlorosis-500);
+  --rz-kind-region:     var(--rz-ink-100);
+}
+
+
+/* ==========================================================================
+   PALETTES (L13) — layer 2 only, applied live from Settings with no save
+   step. One attribute on the root re-keys the whole page including the
+   canvas, because every colour on screen is a token reference.
+   A palette declares only what it MOVES; everything else inherits from the
+   default key above (or from [data-theme="light"] when both are set).
+   ========================================================================== */
+
+/* 1 — TERRARIUM. Glass and condensation; the structure turns to window light. */
+[data-palette="terrarium"] {
+  --rz-void:        #0a0c0c;
+  --rz-void-deep:   #070909;
+  --rz-sheet:       #171c1c;
+  --rz-sheet-quiet: #101414;
+  --rz-well:        #0d1111;
+  --rz-hover:       #1f2626;
+
+  --rz-ink:         var(--rz-sill-100);
+  --rz-ink-second:  var(--rz-sill-200);
+  --rz-ink-muted:   var(--rz-sill-300);
+  --rz-ink-faint:   var(--rz-sill-500);
+  --rz-binomial:    var(--rz-sill-200);
+
+  --rz-chrome-fill: #000202;
+  --rz-chrome-key:  var(--rz-sill-200);
+  --rz-chrome-ink:  var(--rz-sill-400);
+  --rz-chrome-ink-lit: var(--rz-sill-100);
+  --rz-chrome-rule: rgba(179, 198, 197, 0.16);
+
+  --rz-vital:        var(--rz-sill-200);
+  --rz-vital-bright: var(--rz-sill-100);
+  --rz-vital-deep:   var(--rz-sill-400);
+  --rz-vital-quiet:  rgba(179, 198, 197, 0.10);
+  --rz-vital-edge:   rgba(179, 198, 197, 0.38);
+
+  --rz-membrane:     rgba(179, 198, 197, 0.16);
+  --rz-membrane-lit: rgba(179, 198, 197, 0.42);
+  --rz-vein:      rgba(179, 198, 197, 0.20);
+  --rz-vein-live: var(--rz-sill-200);
+  --rz-vein-node: var(--rz-sill-300);
+  --rz-mote:      rgba(179, 198, 197, 0.40);
+  --rz-mote-link: rgba(179, 198, 197, 0.10);
+  --rz-kind-collection: var(--rz-sill-200);
+  --rz-kind-guide:      var(--rz-sill-300);
+}
+
+/* 2 — NIGHT CANOPY. Leaf carries the structure; health moves to chalk so it
+       stays the only thing that MEANS health. */
+[data-palette="night-canopy"] {
+  --rz-void:        var(--rz-humus-700);
+  --rz-void-deep:   #0c0b09;
+  --rz-sheet:       var(--rz-humus-500);
+  --rz-sheet-quiet: var(--rz-humus-600);
+
+  --rz-chrome-key:  var(--rz-leaf-300);
+
+  --rz-vital:        var(--rz-leaf-300);
+  --rz-vital-bright: var(--rz-leaf-200);
+  --rz-vital-deep:   var(--rz-leaf-500);
+  --rz-vital-quiet:  rgba(143, 178, 106, 0.12);
+  --rz-vital-edge:   rgba(143, 178, 106, 0.40);
+
+  --rz-vein:      rgba(143, 178, 106, 0.22);
+  --rz-vein-live: var(--rz-leaf-300);
+  --rz-vein-node: var(--rz-leaf-200);
+  --rz-mote:      rgba(143, 178, 106, 0.44);
+  --rz-mote-link: rgba(143, 178, 106, 0.12);
+
+  --rz-thriving: var(--rz-paper-100);
+  --rz-stable:   var(--rz-paper-300);
+}
+
+/* 3 — SEED PACKET. The daylight key at the same density; a paper world. */
+[data-palette="seed-packet"] {
+  --rz-void:        var(--rz-paper-300);
+  --rz-void-deep:   var(--rz-paper-400);
+  --rz-sheet:       var(--rz-paper-50);
+  --rz-sheet-quiet: var(--rz-paper-100);
+  --rz-well:        var(--rz-paper-100);
+  --rz-hover:       var(--rz-paper-200);
+
+  --rz-ink:         var(--rz-ink-600);
+  --rz-ink-second:  var(--rz-ink-400);
+  --rz-ink-muted:   var(--rz-ink-200);
+  --rz-ink-faint:   var(--rz-paper-500);
+  --rz-ink-on-fill: var(--rz-paper-50);
+  --rz-binomial:    var(--rz-ink-300);
+
+  --rz-chrome-fill: var(--rz-ink-700);
+  --rz-chrome-ink:  var(--rz-paper-400);
+  --rz-chrome-ink-lit: var(--rz-paper-50);
+  --rz-chrome-key:  var(--rz-terra-300);
+  --rz-chrome-rule: rgba(253, 251, 246, 0.18);
+
+  --rz-vital:        var(--rz-ink-500);
+  --rz-vital-bright: var(--rz-ink-700);
+  --rz-vital-deep:   var(--rz-ink-300);
+  --rz-vital-quiet:  rgba(44, 38, 31, 0.08);
+  --rz-vital-edge:   rgba(44, 38, 31, 0.34);
+
+  --rz-membrane:      rgba(30, 26, 21, 0.16);
+  --rz-membrane-lit:  rgba(30, 26, 21, 0.38);
+  --rz-membrane-rule: rgba(30, 26, 21, 0.10);
+  --rz-halo-quiet:    0 1px 2px rgba(30, 26, 21, 0.10);
+  --rz-halo-lit:      0 0 0 1px rgba(30, 26, 21, 0.30), var(--rz-lift-2);
+
+  --rz-vein:      rgba(44, 38, 31, 0.28);
+  --rz-vein-live: var(--rz-ink-500);
+  --rz-vein-node: var(--rz-ink-300);
+  --rz-mote:      rgba(44, 38, 31, 0.24);
+  --rz-mote-link: rgba(44, 38, 31, 0.08);
+
+  --rz-mutate:       var(--rz-terra-500);
+  --rz-mutate-ink:   var(--rz-paper-50);
+  --rz-focus:        var(--rz-chlorosis-500);
+  --rz-thriving: var(--rz-leaf-500);
+  --rz-stable:   var(--rz-leaf-400);
+  --rz-watch:    var(--rz-chlorosis-500);
+  --rz-ailing:   var(--rz-necrosis-400);
+  --rz-conf-high:   var(--rz-leaf-500);
+  --rz-conf-medium: var(--rz-chlorosis-500);
+  --rz-conf-low:    var(--rz-ink-200);
+  --rz-conf-track:  rgba(30, 26, 21, 0.14);
+  --rz-skeleton:     rgba(30, 26, 21, 0.05);
+  --rz-skeleton-lit: rgba(30, 26, 21, 0.10);
+  --rz-error:        var(--rz-necrosis-400);
+  --rz-error-quiet:  rgba(150, 81, 58, 0.10);
+  --rz-stale:        var(--rz-chlorosis-500);
+  --rz-kind-collection: var(--rz-ink-300);
+  --rz-kind-species:    var(--rz-leaf-500);
+  --rz-kind-plant:      var(--rz-leaf-600);
+  --rz-kind-guide:      var(--rz-sill-500);
+  --rz-kind-problem:    var(--rz-necrosis-400);
+  --rz-kind-journal:    var(--rz-paper-600);
+  --rz-kind-platform:   var(--rz-chlorosis-500);
+  --rz-kind-region:     var(--rz-ink-100);
+}
+
+/* 4 — CLINIC. Necrosis steps back to failure only; the structure is amber,
+       the register of a plant-clinic leaflet under a lamp. */
+[data-palette="clinic"] {
+  --rz-void:        #0d0c09;
+  --rz-void-deep:   #080705;
+  --rz-sheet:       var(--rz-humus-500);
+  --rz-sheet-quiet: var(--rz-humus-600);
+
+  --rz-chrome-key:  var(--rz-chlorosis-300);
+
+  --rz-vital:        var(--rz-chlorosis-200);
+  --rz-vital-bright: var(--rz-chlorosis-100);
+  --rz-vital-deep:   var(--rz-chlorosis-500);
+  --rz-vital-quiet:  rgba(238, 216, 148, 0.10);
+  --rz-vital-edge:   rgba(238, 216, 148, 0.36);
+
+  --rz-vein:      rgba(238, 216, 148, 0.20);
+  --rz-vein-live: var(--rz-chlorosis-200);
+  --rz-vein-node: var(--rz-chlorosis-300);
+  --rz-mote:      rgba(238, 216, 148, 0.34);
+  --rz-mote-link: rgba(238, 216, 148, 0.10);
+
+  --rz-focus:  var(--rz-sill-200);
+  --rz-watch:  var(--rz-terra-300);
+  --rz-kind-platform: var(--rz-sill-300);
+}
+
+
+/* ==========================================================================
+   REDUCED MOTION. The timing collapses; the DIRECTION does not (C13).
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --rz-dur-quick:  1ms;
+    --rz-dur-settle: 1ms;
+    /* --rz-dur-nav is NOT zeroed: system.js holds the trail along the real
+       edges for this duration instead of animating the camera, so the hop
+       still states which vein was crossed. */
+  }
+}

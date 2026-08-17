@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Extending this system · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Guidelines</p>
+      <h1 class="doc-title">Extending this system</h1>
+      <p class="doc-lede">How Rhizome changes without losing what it settled.
+        This page says who owns which file, what a later round may add, what it
+        may not touch without a ruling, how an addition is recorded so the next
+        round inherits it, and how a version of this system is cut.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Rhizome exists because the same interface was re-taught to every new
+          agent. The last system PlantPal shipped froze its <code>assets/</code>
+          the day it was written: nothing downstream could be fixed from inside,
+          so every theme round copied the raw values, invented its own semantic
+          layer, and re-derived the same rules from rejection notes. This page
+          is the escape from that. <strong><code>assets/</code> is versioned,
+          not frozen.</strong> You may extend it — under a name, in the register,
+          in one direction only.</p>
+        <p>Everything Rhizome knows lives in five records, and each has exactly
+          one owner. If you are about to change something, find it in this table
+          first; the row tells you whether you are writing, amending, or asking.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Who owns what</caption>
+            <thead><tr><th>Record</th><th>Holds</th><th>Changed by</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code><a href="../constitution.json">constitution.json</a></code></td>
+                <td>The C-register, the laws, the numbers, the page manifest, the
+                  amendment register.</td>
+                <td>The owner, for invariants and parameters. A round, for the
+                  amendment register only — appending its own entry.</td>
+              </tr>
+              <tr>
+                <td><code>layout-determinism.json</code>, <code>traversal-map.json</code>,
+                  <code>degradation-spec.json</code></td>
+                <td>Placement, routes and states, each with its own verification
+                  block.</td>
+                <td>A round may add a node, an edge or a state to them. The
+                  verification block is not editable.</td>
+              </tr>
+              <tr>
+                <td><code>assets/tokens.css</code></td>
+                <td>The raw layer, the semantic layer, the palettes, the mirrored
+                  <code>--rz-param-*</code> numbers.</td>
+                <td>A round, by adding — under a named amendment. Never by
+                  removing or re-keying.</td>
+              </tr>
+              <tr>
+                <td><code>assets/system.css</code>, <code>assets/system.js</code></td>
+                <td>The classes a theme fills, and the primitives that make the
+                  laws performable.</td>
+                <td>A round, by adding a primitive under a named amendment, when
+                  a law cannot otherwise be run.</td>
+              </tr>
+              <tr>
+                <td>This documentation site</td>
+                <td>Each law, stated once, on the page that owns it.</td>
+                <td>Any round, freely — but a law is written on one page and
+                  cited from the rest.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-note">
+          <p>The shortest version: <strong>add beside, never over.</strong> A
+            token you add is new vocabulary the next round inherits. A token you
+            re-key is a promise broken in every page and every theme that already
+            read it, and there is no way for them to find out.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">constitution.json → amendments.register</span></p>
+          <p class="doc-law__statement">Nothing enters <code>assets/</code>
+            unrecorded. If you added a token family, a class or a primitive, there
+            is an entry carrying its id, the round that added it, what it adds,
+            why the existing vocabulary could not carry the meaning, and which
+            files changed.</p>
+          <p class="doc-check">Diff <code>assets/</code> against the previous
+            version and collect every added <code>--rz-</code> token name and
+            every added <code>.rz-</code> or <code>.doc-</code> selector. Each one
+            appears in the <code>adds</code> array of exactly one register entry,
+            and every entry names files that actually differ.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">constitution.json → parameters</span></p>
+          <p class="doc-law__statement">The declared numbers — the 4 and the 2 of
+            the density rule, the 300ms, the lattice pitch and origin, the zoom
+            clamp, the 10-second slow threshold — are single-sourced in the
+            constitution and mirrored into the token layer and the script. A round
+            does not edit them, and never writes one of them as a literal.</p>
+          <p class="doc-check">Load any page and call
+            <code>RZ.verifyParameters()</code>. It returns <code>[]</code>: the
+            computed <code>--rz-param-*</code> values and
+            <code>RZ.PARAMS</code> agree with the constitution. Then grep the
+            round's own CSS and JS for those numbers as bare literals — nothing is
+            found outside the three mirrors.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C12, C14</span></p>
+          <p class="doc-law__statement">A theme round chooses the key, the type
+            voice and the drawing density. It does not choose the mechanism. You
+            may set a different hue for a kind, drop the display rung an octave,
+            or tighten the card's air; you may not make the four ranks read as
+            three, and you may not give mutation and traversal one form.</p>
+          <p class="doc-check">Run the two blur tests against the round's own
+            build. Freeze a frame, blur the plane, and count the card widths —
+            four remain distinguishable and each head graduation is still separable
+            by length. Then mask every affordance's text: each is a filled stake
+            or an outlined chip with a caret, and no third form exists outside the
+            camera cluster.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C6</span></p>
+          <p class="doc-law__statement">An addition that would make this surface a
+            different regime is not an amendment; it is a new mission. Rhizome is
+            judged by the atlas law and by no other. A round that flattens the
+            veins into a hierarchy, or replaces a hop with a route, has left the
+            system rather than extended it.</p>
+          <p class="doc-check">On the round's build, assert the edge list still
+            contains cross-branch edges — a journal entry joined to the plant it is
+            about, two problems sharing one treatment course — and that edge count
+            is at least node count. Then hop ten times and assert
+            <code>location.href</code> never changed.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">constitution.json → amendments.policy</span></p>
+          <p class="doc-law__statement">A semantic token is never removed and never
+            re-keyed. The set of names in <code>assets/tokens.css</code> only
+            grows. If an existing name is wrong for what you mean, that is the
+            evidence you need a new one beside it — not a reason to redefine the
+            old one under everything already reading it.</p>
+          <p class="doc-check">Collect every <code>--rz-</code> name declared in
+            this version's <code>tokens.css</code> and every name in the round's.
+            The first set is a subset of the second. For each shared name, the
+            <em>meaning</em> stated in its layer comment is unchanged; a new value
+            in a new palette is expected, a new meaning under an old name is the
+            defect this law names.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">What "the key is yours" actually means</h3>
+        <p>Press one. Every colour on this page — the article, the sidebar, the
+          card below, the drifting field behind it — is a token reference, so one
+          attribute on the root re-keys all of it at once, with no save step. This
+          is the whole surface a theme round is meant to work on, and it is wired
+          by the system rather than by this page.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="sp-extend" data-cell="2,2"
+                     data-kind="Plant" data-kind-key="plant"
+                     data-name="Office Fig"
+                     data-recap="Fiddle-leaf Fig · overdue 2 days"
+                     data-rank="near" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Plant</p>
+              <h3 class="rz-n__name">Office Fig</h3>
+              <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                <span class="rz-n__recap-second">· overdue 2 days</span></p>
+            </article>
+
+            <button type="button" class="rz-palette" data-rz-palette="potting-bench" aria-pressed="true">
+              <span class="doc-swatch" style="background: var(--rz-paper-200)"></span>
+              <span>Potting bench</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="terrarium" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-sill-200)"></span>
+              <span>Terrarium</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="night-canopy" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-leaf-300)"></span>
+              <span>Night canopy</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="seed-packet" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-paper-50)"></span>
+              <span>Seed packet</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="clinic" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-chlorosis-200)"></span>
+              <span>Clinic</span>
+            </button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>A sixth palette is an addition; a sixth rank is not</span>
+            <span>C12 · Law 3</span>
+          </figcaption>
+        </figure>
+
+        <p>A new palette is the cheapest legal extension in this system: a block
+          of values under a new <code>[data-palette]</code> key, re-keying every
+          token the semantic layer already declares. It needs no amendment entry
+          at all, because it adds no vocabulary — it only fills the vocabulary
+          that is there. Everything that <em>does</em> add vocabulary needs the
+          next section.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">How to make an amendment</h2>
+        <p>Four steps, in this order. If you cannot write step 3 in a sentence
+          that names a real gap, you do not have an amendment — you have a
+          preference, and the class you want probably exists.</p>
+
+        <ol>
+          <li><strong>Look for it first.</strong> Search
+            <code>assets/system.css</code> and <code>assets/docs.css</code> for
+            the meaning, not the name you had in mind. Most gaps are vocabulary
+            misses.</li>
+          <li><strong>Add it in the right layer, with the prefix.</strong> A
+            product token or class is <code>--rz-</code> / <code>.rz-</code>; a
+            documentation-site class is <code>.doc-</code>. A semantic token
+            references a raw one; it never carries a literal value.</li>
+          <li><strong>Record it</strong> in
+            <code>constitution.json → amendments.register</code>, using
+            <code>amendments.entry_shape</code>.</li>
+          <li><strong>Say so on your page</strong>, in one sentence, where the
+            thing you added is used.</li>
+        </ol>
+
+        <pre class="doc-code"><code>{
+  "id": "A2",
+  "round": "&lt;round or batch that added it&gt;",
+  "adds": ["--rz-kind-tool", "--rz-kind-tool-wash"],
+  "reason": "Why the existing vocabulary could not carry the meaning —
+              named as a gap, not as a taste.",
+  "files": ["assets/tokens.css"]
+}</code></pre>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The entry, field by field</caption>
+            <thead><tr><th>Field</th><th>What goes in it</th><th>Why it is there</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td><code>A</code> and the next free number.</td>
+                <td>So a page can cite the amendment the way it cites an
+                  invariant.</td>
+              </tr>
+              <tr>
+                <td><code>round</code></td>
+                <td>The round or batch, and the page that needed it.</td>
+                <td>The next reader can find the thing that motivated it and see
+                  whether it still needs it.</td>
+              </tr>
+              <tr>
+                <td><code>adds</code></td>
+                <td>Every token name or selector, exactly as declared.</td>
+                <td>This is the array Law 1's diff is checked against.</td>
+              </tr>
+              <tr>
+                <td><code>reason</code></td>
+                <td>The gap, and what you tried that did not carry it.</td>
+                <td>Half of all amendments are refuted by writing this field
+                  honestly. The rest earn their place with it.</td>
+              </tr>
+              <tr>
+                <td><code>files</code></td>
+                <td>Each file you touched.</td>
+                <td>An entry whose files do not differ is a record of something
+                  that did not happen.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What is already on the register</h3>
+        <p>One entry so far, made while this system's own documentation was being
+          written — a worked example of the shape and of the standard. Read the
+          <code>reason</code> field in
+          <a href="../constitution.json">constitution.json</a> in full: it names
+          the gap and the two alternatives that were worse.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Amendment register</caption>
+            <thead><tr><th>Id</th><th>Adds</th><th>The gap it names</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>A1</code></td>
+                <td><code>.doc-specimen__stage[data-stage="world"]</code> — a
+                  containing block for fixed descendants, in
+                  <code>assets/docs.css</code>.</td>
+                <td>Chrome is flush to a viewport edge by contract. A
+                  documentation stage is not a viewport, so an assembled specimen
+                  — the world with its whole chrome register around it — had
+                  nowhere to hold its chrome. The transform establishes a
+                  containing block and moves nothing.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What needs an owner ruling</h2>
+        <p>Three things are outside a round's reach, and each is outside it for
+          the same reason: a later reader has no way to tell a considered change
+          from an accident, and every one of these has already been lost once.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Reach</caption>
+            <thead><tr><th>Change</th><th>Who</th><th>What happens if a round does it anyway</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Adding a palette, a token family, a class, a primitive</td>
+                <td>Any round, under a named amendment</td>
+                <td>Nothing — this is the intended path. Record it and move on.</td>
+              </tr>
+              <tr>
+                <td>Adding a node, an edge or a state to the three sibling specs</td>
+                <td>Any round</td>
+                <td>Nothing, as long as the spec's own verification block still
+                  passes unedited.</td>
+              </tr>
+              <tr>
+                <td>Changing a declared parameter</td>
+                <td>Owner ruling</td>
+                <td><code>RZ.verifyParameters()</code> stops returning
+                  <code>[]</code>, and the CSS and the script begin to disagree
+                  about the same number.</td>
+              </tr>
+              <tr>
+                <td>Removing or re-keying a semantic token</td>
+                <td>Owner ruling</td>
+                <td>Every page and every theme already reading that name is
+                  silently wrong, with nothing to catch it.</td>
+              </tr>
+              <tr>
+                <td>Editing, adding to, or reinterpreting the C-register</td>
+                <td>Owner ruling</td>
+                <td>The citations on every page stop resolving, which is exactly
+                  the condition this system was built to end.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>A ruling is not a formality and not a blocked road. If you believe a
+          parameter is wrong — the density threshold, the travel timing, the pitch
+          — write the case down with the evidence from your own build and hand it
+          over. What you may not do is change it quietly and leave the next round
+          to discover that the number in the CSS and the number in the script are
+          two different opinions.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Cutting a version</h2>
+        <p>This system is <code><span data-doc-version></span></code> and lives in
+          a folder named for it. A version is cut, not edited in place.</p>
+        <ul>
+          <li><strong>A patch</strong> is documentation only: a clearer sentence, a
+            better specimen, a fixed link. No file under <code>assets/</code>
+            moved.</li>
+          <li><strong>A minor version</strong> carries amendments: things were
+            added, the register grew, and everything that read the old version
+            still reads correctly.</li>
+          <li><strong>A major version</strong> is the only place a semantic token
+            may be re-keyed or a parameter changed, and only with the ruling that
+            authorised it recorded beside it.</li>
+        </ul>
+        <p>The name stays <strong>Rhizome</strong> and the slug stays
+          <code>plantpal-cae942ee</code>. A second system for this app is not a
+          version of this one; it is a decision to stop inheriting, and it costs
+          what it cost last time.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Writing a page in this system</h2>
+        <p>The authoring contract for pages is
+          <code>assets/AUTHORING.md</code>, and it holds the page skeleton, the
+          canonical blocks and the finishing checklist. Two of its rules are the
+          ones rounds actually break, so they are worth repeating as consequences
+          rather than as instructions.</p>
+        <p>The first is <strong>state a law once</strong>. A law lives on the page
+          the constitution says carries it, and every other page cites and links.
+          The density rule belongs to
+          <a href="../components/aggregate.html">aggregate</a> and
+          <a href="../foundations/spacing.html">spacing</a>; explaining it a second
+          time on a node page produces two wordings, and the round after that has
+          to work out which one is the system.</p>
+        <p>The second is <strong>a law that cannot be checked is a preference</strong>.
+          Every law block on every page carries a verification a reader can
+          actually run — a diff, a count, an assertion, a blur. That is the whole
+          difference between this system and a style guide, and it is why the
+          rules of this page are themselves written as checks.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>Extending a system is where accessibility is usually lost, because the
+          thing added is judged on how it looks and not on what it does. The
+          behaviour side of this ground is owned by
+          <a href="accessibility.html">accessibility</a>; what follows is what an
+          <em>addition</em> owes it.</p>
+        <ul>
+          <li><strong>Anything added that carries meaning by colour carries it in
+            a word too.</strong> A new kind gets its name in
+            <code>.rz-n__kind</code>, a new state gets a sentence in the card's
+            own words. Turn the screen greyscale: nothing added has gone
+            missing.</li>
+          <li><strong>A new affordance takes one of the two forms.</strong> A
+            stake changes your garden, a chip travels, and inside chrome both
+            become a leading mark. An addition that invents a third form has
+            broken the one thing a user can rely on before clicking.</li>
+          <li><strong>A new way to arrive announces itself.</strong> If your
+            addition can change the focus, it goes through
+            <code>RZ.go()</code> — which writes the arrival sentence and moves the
+            world view's label in lockstep with the visible you-are-here. A hop
+            performed by hand is a hop nobody hears.</li>
+          <li><strong>Anything added that is reachable by pointer is reachable by
+            keyboard, following the graph.</strong> Arrow keys pick the neighbour
+            that actually lies that way; a direction with no vein is spoken rather
+            than ignored.</li>
+          <li><strong>New CSS uses logical properties.</strong>
+            <code>inline-start</code>, <code>block-end</code>,
+            <code>margin-inline</code> — never <code>left</code> and
+            <code>right</code>. A physical property added today is a page pointing
+            the wrong way in RTL tomorrow, and it will be found by a user rather
+            than by a reviewer.</li>
+          <li><strong>An addition respects reduced motion.</strong> If it animates,
+            it has a held, drawn form under
+            <code>data-motion="reduced"</code> that still carries direction — not
+            an abrupt swap, and not nothing.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Add <code>--rz-kind-tool</code> beside the eight kinds that exist,
+              record it as <code>A2</code> with the gap it names, and say so in
+              one sentence on the page that uses it. The round after you inherits
+              a ninth kind and knows why it is there.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Point <code>--rz-kind-guide</code> at the colour you wanted
+              instead. Every page, specimen and theme already reading that name
+              silently changes meaning, and nothing in the build can tell.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Read the density threshold as
+              <code>RZ.PARAMS.density.threshold</code> and
+              <code>var(--rz-param-density-threshold)</code>, so the CSS and the
+              script cannot drift and
+              <code>RZ.verifyParameters()</code> can prove it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Write <code>4</code> into your own component because it happens to
+              be four today. The number is declared once in the constitution, and
+              a copy of it is a second opinion waiting to be wrong.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Take a whole new key — hue, type pitch, card air — and argue about
+              that. It is what a theme round is for, and Law 3's two blur tests
+              tell you immediately whether you have stayed inside the
+              system.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Copy the raw values into a new file and build a parallel semantic
+              layer beside this one. That is how the last system ended up with
+              105 duplicated values and 125 invented tokens, and it is the
+              failure Rhizome exists to prevent.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Cite a C-number and link to
+              <a href="../constitution.json">constitution.json</a>, quoting the
+              statement as written.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Paraphrase an invariant into a second wording on your page. Two
+              wordings of one law is how a register becomes a rumour, and the
+              round after yours will re-derive it from rejection notes (C6).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The blur test for rank and the four card widths belong to
+          <a href="../components/node.html">node</a> and
+          <a href="../foundations/typography.html">typography</a>. The two forms
+          are owned by <a href="../components/action-rail.html">action rail</a>,
+          <a href="../components/navigate-to.html">navigate to</a> and
+          <a href="../foundations/iconography.html">iconography</a>, and the
+          register they change into inside chrome by
+          <a href="../components/chrome.html">chrome</a>. The kind channel and the
+          live palette mechanism this page extends are on
+          <a href="../foundations/colors.html">colors</a>. The density rule and
+          the numbers behind it are owned by
+          <a href="../components/aggregate.html">aggregate</a> and
+          <a href="../foundations/spacing.html">spacing</a>; the one travel timing
+          by <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../foundations/motion.html">motion</a>. The states an addition
+          must survive are on
+          <a href="../patterns/degradation.html">degradation</a>, and the
+          behaviour an addition owes a keyboard and a screen reader on
+          <a href="accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* No world on this page: RZ.mount({}) still wires the palette buttons,
+       the state probes and the field. */
+    RZ.mount({});
+  </script>
+</body>
+</html>

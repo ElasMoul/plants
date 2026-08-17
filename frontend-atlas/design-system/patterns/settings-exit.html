@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings exit · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Settings exit</h1>
+      <p class="doc-lede">Settings is the one place in PlantPal that is not on
+        the plane. This page settles how you get there without losing the
+        garden: the camera pulls all the way out, your whole application shrinks
+        into a floating card, and settings stands beside it. No dialog, no blur,
+        nothing closed.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You are somewhere in your garden — say on Office Fig, two hops from
+          the collection — and you want to change the palette. In most apps that
+          means a dialog dropped over the top of what you were doing, and the
+          moment it closes you have to find your way back by memory. Here it
+          means the camera keeps pulling out past the last zoom stop until the
+          entire application is a card floating in front of you, still laid out
+          exactly as you left it, with Office Fig still focused inside it. The
+          settings panel sits next to that card, on the same plane, at the same
+          depth. You click the card to dive back in.</p>
+        <p>That is the whole idea, and it costs nothing to explain because you
+          watched it happen: you can see where you were the entire time you are
+          away. Settings is <em>content</em> — a place, with its own material —
+          and the small bar beside it that says Move, Select, Zoom and Recentre
+          is apparatus, in the chrome register. Nothing about your garden is
+          hidden while you are out here, and nothing about it moves.</p>
+        <div class="doc-note">
+          <p>This page owns the exit choreography and the app card. The material
+            the card borrows is owned by <a href="../components/node.html">node</a>
+            and <a href="../foundations/elevation.html">elevation</a>; which
+            layers ride the camera and which belong to the viewport is owned by
+            <a href="../components/world.html">world</a> and elevation; the live
+            palette switch you use once you are out here is owned by
+            <a href="../foundations/colors.html">colors</a>. This page cites
+            them; it does not restate them.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C20</span></p>
+          <p class="doc-law__statement">Leaving for settings is a camera move,
+            not a layer: “Leaving to settings runs the exit choreography —
+            camera out, app shrinks to a floating card, panel beside it — rather
+            than a centred modal over a blur.” The shell transform is
+            <code>scale(0.42) translateX(-25%)</code>, used verbatim.</p>
+          <p class="doc-check">Call <code>RZ.setMode("overview")</code> and read
+            the computed <code>transform</code> of <code>.rz-shell</code>: it is
+            that matrix and no other. Then assert
+            <code>document.querySelectorAll('[role="dialog"]').length</code> is
+            <code>0</code>, that no element in the document has a computed
+            <code>backdrop-filter</code> other than <code>none</code>, and that
+            no ancestor of the app card carries a <code>filter</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C20</span></p>
+          <p class="doc-law__statement">The app card takes the card's own
+            material — its corner, its halo, its membrane hairline — because it
+            <em>is</em> a card now, and the reader should be able to tell that
+            without being told.</p>
+          <p class="doc-check">In overview, read the computed
+            <code>border-radius</code>, <code>box-shadow</code> and
+            <code>border-color</code> of <code>.rz-shell</code> and compare them
+            with the same three on any <code>.rz-n</code>: they resolve from
+            <code>--rz-corner-card</code>, <code>--rz-halo-lit</code> and
+            <code>--rz-membrane-lit</code>. Then blur the frame: the app card and
+            the settings panel are two bright soft rectangles, and the bar beside
+            them is not one.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C7, C9, C16</span></p>
+          <p class="doc-law__statement">Going out and coming back changes
+            nothing about the garden. The same node is focused, every card is at
+            the same place, the camera is where you left it, and no record was
+            touched — the exit is a scale applied to the whole shell, never a
+            re-layout of what is inside it.</p>
+          <p class="doc-check">Record <code>RZ.focus</code>, the camera
+            transform, and the computed <code>left</code>/<code>top</code> of
+            every <code>.rz-n</code>. Run <code>RZ.setMode("overview")</code>
+            then <code>RZ.setMode("app")</code> and diff all three: identical.
+            Assert the node element set is the identical objects — nothing was
+            unmounted — and that <code>history.length</code> is unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C20</span></p>
+          <p class="doc-law__statement">The app's own background field goes with
+            the app. In overview it covers the card and nothing beyond it: the
+            decoration belongs to the surface it decorates, and the surface is
+            now a card. The space around the card is bare ground.</p>
+          <p class="doc-check">In overview, assert the mote canvas the runtime
+            is painting is <code>#rz-motes-app</code> (inside the shell) and that
+            its bounding box is contained by the app card's bounding box to the
+            pixel. Assert the viewport field <code>#rz-motes</code> is painting
+            nothing. Return to app mode and assert the roles swap back.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C14, C17</span></p>
+          <p class="doc-law__statement">Settings is content and takes the node
+            register; the bar beside it is chrome and takes the chrome register.
+            The panel may hold real controls in the two forms; the bar holds
+            camera controls and marks, never a stake and never a chip.</p>
+          <p class="doc-check">Assert <code>.rz-settings</code> resolves a
+            non-<code>none</code> <code>box-shadow</code> and a card corner,
+            while every <code>.rz-chrome</code> member resolves
+            <code>box-shadow: none</code>. Assert
+            <code>.rz-overview-bar .rz-stake, .rz-overview-bar .rz-chip</code>
+            matches nothing. Assert only the settings panel's own body scrolls
+            and <code>document.body</code> has no scrollbar.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C20, C15</span></p>
+          <p class="doc-law__statement">The way back is the card itself. There
+            is no close button, no dismiss, no escape hatch that means something
+            different from clicking the thing you came out of — and the exit
+            moves the camera without changing the focus, so it is a camera
+            action, not a hop.</p>
+          <p class="doc-check">Click the app card and assert the mode returned
+            to <code>app</code> and <code>RZ.focus</code> never changed. Assert
+            no element inside the settings panel or the overview bar calls
+            <code>RZ.go</code>. Assert the exit control is a
+            <code>.rz-cam-btn</code> — the camera category — and not a stake or
+            a chip.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The exit, running</h2>
+        <p>Press <em>Settings</em> in the top bar. Watch what happens to Office
+          Fig: it stays focused, stays in place, and simply gets smaller along
+          with everything around it. Click the card to come back. The mode
+          buttons below the specimen drive exactly the same call the top bar
+          does — <code>RZ.setMode</code> — so there is one code path in and one
+          out.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+
+            <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+            <div class="rz-shell" id="rz-shell" data-rz-mode="app">
+              <div class="rz-world" id="rz-world" tabindex="0"
+                   aria-label="The garden world. Click a card to travel to it; arrow keys follow the veins.">
+
+                <canvas class="rz-motes" id="rz-motes-app" aria-hidden="true"></canvas>
+
+                <div class="rz-plane" id="rz-plane">
+                  <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                    <g id="rz-vein-group"></g>
+                    <g id="rz-vein-dots"></g>
+                    <path class="rz-trail" id="rz-trail"></path>
+                  </svg>
+
+                  <article class="rz-n" id="n-garden" data-cell="0,1"
+                           data-kind="Collection" data-kind-key="collection"
+                           data-name="My garden" data-recap="12 plants · 1 overdue today">
+                    <span class="rz-n__grad"></span>
+                    <p class="rz-n__kind">Collection</p>
+                    <h3 class="rz-n__name">My garden</h3>
+                    <p class="rz-n__recap">12 plants
+                      <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  </article>
+
+                  <article class="rz-n" id="n-office" data-cell="2,0"
+                           data-kind="Plant" data-kind-key="plant"
+                           data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                    <span class="rz-n__grad"></span>
+                    <p class="rz-n__kind">Plant</p>
+                    <h3 class="rz-n__name">Office Fig</h3>
+                    <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                      <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                    <div class="rz-n__full">
+                      <div class="rz-n__body">
+                        <div class="rz-n__section rz-vitals">
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Health</span>
+                            <span class="rz-health" data-health="watch">Wants water</span>
+                          </div>
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Last watered</span>
+                            <span>12 days ago, by you</span>
+                          </div>
+                        </div>
+                        <div class="rz-n__section">
+                          <p>Still focused while you are out in overview, and
+                            still focused when you dive back in.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article class="rz-n" id="n-studio" data-cell="2,2"
+                           data-kind="Plant" data-kind-key="plant"
+                           data-name="Studio Fig" data-recap="Under treatment · root rot">
+                    <span class="rz-n__grad"></span>
+                    <p class="rz-n__kind">Plant</p>
+                    <h3 class="rz-n__name">Studio Fig</h3>
+                    <p class="rz-n__recap">Under treatment
+                      <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                  </article>
+
+                  <article class="rz-n" id="n-problems" data-cell="4,2"
+                           data-kind="Collection" data-kind-key="problem"
+                           data-name="Problems" data-recap="3 active · all three drawn">
+                    <span class="rz-n__grad"></span>
+                    <p class="rz-n__kind">Collection</p>
+                    <h3 class="rz-n__name">Problems</h3>
+                    <p class="rz-n__recap">3 active
+                      <span class="rz-n__recap-second">· all three are drawn</span></p>
+                  </article>
+                </div>
+
+                <div class="rz-chrome rz-chrome--top">
+                  <p class="rz-chrome__title">PlantPal</p>
+                  <p class="rz-chrome__here" id="rz-here"></p>
+                  <p><button type="button" class="rz-cam-btn" data-rz-mode="overview"
+                             aria-label="Settings — pull the camera out">&#9679;</button></p>
+                </div>
+
+                <div class="rz-chrome rz-chrome--rail">
+                  <p class="rz-chrome__head">
+                    <span class="rz-chrome__title">Navigate to</span>
+                    <span id="rz-navto-degree"></span>
+                  </p>
+                  <div id="rz-navto-body"></div>
+                </div>
+
+                <div class="rz-chrome rz-chrome--actions">
+                  <p class="rz-chrome__head">
+                    <span class="rz-chrome__title">Actions</span>
+                    <span id="rz-actions-scope"></span>
+                  </p>
+                  <div id="rz-actions-body"></div>
+                </div>
+
+                <div class="rz-chrome rz-chrome--map">
+                  <p class="rz-chrome__head">
+                    <span class="rz-chrome__title">World view</span>
+                  </p>
+                  <svg class="rz-map" id="rz-map" width="208" height="104"
+                       viewBox="0 0 208 104" role="img" aria-label="World view">
+                    <g id="rz-map-edges"></g>
+                    <g id="rz-map-dots"></g>
+                    <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                    <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                    <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <p class="rz-chrome rz-chrome--gesture rz-shell__caption">PlantPal
+              Application · Click to return to the app</p>
+
+            <div class="rz-chrome rz-chrome--camera rz-overview-bar">
+              <span>Move</span>
+              <span>Select</span>
+              <span>Zoom</span>
+              <span>Recentre</span>
+            </div>
+
+            <div class="rz-settings">
+              <p class="rz-label">Settings</p>
+              <h3 class="rz-n__name">Palette</h3>
+              <p>Pick one. It applies as you click it — there is nothing to save,
+                and nothing in your garden moves.</p>
+              <button type="button" class="rz-palette" data-rz-palette="potting-bench"
+                      aria-pressed="true">
+                <span class="rz-palette__swatch" style="background: var(--rz-kind-plant)"></span>
+                <span>Potting bench</span>
+              </button>
+              <button type="button" class="rz-palette" data-rz-palette="terrarium"
+                      aria-pressed="false">
+                <span class="rz-palette__swatch" style="background: var(--rz-kind-species)"></span>
+                <span>Terrarium</span>
+              </button>
+              <button type="button" class="rz-palette" data-rz-palette="seed-packet"
+                      aria-pressed="false">
+                <span class="rz-palette__swatch" style="background: var(--rz-kind-journal)"></span>
+                <span>Seed packet</span>
+              </button>
+              <button type="button" class="rz-palette" data-rz-palette="clinic"
+                      aria-pressed="false">
+                <span class="rz-palette__swatch" style="background: var(--rz-kind-problem)"></span>
+                <span>Clinic</span>
+              </button>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The exit choreography · the app as a card, settings beside it</span>
+            <span>C7 · C9 · C14 · C16 · C20</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Two ways in and out, both the same call:
+          <button type="button" class="rz-cam-btn" data-rz-mode="overview"
+                  aria-label="Pull the camera out to overview">&#9679;</button>
+          pulls out,
+          <button type="button" class="rz-cam-btn" data-rz-mode="app"
+                  aria-label="Dive back into the app">&#9633;</button>
+          dives back in. In the product there is no second button: the card is
+          the way back. Both are camera controls, in the camera category — they
+          change no data and no focus.</p>
+
+        <pre class="doc-code"><code>&lt;div class="rz-shell" data-rz-mode="app"&gt;
+  &lt;div class="rz-world"&gt;…the whole application, unchanged…&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="rz-settings"&gt;…&lt;/div&gt;
+&lt;div class="rz-chrome rz-chrome--camera rz-overview-bar"&gt;…&lt;/div&gt;
+
+RZ.setMode("overview");   // camera out — the shell becomes a card
+RZ.setMode("app");        // dive back in</code></pre>
+
+        <p>The specimen runs from the runtime. Nothing on this page re-implements
+          the transform, the field or the palette switch, and the exit control in
+          the top bar is wired by <code>RZ.mount</code> from its
+          <code>data-rz-mode</code> attribute alone. The overview bar borrows the
+          camera cluster's edge, because in overview that edge is where the
+          Move / Select / Zoom / Recentre controls live; no new class was needed
+          and no amendment was made for this page.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What the exit is made of</h2>
+        <p>Four parts, and the column that decides everything is the last one: a
+          part is either content — and takes the node's material — or apparatus,
+          and takes chrome's.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The parts and their register (Law 5)</caption>
+            <thead><tr><th>Part</th><th>What it is</th><th>Register</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-shell</code></td>
+                <td>The whole application, scaled down in place. It keeps its own
+                  chrome inside it, now absolutely positioned within the card
+                  rather than fixed to the viewport.</td>
+                <td>Content, in overview. It takes the card's corner, halo and
+                  hairline, and the <code>zoom-in</code> cursor that says it can
+                  be dived into.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-settings</code></td>
+                <td>The panel beside the card, on the same plane at the same
+                  depth. Real controls in the two forms; its own body is the only
+                  thing here that scrolls.</td>
+                <td>Content. Sheet fill, card corner, the same halo as the app
+                  card — a place, not a dialog.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-overview-bar</code></td>
+                <td>Move · Select · Zoom · Recentre. What your pointer does out
+                  here, stated rather than guessed at.</td>
+                <td>Chrome. Monospace, uppercase, one rung, no shadow at all.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-shell__caption</code></td>
+                <td>“PlantPal Application · Click to return to the app.” It names
+                  the card and says what clicking it does.</td>
+                <td>Chrome. It is apparatus describing a piece of content.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-motes-app</code></td>
+                <td>The application's own field, now covering the card and
+                  nothing beyond it (Law 4).</td>
+                <td>It belongs to whichever surface it decorates — here, the
+                  card.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme may and may not fill</caption>
+            <thead><tr><th>Value</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-param-shell-transform</code></td>
+                <td></td>
+                <td><code>scale(0.42) translateX(-25%)</code>. Hand-tuned, held
+                  in <a href="../constitution.json">constitution.json</a> and
+                  checked by <code>RZ.verifyParameters()</code>. It is the one
+                  literal in the system a page may write verbatim, and it is not
+                  to be re-derived, rounded, or replaced by a token of your
+                  own.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-corner-card</code></td>
+                <td></td>
+                <td>The card's corner. The app card takes it, so the shrunken
+                  application reads as a card and not a screenshot.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-halo-lit</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-sheet)"></span></td>
+                <td>The card's own halo, on both the app card and the settings
+                  panel. Chrome takes <code>--rz-chrome-lift</code>, which is
+                  none, always.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-membrane-lit</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-membrane-lit)"></span></td>
+                <td>The hairline around the app card — the same membrane a
+                  focused card carries.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-dur-3</code> · <code>--rz-ease-travel</code></td>
+                <td></td>
+                <td>The pull-out and the dive-in run on the system's travel
+                  easing. The timing rung is owned by
+                  <a href="../foundations/motion.html">motion</a>; this page
+                  only asks that both directions use the same one.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-sheet</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-sheet)"></span></td>
+                <td>The settings panel's fill: content material, so the panel
+                  cannot be mistaken for the bar beside it.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Going out</h3>
+        <p>One call, <code>RZ.setMode("overview")</code>, from the top bar's
+          exit control. The shell scales and slides on the travel easing; nothing
+          inside it re-lays out, because the whole thing is one transform. The
+          app's field is re-sized onto the card and the viewport's field stops.
+          Focus is untouched — you are still on the plant you were reading.</p>
+
+        <h3 class="doc-h3">Coming back</h3>
+        <p>Click the card. It carries the <code>zoom-in</code> cursor for exactly
+          that reason, and it is the only way back that the product ships: a
+          close button would be a second story about what the card is.</p>
+
+        <h3 class="doc-h3">While you are out</h3>
+        <p>The garden holds still. The pointer does what the bar says — move,
+          select, zoom, recentre — and none of those four change data or focus.
+          Palette changes apply as you click them, live, with no save step; the
+          card re-keys under you, world and all, because every colour on screen
+          is a token reference. That mechanism is owned by
+          <a href="../foundations/colors.html">colors</a>.</p>
+
+        <h3 class="doc-h3">Travel and the exit</h3>
+        <p>They do not overlap. The exit is a camera move; a hop is a change of
+          focus along a vein. If a hop is in flight the exit waits for it rather
+          than blending with it, and no control inside settings or the overview
+          bar traverses the graph — a traversal out here would leave you looking
+          at a card whose insides changed while you were not in them. Hops are
+          owned by <a href="traversal.html">traversal</a>.</p>
+
+        <h3 class="doc-h3">Reduced motion</h3>
+        <p>The scale still happens, on the same path; what goes is the drift in
+          the field. The point of the choreography is that you can see where your
+          garden went, and that survives a shorter transition — it would not
+          survive a cut.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>The exit is announced in the app's own words. Going out:
+          “You are in overview mode. This is the entire PlantPal application.
+          Click the app card to dive back in.” Coming back names where you are
+          returning to, by node name, so a screen-reader user gets the same
+          reassurance a sighted user gets from watching the card grow — that
+          nothing was lost while they were away.</p>
+        <p>Because nothing is a dialog, nothing traps focus, and nothing needs to
+          be dismissed. There is no <code>role="dialog"</code>, no
+          <code>aria-modal</code>, and no hidden background: the application is
+          still in the document, still labelled, still reachable by keyboard.
+          That is a real accessibility property of the pattern, not a side
+          effect — a modal's focus trap is a thing users have to learn to escape,
+          and this pattern never asks them to.</p>
+        <p>The app card is a real control and says what it does: it carries an
+          accessible name that matches its visible caption, so “click to return
+          to the app” is available to a reader who cannot see the caption. Its
+          keyboard behaviour is the ordinary one — reach it by <kbd>Tab</kbd>,
+          activate it with <kbd>Enter</kbd> or <kbd>Space</kbd>. The exit control
+          in the top bar carries its own label rather than relying on its mark,
+          since a mark alone names nothing.</p>
+        <p>The overview bar's four words are its own accessible content, not a
+          tooltip, and it is not a live region — it does not interrupt. Colour is
+          never the only signal that you are out here: the whole application has
+          visibly changed size and its caption is present in text. Logical
+          properties are used throughout, so the panel sits on the correct side
+          in RTL, and the settings panel's own body is the only thing in the
+          document that scrolls.</p>
+        <p>If you are unsure whether a control belongs in the panel or in the
+          bar, ask whether a screen reader should call it a place or an
+          instrument. Places go in the panel.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>The failure this pattern exists to prevent is the disappearing world:
+          any treatment where the garden stops being visible and the user has to
+          rebuild their sense of place afterwards. Blur is that failure wearing
+          a nice coat — it says “this is still here” while making it unreadable.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Shrink the whole application into a card, laid out identically,
+              and put settings beside it at the same depth. The user can see
+              where they were the entire time, and the way back is the thing they
+              came out of (C20, Law 1).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Centre a settings dialog over the world and blur what is behind
+              it. It breaks the geography and the you-are-here at once, traps
+              focus, and needs a dismiss control that means nothing in a world
+              where nothing was ever opened (C20).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Keep the app card inert while you are out. It is a picture of
+              where you were, and clicking anywhere on it means one thing: dive
+              back in, exactly where you left off (Law 3, Law 6).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Let a card inside the shrunken app stay clickable as a hop. Then
+              the user leaves overview <em>and</em> arrives somewhere they did
+              not choose, and two different things happened for one click
+              (C15, C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Use this pattern for the small number of surfaces that genuinely
+              are not in the garden: settings, your account, sign-out. They have
+              no cell, no veins and no neighbours, and pretending otherwise
+              would cost the plane its meaning.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Reach for the exit to show something that <em>does</em> live in
+              the garden — a plant's history, a treatment course, the full list
+              behind “+N more”. Those are nodes; travel to them. The exit is not
+              a general-purpose way to show a panel.</p>
+          </div>
+        </div>
+
+        <p>One more, about the number. The transform is hand-tuned to leave the
+          app card readable and the panel unobstructed at the same time; if a
+          theme finds it wrong, that is an owner ruling, not a token edit. Change
+          the palette, the type voice and the density around it — see
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a> for the amendment path — and leave the choreography
+          alone.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The application that shrinks is <a href="../components/world.html">world</a>;
+          the material the app card borrows is
+          <a href="../components/node.html">node</a> and the shadow rule it obeys
+          is <a href="../foundations/elevation.html">elevation</a>, which also
+          owns the layer-ownership rule Law 4 depends on. The register the bar
+          and caption take is <a href="../components/chrome.html">chrome</a>. The
+          live palette switch you use out here is
+          <a href="../foundations/colors.html">colors</a>; the timing is
+          <a href="../foundations/motion.html">motion</a> and
+          <a href="../guidelines/motion-and-scale.html">motion and scale</a>. The
+          two forms inside the panel are
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>; the announcements are
+          <a href="../guidelines/accessibility.html">accessibility</a>. The other
+          two things that are modes rather than layers are
+          <a href="arrange-mode.html">arrange mode</a> and, for the states you
+          can walk from the probe, <a href="degradation.html">degradation</a>.
+          Hops are <a href="traversal.html">traversal</a> and
+          <a href="arrivals.html">arrivals</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The exit itself is RZ.setMode,
+       wired by mount() from the data-rz-mode attributes above. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Move to another room"]
+      }
+    });
+  </script>
+</body>
+</html>

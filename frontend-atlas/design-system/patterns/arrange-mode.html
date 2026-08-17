@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrange mode · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Arrange mode</h1>
+      <p class="doc-lede">Arrange is where your garden becomes yours to lay out
+        by hand. This page settles that it is a <em>mode</em> and not a toggle
+        laid over normal behaviour, what a drag stores, and why every other
+        instrument on the board reads that one stored thing.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>The lattice puts every body in your garden somewhere sensible without
+          being asked, and most of the time that is enough. But it is your
+          garden. You know that the two figs by the window belong beside each
+          other, that the problems you are actually treating belong up near the
+          top, and that the seedlings you check every morning belong where your
+          eye lands first. Arrange is the mode that lets you say so.</p>
+        <p>Press <em>Arrange</em> beside the world view and the camera pulls back
+          until the whole garden is in frame, every card opens to its full
+          content, and the whole surface of each card becomes its handle. Drag a
+          card and it stays where you put it. Nothing else on the board responds
+          while you are in here — you cannot travel by accident, you cannot log a
+          watering by accident, and no record changes. Press <kbd>Esc</kbd> or
+          the same button again and you are back exactly where you were standing,
+          at the zoom you were standing at, with your placements kept.</p>
+        <div class="doc-note">
+          <p>The formula a position is derived from, the cell semantics and the
+            insertion rule belong to
+            <a href="../foundations/spacing.html">spacing</a>; the cursor grammar
+            and the pointer-precedence rules belong to
+            <a href="../guidelines/interaction-and-cursors.html">interaction and cursors</a>;
+            the map that grows to hold an arranged body belongs to
+            <a href="../components/minimap.html">minimap</a>. This page settles
+            the mode itself and the offset it writes.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">Arrange is a mode. While it is on, every
+            other interaction on the board is inert: no travel, no mutation, no
+            pan, no wheel-zoom. It is not a drag behaviour added on top of the
+            normal board — it is a different board with one thing to do on it.</p>
+          <p class="doc-check">Call <code>RZ.setArrange(true)</code>, then click
+            every card, every <code>.rz-stake</code> and every
+            <code>.rz-chip</code> on the plane. Assert <code>RZ.focus</code> is
+            unchanged, the camera transform is unchanged by any of those clicks,
+            and no record field changed. Assert
+            <code>getComputedStyle(stake).pointerEvents === "none"</code>. Then
+            drag the bare board and assert
+            <code>RZ.cam.x</code>/<code>RZ.cam.y</code> did not move.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C16</span></p>
+          <p class="doc-law__statement">Entering puts the whole garden in frame
+            and opens every card in full, because you cannot place what you
+            cannot see and you cannot judge a placement from a recap. Rank stops
+            being spent on size for as long as the mode is on.</p>
+          <p class="doc-check">Enter Arrange and assert every
+            <code>.rz-n</code> carries <code>data-show="full"</code> and computes
+            the same <code>inline-size</code> as
+            <code>var(--rz-card-near)</code>, that
+            <code>RZ.cam.k</code> equals the value
+            <code>RZ.fitAll()</code> computes from
+            <code>RZ.extent()</code>, and that exactly one element still carries
+            <code>data-focus="true"</code> — the mode moved the camera, not your
+            place in the garden.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C7, C9</span></p>
+          <p class="doc-law__statement">A drag stores an offset against the
+            record. The cell stays the body's identity; the offset is your
+            preference laid on top of it. “Two consecutive loads of the same
+            graph lay out identically, with positions derived deterministically
+            and persisted — never from a live simulation or render order”, and an
+            arranged position is part of what is persisted.</p>
+          <p class="doc-check">Drag a card. Assert its <code>data-cell</code> is
+            unchanged and that <code>data-dx</code>/<code>data-dy</code> now
+            carry the offset. Reload with those offsets restored and diff the
+            computed <code>left</code>/<code>top</code> of every
+            <code>.rz-n</code> against the pre-reload values: equal. Reverse the
+            DOM order of the cards and reload again: still equal.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C3, C9</span></p>
+          <p class="doc-law__statement">Every consumer of position reads that one
+            record — the veins, the world view's extent, Fit, and keyboard
+            direction-finding — so none of them can disagree with where the card
+            visibly is. A drag redraws them all from the edge list rather than
+            appending to what is already drawn.</p>
+          <p class="doc-check">Drag a card well past the others and assert: every
+            <code>.rz-vein</code> touching it ends at its new centre; the count of
+            drawn veins is unchanged, so nothing was duplicated on release;
+            <code>RZ.extent().w</code> has grown to include it;
+            <code>RZ.neighbourInDirection("ArrowRight")</code> now proposes it if
+            it lies that way. Then assert no other card's computed
+            <code>left</code>/<code>top</code> moved at all.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">Leaving gives you back the camera you
+            arrived with. Arrange borrows the view to do its work and returns it;
+            it changes no data and performs no traversal, in or out.</p>
+          <p class="doc-check">Record <code>RZ.cam</code> and
+            <code>RZ.focus</code>, enter Arrange, drag two cards, press
+            <kbd>Esc</kbd>. Assert <code>RZ.cam.x</code>,
+            <code>RZ.cam.y</code> and <code>RZ.cam.k</code> equal the recorded
+            values, <code>RZ.focus</code> is the same body,
+            <code>history.length</code> is unchanged, and the two offsets
+            survived.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Arrange, running</h2>
+        <p>Press <em>Arrange</em> in the world-view corner. Watch the camera fit
+          the whole garden and every card open. Drag Office Fig out to the right,
+          past where the lattice would ever have put it, and watch the veins
+          follow it and the map grow to hold it — its dot marks itself as one you
+          placed. Press <kbd>Esc</kbd>: you are back at the fig you were standing
+          in front of, at the zoom you left, and the placement stayed.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Click a card to travel to it; arrow keys follow the veins. Press Arrange to lay the garden out by hand.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Wants water · 12 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Wants water
+                    <span class="rz-n__recap-second">· last watered 12 days ago</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <div class="rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="rz-n__section">
+                      <button type="button" class="rz-stake">Log a watering</button>
+                      <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-garden-more" data-cell="2,4"
+                         data-aggregate="true"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="10 more plants" data-recap="Opens the full list">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name"><span class="rz-n__count">+10</span> more plants</h3>
+                  <p class="rz-n__recap">Opens the full list</p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">World view</span>
+                  <button type="button" class="rz-probe__btn" id="rz-arrange"
+                          aria-pressed="false">Arrange</button>
+                </p>
+                <svg class="rz-map" id="rz-map" width="208" height="104"
+                     viewBox="0 0 208 104" role="img"
+                     aria-label="World view">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <p class="rz-chrome rz-chrome--gesture">Drag the board to pan ·
+                Alt and wheel to zoom · Arrange to lay it out</p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Arrange: the whole world in frame, the whole card a handle</span><span>C9 · C15 · C16</span>
+          </figcaption>
+        </figure>
+
+        <p>The mode has one entry point and one exit, both the same call. A page
+          never sets <code>data-arrange</code> by hand, because entering is four
+          things happening together — the flag, the presentation, the fit, and
+          the announcement — and a hand-set attribute would get one of them:</p>
+
+        <pre class="doc-code"><code>RZ.setArrange(true);   /* fits the world, opens every card, goes inert */
+RZ.setArrange(false);  /* restores the camera you arrived with */
+RZ.arrange;            /* true while the mode is on — the guard every
+                          handler in system.js reads first */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What the mode owns</h2>
+        <p>Arrange is carried by one document attribute and three node-level
+          ones. A theme fills the material; it does not add a fifth.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The attributes of the mode</caption>
+            <thead><tr><th>Attribute</th><th>Where</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-arrange="on"</code></td>
+                <td>the document root</td>
+                <td>The mode is on. Every rule below hangs off this one
+                  attribute, so the mode cannot be half-entered.</td>
+              </tr>
+              <tr>
+                <td><code>data-dragging="true"</code></td>
+                <td>the card being moved</td>
+                <td>This card is in your hand right now. It lifts to the lit halo
+                  and rides above its neighbours until you let go.</td>
+              </tr>
+              <tr>
+                <td><code>data-dx</code> / <code>data-dy</code></td>
+                <td>the card</td>
+                <td>Your offset, in garden units, written on release. This is the
+                  whole of what a drag stores — the cell underneath is
+                  untouched.</td>
+              </tr>
+              <tr>
+                <td><code>data-cell</code></td>
+                <td>the card</td>
+                <td>Unchanged by arranging, ever. It is the body's identity on
+                  the lattice, and it is what insertion and the free-cell search
+                  still reason about.</td>
+              </tr>
+              <tr>
+                <td><code>aria-pressed</code></td>
+                <td><code>#rz-arrange</code></td>
+                <td>Whether the mode is on, spoken. The runtime writes it; the
+                  page authors the button and its name only.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What the mode changes, and what it refuses to</caption>
+            <thead><tr><th>Surface</th><th>In Arrange</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>the card</td>
+                <td><code>cursor: move</code>, one width, full opacity, full
+                  content</td>
+                <td>The whole card is the handle, and <code>move</code> rather
+                  than <code>grab</code> because you are moving a body, not
+                  hauling the board
+                  (<a href="../guidelines/interaction-and-cursors.html">interaction and cursors</a>).</td>
+              </tr>
+              <tr>
+                <td>the board</td>
+                <td><code>cursor: default</code>, no pan, no wheel-zoom</td>
+                <td>The board is not the thing you are handling here. Leaving pan
+                  live would mean every missed grab slid the world out from under
+                  your placement.</td>
+              </tr>
+              <tr>
+                <td>stakes and chips</td>
+                <td>inert and dimmed</td>
+                <td>Nothing on this board changes data or travels while you are
+                  laying it out. A drag that starts on a button must not fire the
+                  button (C15).</td>
+              </tr>
+              <tr>
+                <td>rank</td>
+                <td>not spent on size</td>
+                <td>All four widths would make the far bodies unreadable at the
+                  fit-everything zoom, and you are placing them, not reading
+                  them.</td>
+              </tr>
+              <tr>
+                <td>the camera</td>
+                <td>fitted on entry, restored on exit</td>
+                <td>Borrowed, not taken. Arrange is the only thing in the system
+                  that moves the camera without you asking, and it gives it
+                  back.</td>
+              </tr>
+              <tr>
+                <td>the world view</td>
+                <td>extent grows; scale still ignores the camera</td>
+                <td>A body placed past the lattice edge is still on the map, in
+                  the place you put it, marked as yours
+                  (<a href="../components/minimap.html">minimap</a>).</td>
+              </tr>
+              <tr>
+                <td>your records</td>
+                <td>untouched</td>
+                <td>Arrange writes an offset and nothing else. No health, no
+                  count, no journal entry, no archive.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Entering and leaving are announced, in full sentences.</strong>
+          Entering says what changed and what to do:
+          <em>“Arrange mode. Every card is open and the whole world is in view.
+          Drag any card to place it; nothing else responds until you leave.”</em>
+          Leaving says what was kept and where you are:
+          <em>“Left arrange mode. Positions kept. You are still at Office
+          Fig.”</em> Each release says so too — <em>“Office Fig moved. Its
+          position is kept.”</em> — so a reader who cannot see the card land
+          still hears that the placement took.</p>
+        <p><strong>The mode has a name and a state, not just a look.</strong> The
+          entry control is an ordinary button carrying
+          <code>aria-pressed</code>, so its on-ness is readable without seeing
+          the fitted camera. There is no third state and no hidden one.</p>
+        <p><strong><kbd>Esc</kbd> always leaves.</strong> One key, from anywhere
+          on the board, with no confirmation to dismiss and nothing lost by
+          pressing it — every offset is already stored the moment you let go of a
+          card. That is the whole keyboard contract of the mode, and it is the
+          same key that steps back a hop outside it, so it never means “discard”
+          in either place.</p>
+        <p><strong>The arrow keys are given back on exit.</strong> Inside the
+          mode they do not travel, because nothing travels in here. Outside it
+          they follow the veins as they always do, computed from the neighbours'
+          real positions — which now include the ones you moved
+          (<a href="../guidelines/accessibility.html">accessibility</a>).</p>
+        <p><strong>Dragging is not the only way to have a garden you can
+          read.</strong> Be honest about this: pointer drag is currently the only
+          way to set an offset, and a reader who cannot drag depends on the
+          lattice's own placement being good. The lattice is deterministic and
+          complete, so nothing is unreachable — but if you are asking whether
+          that is enough, the honest answer is that it is a gap, and a keyboard
+          nudge belongs in a later amendment rather than in a claim here.</p>
+        <p><strong>No coordinate is ever spoken.</strong> Not on entry, not on
+          release, not on the map's label. The cell, the row and the column are
+          the system's private vocabulary; what you hear is the body's name and
+          that its position is kept.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+        <p>Arrange earns its place by being small and total: one button, one
+          thing to do, one key out.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Make the whole mode inert except the drag. When the only thing
+              that responds is the thing you came in to do, you can move fast and
+              sloppily across the board and nothing will fire behind your back
+              (C15).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Leave travel and stakes live and hang dragging off a modifier key.
+              Then every placement is a gamble on whether the pointer moved far
+              enough to count as a drag, and a missed one waters a plant or hops
+              you to another body.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Store the drag as an offset against the record and let the veins,
+              the map, Fit and the arrow keys all read that one record. They then
+              cannot disagree about where a body is, and a reload puts it back
+              exactly (C7, C9).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Write the drag straight onto the card's own transform, or give it
+              a new cell. The map, the veins and the keyboard then each keep
+              their own idea of where it is, and the first reload throws the
+              user's work away.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give the camera back on exit, at the zoom and the position the
+              user arrived with. Arranging is something you step out to do; it
+              should not cost you your place.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Leave the reader parked at the fit-everything zoom afterwards.
+              They are now somewhere they did not choose to be, and the mode has
+              quietly done a second thing it never said it would do (C16).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="../foundations/spacing.html">spacing</a> — the lattice,
+            the placement formula the offset is added to, and the insertion
+            rule.</li>
+          <li><a href="../components/minimap.html">minimap</a> — the world view
+            that opens this mode, grows to hold an arranged body, and marks it as
+            one you placed.</li>
+          <li><a href="../components/node.html">node</a> — the card contract, its
+            show-modes, and what a card looks like open in full.</li>
+          <li><a href="../components/edge.html">edge</a> — the single edge list
+            the veins are redrawn from on every drag.</li>
+          <li><a href="../components/world.html">world</a> — the plane and the
+            camera this mode borrows and returns.</li>
+          <li><a href="../guidelines/interaction-and-cursors.html">interaction and cursors</a>
+            — the cursor grammar and the pointer-precedence rules a drag obeys.</li>
+          <li><a href="../guidelines/accessibility.html">accessibility</a> — the
+            announcement rules the mode's three sentences follow.</li>
+          <li><a href="traversal.html">traversal</a> — the travelling this mode
+            deliberately suspends, and the one timing it happens on.</li>
+        </ul>
+      </section>
+
+      <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. Arrange is entered through
+       RZ.setArrange, wired to #rz-arrange by mount(); nothing here
+       re-implements the mode, the drag, placement or the extent. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-garden-more"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+      }
+    });
+  </script>
+</body>
+</html>

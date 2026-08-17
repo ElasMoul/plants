@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aggregate · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Aggregate</h1>
+      <p class="doc-lede">A card that stands for the members of a collection
+        the board did not draw one by one. This page owns the density rule —
+        stated once here, for every collection in your garden — and settles
+        that standing for the rest is a place you can go, never a number you
+        are shown and left with.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden grows. Twelve plants today, forty next spring, and a
+          species list that already runs to twenty-eight before you have bought
+          anything. A board that drew all of them would stop being a board: the
+          veins would cross into a mat, the cards would shrink under their own
+          names, and finding the fig that needs water would take longer than
+          walking to it. So when a collection gets big, Rhizome draws its two
+          highest-ranked members and one more card — the aggregate — which
+          stands for everything else and says how much that is.</p>
+        <p>An aggregate is a card like any other card. It has its own cell on
+          the lattice, its own veins, its own count in its own words, and you
+          travel to it exactly as you travel anywhere else. That is the whole
+          difference between a design decision and a truncation: <em>+10 more
+          plants</em> is a door, and “12 plants (showing 2)” is an apology.</p>
+        <div class="doc-note">
+          <p>This page and <a href="../foundations/spacing.html">spacing</a>
+            are the only two places the density rule is written. Every other
+            page that needs it cites it and links here — including
+            <a href="edge.html">edge</a>, which decides nothing about which
+            members get a vein, and <a href="world.html">world</a>, which
+            draws whatever survives the rule. Your garden's plants are an
+            <em>example</em> of the rule; so are your species, your problems
+            and your journal. None of them is a special case.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C8</span></p>
+          <p class="doc-law__statement">Two and an aggregate. For any node
+            joined to a collection of sibling nodes of one kind: below the
+            threshold, every member is drawn as its own card; at the threshold
+            or above, the two highest-ranked members are drawn plus exactly one
+            aggregate card standing for all the rest, labelled “+N more”, which
+            opens the full list. The threshold is 4 and the drawn count is 2,
+            and both are read from
+            <code>constitution.json → parameters.density</code> — never typed
+            into a component. “Inserting a node leaves existing nodes put, and
+            the design states its placement rule, its density strategy, and its
+            growth ceiling.”</p>
+          <p class="doc-check">For every collection card on the board assert
+            <code>drawn === (members &lt; RZ.PARAMS.density.threshold ? members
+            : RZ.PARAMS.density.shown)</code>, and that an aggregate card exists
+            exactly when <code>members &gt;= threshold</code>, with the number in
+            its label equal to <code>members - shown</code>. Then call
+            <code>RZ.verifyParameters()</code> and assert it returns
+            <code>[]</code>, so the number the script used and the number the
+            stylesheet holds are the same number.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C1, C3</span></p>
+          <p class="doc-law__statement">The aggregate is a first-class node. It
+            takes a cell from the same formula every other card takes one from,
+            it is joined to its collection by a real vein in the edge list, it
+            is announced and counted like any neighbour, and travelling to it
+            opens the full list. “Every navigation follows an edge that was
+            visible before the click.”</p>
+          <p class="doc-check">Assert the aggregate's id appears in
+            <code>RZ.EDGES</code>, that <code>RZ.adj[collection]</code> counts
+            it, that it has a drawn <code>.rz-vein</code> at first paint, and
+            that <code>RZ.go(aggregateId)</code> lands on it with the focused
+            card showing the members it stands for. An aggregate that is not in
+            the edge list is a label, and this law is what stops one being
+            shipped.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C7, C8</span></p>
+          <p class="doc-law__statement">Rank comes from your garden, never from
+            the alphabet and never from the order records happened to be
+            written. In order: most overdue actions first, then anything
+            needing treatment, then what you open most — ties broken by record
+            id so a tie does not reshuffle. The two cards that earn a place are
+            the two you were most likely to be coming for. “Two consecutive
+            loads of the same graph lay out identically, with positions derived
+            deterministically and persisted.”</p>
+          <p class="doc-check">Load the board twice and diff the ids of the
+            drawn members of every collection: identical, in the same cells.
+            Then rename the top-ranked plant to something starting with Z and
+            reload — it is still drawn, because the ordering never consulted its
+            name. Give a second plant a longer overdue period and reload: it
+            takes the place, and nothing else on the board moved.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C8, C9</span></p>
+          <p class="doc-law__statement">The rule is the growth ceiling. Any one
+            collection contributes at most three cards to the board whether it
+            holds four members or forty thousand, so the picture a user learns
+            in their first week is the picture they still have in their tenth
+            year. Growth changes the count inside the aggregate; it does not
+            change the shape of the board. “No non-structural data change
+            (status, count, new attachment) moves anything.”</p>
+          <p class="doc-check">Multiply a collection's membership by a thousand
+            in the data and reload: the number of cards drawn for it is
+            unchanged, the aggregate's count is the only thing that differs, and
+            every other card's computed <code>left</code>/<code>top</code> is
+            identical to before.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C23</span></p>
+          <p class="doc-law__statement">An aggregate is not an unknown region.
+            It has a solid rim and a count it will stand behind, because we have
+            the data and chose how much of it to draw. A region we have not
+            fetched is dashed and says so, because we do not know what is there.
+            The two must never wear each other's material. “On a partial graph,
+            unloaded regions are drawn as explicitly unknown — distinguishable
+            from ‘loaded and empty’ — with traversal into them allowed and never
+            dead-ending.”</p>
+          <p class="doc-check">Put an aggregate card and an unknown card side by
+            side and read them with the text masked: the rims differ. Then read
+            them with the text: one states a number, the other states that it
+            has no number yet. Assert no element carries both
+            <code>data-aggregate="true"</code> and
+            <code>data-state="unknown"</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C8</span></p>
+          <p class="doc-law__statement">Nothing the count covers is out of
+            reach. Every list in PlantPal is paged, so “+10 more opens the full
+            list” is something the interface can actually do — and a count the
+            user cannot get behind is a defect, not a trade-off.</p>
+          <p class="doc-check">Travel to every aggregate on the board and assert
+            each one reaches its members, page by page, to the last of them.
+            Sum what each aggregate reaches with the members drawn beside it and
+            assert the total equals the collection's real membership.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimen</h2>
+        <p>Both branches of the rule, side by side, on one board — because one
+          branch alone reads as an example rather than a rule. Your garden holds
+          twelve plants, which is at the threshold: the two that need you first
+          are drawn, and <em>+10 more plants</em> stands for the rest. Problems
+          holds three, which is below it: all three are drawn, and there is no
+          aggregate anywhere near them.</p>
+        <p>Click <em>+10 more plants</em> and watch what an aggregate is. The
+          camera travels a real vein to it, it opens in full like any card, and
+          the rest of your garden is inside it, ranked the same way it was
+          ranked outside. Nothing was hidden; some of it was simply further to
+          walk.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Two collections on one board: your twelve plants drawn as two cards and an aggregate, and your three problems drawn in full. Click a card to travel to it.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,2"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Everything you keep. Twelve plants is at the
+                          threshold, so the two that need you first stand out
+                          here and the other ten are one card along:
+                          <button type="button" class="rz-chip" data-rz-goto="n-more-plants">+10 more plants</button></p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Overdue 2 days · ranked first">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span> · overdue 2 days
+                    <span class="rz-n__recap-second">· drawn because it is the most overdue</span></p>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · ranked second">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span> · treating root rot
+                    <span class="rz-n__recap-second">· drawn because it needs treatment</span></p>
+                </article>
+
+                <article class="rz-n" id="n-more-plants" data-cell="2,2"
+                         data-aggregate="true"
+                         data-kind="Plants" data-kind-key="plant"
+                         data-name="+10 more plants"
+                         data-recap="10 plants · none overdue">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plants</p>
+                  <h3 class="rz-n__name">+10 more plants</h3>
+                  <p class="rz-n__count">10</p>
+                  <p class="rz-n__recap">The rest of your garden, none of it
+                    overdue today
+                    <span class="rz-n__recap-second">· travel in for the full list</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Ten plants, in the same order they were ranked
+                          outside: Kitchen Monstera, Hall Pothos, Bedroom
+                          Calathea, Shelf Peperomia, Bathroom Fern, Window
+                          Jade, Desk Aloe, Landing Ivy, Porch Sage and Balcony
+                          Thyme. None of them is waiting on you today, which is
+                          why none of them is drawn out there.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>If you keep more than fits one page, the next page is
+                          a page and not a wall — you can reach the last of them
+                          from here. Back out to
+                          <button type="button" class="rz-chip" data-rz-goto="n-garden">My garden</button></p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="2,4"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · below the threshold">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· below the threshold, so all three are drawn</span></p>
+                </article>
+
+                <article class="rz-n" id="n-under" data-cell="4,3"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Underwatering" data-recap="Affecting 1 plant">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Underwatering</h3>
+                  <p class="rz-n__recap">Affecting 1 plant</p>
+                </article>
+
+                <article class="rz-n" id="n-over" data-cell="4,4"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Overwatering" data-recap="Affecting 1 plant">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Overwatering</h3>
+                  <p class="rz-n__recap">Affecting 1 plant</p>
+                </article>
+
+                <article class="rz-n" id="n-rot" data-cell="4,5"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Root rot" data-recap="Affecting Studio Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Root rot</h3>
+                  <p class="rz-n__recap">Affecting Studio Fig
+                    <span class="rz-n__recap-second">· treatment under way</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Both branches on one board · twelve plants as two and an aggregate, three problems in full</span>
+            <span>C1 · C3 · C8 · C9</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>The aggregate is in the edge list beside the two drawn plants, which
+          is the whole of Law 2. Nothing about it is special-cased in the
+          runtime: it is placed by the same formula, ranked by the same distance
+          and travelled by the same call.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-garden",
+  path: ["n-garden"],
+  edges: [
+    ["n-garden", "n-office"],        /* drawn: most overdue          */
+    ["n-garden", "n-studio"],        /* drawn: needs treatment       */
+    ["n-garden", "n-more-plants"],   /* the aggregate, standing for 10 */
+    ["n-garden", "n-problems"],
+    ["n-problems", "n-under"],       /* 3 members, below threshold:  */
+    ["n-problems", "n-over"],        /* all three drawn, no aggregate */
+    ["n-problems", "n-rot"],
+    ["n-studio", "n-rot"]            /* cross-branch: this plant has this problem */
+  ]
+});</code></pre>
+
+        <p>And the rule itself, read back from the parameters rather than
+          retyped — this is the shape any consumer of a collection should use:</p>
+
+        <pre class="doc-code"><code>var D = RZ.PARAMS.density;              /* { threshold: 4, shown: 2, … } */
+
+function drawnFor(members) {
+  return members.length &lt; D.threshold
+    ? members                            /* below: draw them all        */
+    : members.slice(0, D.shown);         /* at or above: two, ranked    */
+}
+function aggregateFor(members) {
+  return members.length &lt; D.threshold
+    ? null
+    : { count: members.length - D.shown,
+        label: "+" + (members.length - D.shown) + " more" };
+}
+
+RZ.verifyParameters();                   /* [] — CSS and script agree   */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">At rest</h3>
+        <p>An aggregate sits in a cell of its own, at the same rank as the
+          members drawn beside it, with a solid rim slightly brighter than an
+          ordinary card's and a quieter fill. It shows its count and says what
+          the count is of, in your garden's words — “10 plants”, never “10
+          records”, and never a row, a slot or a coordinate.</p>
+
+        <h3 class="doc-h3">When you travel to it</h3>
+        <p>It expands in place like any other card and its body carries the
+          members it stands for, in the same ranking they were sorted by
+          outside. The card you came from stays on the board, shrinking where it
+          stands. Long lists page; the last member is reachable.</p>
+
+        <h3 class="doc-h3">When the collection changes</h3>
+        <p>Adding a plant changes the number inside the aggregate and nothing
+          else. Adding a plant that is more overdue than either drawn member
+          swaps it into the board and pushes the displaced one into the
+          aggregate's count — a change of <em>which</em> cards are drawn, at the
+          cells that were already theirs, so the shape of the board is
+          untouched. Falling below the threshold — deleting down to three
+          plants — removes the aggregate entirely and draws all three.</p>
+
+        <h3 class="doc-h3">When the data is late or partial</h3>
+        <p>An aggregate whose own list has not arrived wears the skeleton every
+          other card wears, at the row heights its members will occupy, and it
+          keeps its cell and its rank while it waits. It never becomes dashed:
+          dashed means we do not know what is there, and an aggregate always
+          knows. The states themselves belong to
+          <a href="../patterns/degradation.html">degradation</a>.</p>
+
+        <h3 class="doc-h3">In arrange mode</h3>
+        <p>An aggregate can be dragged like any card, and the offset is held
+          against its own record. It is not a rendering of the collection: it is
+          a node with a place of its own, and it keeps that place.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills</h2>
+        <p>A theme chooses how an aggregate reads. It does not choose when one
+          appears, how many members it covers, or whether its list is reachable
+          — those are parameters, and changing one takes an owner ruling.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The parameters this page is built on</caption>
+            <thead><tr><th>Parameter</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-param-density-threshold</code><br>
+                  <code>RZ.PARAMS.density.threshold</code></td>
+                <td>4</td>
+                <td>At or above this many members, the collection is drawn as
+                  two and an aggregate. The smallest membership at which an
+                  aggregate saves more room than it costs.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-param-density-shown</code><br>
+                  <code>RZ.PARAMS.density.shown</code></td>
+                <td>2</td>
+                <td>How many members are drawn beside the aggregate. Two is the
+                  smallest number that still shows a collection is plural and
+                  lets you compare its top two side by side.</td>
+              </tr>
+              <tr>
+                <td><code>RZ.PARAMS.density.aggregate_label</code></td>
+                <td><code>+N more</code></td>
+                <td>The label pattern. <code>N</code> is
+                  <code>members - shown</code>, computed, never typed.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Aggregate tokens and attributes</caption>
+            <thead><tr><th>Token or attribute</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-aggregate="true"</code></td>
+                <td></td>
+                <td>On <code>.rz-n</code>. This card stands for members that
+                  were not drawn. It is what gives the card its rim and its
+                  fill, and what a checker looks for.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n__count</code></td>
+                <td></td>
+                <td>The count, at the name's own rung so it is readable at
+                  fringe scale. The words beside it come from the recap.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-membrane-lit</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-membrane-lit)"></span></td>
+                <td>The aggregate's rim — solid, and brighter than an ordinary
+                  card's, because we have this data and are choosing what to
+                  draw.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-sheet-quiet</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-sheet-quiet)"></span></td>
+                <td>Its fill. A shade back from a card that is about one thing,
+                  because this card is about several.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-unknown</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-unknown)"></span></td>
+                <td>Not an aggregate's colour — the one it must never be
+                  confused with. Dashed, and stating that we have not fetched
+                  what is there (Law 5).</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-plant</code> and the rest of the kind
+                  family</td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-plant)"></span></td>
+                <td>An aggregate carries the kind of the members it stands for,
+                  on the same graduation every card carries. The kind channel is
+                  owned by <a href="../foundations/colors.html">colors</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>An aggregate is a neighbour like any other, so it is in the arrow-key
+          graph, in <a href="navigate-to.html">Navigate to</a>, and in the degree
+          the focused card announces. Nothing about it is reachable only by
+          pointer: if you can see it, you can key to it.</p>
+        <p>Its name is the sentence a screen reader needs — “+10 more plants” —
+          and its recap says what those ten are and what state they are in, so
+          the count is never a bare number floating without a noun. On arrival,
+          the announcement names where you came from and how many veins lead out
+          of here, from the same adjacency the picture is drawn from.</p>
+        <p>Colour is never the only thing separating an aggregate from a region
+          we have not fetched. The rim is solid against dashed, the count is
+          present against absent, and both cards say in plain words which they
+          are — so a reader who cannot separate two strokes still gets the fact.
+          If we are unsure how much is behind a card, we say we are unsure; we do
+          not print a number we cannot stand behind.</p>
+        <p>The card uses logical properties throughout, so its rim, its
+          graduation and its list all sit correctly in RTL. Its count is text,
+          not a graphic, and it scales with the reader's own type size.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Every way to get this wrong is a way of turning a door back into a
+          number. Keep the count honest, keep it reachable, and apply the rule to
+          collections you find boring as faithfully as to the ones you are
+          showing off.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw the two highest-ranked members and one aggregate card,
+              joined to the collection by a real vein, and let travelling to it
+              open the full list (Law 1, Law 2).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Print “and 10 more” as a line of text inside the collection's
+              card. It is not a place, it cannot be keyed to, it has no vein and
+              it counts toward no degree — so the board's numbers and its picture
+              start disagreeing on day one (C3).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Rank by what the garden knows: most overdue, then needing
+              treatment, then most opened, ties broken by record id. The two
+              cards that survive are the two the user was probably coming for
+              (Law 3).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Sort alphabetically or by insertion because it is easier to
+              implement. The board then shows Aloe and Balcony Thyme while the
+              fig that has been dry for two days sits inside a count, and the
+              user learns that the board is not about them (Law 3).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Read the 4 and the 2 from the parameters at the point of use, so
+              a single owner ruling re-tunes every collection in the app at once
+              (Law 1).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Decide that species deserve three drawn members because there are
+              a lot of them. One exception is all it takes: the next round reads
+              the board, cannot find the rule, and invents a third. Species is an
+              example of the rule, never a special case.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give an aggregate whose list has not arrived the same skeleton
+              every other card gets, at the row heights its members will take,
+              and leave it in its cell (Law 5).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Dash its rim while it waits. Dashed means we do not know what is
+              on the other side; an aggregate always knows, and borrowing that
+              material makes the one card a user must be able to trust the count
+              of look like the one card that has no count (C23).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The lattice this card takes a cell from, and the placement formula it
+          shares with every other card, are
+          <a href="../foundations/spacing.html">spacing</a> — which carries the
+          density rule's geometry beside it. The card contract it fills is
+          <a href="node.html">node</a>; the vein joining it to its collection is
+          <a href="edge.html">edge</a>; the plane both are drawn on is
+          <a href="world.html">world</a>. It is listed in words by
+          <a href="navigate-to.html">navigate to</a> and in miniature by
+          <a href="minimap.html">minimap</a>. Its kind colour is
+          <a href="../foundations/colors.html">colors</a>, and the rank widths it
+          steps through are <a href="../foundations/typography.html">typography</a>.
+          The skeleton it wears while its list is late, and the dashed material
+          it must never borrow, are
+          <a href="../patterns/degradation.html">degradation</a>. Dragging it is
+          <a href="../patterns/arrange-mode.html">arrange mode</a>; the wording
+          of “+10 more plants” is
+          <a href="../guidelines/voice-and-copy.html">voice and copy</a>; and
+          changing the 4 or the 2 is
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Both branches of the density rule on one board. The aggregate is in the
+       edge list beside the two drawn plants, so it is counted, announced and
+       travelled exactly like any other neighbour. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-more-plants"],
+        ["n-garden", "n-problems"],
+        ["n-problems", "n-under"],
+        ["n-problems", "n-over"],
+        ["n-problems", "n-rot"],
+        ["n-studio", "n-rot"]
+      ]
+    });
+  </script>
+</body>
+</html>

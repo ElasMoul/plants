@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rhizome · PlantPal's design system</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <link rel="stylesheet" href="assets/system.css">
+  <link rel="stylesheet" href="assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="0">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">PlantPal · atlas-class · the constitution</p>
+      <h1 class="doc-title">Rhizome</h1>
+      <p class="doc-lede">A rhizome is the underground stem a plant runs
+        sideways — no trunk, no crown, just a live network where any point can
+        put up a shoot. That is the shape of PlantPal's data, and it is the
+        shape of its interface: one plane, nodes on a lattice, veins between
+        them, and a camera that travels.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this system settles</h2>
+        <p>PlantPal is a warm, plain-spoken plant companion — the
+          knowledgeable friend, not the botanist and not the dashboard. Rhizome
+          is the world that companion lives in. Your garden is a place you
+          enter: a plant, a species, a problem, a treatment course, a journal
+          entry and an unfetched region are all nodes on the same plane, joined
+          by veins that are drawn before anyone travels them.</p>
+        <p>Rhizome is <strong>atlas-class</strong>. It is judged by the atlas
+          design law, C1–C26, and by no other regime's law. That register is a
+          file, not a memory: <a href="constitution.json">constitution.json</a>
+          carries all twenty-six invariants written out in full, each with the
+          check that settles it, alongside the numbers every page and every
+          theme reads — the density threshold, the navigation timing, the
+          lattice pitch, the zoom clamp, the slow threshold. Beside it sit the
+          three specs the doctrine has always required and which now ship with
+          the system: <a href="layout-determinism.json">layout-determinism</a>,
+          <a href="traversal-map.json">traversal-map</a> and
+          <a href="degradation-spec.json">degradation-spec</a>.</p>
+        <div class="doc-note">
+          <p>A theme round chooses a key, a type voice and a density. Everything
+            else — how the world works — is settled here. If you find yourself
+            deciding how traversal, chrome, rank, density or degradation
+            behaves, you are reading the wrong file: read
+            <a href="assets/AUTHORING.md">the authoring contract</a> and then
+            the page that owns the law.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The principles</h2>
+        <p>Six, each an invariant with a check. A principle you cannot check is
+          a preference, and a preference is lost by the next round. They are
+          set out in full in <a href="PRINCIPLES.md">PRINCIPLES.md</a>.</p>
+
+        <div class="doc-law">
+          <p class="doc-law__id">1 · The world is the interface
+            <span class="doc-cite">C1, C2, C4</span></p>
+          <p class="doc-law__statement">There is one plane and everything is on
+            it. Nothing is mounted, unmounted, routed to or replaced; going
+            somewhere is the camera rescaling that plane, so the place you left
+            is still in sight when you arrive.</p>
+          <p class="doc-check">After ten hops the element set on the plane is
+            identical, the previous focus is still rendered, and
+            <code>history.length</code> has not moved.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">2 · Geography is a promise
+            <span class="doc-cite">C7, C8, C9</span></p>
+          <p class="doc-law__statement">A node's position is a formula —
+            origin + cell × pitch + the user's own persisted offset — stable for
+            the life of the record. Only a user drag and a genuinely new node
+            ever change it.</p>
+          <p class="doc-check">Load twice and diff the computed
+            <code>left</code>/<code>top</code> of every node: equal. Insert a
+            node: equal. Toggle every degraded state: equal.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">3 · Register before decoration
+            <span class="doc-cite">C14, C16, C17</span></p>
+          <p class="doc-law__statement">Chrome and content are different
+            materials, not different layers. Chrome is flush to a viewport edge,
+            never moves with the camera, takes no shadow at all, and speaks in
+            tracked uppercase monospace at one rung. A node floats on the plane
+            and travels with it.</p>
+          <p class="doc-check">Blur the screen: the cards are the only bright
+            soft rectangles on it.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">4 · Scale is the argument
+            <span class="doc-cite">C3, C12</span></p>
+          <p class="doc-law__statement">Rank is computed — graph distance from
+            the focus, recomputed every hop — and spent on size: four card
+            widths, stepped ink, per-rank height caps, and a graduation on the
+            card's head whose length is the rank and whose colour is the kind.</p>
+          <p class="doc-check">Freeze a frame, blur the text, and the hierarchy
+            still reads.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">5 · Every motion states which edge was taken
+            <span class="doc-cite">C10, C11, C13, C21</span></p>
+          <p class="doc-law__statement">One navigation timing — 300ms — for
+            every hop from every trigger, and one code path that performs it.
+            The camera travels along the real edges by arc length, so the motion
+            itself says which vein was crossed.</p>
+          <p class="doc-check">Sample the camera centre each frame and assert
+            every sample lies on the route's polyline.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">6 · Say what is true, per node
+            <span class="doc-cite">C22, C23, C24, C25</span></p>
+          <p class="doc-law__statement">Slowness, staleness, absence and failure
+            are drawn inside the node they belong to, in that node's own words —
+            never a global banner, never a spinner, never a modal. Unknown and
+            empty are different things and are drawn differently.</p>
+          <p class="doc-check">Walk every state from the probe panel without
+            editing markup, and diff the geography each time.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The world, running</h2>
+        <p>Five nodes, four veins, one camera. Click a card to travel to it —
+          the camera follows the vein rather than cutting across the space, the
+          rank of every card is recomputed from where you now are, and nothing
+          on the page is replaced.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Click a card to travel to it.">
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <p>Everything you keep, in one place. Two are drawn here
+                        and the rest stand behind a single aggregate — the same
+                        density rule every collection in this system obeys.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section rz-vitals">
+                      <div class="rz-vital-row">
+                        <span class="rz-vital-row__key">Health</span>
+                        <span class="rz-health" data-health="watch">Wants water</span>
+                      </div>
+                      <div class="rz-vital-row">
+                        <span class="rz-vital-row__key">Light</span>
+                        <span>Bright indirect, north window</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-garden-more" data-cell="2,4"
+                         data-aggregate="true"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="10 more plants" data-recap="Opens the full list">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name"><span class="rz-n__count">+10</span> more plants</h3>
+                  <p class="rz-n__recap">Opens the full list</p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· below the threshold, so all three are drawn</span></p>
+                </article>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Travel along a vein · rank recomputed on arrival</span>
+            <span>C1 · C3 · C4 · C10 · C11</span>
+          </figcaption>
+        </figure>
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Foundations</h2>
+        <p>Fixed by the system. Colour carries the kind channel and the live
+          palette mechanism; spacing carries the lattice; typography states the
+          prominence ladder as ratios whose absolute pitch a theme may move;
+          elevation carries chrome's “no shadow at all” and the layer-ownership
+          rule; motion carries the single navigation timing as a prohibition;
+          iconography states that the two-form grammar is drawn, not
+          iconographic.</p>
+        <div class="doc-grid">
+          <a class="doc-card" href="foundations/colors.html"><span class="doc-card__name">Colors</span><span class="doc-card__note">The key, the kind channel, live palettes</span></a>
+          <a class="doc-card" href="foundations/spacing.html"><span class="doc-card__name">Spacing</span><span class="doc-card__note">The lattice, the pitch, the density rule</span></a>
+          <a class="doc-card" href="foundations/typography.html"><span class="doc-card__name">Typography</span><span class="doc-card__note">The prominence ladder, as ratios</span></a>
+          <a class="doc-card" href="foundations/elevation.html"><span class="doc-card__name">Elevation</span><span class="doc-card__note">Who owns which layer; chrome takes none</span></a>
+          <a class="doc-card" href="foundations/motion.html"><span class="doc-card__name">Motion</span><span class="doc-card__note">One timing. Not a scale.</span></a>
+          <a class="doc-card" href="foundations/iconography.html"><span class="doc-card__name">Iconography</span><span class="doc-card__note">The stake and the chip are drawn forms</span></a>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Components</h2>
+        <p>The parts of the world and the furniture around it.</p>
+        <div class="doc-grid">
+          <a class="doc-card" href="components/world.html"><span class="doc-card__name">World</span><span class="doc-card__note">The plane, the camera, the assembled surface</span></a>
+          <a class="doc-card" href="components/node.html"><span class="doc-card__name">Node</span><span class="doc-card__note">The contract, not the card</span></a>
+          <a class="doc-card" href="components/edge.html"><span class="doc-card__name">Edge</span><span class="doc-card__note">The vein, and its single source of truth</span></a>
+          <a class="doc-card" href="components/aggregate.html"><span class="doc-card__name">Aggregate</span><span class="doc-card__note">“+N more”, and the density rule it serves</span></a>
+          <a class="doc-card" href="components/chrome.html"><span class="doc-card__name">Chrome</span><span class="doc-card__note">A register, not a layer</span></a>
+          <a class="doc-card" href="components/focus-panel.html"><span class="doc-card__name">Focus panel</span><span class="doc-card__note">The four questions, answered in place</span></a>
+          <a class="doc-card" href="components/minimap.html"><span class="doc-card__name">Minimap</span><span class="doc-card__note">The world view and the you-are-here</span></a>
+          <a class="doc-card" href="components/navigate-to.html"><span class="doc-card__name">Navigate to</span><span class="doc-card__note">Exactly the focus's real neighbours</span></a>
+          <a class="doc-card" href="components/action-rail.html"><span class="doc-card__name">Action rail</span><span class="doc-card__note">Mutations, and only mutations</span></a>
+          <a class="doc-card" href="components/vitals.html"><span class="doc-card__name">Vitals</span><span class="doc-card__note">Health and confidence, honestly</span></a>
+          <a class="doc-card" href="components/treatment-course.html"><span class="doc-card__name">Treatment course</span><span class="doc-card__note">A diagnosis with steps, delivered gently</span></a>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Patterns</h2>
+        <p>What the parts do together, over time.</p>
+        <div class="doc-grid">
+          <a class="doc-card" href="patterns/traversal.html"><span class="doc-card__name">Traversal</span><span class="doc-card__note">One timing, along the real edges</span></a>
+          <a class="doc-card" href="patterns/arrivals.html"><span class="doc-card__name">Arrivals</span><span class="doc-card__note">Search and notifications cross the distance</span></a>
+          <a class="doc-card" href="patterns/degradation.html"><span class="doc-card__name">Degradation</span><span class="doc-card__note">Six states, walkable from a probe</span></a>
+          <a class="doc-card" href="patterns/arrange-mode.html"><span class="doc-card__name">Arrange mode</span><span class="doc-card__note">A mode, not a toggle</span></a>
+          <a class="doc-card" href="patterns/settings-exit.html"><span class="doc-card__name">Settings exit</span><span class="doc-card__note">The app shrinks into a card</span></a>
+          <a class="doc-card" href="patterns/day-zero.html"><span class="doc-card__name">Day zero</span><span class="doc-card__note">A world with room in it</span></a>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Guidelines</h2>
+        <p>How to build inside this system without asking.</p>
+        <div class="doc-grid">
+          <a class="doc-card" href="guidelines/interaction-and-cursors.html"><span class="doc-card__name">Interaction and cursors</span><span class="doc-card__note">The board pans, the node reads</span></a>
+          <a class="doc-card" href="guidelines/motion-and-scale.html"><span class="doc-card__name">Motion and scale</span><span class="doc-card__note">Rank, the blur test, the ladder</span></a>
+          <a class="doc-card" href="guidelines/voice-and-copy.html"><span class="doc-card__name">Voice and copy</span><span class="doc-card__note">Warm, specific, honest when unsure</span></a>
+          <a class="doc-card" href="guidelines/accessibility.html"><span class="doc-card__name">Accessibility</span><span class="doc-card__note">Behaviour, not annotation</span></a>
+          <a class="doc-card" href="guidelines/extending-this-system.html"><span class="doc-card__name">Extending this system</span><span class="doc-card__note">The amendment path</span></a>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Before you write a page</h2>
+        <p>Read <a href="assets/AUTHORING.md">assets/AUTHORING.md</a>. It is the
+          contract: the ground rules, the exact page skeleton, the canonical
+          blocks, the runtime you must call rather than re-implement, the
+          amendment path, and the finishing checklist. Every law you write gets
+          a number and a verification — if a reader cannot check it, it is a
+          preference, and preferences are what this system exists to stop
+          losing.</p>
+
+        <footer class="doc-footer">
+          <span data-doc-version></span>
+          <span>Atlas-class · every C-number cites
+            <a href="constitution.json">constitution.json</a></span>
+        </footer>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="assets/system.js"></script>
+  <script src="assets/docs.js"></script>
+  <script>
+    /* The specimen above is mounted from the runtime, not re-implemented.
+       The edge list is declared once; the drawn veins, the rank of every
+       card and the route of every hop are generated from it. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-garden-more"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ]
+    });
+  </script>
+</body>
+</html>

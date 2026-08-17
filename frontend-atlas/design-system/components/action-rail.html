@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Action rail · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Action rail</h1>
+      <p class="doc-lede">Actions: everything you can do to the plant you are
+        standing on, and nowhere you can go. This page settles what may appear
+        in that panel, what form a mutation takes on the board and in chrome,
+        and how a change is proved to have moved your garden without moving
+        your camera.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You are standing at Office Fig. It is two days overdue, one of its
+          lower leaves has gone, and there are four things you might do about
+          it: water it, log what you noticed, start a treatment course, put it
+          away for the winter. Those four are the Actions panel — the mutation
+          member of the chrome register, flush to the start edge at the bottom
+          of the viewport, scoped by name to the one focused card and rewritten
+          on every hop.</p>
+        <p>Actions is one of the two panels that finish the focused card's four
+          answers: <em>Navigate to</em> answers where you can go, and Actions
+          answers what you can do. Nothing in it travels. A mutation and a
+          traversal are told apart before you touch either — in a node by their
+          two forms, in chrome by their leading mark — and this page owns that
+          distinction on the doing side.</p>
+        <div class="doc-note">
+          <p>Chrome's material, position and voice are owned by
+            <a href="chrome.html">chrome</a>. The destination panel beside it
+            is <a href="navigate-to.html">navigate to</a>. What a change does
+            to the card it lands on is owned by
+            <a href="node.html">node</a> and <a href="vitals.html">vitals</a>,
+            and a multi-step change of its own is
+            <a href="treatment-course.html">treatment course</a>. This page
+            states only what a mutation itself decides.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">A mutation announces itself by form, not
+            by label. On the board it is a filled stake and nothing else; in
+            chrome it is an item carrying the filled-square mark
+            (<code>data-means="mutate"</code>) and nothing else. “A user can tell
+            navigation from mutation before activating it, from form alone.”</p>
+          <p class="doc-check">Mask the text of every affordance on screen and
+            screenshot it: each one is a filled stake, an outlined chip with a
+            caret, or a camera button — no fourth form. Assert every
+            <code>.rz-chrome__item</code> inside <code>#rz-actions-body</code>
+            has <code>data-means="mutate"</code>, and that no
+            <code>.rz-stake</code> and no <code>.rz-chip</code> exists anywhere
+            inside <code>.rz-chrome--actions</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C15</span></p>
+          <p class="doc-law__statement">A mutation moves your garden and never
+            your camera, and it holds no traversal. “No mutating affordance
+            moves the camera, no navigation affordance changes data, and no
+            dialog contains a traversal.”</p>
+          <p class="doc-check">Read <code>RZ.cam.x</code>,
+            <code>RZ.cam.y</code>, <code>RZ.cam.k</code> and
+            <code>RZ.focus</code>; activate every stake and every item in
+            <code>#rz-actions-body</code>; read all four again. They are
+            identical. Assert no element inside <code>.rz-chrome--actions</code>
+            calls <code>RZ.go</code> or carries <code>data-rz-goto</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C19, C16</span></p>
+          <p class="doc-law__statement">Actions belongs to exactly one card and
+            says whose it is. Its header prints the focused node's own name, it
+            is emptied and rewritten from that node's list on every hop, and it
+            never offers a change to something you are not standing on.</p>
+          <p class="doc-check">Assert <code>#rz-actions-scope</code> reads
+            <code>RZ.nodes[RZ.focus].name</code>, and that every item's text is
+            a member of <code>RZ.ACTIONS[RZ.focus]</code>. Hop three times and
+            assert both still hold, with no item surviving from the previous
+            focus.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">The result lands where the thing is. A
+            watering updates that plant's own vitals, recap and health mark on
+            its own card; it does not reflow the board, retitle a panel, or
+            raise a message somewhere else. “No non-structural data change
+            (status, count, new attachment) moves anything.”</p>
+          <p class="doc-check">Record the computed <code>left</code> and
+            <code>top</code> of every <code>.rz-n</code> and the value of
+            <code>RZ.extent()</code>. Run every action in the panel. Read both
+            again: nothing moved and the world-view extent is unchanged, while
+            the target card's own text has.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C24</span></p>
+          <p class="doc-law__statement">Offline, a mutation is refused or queued
+            visibly, one stake at a time. The refusal is on the control you
+            reached for, in that plant's own words — never a banner across the
+            world, which would be a claim about every plant that is perfectly
+            current.</p>
+          <p class="doc-check">Run <code>RZ.setState("net", "offline")</code>.
+            Assert every <code>.rz-stake</code> computes
+            <code>cursor: not-allowed</code>, that activating an action sets
+            <code>data-refused</code> on that item and announces itself in the
+            live region, and that no element spanning the viewport was added.
+            Assert every hop still works.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C25</span></p>
+          <p class="doc-law__statement">A change that fails says so inside the
+            card it was aimed at: what happened, when, what became of what you
+            typed, a retry in place and a second way through. It is never a
+            message that floats free of the plant it concerns.</p>
+          <p class="doc-check">Fail one action and assert the fact, the time,
+            the fate of the user's data, a retry and a second route are all
+            inside that node's <code>.rz-n__error</code>, and that the camera
+            transform is unchanged.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Actions, running</h2>
+        <p>The same garden, at the same cells, as everywhere else in this
+          system. The Actions panel at the lower start edge is not written into
+          this page: <code>RZ.redrawChrome()</code> fills it from the list
+          handed to <code>RZ.mount</code>, scoped to whichever card is focused.
+          Activate one and watch what does not happen — the board holds still,
+          the focus does not change, and the live region says what was
+          recorded and on what.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Actions, at the lower start edge, holds what you can do to the focused plant.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <div class="rz-vitals">
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Health</span>
+                            <span class="rz-health" data-health="watch">Watch</span>
+                          </div>
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Last watered</span>
+                            <span>9 days ago</span>
+                          </div>
+                        </div>
+                        <p class="rz-n__stale">Last heard from your garden
+                          yesterday evening.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The two forms, side by side inside one card: the
+                          filled stake changes this plant, the outlined chip
+                          takes you somewhere you can already see a vein to.</p>
+                        <p>
+                          <button type="button" class="rz-stake">Log watering</button>
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Actions, scoped to the focused plant, beside the two forms in the card</span>
+            <span>C14 · C15 · C16 · C19</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Hop to Studio Fig and the panel's header changes to its name and its
+          list to its own — a plant under treatment offers a step to mark done,
+          not a course to begin. The list is the surface's to declare, one entry
+          per thing that is genuinely possible on that node right now.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ],
+  actions: {
+    "n-office": ["Log watering", "Note what you saw", "Start a treatment course"],
+    "n-studio": ["Mark step 2 done", "Note what you saw"],
+    "n-garden": ["Add a plant"],
+    "n-problems": ["Note what you saw"]
+  }
+});</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The shell a page provides</h2>
+        <p>A surface hands the panel three things: the chrome member, a header
+          with the word Actions and a place to print the scope, and an empty
+          body. The entries belong to the runtime. Hand-writing one forks the
+          scope, and Law 3 stops being checkable.</p>
+
+        <pre class="doc-code"><code>&lt;div class="rz-chrome rz-chrome--actions"&gt;
+  &lt;p class="rz-chrome__head"&gt;
+    &lt;span class="rz-chrome__title"&gt;Actions&lt;/span&gt;
+    &lt;span id="rz-actions-scope"&gt;&lt;/span&gt;
+  &lt;/p&gt;
+  &lt;div id="rz-actions-body"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+        <p>And this is the shape the runtime writes into it, one per action —
+          shown so you can recognise it, not so you can author it:</p>
+
+        <pre class="doc-code"><code>&lt;button type="button" class="rz-chrome__item" data-means="mutate"&gt;
+  Log watering
+&lt;/button&gt;</code></pre>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The parts, and who fills them</caption>
+            <thead><tr><th>Part</th><th>Where it comes from</th><th>What it means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-chrome--actions</code></td>
+                <td>The page, once.</td>
+                <td>The panel: flush to the start edge at the bottom of the
+                  viewport, bleeding off both. Chrome material throughout — no
+                  shadow, one rung, tracked wide.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-actions-scope</code></td>
+                <td><code>RZ.nodes[RZ.focus].name</code>, on every hop.</td>
+                <td>Whose garden this is about to change. Names the plant, never
+                  a count and never a cell.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__item</code></td>
+                <td><code>RZ.redrawChrome()</code>, one per action.</td>
+                <td>One change. A button, not a link: nothing here is a place.</td>
+              </tr>
+              <tr>
+                <td><code>data-means="mutate"</code></td>
+                <td>Set by the runtime on every entry.</td>
+                <td>The leading filled square. Chrome's form of “this changes
+                  your garden”, as an arrow is chrome's form of “this travels”.</td>
+              </tr>
+              <tr>
+                <td><code>data-refused</code></td>
+                <td>Set when the world is offline and the change is queued.</td>
+                <td>The item inks back and takes the refused cursor. The words
+                  go to the live region, not to a banner.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake</code></td>
+                <td>The card's own markup, inside <code>.rz-n__full</code>.</td>
+                <td>The same meaning in the node register: filled, squared, a
+                  heavy bottom rule. A stake in soil, and never in chrome.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake[data-refused="true"]</code>,
+                    <code>[aria-disabled="true"]</code></td>
+                <td>The surface, when the change is genuinely impossible.</td>
+                <td>Quieted fill, muted ink, <code>not-allowed</code>. Used for
+                  impossible, never for merely discouraged.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">On a hop</h3>
+        <p>The panel is emptied and rewritten from the new focus in one pass,
+          alongside Navigate to and the world view, at the end of the hop —
+          never patched by adding the new entries and removing the old, which is
+          how an action belonging to the plant you left survives into the plant
+          you arrived at. Its contents do not animate: the movement you can see
+          during a hop is the camera's, and a list sliding at the same time
+          gives you two things to follow.</p>
+
+        <h3 class="doc-h3">A change that needs a value</h3>
+        <p>Some changes need something from you first — how much water, what you
+          noticed, which pot. That form opens inside the focused card's own
+          body, under the stake that asked for it, and the card is already the
+          only thing on screen that scrolls. It is never a dialog: a dialog
+          would cover the world, break the you-are-here, and put a lid on the
+          only surface a traversal can start from (C15). The panel's own items
+          stay single-line, so a change that needs a value is offered in chrome
+          and answered in the card.</p>
+
+        <h3 class="doc-h3">Ordering and length</h3>
+        <p>Actions are listed in the order the surface declares them, which is
+          stable across loads, so the position of a change is something you can
+          learn. Put the one you are most likely to want first and the hardest
+          to undo last. Keep the list to what is genuinely possible on this
+          plant right now: a list padded with changes that will be refused
+          teaches you to read every line every time.</p>
+
+        <h3 class="doc-h3">Archived, not deleted</h3>
+        <p>Removing a plant is a change of state, not a removal: the card stays
+          on its cell wearing the archived material, and the geography is
+          undisturbed. That is why there is no confirmation step here — nothing
+          in this panel is irreversible enough to earn one, and a confirmation
+          is a dialog by another name.</p>
+
+        <h3 class="doc-h3">When the world is offline</h3>
+        <p>Travel keeps working; changing things does not. Each stake takes the
+          refused cursor, each item you activate says for itself whether it was
+          refused or queued, and the plant states its own staleness in its own
+          words on its own card. The system-wide behaviour of every degraded
+          state is owned by
+          <a href="../patterns/degradation.html">degradation</a>, and you can
+          walk them all from the probe rather than from a hand-written
+          specimen.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <ul>
+          <li><strong>The meaning is a shape first.</strong> Mutation is a
+            filled square in chrome and a filled, squared stake in a card;
+            traversal is an arrow and an outlined pill with a caret. The two
+            survive a greyscale screenshot, so the register does not rest on
+            colour (C14).</li>
+          <li><strong>Real buttons, in order.</strong> Every action is a
+            <code>&lt;button type="button"&gt;</code>: reachable by
+            <kbd>Tab</kbd>, activated by <kbd>Enter</kbd> or <kbd>Space</kbd>,
+            announced as a button. Reading order matches visual order and the
+            panel is never reordered in CSS.</li>
+          <li><strong>Arrow keys are the graph's.</strong> The panel has no
+            arrow-key traversal of its own, because arrow keys move you along
+            the veins from wherever you are standing. Nothing in Actions is a
+            direction (C18).</li>
+          <li><strong>The scope is text.</strong> The plant's name is in the
+            header as words, so a screen reader reads whose garden is about to
+            change with the panel itself rather than inferring it from the
+            camera.</li>
+          <li><strong>Refusal is announced, not implied.</strong> A refused or
+            queued change speaks into the live region in the plant's own words.
+            Use <code>aria-disabled="true"</code> rather than a visual quieting
+            alone, so the state is spoken; when the reason matters, put it on
+            the card beside the vitals.</li>
+          <li><strong>The result is read where it happened.</strong> A recorded
+            change updates that card's own vitals and recap, so re-reading the
+            focused card hears the new state. The announcement follows the
+            data.</li>
+          <li><strong>Direction is logical.</strong> The panel is placed with
+            <code>inset-inline-start</code> and its marks lead with
+            <code>gap</code> in the inline direction, so in a right-to-left
+            reading the panel moves to the other side and the mark still
+            leads.</li>
+        </ul>
+        <p>The system-wide rules for focus, contrast and announcement live on
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Keep Actions to changes and let every destination be a vein.
+              “Log watering”, “Note what you saw”, “Start a treatment course” —
+              each one moves your garden and leaves you exactly where you are
+              standing (C15).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Slip a destination into the panel — “Open Problems”, “Back to my
+              garden”. Both meanings then live in one list, the leading mark
+              stops telling them apart, and the board never shows the distance
+              being crossed (C14). Every destination belongs in
+              <a href="navigate-to.html">navigate to</a>.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Land the result on the card: the health mark moves from Watch to
+              Thriving, the recap re-reads “watered today”, and nothing else on
+              the plane so much as shifts (C9).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Recentre, re-fit or re-rank the board after a change “so the user
+              can see it worked”. The camera belongs to the focus, and a change
+              that moves it costs the user the place they had learned (C15,
+              C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say what is happening when a change cannot run: “Offline — this
+              watering is queued and will be recorded when you are back.” On
+              that plant, in that plant's words (C24).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Hide the action while it is impossible, or draw a banner across
+              the whole world. The first makes you hunt for something you saw
+              yesterday; the second says every plant is stale when most of them
+              are current.</p>
+          </div>
+        </div>
+
+        <h3 class="doc-h3">Writing the entries</h3>
+        <ul>
+          <li>Name the change, not the mechanism: “Log watering”, never
+            “Submit”, “Save” or “OK”.</li>
+          <li>Start with a verb and stay under four words, so the panel is read
+            at a glance in chrome's one rung.</li>
+          <li>Say what the garden gets, not what the app does: “Start a
+            treatment course”, not “Create record”.</li>
+          <li>No ellipsis to hint at a form. The form opens in the card under
+            your hand, and you will see it.</li>
+          <li>If a change is uncertain in its effect, say so on the card beside
+            it — a button never hedges, and the honest sentence belongs in prose
+            where it can be read.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The register this panel belongs to and its material are
+          <a href="chrome.html">chrome</a>; its sibling panel of destinations is
+          <a href="navigate-to.html">navigate to</a>. The card a change lands on
+          is <a href="node.html">node</a>, its four answers are
+          <a href="focus-panel.html">focus panel</a>, and the instruments a
+          change moves are <a href="vitals.html">vitals</a> and
+          <a href="treatment-course.html">treatment course</a>. The board it
+          must not disturb is <a href="world.html">world</a>, and the picture of
+          where you stand is <a href="minimap.html">minimap</a>. The two forms
+          and the cursors that go with them are
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a> and <a href="../foundations/iconography.html">iconography</a>;
+          refusal, queueing and failure are
+          <a href="../patterns/degradation.html">degradation</a>; and the mode
+          in which every stake goes inert is
+          <a href="../patterns/arrange-mode.html">arrange mode</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The panel's entries, its scope and
+       everything an entry does come from RZ — nothing here re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log watering", "Note what you saw", "Start a treatment course"],
+        "n-studio": ["Mark step 2 done", "Note what you saw"],
+        "n-garden": ["Add a plant"],
+        "n-problems": ["Note what you saw"]
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Node · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Node</h1>
+      <p class="doc-lede">A node is one thing in your garden, standing at its own
+        place on the plane. This page settles what a node is made of, what a
+        theme may fill in, and what the card does when you travel to it or away
+        from it.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Every plant you keep, every species behind them, every problem,
+          treatment course, guide and journal entry is a node. It is the only
+          body in this system: there is no “list item” version of a plant and no
+          “detail page” version of it — there is one card, and it is smaller or
+          larger depending on how far it is from where you are standing. When you
+          open your Office Fig you are not going to a plant screen; the camera
+          travels to the card that was already on the plane, and the card grows
+          into a document you can read.</p>
+        <p>So the node is a <em>contract</em>, not a card. The system owns a set
+          of attributes — kind, name, recap, cell, rank, focus, show — and the
+          runtime fills the ones it computes. A theme decides what a node looks
+          like at each rank; it never decides what rank a node is, where it
+          stands, or whether it may be replaced.</p>
+        <div class="doc-note">
+          <p>The plane a node stands on is <a href="world.html">world</a>; the
+            veins between nodes are <a href="edge.html">edge</a>. How many cards
+            a collection is allowed to contribute — and the “+N more” card that
+            stands for the rest — is owned by
+            <a href="aggregate.html">aggregate</a> and
+            <a href="../foundations/spacing.html">spacing</a>. The four answers
+            the focused card must give are laid out in
+            <a href="focus-panel.html">focus panel</a>; the instruments inside it
+            are <a href="vitals.html">vitals</a>. The journey between two cards
+            is <a href="../patterns/traversal.html">traversal</a>, and the states
+            a card can wear are
+            <a href="../patterns/degradation.html">degradation</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C2, C4</span></p>
+          <p class="doc-law__statement">A node is never mounted and never
+            unmounted. “Nothing is replaced, unmounted, or routed to — every
+            navigation is a rescale.” Travelling away leaves the card you came
+            from visible and shrinking <em>in place</em>: it does not vanish,
+            does not slide to a rail, and is not swapped for a smaller
+            substitute. Travelling to a card expands the card already on
+            screen.</p>
+          <p class="doc-check">Record the set of <code>.rz-n</code> elements,
+            call <code>RZ.go</code> ten times, and compare: the sets hold the
+            identical objects, nothing was added to or removed from the plane,
+            and <code>location.href</code> never changed. After each hop, assert
+            the previous focus still has a rendered element carrying a
+            <code>data-rank</code> attribute.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C3, C12</span></p>
+          <p class="doc-law__statement">Rank is computed, never authored. It is
+            graph distance from the focus — focus, near, far, fringe —
+            recomputed on every hop, and it is spent on scale: “With the text
+            blurred on a frozen frame, the hierarchy is still readable from scale
+            alone, on the 100/75/55/30/18-25 ladder.”</p>
+          <p class="doc-check">For every card assert
+            <code>el.dataset.rank</code> equals
+            <code>RZ.rankName(RZ.ranks(RZ.focus)[el.id])</code>, and that no
+            <code>data-rank</code> appears in the authored markup of a mounted
+            world. Then apply a 6px blur to the plane and screenshot: four
+            distinguishable card widths remain.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">Kind is a channel of its own, carried at
+            a size where the name is unreadable. The graduation on the card's
+            head does both jobs at once: its <em>length</em> is the rank and its
+            <em>colour</em> is the kind.</p>
+          <p class="doc-check">Assert every <code>.rz-n</code> carries a
+            <code>data-kind-key</code> from the eight domain kinds and renders a
+            <code>.rz-n__grad</code>. Shrink the plane to the fringe scale and
+            mask all text: each card's kind is still separable by the
+            graduation's colour, and its rank by that graduation's length.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C17, C19</span></p>
+          <p class="doc-law__statement">The focused node is shown in full, top
+            edge to bottom edge, at any zoom — and if it does not fit, the zoom
+            gives way, not the card. “Nothing other than the focused node's body
+            scrolls.”</p>
+          <p class="doc-check">Zoom to <code>zoom.max</code> on a tall card and
+            assert its top and bottom edges are both inside the frame, and that
+            <code>RZ.cam.k</code> changed rather than the card's height. Then
+            walk every element in the document: only the focused card's
+            <code>.rz-n__body</code> has
+            <code>scrollHeight &gt; clientHeight</code>, and
+            <code>document.body</code> has no scrollbar.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">A non-focused node is a recap derived
+            from its own content, is clickable across its whole surface, and
+            shows no controls. Its recap speaks your garden — “Plants · 12
+            plants”, “Problems · 3 active” — and never a cell, row, column or
+            slot. “No non-structural data change (status, count, new attachment)
+            moves anything.”</p>
+          <p class="doc-check">Assert no <code>.rz-stake</code> or
+            <code>.rz-chip</code> is rendered inside a card whose
+            <code>data-focus</code> is not <code>"true"</code>. Rewrite a card's
+            <code>data-recap</code> and its visible recap, then diff every card's
+            computed <code>left</code>/<code>top</code>: nothing moved. Search
+            the rendered text and every <code>aria-label</code> for a
+            <code>data-cell</code> value: no match.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+        <p>Five cards at four ranks, from one edge list. Click any card to travel
+          to it and watch what happens to the one you left: it stays exactly
+          where it is and shrinks, its graduation shortening as it goes. Nothing
+          on this page is added or removed while you do it.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Five cards at four ranks. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-office" data-cell="3,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig"
+                         data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__skel">
+                    <div class="rz-skel">
+                      <div class="rz-skel__row" data-w="short"></div>
+                      <div class="rz-skel__row"></div>
+                      <div class="rz-skel__row" data-w="mid"></div>
+                    </div>
+                  </div>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>12 days ago, by you</span>
+                        </div>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The lower leaves have been dropping since the radiator
+                          came on. We are not certain this is underwatering — if
+                          you want, read
+                          <button type="button" class="rz-chip" data-rz-goto="n-rot">Root rot</button>
+                          and compare it with what you are seeing.</p>
+                        <p class="rz-n__stale">Last read before you went offline,
+                          about an hour ago.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-garden" data-cell="1,2"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-rot" data-cell="5,2"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Root rot" data-recap="Active on 1 plant · step 2 of 4">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Root rot</h3>
+                  <p class="rz-n__recap">Active on 1 plant
+                    <span class="rz-n__recap-second">· treatment at step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="1,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="3,0"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Repotting, 4 May" data-recap="2 photos · written by you">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Repotting, 4 May</h3>
+                  <p class="rz-n__recap">2 photos
+                    <span class="rz-n__recap-second">· written by you</span></p>
+                </article>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>One card at each rank · focus, near, far, fringe</span>
+            <span>C2 · C3 · C4 · C12 · C17</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>The specimen is mounted from the runtime. Rank, placement, the veins
+          and the route of every hop come from <code>RZ</code>; nothing is
+          re-implemented on this page, and no card in the markup above carries a
+          rank of its own.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-office", "n-garden"],
+    ["n-office", "n-rot"],
+    ["n-garden", "n-studio"],
+    ["n-studio", "n-journal"]
+  ]
+});</code></pre>
+
+        <p>And a card out of the world — the form you write by hand. Everything
+          below the graduation is yours; the graduation, the width and the rank
+          are the system's.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="sp-species" data-cell="2,3"
+                     data-kind="Species" data-kind-key="species"
+                     data-name="Fiddle-leaf Fig"
+                     data-recap="12 plants · 1 needs water today"
+                     data-rank="near" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Species</p>
+              <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+              <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span> · 12 plants
+                <span class="rz-n__recap-second">1 needs water today</span></p>
+            </article>
+
+            <article class="rz-n" id="sp-guide" data-cell="4,3"
+                     data-kind="Guide" data-kind-key="guide"
+                     data-name="Watering a fig in winter"
+                     data-recap="4 minutes · written for beginners"
+                     data-rank="far" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Guide</p>
+              <h3 class="rz-n__name">Watering a fig in winter</h3>
+              <p class="rz-n__recap">4 minutes
+                <span class="rz-n__recap-second">· written for beginners</span></p>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The hand-written form · near beside far, two kinds</span>
+            <span>C3 · C12</span>
+          </figcaption>
+        </figure>
+
+        <pre class="doc-code"><code>&lt;article class="rz-n" id="n-fiddle" data-cell="2,3"
+         data-kind="Species" data-kind-key="species"
+         data-name="Fiddle-leaf Fig"
+         data-recap="12 plants · 1 needs water today"&gt;
+  &lt;span class="rz-n__grad"&gt;&lt;/span&gt;
+  &lt;p class="rz-n__kind"&gt;Species&lt;/p&gt;
+  &lt;h3 class="rz-n__name"&gt;Fiddle-leaf Fig&lt;/h3&gt;
+  &lt;p class="rz-n__recap"&gt;&lt;span class="rz-binomial"&gt;Ficus lyrata&lt;/span&gt; · 12 plants
+    &lt;span class="rz-n__recap-second"&gt;1 needs water today&lt;/span&gt;&lt;/p&gt;
+  &lt;div class="rz-n__full"&gt;
+    &lt;div class="rz-n__body"&gt;&amp;hellip;&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/article&gt;</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The contract</h2>
+        <p>These are the attributes the system owns. You write the first group;
+          the runtime writes the second on every hop. Writing one of the
+          runtime's by hand is how a card ends up claiming a rank the graph does
+          not agree with.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Node attributes</caption>
+            <thead><tr><th>Attribute</th><th>Written by</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-kind</code></td>
+                <td>You</td>
+                <td>The kind in the garden's own words, shown on the card: Plant,
+                  Species, Problem, Guide, Journal, Collection.</td>
+              </tr>
+              <tr>
+                <td><code>data-kind-key</code></td>
+                <td>You</td>
+                <td>The machine form of the same thing, one of the eight below.
+                  It keys the graduation's colour (Law 3).</td>
+              </tr>
+              <tr>
+                <td><code>data-name</code></td>
+                <td>You</td>
+                <td>What you call it. The runtime speaks this name in the live
+                  region and in the world view's label, so it is the name the
+                  user hears as well as reads.</td>
+              </tr>
+              <tr>
+                <td><code>data-recap</code></td>
+                <td>You</td>
+                <td>The one line this card is worth when it is not the focus,
+                  derived from its own content. Domain words only (Law 5).</td>
+              </tr>
+              <tr>
+                <td><code>data-cell</code> · <code>data-dx</code> ·
+                  <code>data-dy</code></td>
+                <td>You · the drag</td>
+                <td>The node's identity on the lattice, and the offset a drag
+                  persisted against it. Position is
+                  <code>origin + cell &times; pitch + offset</code>; the formula
+                  is owned by
+                  <a href="../foundations/spacing.html">spacing</a>.</td>
+              </tr>
+              <tr>
+                <td><code>data-rank</code></td>
+                <td>The runtime</td>
+                <td>focus · near · far · fringe, from breadth-first distance to
+                  the focus. Recomputed every hop (Law 2).</td>
+              </tr>
+              <tr>
+                <td><code>data-focus</code></td>
+                <td>The runtime</td>
+                <td><code>"true"</code> on exactly one card. It owns the camera,
+                  and it is the only card shown in full by default.</td>
+              </tr>
+              <tr>
+                <td><code>data-show</code></td>
+                <td>The runtime</td>
+                <td><code>recap</code>, <code>skel</code> or <code>full</code>.
+                  The destination of a hop shows <code>skel</code> while the
+                  camera is still crossing, then its real content.</td>
+              </tr>
+              <tr>
+                <td><code>data-state</code></td>
+                <td>Your data</td>
+                <td><code>unknown</code>, <code>empty</code>, <code>error</code>
+                  or <code>archived</code> — material the card wears, never a
+                  layer over the world. Owned by
+                  <a href="../patterns/degradation.html">degradation</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme fills · rank</caption>
+            <thead><tr><th>Rank</th><th>Tokens</th><th>What the reader gets</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>focus</code></td>
+                <td><code>--rz-card-focus</code> · <code>--rz-grad-focus</code> ·
+                  <code>--rz-rung-100</code></td>
+                <td>The widest card, the longest graduation, the name at the top
+                  rung, and the only body that scrolls.</td>
+              </tr>
+              <tr>
+                <td><code>near</code></td>
+                <td><code>--rz-card-near</code> · <code>--rz-cap-near</code> ·
+                  <code>--rz-grad-near</code></td>
+                <td>One vein out. Full opacity, both recap lines, capped
+                  height.</td>
+              </tr>
+              <tr>
+                <td><code>far</code></td>
+                <td><code>--rz-card-far</code> · <code>--rz-cap-far</code> ·
+                  <code>--rz-grad-far</code></td>
+                <td>Two veins out. Narrower, quieter, the name a rung down.</td>
+              </tr>
+              <tr>
+                <td><code>fringe</code></td>
+                <td><code>--rz-card-fringe</code> · <code>--rz-cap-fringe</code> ·
+                  <code>--rz-grad-fringe</code></td>
+                <td>Three or more. The recap drops its second line, and the
+                  graduation is the only thing still legible — which is the
+                  point of it.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme fills · the kind channel</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-kind-collection</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-collection)"></span></td>
+                <td>A grouping you can stand in: your garden, a room's plants,
+                  the plants of one species.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-species</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-species)"></span></td>
+                <td>A species, with its binomial. Not a plant you own — the kind
+                  of thing your plant is.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-plant</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-plant)"></span></td>
+                <td>A plant you actually own, with a nickname.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-guide</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-guide)"></span></td>
+                <td>Something to read: care advice, a how-to.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-problem</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-problem)"></span></td>
+                <td>A diagnosis or a pest — something wrong that has a name.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-journal</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-journal)"></span></td>
+                <td>Something you wrote or photographed, on a date.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-platform</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-platform)"></span></td>
+                <td>The app's own bodies: your account, your settings, an
+                  identification you asked for.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-region</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-region)"></span></td>
+                <td>A place: a room, a windowsill, a climate.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Eight kinds, and no ninth without an amendment — kind is a channel
+          before it is a colour, so adding one changes the vocabulary of the
+          system and is recorded as such (see
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a>). This page added nothing: every class and token it uses
+          already existed. The palette these eight are drawn from, and the fact
+          that it re-keys live, belong to
+          <a href="../foundations/colors.html">colors</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Arriving and leaving</h3>
+        <p>A card you travel to expands where it stands. While the camera is
+          still crossing, it shows a skeleton shaped like the content that is
+          coming, at that content's real row heights; when the camera lands, the
+          skeleton gives way to the card's own body and the runtime measures the
+          card against the live zoom so it fits. The card you left shrinks in
+          place to whatever rank it now holds. Neither card is mounted,
+          unmounted, or moved a pixel from its cell.</p>
+
+        <h3 class="doc-h3">Pointer</h3>
+        <p>A non-focused card is one target across its whole surface: press
+          anywhere on it and you travel. The focused card is a document instead —
+          the ordinary cursor over its text, a pointer over its links and
+          controls — and its travel listener stands aside for anything it
+          contains, so the chip inside the Office Fig hops to Root rot without
+          the card underneath also firing. There is no grab cursor anywhere
+          inside a card: the board pans, the node reads. The full table is on
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+
+        <h3 class="doc-h3">Scrolling</h3>
+        <p>Only the focused card's <code>.rz-n__body</code> scrolls, and it does
+          it under a bare wheel, because zoom is deliberately held behind
+          <kbd>Alt</kbd>. Its height cap is written against the live camera scale
+          the runtime publishes, so the card gives you the same amount of reading
+          whether you are zoomed in or out.</p>
+
+        <h3 class="doc-h3">Prose that travels</h3>
+        <p>A card's interior is an ordinary document, and its prose may carry
+          real links that traverse the garden. Write them as chips with
+          <code>data-rz-goto</code>, and they run exactly the same hop, on
+          exactly the same timing, as a click on the card itself — the timing is
+          owned by <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../foundations/motion.html">motion</a>.</p>
+
+        <h3 class="doc-h3">Controls</h3>
+        <p>Only the focused card shows controls, and there are two forms of them:
+          a filled stake changes your data, an outlined chip with a caret
+          travels. Nothing else appears inside a card. Which control belongs to
+          which is settled by <a href="action-rail.html">action rail</a> and
+          <a href="navigate-to.html">navigate to</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>Each card is a group with an accessible label the runtime rewrites on
+          every hop: its kind, its name, its recap, how many veins lead out of
+          it, and “you are here” when it is the focus. The label is built from
+          the attributes you wrote and the same adjacency the veins are drawn
+          from, so a screen-reader user and a sighted user are never told two
+          different numbers.</p>
+        <p>That label never speaks a cell, a row, a column or a slot. Those are
+          the system's private words for where a card stands; the user hears the
+          garden — “Plant · Office Fig · Fiddle-leaf Fig, overdue 2 days · 2
+          veins out”.</p>
+        <p>Every card is reachable by following the graph rather than the
+          document: the arrow keys propose the neighbour that actually lies that
+          way, computed from real positions, and <kbd>Enter</kbd> travels there.
+          On arrival the runtime moves the browser's focus to the destination
+          card without scrolling the page, so the keyboard user lands where the
+          camera landed. That behaviour as a whole is owned by
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+        <p>Colour is never the only signal on a card. Rank is four visibly
+          different widths and four graduation lengths as well as four ink
+          strengths; kind is the graduation's colour <em>and</em> the kind line
+          written in words at the top of every card. A state is material —
+          dashed, dotted, a rule down one side — before it is a hue. The card
+          uses logical properties throughout, so its graduation, its section
+          rules and its error bar all point the right way in RTL.</p>
+        <p>If you are unsure whether a recap will read out sensibly, read it
+          aloud on its own. “Plants · 12 plants” does. “12 · 1 · 3” does not.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Most mistakes on this component are the same mistake: treating the
+          card as a view of a thing rather than the thing itself. A view can be
+          replaced, re-ranked by hand, or opened somewhere else. A body standing
+          on a plane cannot.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the runtime rank the cards. Write the kind, the name, the
+              recap and the cell, and let the graph decide who is near and who is
+              fringe on every hop — it already knows the distances (Law 2).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Author <code>data-rank="near"</code> on a card because it matters
+              to you. The first hop away from it will disagree, and a card that
+              looks one vein out while standing three lies about distance in the
+              one channel a reader trusts at a glance (C3, C12).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Keep the recap to what the card can honestly say from its own
+              content — “Under treatment · root rot, step 2 of 4”. If a count is
+              not known yet, say so in words; an honest gap reads better than a
+              number the user cannot check.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put controls on a card that is not the focus. A stake on a fringe
+              card offers a change to your garden at a size where its own label
+              is unreadable, and it turns a whole-surface travel target into a
+              place where a stray click waters something (Law 5, C14).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the focused card grow as tall as its content needs and let the
+              zoom give way to it. A plant with a long journal is allowed to be a
+              long card (Law 4).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Clip the focused card to a fixed height and let the page scroll
+              behind it. Two scrolling surfaces is one too many, and the second
+              one takes the geography with it (C17).</p>
+          </div>
+        </div>
+
+        <p>One more, about restraint: never re-place a card because something
+          about it changed. A watering logged, a health score arriving, a photo
+          attached — none of those is structural, and none of them moves
+          anything. Only two things move a card: a drag you made, and a genuinely
+          new record taking a free cell.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The plane and the camera are <a href="world.html">world</a>; the veins
+          and their single source of truth are <a href="edge.html">edge</a>. The
+          density rule that decides how many cards a collection contributes, and
+          the “+N more” card that is itself a node, are
+          <a href="aggregate.html">aggregate</a>. The four answers the focused
+          card owes you are <a href="focus-panel.html">focus panel</a>; the
+          instruments inside it are <a href="vitals.html">vitals</a> and
+          <a href="treatment-course.html">treatment course</a>. The two control
+          forms are <a href="action-rail.html">action rail</a> and
+          <a href="navigate-to.html">navigate to</a>; the furniture that may
+          never wear a card's material is <a href="chrome.html">chrome</a>, and
+          the map that marks where this card stands is
+          <a href="minimap.html">minimap</a>.</p>
+        <p>The hop itself is <a href="../patterns/traversal.html">traversal</a>,
+          and an arrival from a search or a notification is
+          <a href="../patterns/arrivals.html">arrivals</a>. The states a card
+          wears are <a href="../patterns/degradation.html">degradation</a>; the
+          mode in which every card opens and the whole card becomes a handle is
+          <a href="../patterns/arrange-mode.html">arrange mode</a>; the card the
+          whole application becomes is
+          <a href="../patterns/settings-exit.html">settings exit</a>, and the
+          first card in an empty garden is
+          <a href="../patterns/day-zero.html">day zero</a>. The rank ladder as
+          ratios is <a href="../foundations/typography.html">typography</a>, the
+          kind palette is <a href="../foundations/colors.html">colors</a>, the
+          lattice and the placement formula are
+          <a href="../foundations/spacing.html">spacing</a>, and the card's halo
+          — and chrome's lack of one — is
+          <a href="../foundations/elevation.html">elevation</a>. How the recap is
+          worded is <a href="../guidelines/voice-and-copy.html">voice and
+          copy</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. Rank, placement, the veins and
+       every hop are RZ's; nothing here re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-office", "n-garden"],
+        ["n-office", "n-rot"],
+        ["n-garden", "n-studio"],
+        ["n-studio", "n-journal"]
+      ]
+    });
+  </script>
+</body>
+</html>

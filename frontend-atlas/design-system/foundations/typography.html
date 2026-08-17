@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Typography · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Typography</h1>
+      <p class="doc-lede">The prominence ladder is a set of ratios, not a set of
+        sizes: a theme chooses the pitch, and the steps have to stay visibly
+        stepped.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is one plane, and at any moment most of it is small. A
+          card two hops out is ten rems wide; a card on the fringe is smaller
+          still, and you will never read its name. Type in Rhizome therefore has
+          two jobs at once — it has to be readable on the card you are standing
+          in, and it has to keep saying <em>this one matters more than that
+          one</em> when nothing on the card is legible any more. This page
+          settles the ladder those two jobs share, the voices that speak on it,
+          and what a theme round is allowed to move.</p>
+        <p>The ladder is named in rungs — <code>--rz-rung-100</code> down to
+          <code>--rz-rung-12</code> — and every rung is a layer-3 property
+          pointing at a layer-1 size. A component asks for a rung. Nothing in
+          this system asks for a size.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">The ratios are the law; the pitch is a
+            theme variable. A theme may drop <code>--rz-rung-100</code> an octave
+            and stay conformant, provided the steps stay visibly stepped.
+            <span class="doc-cite">C12</span> reads: “With the text blurred on a
+            frozen frame, the hierarchy is still readable from scale alone, on
+            the 100/75/55/30/18-25 ladder.”</p>
+          <p class="doc-check">Read the rungs back with
+            <code>getComputedStyle(document.documentElement)</code> and divide
+            each by <code>--rz-rung-30</code>. The quotients are strictly
+            decreasing and no two adjacent quotients are within 5% of each other.
+            Then halve every <code>--rz-size-*</code> and re-run: the quotients
+            are unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">A rung is asked for by name, never by
+            value. No component and no page states a font size.</p>
+          <p class="doc-check">Search <code>assets/system.css</code>,
+            <code>assets/docs.css</code> and every page for
+            <code>font-size:</code>. Every declaration's value is
+            <code>var(--rz-rung-…)</code>, with the single exception of the
+            inline-code <code>0.92em</code> in <code>docs.css</code>, which is
+            relative and claims no rung of its own.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">Each voice is bound to a meaning: the
+            hand writes names and prose, the label writes machine facts in
+            monospace, and the plate writes the botanical binomial in italic and
+            writes nothing else.</p>
+          <p class="doc-check">For every element on a rendered board, assert its
+            computed <code>font-family</code> resolves to
+            <code>--rz-face-name</code>, <code>--rz-face-body</code>,
+            <code>--rz-face-label</code> or <code>--rz-face-latin</code>, and
+            that every element resolving to <code>--rz-face-latin</code> carries
+            <code>.rz-binomial</code>. A family on screen that is none of these
+            is a defect.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C3, C12</span></p>
+          <p class="doc-law__statement">Rank steps the name down the ladder, and
+            the recap sheds its second line before it sheds its first. A card
+            never truncates its way down; it drops a whole rung and a whole
+            line.</p>
+          <p class="doc-check">Render one node at each of the four ranks and read
+            the computed <code>font-size</code> of <code>.rz-n__name</code>: four
+            values, all distinct, all members of the rung set. At
+            <code>data-rank="fringe"</code> assert
+            <code>.rz-n__recap-second</code> computes to
+            <code>display: none</code> while <code>.rz-n__recap</code> does
+            not.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C17, C19</span></p>
+          <p class="doc-law__statement">Prose is measured, not stretched. Reading
+            text sits inside <code>--rz-measure-prose</code> however wide the
+            focused card grows.</p>
+          <p class="doc-check">Open the focused card at the zoom maximum and at
+            the widest viewport you have. Every paragraph inside
+            <code>.rz-n__body</code> has a computed
+            <code>max-inline-size</code> of <code>--rz-measure-prose</code>, and
+            no line in it exceeds that measure.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">The ladder, at rest</h3>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <div>
+              <p class="doc-eyebrow">rung-100 · the focused name</p>
+              <p class="doc-title">Office Fig</p>
+              <p class="doc-eyebrow">rung-55 · a name at rank near</p>
+              <p class="doc-h3">Office Fig</p>
+              <p class="doc-eyebrow">rung-30 · body</p>
+              <p>Watered eight days ago. The top two inches of soil are dry, and
+                the lowest leaf has gone yellow at the margin.</p>
+              <p class="doc-eyebrow">rung-25 · recap and secondary</p>
+              <p class="doc-cite">Ficus lyrata · 12 plants · 1 needs water
+                today</p>
+              <p class="doc-eyebrow">rung-18 · the label voice</p>
+              <p class="rz-label">Last watered</p>
+              <p class="doc-eyebrow">the plate voice, binomial only</p>
+              <p><span class="rz-binomial">Ficus lyrata</span></p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The rungs and the voices</span><span>C12</span>
+          </figcaption>
+        </figure>
+
+        <h3 class="doc-h3">The same card at four ranks</h3>
+        <p>These are real nodes, from the real classes, at the four ranks
+          <code>RZ.ranks()</code> computes. Blur your eyes: the names become
+          unreadable long before the four sizes stop being four sizes, and the
+          graduation on each card head still separates them by length.</p>
+        <figure class="doc-specimen" data-frozen="true">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="ty-focus" data-cell="2,3"
+                     data-kind="Plant" data-kind-key="plant"
+                     data-name="Office Fig"
+                     data-recap="Ficus lyrata · watered 8 days ago"
+                     data-rank="focus" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Plant</p>
+              <h3 class="rz-n__name">Office Fig</h3>
+              <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                · watered 8 days ago
+                <span class="rz-n__recap-second">One lower leaf yellowing</span></p>
+            </article>
+            <article class="rz-n" id="ty-near" data-cell="3,3"
+                     data-kind="Species" data-kind-key="species"
+                     data-name="Fiddle-leaf Fig"
+                     data-recap="12 plants · 1 overdue"
+                     data-rank="near" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Species</p>
+              <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+              <p class="rz-n__recap">12 plants · 1 overdue
+                <span class="rz-n__recap-second">1 needs water today</span></p>
+            </article>
+            <article class="rz-n" id="ty-far" data-cell="4,3"
+                     data-kind="Problem" data-kind-key="problem"
+                     data-name="Leaf spot"
+                     data-recap="Problems · 3 active"
+                     data-rank="far" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Problem</p>
+              <h3 class="rz-n__name">Leaf spot</h3>
+              <p class="rz-n__recap">Problems · 3 active
+                <span class="rz-n__recap-second">Treated twice this month</span></p>
+            </article>
+            <article class="rz-n" id="ty-fringe" data-cell="5,3"
+                     data-kind="Journal" data-kind-key="journal"
+                     data-name="Repotting note"
+                     data-recap="Journal · 6 entries"
+                     data-rank="fringe" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Journal</p>
+              <h3 class="rz-n__name">Repotting note</h3>
+              <p class="rz-n__recap">Journal · 6 entries
+                <span class="rz-n__recap-second">This line is gone at the
+                  fringe</span></p>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Name rung and recap depth, by rank</span><span>C3 · C12</span>
+          </figcaption>
+        </figure>
+
+        <p>Nothing above is hand-sized. The rank attribute is what moves the
+          type, and the rank itself is computed — see
+          <a href="../components/node.html">node</a>.</p>
+
+        <pre class="doc-code"><code>// the ranks these four cards show are the ones the runtime computes
+RZ.mount({});
+RZ.ranks("n-office");   // -&gt; graph distance from the focus, per node
+RZ.rankName(2);         // -&gt; "far"</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The rungs a theme fills</h2>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The prominence ladder</caption>
+            <thead><tr><th>Rung</th><th>Ratio to body</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-rung-100</code></td>
+                <td>2.75&times;</td>
+                <td>The focused node's name. One per screen, ever.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-75</code></td>
+                <td>1.875&times;</td>
+                <td>A section heading inside the focused card, and this site's
+                  own <code>h2</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-55</code></td>
+                <td>1.3125&times;</td>
+                <td>A name at rank near; a lede; a sub-heading.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-30</code></td>
+                <td>1&times; — the body rung, and what every other ratio is
+                  quoted against.</td>
+                <td>Reading prose. A name at rank far.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-25</code></td>
+                <td>0.875&times;</td>
+                <td>A recap, a chip, a stake, a table cell. A name at the
+                  fringe.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-18</code></td>
+                <td>0.75&times;</td>
+                <td>The label voice: kinds, keys, captions, and every word of
+                  chrome.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-rung-12</code></td>
+                <td>0.6875&times;</td>
+                <td>Below the ladder, and outside the steps
+                  <span class="doc-cite">C12</span> names. Reserve it for a mark,
+                  never for a sentence.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The voices</caption>
+            <thead><tr><th>Token</th><th>Resolves through</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-face-name</code></td>
+                <td><code>--rz-family-hand</code></td>
+                <td>What a thing is called. The name on a card, at every
+                  rank.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-face-body</code></td>
+                <td><code>--rz-family-hand</code></td>
+                <td>Anything you read as sentences. The same family as the name
+                  by default; a theme may split the two.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-face-label</code></td>
+                <td><code>--rz-family-label</code> (monospace)</td>
+                <td>Machine facts: kinds, counts, keys, dates, code. Uppercased
+                  and tracked by <code>--rz-track-label</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-face-latin</code></td>
+                <td><code>--rz-family-plate</code></td>
+                <td>The botanical binomial, italic, and nothing else on
+                  screen.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Leading, tracking, measure</caption>
+            <thead><tr><th>Token</th><th>Effect</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-lead-name</code></td>
+                <td>tight</td>
+                <td>A name is a block, not a paragraph. Two lines of a long
+                  nickname still read as one object.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-lead-snug</code></td>
+                <td>snug</td>
+                <td>Recaps, captions, code — short text that is scanned.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-lead-body</code></td>
+                <td>body</td>
+                <td>Prose you actually read, inside the focused card.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-track-label</code></td>
+                <td>tracked</td>
+                <td>The label voice inside a node.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-track-name</code></td>
+                <td><code>0</code></td>
+                <td>A name is never tracked. Tracking is part of what tells
+                  chrome from content — see
+                  <a href="../components/chrome.html">chrome</a>, which owns that
+                  rule.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-measure-prose</code></td>
+                <td>the reading measure</td>
+                <td>Prose inside a card, and every page on this site.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-measure-note</code></td>
+                <td>the short measure</td>
+                <td>A note, a staleness line, an error sentence — short by
+                  design.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>A theme round moves the pitch and, if it wants, the families. It does
+          not move the rung <em>names</em>, the order of the ratios, or the
+          binding of a voice to a meaning. If a theme needs a rung the ladder
+          does not have, that is an amendment — see
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a>. This page made none.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>Type here has to survive being resized by someone other than us. Every
+          rung is declared in <code>rem</code>, so the reader's own browser
+          font-size scales the whole ladder together and the ratios — which are
+          the law — hold at any base. Nothing is declared in <code>px</code>, and
+          nothing is capped in a way that refuses a larger base.</p>
+        <ul>
+          <li>The label voice is uppercase by <em>styling</em>
+            (<code>text-transform</code>), never by the words themselves, so a
+            screen reader is given “Last watered”, not the letters one at a time.
+            Write the source in sentence case, always.</li>
+          <li>Text that exists only for the reader who cannot see the board — the
+            you-are-here rewrite after a hop, a direction with no neighbour —
+            goes in <code>.rz-sr</code> and carries no rung at all. It is
+            announced, not read.
+            <a href="../guidelines/accessibility.html">Accessibility</a> owns
+            what gets said and when.</li>
+          <li>The recap's second line leaves the accessibility tree at the same
+            moment it leaves the screen — <code>display: none</code>, not a
+            faded opacity — so a fringe card is not quietly longer to a screen
+            reader than it is to your eye.</li>
+        </ul>
+        <p>Where a size and a colour together carry a meaning, the size is the
+          part that survives. The kind channel is a colour and is never the only
+          signal; <a href="colors.html">colors</a> owns that rule, and it is the
+          graduation's <em>length</em> that carries rank at fringe scale, where
+          no text is legible at all.</p>
+        <div class="doc-note">
+          <p>One limit, honestly: at the largest browser base sizes a name at
+            rank fringe can meet its card's height cap and clip. We think that is
+            the right trade — a fringe card is a landmark, not a label, and the
+            focused card is never clipped at any zoom. If you find a case where
+            it costs a real reader something, that is worth an amendment, not a
+            local override.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give a card less type as it gets further out: a rung down for the
+              name, and the second recap line gone. The card stays whole, and it
+              still says what kind of thing it is.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Keep the same rung and clip the name with an ellipsis. An ellipsis
+              is the same size as the text it ate, so the hierarchy stops being
+              readable from scale alone (<span class="doc-cite">C12</span>).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Set the binomial in the plate voice and let it be the only italic
+              on the screen:
+              <code>&lt;span class="rz-binomial"&gt;Ficus lyrata&lt;/span&gt;</code>.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Reach for italic for emphasis somewhere else. The moment a second
+              italic appears, the binomial stops being recognisable at a glance
+              and becomes something you have to stop and read.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Ask for <code>var(--rz-rung-25)</code> when you want a recap to
+              read as a recap.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Add a rung between two existing ones because one card felt
+              crowded. An extra step makes the ladder harder to read as a ladder,
+              and the crowding is nearly always the density rule rather than the
+              type — that rule is owned by
+              <a href="../components/aggregate.html">aggregate</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="../components/node.html">node</a> — the contract the rank
+            attribute belongs to, and where the four rank steps are set.</li>
+          <li><a href="../components/chrome.html">chrome</a> — owns the chrome
+            register, including its monospace, uppercase, one-rung,
+            wider-tracked voice.</li>
+          <li><a href="colors.html">colors</a> — the kind channel and the live
+            palette mechanism.</li>
+          <li><a href="../components/aggregate.html">aggregate</a> and
+            <a href="spacing.html">spacing</a> — the density rule and the lattice
+            geometry, which decide how much type a card ever has to hold.</li>
+          <li><a href="../guidelines/voice-and-copy.html">voice and copy</a> —
+            what the words say; this page only settles how they are set.</li>
+          <li><a href="../guidelines/accessibility.html">accessibility</a> — what
+            is announced, and in what order.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    // No world on this page: RZ.mount({}) still wires the palette switch and
+    // the state probes, so the ladder can be read under every key.
+    RZ.mount({});
+  </script>
+</body>
+</html>

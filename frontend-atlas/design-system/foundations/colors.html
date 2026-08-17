@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Colors · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Colors</h1>
+      <p class="doc-lede">Colour in your garden does two jobs and no others: it says what kind of thing a card is, and it says what state that thing is in. Everything else on screen is chalk on clay — and the whole key can be re-cut live, from Settings, while you are standing in the world.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is drawn as one world of cards. A card can be a species, a plant you actually own, a problem, a guide, a journal entry, a room in the house. At the scale where its name is unreadable you still need to know which of those you are looking at, and whether it is thriving or in trouble. That is what this page settles: one colour per node kind, one colour per health and confidence reading, one colour per degradation state, and a chalk-white structural voice that means nothing at all — so the coloured marks are free to mean something.</p>
+        <p>Colour lives in three layers, and reference runs one way only. Layer&nbsp;1 primitives (<code>--rz-leaf-300</code>) are raw and mean nothing. Layer&nbsp;2 semantics (<code>--rz-kind-plant</code>, <code>--rz-ailing</code>) are what a raw value <em>means</em>, and layer&nbsp;2 is restated in full by every theme and every palette. Layer&nbsp;3 is this system's own geometry and density, which a palette never touches. A page writes layer&nbsp;2. It never writes a hex, an <code>rgba()</code>, or a layer-1 step.</p>
+        <div class="doc-note">
+          <p>Two families listed on this page are owned elsewhere. The chrome family (<code>--rz-chrome-*</code>) belongs to <a href="../components/chrome.html">chrome</a>, and the mutation voice (<code>--rz-mutate</code>) belongs to <a href="../components/action-rail.html">action rail</a> and <a href="../guidelines/interaction-and-cursors.html">interaction and cursors</a>. They appear in the tables so you can find their values; their laws are not restated here.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">Kind is a channel. Every domain node kind has exactly one colour token, that token is spent on the kind graduation and nowhere else, and so a card answers “what kind of thing is this” at a size where its name is unreadable.</p>
+          <p class="doc-check">In the world below, hop until a card of each kind has been drawn at rank <code>fringe</code>. Apply a 6px blur to <code>.rz-plane</code> and screenshot: the graduations are still separable by colour. Then, for each <code>--rz-kind-*</code> token, assert the only computed property in the document resolving to it is <code>background</code> on the <code>.rz-n__grad</code> of cards carrying that <code>data-kind-key</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C23, C24</span></p>
+          <p class="doc-law__statement">Colour never carries a meaning alone. Every health reading, every confidence grade and every degradation state also states itself in the card's own words, inside that same card.</p>
+          <p class="doc-check">Apply <code>grayscale(1)</code> to the whole document. Every health dot still sits beside its word, every confidence bar beside HIGH, MEDIUM or LOW, and an unfetched card still reads differently from an empty one from its text alone. Nothing on screen has lost a meaning.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">Palettes switch live. One attribute on the root re-keys every colour on screen — cards, veins, chrome and the drifting field alike — with no save step, and nothing moves.</p>
+          <p class="doc-check">Record every card's computed <code>left</code>/<code>top</code> and <code>RZ.extent()</code>, call <code>RZ.setPalette("terrarium")</code>, and diff: both unchanged. Read <code>--rz-mote</code> off the root before and after: it changed, and the canvas repainted with the new value rather than its start-up copy.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">Every colour on screen is a token reference. A page writes layer 2 only; a raw value anywhere outside <code>assets/tokens.css</code> is a defect, not a shortcut.</p>
+          <p class="doc-check">Scan every page and every stylesheet other than <code>tokens.css</code> for <code>#</code>, <code>rgb(</code> or <code>rgba(</code>. The only permitted matches are <code>doc-swatch</code> backgrounds, and every one of those is a <code>var(--rz-…)</code>. Then switch palette: any mark that fails to re-key was a literal.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">The kind channel, in the world</h3>
+        <p>Eight kinds on one plane, drawn by the system from its own edge list. Click a card to travel to it; the ranks recompute and the graduations grow and shrink, but a kind's colour never changes. Blur your eyes: the names go first, the colour stays.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0" role="application"
+                 aria-label="A small garden. Click a card to travel to it; arrow keys pick a vein.">
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="3,3"
+                         data-kind="PlantPal" data-kind-key="platform"
+                         data-name="Your garden" data-recap="12 plants · 3 need something today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">PlantPal</p>
+                  <h3 class="rz-n__name">Your garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">3 need something today</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Everything you keep, on one plane. The colours here are doing two jobs at once: each card's graduation says what kind of thing it is, and the readings inside a card say how it is doing.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-study" data-cell="4,2"
+                         data-kind="Room" data-kind-key="collection"
+                         data-name="The Study" data-recap="Rooms · 5 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Room</p>
+                  <h3 class="rz-n__name">The Study</h3>
+                  <p class="rz-n__recap">5 plants
+                    <span class="rz-n__recap-second">North window, cool in winter</span></p>
+                </article>
+
+                <article class="rz-n" id="n-ficus" data-cell="4,4"
+                         data-kind="Species" data-kind-key="species"
+                         data-name="Fiddle-leaf Fig" data-recap="Species · 12 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Species</p>
+                  <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">12 plants</span></p>
+                </article>
+
+                <article class="rz-n" id="n-region" data-cell="2,4"
+                         data-kind="Region" data-kind-key="region"
+                         data-name="Further out" data-recap="Not fetched yet"
+                         data-state="unknown">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Region</p>
+                  <h3 class="rz-n__name">Further out</h3>
+                  <p class="rz-n__recap">Not fetched yet
+                    <span class="rz-n__recap-second">Travel in and PlantPal will fetch it</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office-fig" data-cell="5,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Watered 3 days ago · 1 problem open">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Watered 3 days ago
+                    <span class="rz-n__recap-second">1 problem open</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <div class="rz-n__section">
+                        <div class="rz-vitals">
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Health</span>
+                            <span class="rz-health" data-health="watch">Keep an eye on it</span>
+                          </div>
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Last watered</span>
+                            <span>3 days ago</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-guide" data-cell="5,5"
+                         data-kind="Guide" data-kind-key="guide"
+                         data-name="Repotting a Ficus" data-recap="Guide · 7 steps">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Guide</p>
+                  <h3 class="rz-n__name">Repotting a Ficus</h3>
+                  <p class="rz-n__recap">7 steps
+                    <span class="rz-n__recap-second">Best in spring</span></p>
+                </article>
+
+                <article class="rz-n" id="n-leaf-spot" data-cell="6,0"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf spot" data-recap="Problems · in treatment">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf spot</h3>
+                  <p class="rz-n__recap">In treatment, second week
+                    <span class="rz-n__recap-second">Next step due tomorrow</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <div class="rz-n__section">
+                        <div class="rz-conf" data-conf="medium">
+                          <span class="rz-label">Medium confidence</span>
+                          <div class="rz-conf__track"><div class="rz-conf__fill"></div></div>
+                        </div>
+                        <p>Most likely leaf spot from the damp spell. Worth a closer look before you treat it — if you can, photograph the underside too.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="6,2"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="12 June" data-recap="Journal · repotted the Office Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">12 June</h3>
+                  <p class="rz-n__recap">Repotted the Office Fig
+                    <span class="rz-n__recap-second">New mix, one size up</span></p>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Eight kinds, one colour each, at four ranks</span><span>C12 · C23</span>
+          </figcaption>
+        </figure>
+        <p>Two readings are living inside those cards. The Office Fig carries a health dot with its word beside it; the leaf-spot card carries a confidence bar with its grade beside it, and a sentence that hedges in plain words. Travel into either to see them in full — and note that “Further out” is drawn as unfetched, not as empty, in border, wash and wording, not only in hue.</p>
+
+        <h3 class="doc-h3">Switch the key while you read</h3>
+        <p>Press one. The whole page re-keys — this article, the sidebar, the cards above and the drifting field, because the canvas reads its colours back out of the same tokens. Nothing is saved, and nothing moves.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-palette" data-rz-palette="potting-bench" aria-pressed="true">
+              <span class="doc-swatch" style="background: var(--rz-paper-200)"></span>
+              <span>Potting bench — chalk on clay, the default key</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="terrarium" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-sill-200)"></span>
+              <span>Terrarium — glass and condensation</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="night-canopy" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-leaf-300)"></span>
+              <span>Night canopy — leaf carries the structure</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="seed-packet" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-paper-50)"></span>
+              <span>Seed packet — a paper world in daylight</span>
+            </button>
+            <button type="button" class="rz-palette" data-rz-palette="clinic" aria-pressed="false">
+              <span class="doc-swatch" style="background: var(--rz-chlorosis-200)"></span>
+              <span>Clinic — amber structure under a lamp</span>
+            </button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Live palette switching, no save step</span><span>C9</span>
+          </figcaption>
+        </figure>
+
+        <p>Both specimens are wired by the system, not by this page:</p>
+        <pre class="doc-code"><code>&lt;button type="button" class="rz-palette"
+        data-rz-palette="terrarium" aria-pressed="false"&gt;…&lt;/button&gt;
+
+RZ.mount({
+  edges: [["n-garden", "n-study"], ["n-garden", "n-ficus"]],
+  focus: "n-garden"
+});
+RZ.setPalette("terrarium");   /* exactly what Settings calls */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tokens</h2>
+
+        <h3 class="doc-h3">Kind — one colour per domain node kind</h3>
+        <p>Eight kinds, eight tokens, and a theme fills all eight or none. Spend a kind colour on anything but the graduation and Law 1's check fails on its second assertion.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Kind channel</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-kind-collection</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-collection)"></span></td>
+                <td>A grouping you keep — a room, a shelf, a windowsill full of pots.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-species</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-species)"></span></td>
+                <td>A species in general, not a plant of yours. Pale leaf: living, but not in your care.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-plant</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-plant)"></span></td>
+                <td>A plant you actually own, with a nickname. The fullest leaf on screen.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-guide</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-guide)"></span></td>
+                <td>Care instructions — window light rather than tissue, because a guide is not alive.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-problem</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-problem)"></span></td>
+                <td>Something wrong: a pest, a disease, a deficiency. Lesion colour.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-journal</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-journal)"></span></td>
+                <td>Something you wrote down on a day. Pencil on a care tag.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-platform</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-platform)"></span></td>
+                <td>PlantPal itself — your garden as a whole, and the places the app speaks from.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-kind-region</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-kind-region)"></span></td>
+                <td>A part of the world not fetched yet. Dim on purpose: it is real, it is just not here yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">Health and confidence</h3>
+        <p>Health is how the plant is. Confidence is how sure PlantPal is about something it worked out for you — an identification, a diagnosis. Two groups, and they never borrow each other's tokens.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Health and confidence</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-thriving</code></td><td><span class="doc-swatch" style="background: var(--rz-thriving)"></span></td><td>Doing well. Nothing needed from you today.</td></tr>
+              <tr><td><code>--rz-stable</code></td><td><span class="doc-swatch" style="background: var(--rz-stable)"></span></td><td>Holding steady — the resting value of the health dot.</td></tr>
+              <tr><td><code>--rz-watch</code></td><td><span class="doc-swatch" style="background: var(--rz-watch)"></span></td><td>Keep an eye on it. Yellowing, drifting, a step coming due.</td></tr>
+              <tr><td><code>--rz-ailing</code></td><td><span class="doc-swatch" style="background: var(--rz-ailing)"></span></td><td>In trouble now, and it wants doing something about.</td></tr>
+              <tr><td><code>--rz-lost</code></td><td><span class="doc-swatch" style="background: var(--rz-lost)"></span></td><td>Gone. Said quietly, and it stays in your garden's record.</td></tr>
+              <tr><td><code>--rz-conf-high</code></td><td><span class="doc-swatch" style="background: var(--rz-conf-high)"></span></td><td>PlantPal is sure. The bar fills.</td></tr>
+              <tr><td><code>--rz-conf-medium</code></td><td><span class="doc-swatch" style="background: var(--rz-conf-medium)"></span></td><td>A likely answer, said as one.</td></tr>
+              <tr><td><code>--rz-conf-low</code></td><td><span class="doc-swatch" style="background: var(--rz-conf-low)"></span></td><td>A guess. If unsure, say so — in words as well as in the bar.</td></tr>
+              <tr><td><code>--rz-conf-track</code></td><td><span class="doc-swatch" style="background: var(--rz-conf-track)"></span></td><td>The unfilled remainder of the confidence bar.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">Degradation</h3>
+        <p>The key for the six states a card can be in when the world is not whole. What each state must contain, and how a reviewer walks them, belongs to <a href="../patterns/degradation.html">degradation</a>; only the colours are here.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Degradation key</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-unknown</code></td><td><span class="doc-swatch" style="background: var(--rz-unknown)"></span></td><td>Not fetched yet — and still traversable. Never the same reading as empty.</td></tr>
+              <tr><td><code>--rz-unknown-fill</code></td><td><span class="doc-swatch" style="background: var(--rz-unknown-fill)"></span></td><td>The faint wash inside an unfetched card.</td></tr>
+              <tr><td><code>--rz-empty</code></td><td><span class="doc-swatch" style="background: var(--rz-empty)"></span></td><td>Fetched, and genuinely nothing here yet. Room to begin.</td></tr>
+              <tr><td><code>--rz-stale</code></td><td><span class="doc-swatch" style="background: var(--rz-stale)"></span></td><td>Last known, and out of date. Each card says how out of date in its own words.</td></tr>
+              <tr><td><code>--rz-offline</code></td><td><span class="doc-swatch" style="background: var(--rz-offline)"></span></td><td>No connection. The world you already have stays navigable.</td></tr>
+              <tr><td><code>--rz-error</code></td><td><span class="doc-swatch" style="background: var(--rz-error)"></span></td><td>This card failed. The failure is drawn inside it, never over the world.</td></tr>
+              <tr><td><code>--rz-error-quiet</code></td><td><span class="doc-swatch" style="background: var(--rz-error-quiet)"></span></td><td>The wash behind a failure's own explanation.</td></tr>
+              <tr><td><code>--rz-archived</code></td><td><span class="doc-swatch" style="background: var(--rz-archived)"></span></td><td>Archived. Still yours, still reachable, drawn dotted.</td></tr>
+              <tr><td><code>--rz-skeleton</code></td><td><span class="doc-swatch" style="background: var(--rz-skeleton)"></span></td><td>A row standing in for content that has not arrived, at its real height.</td></tr>
+              <tr><td><code>--rz-skeleton-lit</code></td><td><span class="doc-swatch" style="background: var(--rz-skeleton-lit)"></span></td><td>The same row, in the card the reader is looking at.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">The structural voices</h3>
+        <p>Everything that is not kind and not state is chalk. Chalk means nothing, which is what leaves the coloured marks free to mean something. Clay is the single exception, and it belongs to mutation alone.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Structure, traversal, mutation</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-vital</code></td><td><span class="doc-swatch" style="background: var(--rz-vital)"></span></td><td>Traversal and focus: a chip's rim, the focused card's ring, the live vein.</td></tr>
+              <tr><td><code>--rz-vital-bright</code></td><td><span class="doc-swatch" style="background: var(--rz-vital-bright)"></span></td><td>The brightest chalk on screen: the trail just travelled.</td></tr>
+              <tr><td><code>--rz-mutate</code></td><td><span class="doc-swatch" style="background: var(--rz-mutate)"></span></td><td>Clay. Anything that changes your data — and nowhere else on screen.</td></tr>
+              <tr><td><code>--rz-vein</code></td><td><span class="doc-swatch" style="background: var(--rz-vein)"></span></td><td>A vein at rest between two cards.</td></tr>
+              <tr><td><code>--rz-vein-live</code></td><td><span class="doc-swatch" style="background: var(--rz-vein-live)"></span></td><td>A vein leading out of where you are standing.</td></tr>
+              <tr><td><code>--rz-mote</code></td><td><span class="doc-swatch" style="background: var(--rz-mote)"></span></td><td>The drifting field behind the world. Read back by the canvas, so it re-keys live.</td></tr>
+              <tr><td><code>--rz-focus</code></td><td><span class="doc-swatch" style="background: var(--rz-focus)"></span></td><td>The keyboard focus ring — deliberately not chalk, so it cannot be mistaken for the focused card.</td></tr>
+              <tr><td><code>--rz-chrome-key</code></td><td><span class="doc-swatch" style="background: var(--rz-chrome-key)"></span></td><td>Chrome's own key. Owned by <a href="../components/chrome.html">chrome</a>; here only so you can find it.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What a palette may move</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Palette scope</caption>
+            <thead><tr><th>Layer</th><th>A palette may</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td>Layer 1 — primitives</td><td>Never touch them.</td><td>They are raw values shared by every key. Moving one moves five meanings at once.</td></tr>
+              <tr><td>Layer 2 — semantics</td><td>Restate any of them, declaring only what it moves.</td><td>This is the key. Whatever it leaves alone inherits from the default.</td></tr>
+              <tr><td>Layer 3 — system</td><td>Never touch it.</td><td>Density, the ladder and the lattice are not a matter of key. A palette changes colour, never geometry — that is Law 3's check.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Colour is never the only channel.</strong> This is Law 2, and it is the one to check first. A health dot always sits beside its word. A confidence bar always sits beside HIGH, MEDIUM or LOW, and a low-confidence answer hedges in a plain sentence as well. An unfetched card and an empty card differ in border, in wash and in wording, not only in hue — which is what keeps them apart for a reader who cannot separate <code>--rz-unknown</code> from <code>--rz-empty</code>.</p>
+        <p><strong>The pairing that needs watching.</strong> Leaf against lesion — <code>--rz-thriving</code> against <code>--rz-ailing</code> — is the pairing this key leans on hardest, and it is exactly the pairing red-green colour blindness collapses. That is why neither is ever asked to carry a reading by itself, in any palette. Test by applying <code>grayscale(1)</code> to the running world: every state must still read.</p>
+        <p><strong>Contrast, and who owns it.</strong> <code>--rz-ink</code> and <code>--rz-ink-second</code> clear 4.5:1 against every surface token in every palette, so prose is safe anywhere. <code>--rz-ink-muted</code> is for captions and incidental lines, not for a sentence a reader must follow. A palette that restates an ink token owns that contrast: check it against <code>--rz-void</code>, <code>--rz-sheet</code> and <code>--rz-chrome-fill</code> before you ship it. Kind colours are never asked to carry text — a graduation is a 2px rule — so they answer to separability from each other, not to a text contrast ratio.</p>
+        <p><strong>The focus ring is not the focused card.</strong> <code>--rz-focus</code> sits deliberately outside the chalk family: keyboard focus and the focused node are two different things, and a reader tabbing through must be able to tell which is which. It is applied by the base layer to every focusable element. Never remove an outline, and never restyle it per component.</p>
+        <p><strong>Switching palette announces itself.</strong> Every palette control is a real <code>button</code> carrying <code>aria-pressed</code>, and the system says “Palette applied. Nothing was saved and nothing moved.” into the live region — because a change a sighted reader takes in at a glance is otherwise completely silent. Colour states nothing to a screen reader; the words beside it do all the work.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let kind colour say kind and health colour say health, each with its word beside it: a leaf-coloured graduation on a plant card, and “Keep an eye on it” next to the amber dot.</p>
+            <p><span class="rz-health" data-health="watch">Keep an eye on it</span></p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Spend a health colour on the graduation to say “this plant is struggling”. Two channels now claim the same 2px rule, the kind reading is gone at fringe scale, and Law 1's check fails.</p>
+          </div>
+        </div>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Write the meaning: <code>color: var(--rz-ailing)</code>. It re-keys in every palette and both themes without you thinking about it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Write <code>var(--rz-necrosis-300)</code> because it happens to be today's value. You have pinned one palette's reading into a page, and Law 4's scan will find it.</p>
+          </div>
+        </div>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Add a colour by adding a semantic token under a named amendment, recorded in the constitution's register, and say so in one sentence on your page.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Re-key an existing semantic token to get the shade you want. Pages already written against it change meaning silently — see <a href="../guidelines/extending-this-system.html">extending this system</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="../components/node.html">
+            <span class="doc-card__name">Node</span>
+            <span class="doc-card__note">The card contract, and the graduation that carries kind and rank at once.</span>
+          </a>
+          <a class="doc-card" href="../components/chrome.html">
+            <span class="doc-card__name">Chrome</span>
+            <span class="doc-card__note">Owns the <code>--rz-chrome-*</code> family and the material separation it makes.</span>
+          </a>
+          <a class="doc-card" href="../components/vitals.html">
+            <span class="doc-card__name">Vitals</span>
+            <span class="doc-card__note">The health dot and the confidence bar, with the words that go beside them.</span>
+          </a>
+          <a class="doc-card" href="../patterns/degradation.html">
+            <span class="doc-card__name">Degradation</span>
+            <span class="doc-card__note">What each of the six states must contain, and how to walk them from the probe.</span>
+          </a>
+          <a class="doc-card" href="../patterns/settings-exit.html">
+            <span class="doc-card__name">Settings exit</span>
+            <span class="doc-card__note">Where a reader actually chooses a palette, on the same plane as the app.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/extending-this-system.html">
+            <span class="doc-card__name">Extending this system</span>
+            <span class="doc-card__note">The amendment path for a token family this page does not yet carry.</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <p class="rz-sr" id="rz-live" role="status" aria-live="polite"></p>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen world, mounted from the system's own primitives: the edge
+       list below is the only declaration, and the veins, the ranks, the
+       keyboard directions and every degree count come from it. */
+    RZ.mount({
+      edges: [
+        ["n-garden", "n-study"],
+        ["n-garden", "n-ficus"],
+        ["n-garden", "n-region"],
+        ["n-study", "n-office-fig"],
+        ["n-ficus", "n-office-fig"],
+        ["n-ficus", "n-guide"],
+        ["n-office-fig", "n-leaf-spot"],
+        ["n-office-fig", "n-journal"],
+        ["n-journal", "n-ficus"]
+      ],
+      focus: "n-garden"
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traversal · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Traversal</h1>
+      <p class="doc-lede">Traversal is how you get from one part of your garden
+        to another: the camera picks up and carries you along a vein you could
+        already see, at one timing, on one code path, and the place you left is
+        still standing behind you. This page settles that timing, that path, and
+        what happens when you ask for a second hop before the first has
+        landed.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You are looking at your Office Fig and you want the treatment course
+          it is on. In PlantPal that is not a link to a treatment screen. The
+          vein from the fig to its problem, and from that problem to the course,
+          is already drawn on the plane in front of you; when you ask to go
+          there, the camera runs along those veins, lights each thing it passes
+          without opening it, and comes to rest with the course open. You saw
+          the distance you crossed, so you know how to come back.</p>
+        <p>Every trigger in the product runs that same move: a card you click, a
+          link inside a card's prose, an entry in Navigate to, a step in
+          you-are-here, an arrow key, a search result, a notification. There is
+          no faster kind of hop for a nearby thing and no different kind for a
+          far one — one path, one timing, and a component that picks its own
+          duration is non-conformant, not a variation.</p>
+        <div class="doc-note">
+          <p>This page owns the journey: the timing, the arc-length path, the
+            multi-hop rule, the interruption policy and reduced motion. The
+            plane it happens on is <a href="../components/world.html">world</a>,
+            the cards are <a href="../components/node.html">node</a>, the veins
+            and their single source of truth are
+            <a href="../components/edge.html">edge</a>, and the panel that lists
+            where you can go is
+            <a href="../components/navigate-to.html">navigate to</a>. Landing
+            somewhere you did not walk to is
+            <a href="arrivals.html">arrivals</a>. The prohibition against a
+            per-component duration is restated nowhere else: it is stated here
+            and carried by
+            <a href="../foundations/motion.html">motion</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C10</span></p>
+          <p class="doc-law__statement">One timing, one code path, every hop.
+            <code>parameters.nav_ms</code> is 300ms and every navigation on the
+            screen — from any trigger, over any distance — goes through
+            <code>RZ.travel</code>. “Every focus change travels — nothing fades,
+            pops, or teleports.”</p>
+          <p class="doc-check">Wrap <code>RZ.travel</code> and fire every
+            navigation affordance on this page — a card, an in-card chip, a
+            Navigate-to entry, a you-are-here step, <kbd>Enter</kbd> after an
+            arrow key. Every call receives <code>RZ.PARAMS.nav_ms</code> and no
+            other duration appears. Then sample the camera transform each frame
+            during one hop: more than two distinct positions are sampled, and
+            the first equals the pre-hop camera.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C11</span></p>
+          <p class="doc-law__statement">The camera centre is driven along the
+            polyline of the route's real veins, by arc length — never straight
+            across the space. “Every transition carries direction, scale, and
+            ownership — and the camera follows the edge's own path.”</p>
+          <p class="doc-check">Sample the camera centre each frame during a
+            multi-hop and assert every sample lies on
+            <code>RZ.chainD(chain)</code>'s polyline within one pixel. Drag a
+            card in <a href="arrange-mode.html">arrange mode</a> so the vein
+            bends, then hop again: the samples follow the new bend, because the
+            path is read from the veins and not from a remembered curve.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C1, C4</span></p>
+          <p class="doc-law__statement">Every hop follows a vein that was
+            visible before it was asked for, and arrives by rescale.
+            “Nothing is replaced, unmounted, or routed to — every navigation is
+            a rescale.” If <code>RZ.route</code> finds no way through, nothing
+            happens: the interface never invents a path.</p>
+          <p class="doc-check">For every control that calls
+            <code>RZ.go(target)</code>, assert each consecutive pair of
+            <code>RZ.route(RZ.focus, target)</code> is in <code>RZ.EDGES</code>
+            and has a drawn <code>.rz-vein</code> in the DOM at first paint.
+            Record the <code>.rz-n</code> element set before and after ten hops:
+            identical objects, nothing added or removed, and
+            <code>location.href</code> unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C2</span></p>
+          <p class="doc-law__statement">A multi-hop crossing lights each node as
+            the camera reaches it and opens only the destination — and the place
+            you came from stays on screen: “After any hop, the origin is still
+            on screen or exactly one visible hop back — with no reliance on a
+            history stack or browser back.”</p>
+          <p class="doc-check">Hop across three veins and watch: each
+            intermediate card takes <code>data-passing="true"</code> in turn and
+            none of them takes <code>data-focus</code>. Afterwards, assert the
+            previous focus still has a rendered element carrying a rank
+            attribute and appears in Navigate to or is joined to the new focus by
+            one drawn vein, and that <code>history.length</code> is
+            unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C16</span></p>
+          <p class="doc-law__statement">A second hop asked for while one is in
+            flight is refused out loud — never queued, never blended. The hop in
+            flight always completes, so you never land somewhere you did not
+            ask for. “There is exactly one focal point, it owns the camera, and
+            the camera never moves without a user-attributable reason.”</p>
+          <p class="doc-check">Call <code>RZ.go()</code> twice inside one frame:
+            the second returns immediately while <code>RZ.travelling</code> is
+            true, the live region reads “Still travelling…”, and after
+            <code>nav_ms</code> the focus is the first target and not the
+            second. Assert exactly one element carries
+            <code>data-focus="true"</code> throughout.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C13</span></p>
+          <p class="doc-law__statement">Under reduced motion the trail is still
+            drawn along the real veins and held, and the you-are-here has
+            already moved: “Under prefers-reduced-motion, direction is still
+            shown and the you-are-here still updated — with no transition
+            replaced by an abrupt swap.” Direction and distance survive; only
+            the sweep is spent.</p>
+          <p class="doc-check">Set <code>data-motion="reduced"</code> on the
+            root and hop: <code>#rz-trail</code> carries
+            <code>data-on="true"</code> with a <code>d</code> equal to
+            <code>RZ.chainD(chain)</code>, and both the world-view marker and its
+            accessible label have moved. Assert the announcement is held longer,
+            not skipped.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Travel it</h2>
+        <p>Four veins, five cards, and you start at your garden. Click
+          <em>Treatment course</em> — the far card on the right — and watch the
+          camera take all four veins in turn rather than cutting across: Office
+          Fig, Problems and Underwatering each light as it is reached, none of
+          them opens, and only the course does. Then click a near card, and use
+          <kbd>Enter</kbd> after an arrow key. All of it is the same 300ms.</p>
+        <p>Try interrupting: click one card and immediately click another. The
+          second is refused and says so, and the first hop lands.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="A journey through your garden. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <p>Everything you keep, in one place.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>The lower leaves have been dropping since the radiator
+                          came on. We are not certain why — if you want, read
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                          and compare. That chip is an in-card hop: it runs the
+                          same travel a click on the card would.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+
+                <article class="rz-n" id="n-underwater" data-cell="6,1"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Underwatering" data-recap="Seen on 2 of your plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Underwatering</h3>
+                  <p class="rz-n__recap">Seen on 2 of your plants
+                    <span class="rz-n__recap-second">· one course running</span></p>
+                </article>
+
+                <article class="rz-n" id="n-treatment" data-cell="8,2"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Treatment course" data-recap="Step 2 of 4 · next step Friday">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Treatment course</p>
+                  <h3 class="rz-n__name">Treatment course</h3>
+                  <p class="rz-n__recap">Step 2 of 4
+                    <span class="rz-n__recap-second">· next step Friday</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-course">
+                        <div class="rz-course__step" data-done="true">
+                          <span class="rz-course__mark">Done</span>
+                          <span>Move it out of the draught</span>
+                        </div>
+                        <div class="rz-course__step" data-done="true">
+                          <span class="rz-course__mark">Done</span>
+                          <span>Water deeply, then let the top inch dry</span>
+                        </div>
+                        <div class="rz-course__step" data-due="true">
+                          <span class="rz-course__mark">Friday</span>
+                          <span>Check the leaf tips again</span>
+                        </div>
+                        <div class="rz-course__step">
+                          <span class="rz-course__mark">Later</span>
+                          <span>Feed at half strength</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <div class="rz-chrome rz-chrome--gesture">
+                <p>Drag to pan · Alt and wheel to zoom · arrows follow the veins</p>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>A four-vein crossing on one timing · nothing is replaced</span>
+            <span>C1 · C2 · C4 · C10 · C11 · C16</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Nothing on this page re-implements the journey. The specimen is
+          mounted from the runtime, the route is resolved from the same edge
+          list the veins are drawn from, and the timing comes from the declared
+          parameter rather than a number written here.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-garden",
+  path: ["n-garden"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-office", "n-problems"],
+    ["n-problems", "n-underwater"],
+    ["n-underwater", "n-treatment"]
+  ]
+});
+
+// one hop, from anywhere, by any trigger:
+RZ.go("n-treatment");
+
+// what it resolves to, before it moves:
+RZ.route("n-garden", "n-treatment");
+// -&gt; ["n-garden", "n-office", "n-problems", "n-underwater", "n-treatment"]</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">One hop, in order</h3>
+        <p>Ask for a destination and the runtime does five things, always these
+          and always in this order: it refuses if a hop is already in flight; it
+          resolves the route over the adjacency; it hands the focus to the
+          destination and recomputes every card's rank from the new position; it
+          drives the camera along the route's polyline for
+          <code>nav_ms</code>, lighting each node as it arrives at it; and it
+          rewrites you-are-here, Navigate to and the world-view marker together,
+          then says out loud where you are.</p>
+
+        <h3 class="doc-h3">What a trigger may and may not do</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Every door into the same move</caption>
+            <thead><tr><th>Trigger</th><th>Form</th><th>What it calls</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>A card that is not the focus</td>
+                <td>The whole card surface</td>
+                <td><code>RZ.go(id)</code> — the card's listener stands aside for
+                  its own controls, chips, stakes and links.</td>
+              </tr>
+              <tr>
+                <td>An in-card hop in prose</td>
+                <td>Outlined chip with a caret</td>
+                <td><code>RZ.go(id)</code> via
+                  <code>data-rz-goto</code>. Node interiors are ordinary
+                  documents; their prose may carry real hops.</td>
+              </tr>
+              <tr>
+                <td>A Navigate-to entry</td>
+                <td>Chrome item with a leading arrow mark</td>
+                <td><code>RZ.go(id)</code> over exactly
+                  <code>RZ.adj[focus]</code>, rebuilt on every hop.</td>
+              </tr>
+              <tr>
+                <td>A you-are-here step</td>
+                <td>Chrome item with a leading arrow mark</td>
+                <td><code>RZ.go(id)</code> back along the path you actually
+                  travelled — a real vein, not a history stack.</td>
+              </tr>
+              <tr>
+                <td>Arrow key, then <kbd>Enter</kbd></td>
+                <td>No form; the world frame takes the key</td>
+                <td><code>RZ.neighbourInDirection(key)</code> then
+                  <code>RZ.go(id)</code>.</td>
+              </tr>
+              <tr>
+                <td>Zoom, fit, recentre, pan</td>
+                <td>Camera cluster — a third category</td>
+                <td><code>RZ.zoomBy</code>, <code>RZ.fitAll</code>,
+                  <code>RZ.recentre</code>. These change the view and never the
+                  focus. Looking around is not navigating
+                  (<span class="doc-cite">C15</span>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What a theme may set</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The journey's own values</caption>
+            <thead><tr><th>Token or parameter</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-param-nav-ms</code></td>
+                <td></td>
+                <td>300ms, mirrored from <code>parameters.nav_ms</code> and read
+                  by both the CSS and the runtime. A theme reads it; it may not
+                  change it without an owner ruling, and no component may
+                  substitute its own.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-ease-travel</code></td>
+                <td></td>
+                <td>The one easing a hop is carried on. A theme may re-key its
+                  curve; it may not add a second one for a different kind of
+                  hop.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital)"></span></td>
+                <td>The live vein and the trail: which vein the journey is on,
+                  and which it just took.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital-bright</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-bright)"></span></td>
+                <td>The held route under reduced motion, drawn along the real
+                  veins so distance and direction are still stated.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-cam-k</code></td>
+                <td></td>
+                <td>The live camera scale, published to CSS by the runtime while
+                  the journey runs. Read it; never write it.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>A journey has to be walkable without being seen, and the keyboard
+          follows the graph rather than the document. The world frame is
+          focusable; each arrow key proposes the neighbour that actually
+          <em>lies</em> that way, computed from real positions, and announces it
+          with its recap. <kbd>Enter</kbd> or <kbd>Space</kbd> travels there on
+          exactly the path a click would take. <kbd>Tab</kbd> walks the veins out
+          of the focus in turn, saying which of how many. <kbd>Escape</kbd> steps
+          back one hop along the path you actually took. A direction with no vein
+          is spoken by name — “no vein that way from Office Fig” — never
+          silently ignored, because silence reads as a broken key.</p>
+        <p>Every arrival is announced once, in one sentence, through the polite
+          live region: where you came from, what you crossed without opening,
+          and how many veins lead out from where you now are. The world view's
+          accessible label is rewritten on the same hop, in lockstep with the
+          visible you-are-here, so a screen-reader user and a sighted user are
+          never told two different stories. Neither ever speaks a cell, a row or
+          a column: they speak your garden.</p>
+        <p>A refused hop is announced too. Silence after a click reads as a dead
+          control, so the interruption of Law 5 says “still travelling” rather
+          than doing nothing, and the hop in flight lands where you asked.</p>
+        <p>Under reduced motion the sweep is spent but the journey is not: the
+          trail is drawn along the real veins and held, the marker and its label
+          have already moved, and the announcement is held longer rather than
+          dropped. Direction is never carried by motion alone, so nothing is lost
+          when the motion goes. Logical properties are used throughout, so
+          nothing points the wrong way in RTL — including which neighbour
+          <kbd>ArrowLeft</kbd> finds.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Almost every mistake here is the same mistake: treating one hop as
+          special. A hop that is short, or frequent, or “only a panel” is still a
+          hop, and the moment one of them picks its own duration the reader stops
+          being able to feel distance at all.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Send every trigger through <code>RZ.go</code> and let it take
+              <code>nav_ms</code>, whether the destination is one vein away or
+              four. One timing is what makes the sweep legible as distance
+              (Law 1, C10).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Give a neighbouring card a quicker hop because it is close, or a
+              far one a slower one because it is far. A scale of durations reads
+              as permission to choose per component, and then no duration means
+              anything (C10).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Light each node the crossing passes as the camera reaches it, and
+              open only the one you asked for. That is what tells you the route
+              was real and which way it went (Law 4, C2).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Cut the camera straight to a far card because the route is long.
+              A straight line across empty space says no vein was taken, and the
+              reader loses both the direction and the way back (C11).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Refuse a second hop while one is in flight, out loud, and let the
+              first land. One camera, one owner, one movement (Law 5, C16).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Queue the second hop or blend the two camera paths. Queuing lands
+              the user somewhere they have stopped asking for; blending puts the
+              camera on a curve that matches no vein on the plane (C11,
+              C16).</p>
+          </div>
+        </div>
+
+        <p>Two more, stated as rules. <strong>Never travel on the system's own
+          initiative</strong> — a reminder firing or a health score landing must
+          not move the camera; if something arrived, that is an
+          <a href="arrivals.html">arrival</a> and the user still chooses to
+          cross. And <strong>never offer a destination the plane did not
+          draw</strong>: if there is no vein, there is no hop, and inventing one
+          would make a place the reader has no way back from.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The single edge list every route is resolved over is
+          <a href="../components/edge.html">edge</a>; the plane the camera moves
+          is <a href="../components/world.html">world</a>; the cards that change
+          rank on arrival are <a href="../components/node.html">node</a>. The
+          panel of destinations is
+          <a href="../components/navigate-to.html">navigate to</a>, and the
+          filled stakes that change data instead of position are
+          <a href="../components/action-rail.html">action rail</a>. The marker
+          that keeps up with the camera is
+          <a href="../components/minimap.html">minimap</a>. A hop you did not
+          start is <a href="arrivals.html">arrivals</a>; a hop into something
+          not yet fetched is <a href="degradation.html">degradation</a>; the one
+          mode in which travel goes inert is
+          <a href="arrange-mode.html">arrange mode</a>. The prohibition on a
+          per-component duration is carried by
+          <a href="../foundations/motion.html">motion</a> and read at scale by
+          <a href="../guidelines/motion-and-scale.html">motion and scale</a>;
+          the pointer precedence and the cursor table are
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>; the keyboard and announcement contract in full is
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The route, the timing, the rank
+       recomputation and the trail are all the assets' own; nothing is
+       re-implemented here. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-office", "n-problems"],
+        ["n-problems", "n-underwater"],
+        ["n-underwater", "n-treatment"]
+      ]
+    });
+  </script>
+</body>
+</html>

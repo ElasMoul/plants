@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice and copy · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Guidelines</p>
+      <h1 class="doc-title">Voice and copy</h1>
+      <p class="doc-lede">Every word this system puts on screen. This page
+        settles which register each surface speaks in, what a card says while
+        it is waiting, what it says when it is stale, unknown, empty or
+        broken, and what your garden says out loud when you arrive
+        somewhere.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>PlantPal talks to you the way a friend who knows plants would:
+          warm, plain, specific, and honest when it is not sure. Its own
+          instruction to its assistant — <em>if unsure, say so; never guess
+          about plant health</em> — is the sentence this whole page grows
+          from. Rhizome inherits that voice and gives it a second job, because
+          a world you move a camera over asks things of copy that a stack of
+          screens never does.</p>
+        <p>Three of those jobs are new here. Your cards are read at four
+          different sizes, so a recap has to survive being cut to one line at
+          the fringe. Your camera moves, and someone who cannot see it move
+          still has to be told where they landed. And your garden degrades in
+          pieces rather than all at once — one card slow, one card stale, one
+          card broken, the rest of it perfectly fine — so almost every
+          sentence about state belongs to a single card and is written in that
+          card's own words.</p>
+        <div class="doc-note">
+          <p>Two registers, and they never borrow from each other. Chrome
+            speaks in tracked uppercase labels: apparatus, naming itself. A
+            card speaks in sentences: content, talking to you. The material
+            difference is owned by <a href="../components/chrome.html">chrome</a>;
+            what you find here is the wording that goes with it.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">The form already says whether a
+            control changes your garden or moves you, so the label only has to
+            name the thing. A stake is a verb phrase about your plants — "Log
+            watering", "Mark step 2 done". A chip is the name of the place you
+            would arrive at — "Problems", "Office Fig". Never "click here",
+            never "go to", never a stake that begins with "view".</p>
+          <p class="doc-check">Mask the form of every affordance and read the
+            labels alone. Each is either a verb phrase naming an act on your
+            garden or a bare place name, and the two lists do not overlap — no
+            label appears in both.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C19</span></p>
+          <p class="doc-law__statement">A card speaks the domain and never the
+            system's private vocabulary. The words <em>cell</em>,
+            <em>lattice</em>, <em>slot</em>, <em>ring</em>, <em>band</em>,
+            <em>row</em>, <em>column</em>, <em>rank</em>, <em>node</em> and
+            <em>edge list</em> are how this system talks to itself. What you
+            read is "12 plants · 1 overdue today", "Problems · 3 active",
+            "Three veins lead out of this plant".</p>
+          <p class="doc-check">Read the rendered text of every card, exclude
+            the chrome apparatus labels, and search it for that word list. It
+            returns nothing, and every collapsed recap names a domain thing
+            and a count.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C22</span></p>
+          <p class="doc-law__statement">A wait is written inside the card that
+            is waiting, and it says what is being waited for and roughly how
+            long that usually takes. "Still identifying this photo — usually
+            about 15 seconds." The word <em>loading</em> is not in this
+            system's vocabulary, and neither is a bare ellipsis standing in for
+            a sentence.</p>
+          <p class="doc-check">Set <code>data-speed="slow"</code> from the
+            probe. Every card carrying <code>data-pending="true"</code> has a
+            non-empty <code>.rz-n__wait</code> sentence naming the work, no
+            card outside that set says anything new, and a case-insensitive
+            search of the running app's own text for "loading" and "please
+            wait" returns nothing.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C23, C24</span></p>
+          <p class="doc-law__statement">Unknown, empty and stale are three
+            different sentences and are never one banner. An unknown place says
+            it has not been fetched and offers to fetch it. An empty place says
+            what could go there. A stale card says, in its own words, when it
+            was last true — and two cards last checked at different times say
+            different things.</p>
+          <p class="doc-check">Set <code>data-graph="partial"</code>: the
+            unknown card's sentence offers a fetch and the empty card's
+            sentence offers a beginning, and neither text could be swapped for
+            the other. Then set <code>data-net="offline"</code>: collect every
+            visible <code>.rz-n__stale</code> string, assert at least two
+            differ, and assert nothing outside the cards announces the
+            disconnection.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C25</span></p>
+          <p class="doc-law__statement">A failure sentence carries four things
+            and is written inside the card that failed: the fact in plain
+            words, the time it happened, what became of what you typed or
+            photographed, and two ways forward — the retry in place and one
+            other route. It never says "something went wrong".</p>
+          <p class="doc-check">Read the <code>.rz-n__error</code> text of a
+            failed card and find all four: a fact, a time, an explicit
+            statement about the user's own data, and two distinct controls. The
+            camera transform is unchanged, and no text about that failure
+            appears anywhere else in the document.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C18, C21</span></p>
+          <p class="doc-law__statement">Every arrival is spoken in one
+            sentence that names where you came from, anything you crossed
+            without opening, and how many veins lead out of where you now are.
+            An arrival you did not start by clicking a card — a search hit, a
+            notification — says the distance first, before the news.</p>
+          <p class="doc-check">Hop and read <code>#rz-live</code>'s text: it
+            names the origin, the destination, any card passed through, and a
+            vein count equal to <code>RZ.degree(RZ.focus)</code>. Trigger a
+            search arrival and assert the hop count is spoken before the news,
+            from that same one sentence-writing path.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">What your garden says when you arrive</h3>
+        <p>Click any card, or tab into the world and use the arrow keys. The
+          bar along the bottom edge is the live region: it shows the same
+          sentence a screen reader hears, which is how you proofread it. Law 6
+          is being written by <code>RZ.go()</code>, not by this page.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Four cards in your garden. Click one to travel; the sentence spoken on arrival is shown along the bottom edge.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Everything you keep. The recap above is the whole of
+                          what this card says when it is not the one you are
+                          reading: a domain word and a count, then a second line
+                          it gives up when it gets small.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>You call it Office Fig, so that is what it is called
+                          everywhere. The Latin name sits beside it for the days
+                          you want it, never in front of it.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <div class="rz-vitals">
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Health</span>
+                            <span class="rz-health" data-health="watch">Watch — the lower leaves are yellowing</span>
+                          </div>
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Water</span>
+                            <span>Overdue 2 days. You last watered it on the 16th.</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>What you noticed about it last is written up in
+                          <button type="button" class="rz-chip" data-rz-goto="n-j1">Jul 18 photo</button>
+                          and the yellowing is being tracked in
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,1"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · none resolved this week">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· none resolved this week</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Three things are wrong in your garden right now, and
+                          each one names the plant it is about rather than a
+                          case number.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-j1" data-cell="2,3"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Jul 18 photo" data-recap="About Office Fig · the lower leaves">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Jul 18 photo</h3>
+                  <p class="rz-n__recap">About Office Fig
+                    <span class="rz-n__recap-second">· the lower leaves</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>A journal entry is dated in the words you would use
+                          out loud — "Jul 18 photo", never "Entry 4821".</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <p class="rz-chrome rz-chrome--live rz-live" id="rz-live"
+                 role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Arrival sentences, written by RZ.go and shown as they are spoken</span>
+            <span>C18 · C21</span>
+          </figcaption>
+        </figure>
+
+        <h3 class="doc-h3">What a card says while it is waiting</h3>
+        <p>Identifying a photo genuinely takes five to fifteen seconds here, so
+          the wait is real and the sentence has to earn it. It names the work,
+          it gives you a length to expect, it says what happened to your photo,
+          and the skeleton under it is shaped like the write-up that is
+          coming.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="sp-wait" data-cell="2,2"
+                     data-kind="Journal" data-kind-key="journal"
+                     data-name="This morning's photo"
+                     data-recap="Identifying · about 15 seconds"
+                     data-rank="near" data-show="skel" data-pending="true">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Journal</p>
+              <h3 class="rz-n__name">This morning's photo</h3>
+              <p class="rz-n__wait">Still identifying this photo — usually about 15 seconds. Your photo is saved either way.</p>
+              <div class="rz-n__skel">
+                <div class="rz-skel">
+                  <div class="rz-skel__row" data-w="short"></div>
+                  <div class="rz-skel__row"></div>
+                  <div class="rz-skel__row" data-w="mid"></div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>A wait that names its work and keeps its place</span>
+            <span>C22</span>
+          </figcaption>
+        </figure>
+
+        <h3 class="doc-h3">What a card says when it breaks</h3>
+        <p>The fact, the time, the fate of your data, and two ways on. The
+          camera does not move and the rest of your garden is untouched, so the
+          sentence can afford to be calm.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="sp-error" data-cell="3,2"
+                     data-kind="Journal" data-kind-key="journal"
+                     data-name="This morning's photo"
+                     data-recap="The identification did not finish"
+                     data-rank="near" data-show="full" data-state="error">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Journal</p>
+              <h3 class="rz-n__name">This morning's photo</h3>
+              <div class="rz-n__full">
+                <div class="rz-n__error">
+                  <p>The identification did not come back. That was at 09:14,
+                    about a minute ago. Your photo and your note are saved, and
+                    nothing about the plant itself was changed.</p>
+                  <p><button type="button" class="rz-stake">Try identifying again</button>
+                    — or describe what you see yourself and skip the
+                    identification, over in
+                    <button type="button" class="rz-chip">Problems</button>.</p>
+                </div>
+              </div>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Four things, inside the card that failed</span>
+            <span>C25</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The two registers</h2>
+        <p>Nothing in this table is a new material — it is the wording that
+          goes with the material <a href="../components/chrome.html">chrome</a>
+          and <a href="../components/node.html">node</a> already own.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Where each register speaks</caption>
+            <thead><tr><th>Surface</th><th>Register</th><th>Written like this</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-chrome__title</code></td>
+                <td>Tracked uppercase, one rung, no sentence, no full stop</td>
+                <td>NAVIGATE TO · ACTIONS · WORLD · STATES</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__here</code></td>
+                <td>Uppercase, the path you took, separated rather than punctuated</td>
+                <td>MY GARDEN · FIGS · OFFICE FIG</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__item small</code></td>
+                <td>Sentence case, one clause — the only prose chrome allows</td>
+                <td>Overdue 2 days</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n__kind</code></td>
+                <td>One domain word, uppercase, singular</td>
+                <td>PLANT · SPECIES · PROBLEM · JOURNAL</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n__name</code></td>
+                <td>What you call it, never what the record calls it</td>
+                <td>Office Fig</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n__recap</code></td>
+                <td>A domain noun and a count, then one line it can afford to lose</td>
+                <td>12 plants · 1 overdue today</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake</code></td>
+                <td>A verb phrase about your garden</td>
+                <td>Log watering</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chip</code></td>
+                <td>The name of the place, bare</td>
+                <td>Problems</td>
+              </tr>
+              <tr>
+                <td><code>.rz-live</code></td>
+                <td>One whole sentence, past tense, ending in a full stop</td>
+                <td>Travelled My garden to Office Fig. 3 veins from here.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>The recap's second line is the one that disappears when a card gets
+          small, so write it as something you can lose. Put the count in the
+          first line and the urgency in the second: "12 plants" survives at any
+          size, "· 1 overdue today" is a gift to anyone close enough to read
+          it. The sizes themselves belong to
+          <a href="../components/node.html">node</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The words for every state</h2>
+        <p>One row per state your garden can be in. The third column is the
+          part reviewers skip and users notice.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">State copy</caption>
+            <thead><tr><th>State</th><th>The card says</th><th>Never says</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-pending="true"</code></td>
+                <td>"Still identifying this photo — usually about 15 seconds. Your photo is saved either way."</td>
+                <td>"Loading", "Please wait", a bare "…", or a length it cannot keep.</td>
+              </tr>
+              <tr>
+                <td><code>data-speed="slow"</code></td>
+                <td>"This one is taking longer than usual. Everything else in your garden is up to date."</td>
+                <td>Anything at all outside the slow card. A whole-screen message about one late answer is a lie about the rest.</td>
+              </tr>
+              <tr>
+                <td><code>data-state="unknown"</code></td>
+                <td>"Your balcony has not been fetched yet." — with a control beside it that fetches it.</td>
+                <td>"No data", "0 items". That is the empty sentence, and this place is not empty.</td>
+              </tr>
+              <tr>
+                <td><code>data-state="empty"</code></td>
+                <td>"Nothing in your journal yet. The first photo you take lands here."</td>
+                <td>"Nothing found", "No results". You did not search for anything.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n__stale</code></td>
+                <td>"Last checked 40 minutes ago, before you went offline."</td>
+                <td>One shared wording repeated on every card. Two cards last true at different times say different things.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake[data-refused="true"]</code></td>
+                <td>"Offline — this is queued and will run when you are back." or "Not while you are offline."</td>
+                <td>A silently dimmed control. A refusal that does not say it is one is a defect in the copy, not in the CSS.</td>
+              </tr>
+              <tr>
+                <td><code>data-state="error"</code></td>
+                <td>The fact, the time, what became of your data, a retry and one other way through.</td>
+                <td>"Something went wrong", "Error 500", "Oops".</td>
+              </tr>
+              <tr>
+                <td><code>data-state="archived"</code></td>
+                <td>"Archived on 12 June. You can bring it back whenever you like."</td>
+                <td>"Deleted". Nothing here is deleted, so nothing here says it was.</td>
+              </tr>
+              <tr>
+                <td>The daily identification limit</td>
+                <td>"You have used today's identifications. They come back at midnight, and everything else still works."</td>
+                <td>"Quota exceeded", or any wording that reads as a punishment.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The materials these words sit in — the dashed rims, the skeletons at
+          real row heights, the per-card refusal — and the probe that walks you
+          through every row above belong to
+          <a href="../patterns/degradation.html">degradation</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Saying what you do not know</h2>
+        <p>PlantPal identifies plants and reads problems from photographs, and
+          it is wrong often enough that hedging is part of the product rather
+          than a softener on the copy. Confidence is stated as a word and a
+          level, and a low reading always names the thing that would raise
+          it.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <div class="rz-vitals">
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Confidence</span>
+                <span>Low</span>
+              </div>
+              <div class="rz-conf" data-conf="low">
+                <div class="rz-conf__track"><div class="rz-conf__fill"></div></div>
+              </div>
+              <p>This looks like underwatering, but the photo is dark and the
+                soil is not in frame. A photo in daylight with the pot in it
+                would settle it.</p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>A low reading names what would raise it</span>
+            <span>C19</span>
+          </figcaption>
+        </figure>
+
+        <p>Three rules hold the hedge in place. Say the level in a word as well
+          as in the bar, because a bar at a third of its track is not a
+          sentence. Name the limitation rather than the doubt — "the photo is
+          dark" is useful, "I am not certain" is not. And never hedge something
+          you do know: the day you last watered a plant is not a guess and must
+          not be dressed as one.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>In a world with a camera in it, the copy <em>is</em> the accessible
+          layer. Everything below is a wording requirement; the markup side of
+          the same ground lives on
+          <a href="accessibility.html">accessibility</a>.</p>
+        <ul>
+          <li><strong>The arrival sentence is the whole of the navigation for
+            anyone who cannot see the travel.</strong> It names the origin,
+            anything crossed, and the number of veins out, in that order, so a
+            listener can rebuild the geography from the sentence alone.</li>
+          <li><strong>Every colour carries a word.</strong> Health is written
+            out — "Watch — the lower leaves are yellowing" — beside the dot
+            that colours it. Confidence prints its level. Kind prints its name
+            in <code>.rz-n__kind</code> above the coloured graduation. Turn the
+            screen greyscale and nothing is lost.</li>
+          <li><strong>A refusal is spoken, not implied.</strong> A stake that
+            cannot run says why in its own words, and a direction with no vein
+            that way says so out loud rather than doing nothing.</li>
+          <li><strong>Copy never points.</strong> No sentence says "on the
+            left", "in the panel on the right" or "the button below" — name the
+            thing instead. The layout mirrors in RTL and the camera moves
+            besides, so a direction written into a sentence is a sentence that
+            will become wrong.</li>
+          <li><strong>Punctuation carries nothing.</strong> The middle dot in a
+            recap is a separator, not a meaning. Anything a reader has to
+            understand is a word, because a screen reader may not read the dot
+            at all.</li>
+          <li><strong>The live region is polite and one sentence long.</strong>
+            It is never used for a failure — a failure lives in the card that
+            failed, where a keyboard user can reach the retry — and it is never
+            interrupted by a second sentence about the same hop.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Name the work and give a length you can keep: "Still identifying
+              this photo — usually about 15 seconds. Your photo is saved either
+              way." The card holds its place while it says it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Write the word "loading", or leave an ellipsis to do the work of
+              a sentence. Neither tells you what is happening or whether what
+              you just took survived it (C22).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let each card date itself: "Last checked 40 minutes ago, before
+              you went offline." The card beside it, checked at breakfast, says
+              something different, and both are true.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Put one sentence about the connection across the top of the
+              world. It is a claim about every card at once, and it is false
+              for the ones that are current (C24).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Hedge with the reason: "This looks like underwatering, but the
+              photo is dark and the soil is not in frame." The reader learns
+              what to photograph next.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>State a diagnosis flat — "Your fig has root rot" — from a
+              reading the system itself grades low. That is the one thing this
+              app told its assistant never to do.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Label by form: a stake reads <code>Log watering</code>, a chip
+              reads <code>Problems</code>. Read as two lists, the verbs and the
+              places never mix.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Write "View problems" on a chip or "Go to watering" on a stake.
+              The form has already said which it is, so the extra verb only
+              gives you a way to contradict it (C14).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The apparatus register and its member labels are owned by
+          <a href="../components/chrome.html">chrome</a>. The recap contract
+          and the four questions a focused card answers are owned by
+          <a href="../components/node.html">node</a> and
+          <a href="../components/focus-panel.html">focus panel</a>. The two
+          forms are owned by
+          <a href="../components/action-rail.html">action rail</a> and
+          <a href="../components/navigate-to.html">navigate to</a>, drawn
+          rather than iconographic per
+          <a href="../foundations/iconography.html">iconography</a>. The
+          "+N more" label and the rule that produces it are owned by
+          <a href="../components/aggregate.html">aggregate</a>. The state
+          materials and the probe belong to
+          <a href="../patterns/degradation.html">degradation</a>; the one path
+          that writes the live sentence to
+          <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../patterns/arrivals.html">arrivals</a>; health and
+          confidence to <a href="../components/vitals.html">vitals</a> and
+          <a href="../components/treatment-course.html">treatment course</a>.
+          The rungs these registers are set on are on
+          <a href="../foundations/typography.html">typography</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-problems"],
+        ["n-office", "n-problems"],
+        ["n-office", "n-j1"],
+        ["n-j1", "n-problems"]
+      ],
+      actions: {
+        "n-garden": ["Add a plant"],
+        "n-office": ["Log watering", "Note what you saw"],
+        "n-problems": ["Note what you saw"],
+        "n-j1": ["Retake the photo"]
+      }
+    });
+  </script>
+</body>
+</html>

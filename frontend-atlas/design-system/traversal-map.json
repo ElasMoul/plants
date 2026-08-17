@@ -1,0 +1,138 @@
+{
+  "document": "traversal-map",
+  "system": "Rhizome",
+  "slug": "plantpal-cae942ee",
+  "version": "1.0.0",
+  "regime": "atlas-class",
+  "doctrine_refs": ["Sec.11 R3", "Sec.11 R12", "Sec.8 C1", "Sec.8 C3", "Sec.8 C10", "Sec.8 C11", "Sec.8 C14", "Sec.8 C15", "Sec.8 C18", "Sec.8 C21"],
+  "invariant_refs": ["C1", "C2", "C3", "C4", "C6", "C10", "C11", "C14", "C15", "C18", "C21"],
+
+  "single_source_of_truth": {
+    "statement": "The edge list is declared once, as RZ.EDGES. The drawn veins, the keyboard direction-finder, the Navigate-to panel, the world-view lines, every degree count and the multi-hop route finder are ALL generated from it.",
+    "consequence": "A drawn edge that is not traversable cannot exist, and a traversable edge that is not drawn cannot exist. Endpoints are read from the node records, so no line can terminate where no node is.",
+    "redraw_never_append": "RZ.drawVeins() clears and regenerates the whole vein layer from RZ.EDGES. Nothing is ever appended to what is already drawn, which is what stops duplicate veins appearing after a drag.",
+    "same_plane": "The vein layer is a CHILD of the transformed plane, painted beneath the cards. It is not a sibling of the camera. A vein layer outside the plane does not move with the camera and is a shipping bug.",
+    "degree_is_real": "Every count the interface shows -- '6 veins out', the Navigate-to header, a collection's '12 plants' -- is RZ.adj[id].length or the collection's own member count, never a literal."
+  },
+
+  "reference_graph": {
+    "note": "The canonical PlantPal graph a page or theme demonstrates against. A page may extend it; it may not contradict it.",
+    "nodes": [
+      { "id": "n-garden", "kind": "collection", "name": "My garden", "cell": "0,4" },
+      { "id": "n-species", "kind": "collection", "name": "Species", "cell": "0,1" },
+      { "id": "n-fig", "kind": "species", "name": "Fiddle-leaf Fig", "cell": "2,3" },
+      { "id": "n-monstera", "kind": "species", "name": "Monstera", "cell": "2,1" },
+      { "id": "n-species-more", "kind": "collection", "name": "+26 more species", "cell": "2,6", "aggregate": true },
+      { "id": "n-office", "kind": "plant", "name": "Office Fig", "cell": "4,5" },
+      { "id": "n-studio", "kind": "plant", "name": "Studio Fig", "cell": "4,7" },
+      { "id": "n-garden-more", "kind": "collection", "name": "+10 more plants", "cell": "4,9", "aggregate": true },
+      { "id": "n-care", "kind": "guide", "name": "Care guide", "cell": "6,1" },
+      { "id": "n-problems", "kind": "collection", "name": "Problems", "cell": "6,4" },
+      { "id": "n-underwater", "kind": "problem", "name": "Underwatering", "cell": "8,3" },
+      { "id": "n-overwater", "kind": "problem", "name": "Overwatering", "cell": "8,5" },
+      { "id": "n-rootrot", "kind": "problem", "name": "Root rot", "cell": "8,7" },
+      { "id": "n-treatment", "kind": "problem", "name": "Treatment course", "cell": "10,5" },
+      { "id": "n-journal", "kind": "collection", "name": "Journal", "cell": "6,7" },
+      { "id": "n-j1", "kind": "journal", "name": "Jul 18 photo", "cell": "8,9" },
+      { "id": "n-j2", "kind": "journal", "name": "Jul 15 watering", "cell": "8,10" },
+      { "id": "n-journal-more", "kind": "collection", "name": "+12 more entries", "cell": "6,10", "aggregate": true },
+      { "id": "n-ident", "kind": "platform", "name": "Identification", "cell": "4,1" },
+      { "id": "n-reminders", "kind": "collection", "name": "Reminders", "cell": "2,8" },
+      { "id": "n-platform", "kind": "platform", "name": "Platform link", "cell": "10,1" },
+      { "id": "n-unknown", "kind": "region", "name": "Unloaded region", "cell": "6,9", "unknown": true }
+    ],
+    "edges": [
+      { "from": "n-species", "to": "n-fig", "kind": "collection -> member", "why_drawn": "highest-ranked of 28 species (1 overdue action)" },
+      { "from": "n-species", "to": "n-monstera", "kind": "collection -> member", "why_drawn": "2nd-ranked of 28 (wants repotting)" },
+      { "from": "n-species", "to": "n-species-more", "kind": "collection -> aggregate", "why_drawn": "the density rule's single aggregate for the other 26" },
+      { "from": "n-fig", "to": "n-garden", "kind": "species -> its plants collection" },
+      { "from": "n-fig", "to": "n-care", "kind": "species -> care guide" },
+      { "from": "n-fig", "to": "n-problems", "kind": "species -> problems collection" },
+      { "from": "n-fig", "to": "n-journal", "kind": "species -> journal" },
+      { "from": "n-fig", "to": "n-ident", "kind": "species -> identification" },
+      { "from": "n-fig", "to": "n-platform", "kind": "species -> platform link" },
+      { "from": "n-garden", "to": "n-office", "kind": "collection -> member", "why_drawn": "1st by overdue days (2)" },
+      { "from": "n-garden", "to": "n-studio", "kind": "collection -> member", "why_drawn": "2nd -- under treatment" },
+      { "from": "n-garden", "to": "n-garden-more", "kind": "collection -> aggregate", "why_drawn": "the other 10 plants" },
+      { "from": "n-garden", "to": "n-reminders", "kind": "collection -> reminders" },
+      { "from": "n-problems", "to": "n-underwater", "kind": "collection -> member", "why_drawn": "3 members, below threshold, so all three are drawn" },
+      { "from": "n-problems", "to": "n-overwater", "kind": "collection -> member", "why_drawn": "below threshold" },
+      { "from": "n-problems", "to": "n-rootrot", "kind": "collection -> member", "why_drawn": "below threshold" },
+      { "from": "n-underwater", "to": "n-treatment", "kind": "problem -> treatment course" },
+      { "from": "n-rootrot", "to": "n-treatment", "kind": "problem -> treatment course", "note": "the shared course is part of what makes this a graph rather than a tree (C6)" },
+      { "from": "n-treatment", "to": "n-care", "kind": "treatment course -> guide" },
+      { "from": "n-journal", "to": "n-j1", "kind": "collection -> member", "why_drawn": "most recent entry" },
+      { "from": "n-journal", "to": "n-j2", "kind": "collection -> member", "why_drawn": "2nd most recent" },
+      { "from": "n-journal", "to": "n-journal-more", "kind": "collection -> aggregate", "why_drawn": "the other 12 entries" },
+      { "from": "n-ident", "to": "n-care", "kind": "identification -> guide" },
+      { "from": "n-garden-more", "to": "n-unknown", "kind": "aggregate -> unloaded region", "note": "traversal into the unknown is allowed and never dead-ends (C23)" },
+      { "from": "n-j1", "to": "n-office", "kind": "entry -> the plant it is about", "note": "a cross-branch edge; with the shared treatment course above it is why Sec.4's discriminator puts this surface in the atlas regime" }
+    ],
+    "edge_count": 25,
+    "node_count": 22
+  },
+
+  "every_edge_is_real": {
+    "drawn_before_the_click": "All veins are in the DOM at first paint, before any interaction, so every navigation follows an edge that was visible beforehand (C1).",
+    "no_invented_paths": "RZ.go(target) resolves the route with a breadth-first search over the same adjacency. If no route exists it returns and nothing happens -- the interface never fabricates a hop.",
+    "aggregate_edges_are_edges": "An aggregate node is a first-class node with its own cell and its own veins. It is not a UI affordance dressed as one."
+  },
+
+  "pointer_traversal": {
+    "whole_card": "A non-focused card is clickable across its entire surface and takes the pointer cursor to say so.",
+    "exceptions": "The card's own controls, an explicit in-card hop, a stake, and any ordinary link inside node prose. Each has its own handler and is never swallowed by the card-level listener.",
+    "pointer_precedence": "1. The board's pan handler returns immediately if the pointer went down inside a card. 2. The card's travel listener stands aside for [data-rz-goto], .rz-stake, .rz-chip, button, and a. 3. In Arrange mode the card listener becomes the drag handle and every other interaction is inert. Node interiors are ordinary documents and their prose may carry real links that traverse the graph.",
+    "navigate_to_panel": "The Navigate-to panel lists exactly RZ.adj[focus] and is rebuilt on every hop, so it can never show a stale or invented neighbour.",
+    "cursors": {
+      "board": "grab; grabbing while panning",
+      "inside a node": "default over text, pointer over links and buttons, not-allowed on a refused control",
+      "arrange mode": "move -- deliberately not grab, which is reserved for the board",
+      "scaled app card in overview": "zoom-in",
+      "forbidden": "grab anywhere inside a card"
+    },
+    "gestures": {
+      "Alt+wheel": "zoom, so a bare wheel is free to scroll the focused node's own content",
+      "drag on board": "pan",
+      "click on non-focused card": "travel"
+    }
+  },
+
+  "keyboard_traversal": {
+    "follows_the_graph_not_the_dom": "Arrow keys pick the neighbour that actually lies in that direction, computed from the neighbours' real positions -- not the next element in document order.",
+    "keys": {
+      "ArrowLeft / ArrowRight / ArrowUp / ArrowDown": "propose the nearest real neighbour that way and announce it with its recap",
+      "Enter or Space": "travel to the proposed neighbour",
+      "Tab": "cycle the focused node's neighbours in graph order, announcing 'vein N of M'",
+      "Escape": "return along the path travelled -- a real edge, not a history stack",
+      "Escape (in Arrange mode)": "leave the mode; the only key the mode answers, so a keyboard user is never trapped"
+    },
+    "no_dead_directions": "If no vein lies that way the interface says so by name rather than silently doing nothing.",
+    "announcement": "Every focus change is announced through a polite live region naming the origin, the destination, any nodes crossed (and that none of them opened), and the new degree (C18).",
+    "world_view_label": "The persistent world view's accessible label is rewritten on every hop in lockstep with the visible you-are-here, and names the node, its kind and the whole path travelled -- never a lattice coordinate.",
+    "rtl": "Logical properties throughout, so nothing points the wrong way in RTL."
+  },
+
+  "travel_choreography": {
+    "along_the_edges": "The camera centre is driven along the polyline of the real edges of the route, by arc length -- never a straight cut across empty space (C11).",
+    "one_timing": "parameters.nav_ms = 300, one easing, for every navigation on the screen regardless of distance or trigger: a card click, an in-card link, a breadcrumb, a Navigate-to entry, a keyboard Enter, a search arrival, a notification arrival. There is exactly one code path, RZ.travel.",
+    "per_component_timing_is_a_defect": "A component or page that picks its own navigation duration is non-conformant. Motion documents a prohibition, not a scale.",
+    "multi_hop": "Nodes the route passes through are lit as the camera reaches them and are never expanded. Only the destination opens.",
+    "interruption_policy": "A second hop requested while a hop is in flight is REFUSED, not queued and not blended: RZ.go returns immediately while RZ.travelling is true, and the live region says 'still travelling'. One camera, one owner, one movement (C16). The in-flight hop always completes, so the user never lands somewhere they did not ask for.",
+    "nothing_teleports": "Every focus change travels; nothing fades, pops or is replaced (C4, C10).",
+    "search_and_notifications": "Both state the distance in hops and then cross it along the real veins rather than cutting to the destination (C21).",
+    "reduced_motion": "The route's trail is drawn along the real edges and held so direction and distance are still stated, and the you-are-here has already moved -- no transition is replaced by an abrupt swap (C13)."
+  },
+
+  "navigation_vs_mutation": {
+    "two_forms_only": "Inside a node a mutation is a FILLED STAKE; a traversal is an OUTLINED CHIP with a directional caret. Neither form may appear in chrome: inside chrome the same two meanings are carried by a LEADING MARK -- a filled square for a mutation, an arrow for a traversal (C14).",
+    "camera_is_a_third_category": "Zoom, Fit, Recentre and pan change the view and never the focus, and change no data. Looking around is not navigating (C16).",
+    "separation": "No mutating affordance moves the camera; no navigation affordance changes data; no dialog contains a traversal (C15)."
+  },
+
+  "verification": {
+    "drawn_equals_traversable": "Iterate the .rz-vein elements and check each one's data-a/data-b pair is present in RZ.EDGES, and that every RZ.EDGES pair has a .rz-vein. Both directions hold, because both sets are generated from the same array in the same pass.",
+    "degree_equals_count": "For each node, RZ.adj[id].length equals the number of veins touching it and equals the number the Navigate-to header prints.",
+    "one_timing": "Instrument RZ.travel and trigger every navigation affordance on the page: each call receives PARAMS.nav_ms and no other duration appears.",
+    "camera_follows_the_edge": "Sample the camera centre each frame during a multi-hop and assert every sample lies on the route polyline within one pixel."
+  }
+}

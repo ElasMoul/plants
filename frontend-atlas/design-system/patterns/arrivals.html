@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrivals · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Arrivals</h1>
+      <p class="doc-lede">An arrival is how you reach something you did not walk
+        to: you searched for it, or it started needing you. This page settles
+        what an arrival is allowed to be — an offer that states the distance
+        first and then crosses it on the veins, never a jump that drops you
+        somewhere with no account of how you got there.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You are standing at your garden and you type “fig”. Your Office Fig
+          is four veins away, through the fig itself, its problems and the
+          underwatering it is on. The search hit says so before you touch it,
+          and taking it runs exactly the crossing a click on the card would have
+          run: the camera picks you up at your garden, takes those four veins in
+          turn, lights what it passes without opening it, and comes to rest with
+          the fig open. The same is true of a reminder: the fig needing water
+          today does not move you, it offers you a trip and tells you how far it
+          is.</p>
+        <p>That is the whole pattern. An arrival chooses the <em>destination</em>;
+          it never gets a different way of getting there. It is the one place in
+          PlantPal where you may be offered something that is not next door, and
+          it pays for that by writing the distance out in front of you.</p>
+        <div class="doc-note">
+          <p>This page owns the arrival: what it may offer, what it must state
+            first, and the rule that nothing arrives by moving you. The crossing
+            itself — the timing, the arc-length path, the multi-hop rule, the
+            interruption policy and reduced motion — is owned by
+            <a href="traversal.html">traversal</a> and is cited here, never
+            restated. An arrival into something not yet fetched is
+            <a href="degradation.html">degradation</a>; the very first arrival a
+            new gardener ever sees is <a href="day-zero.html">day zero</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C21</span></p>
+          <p class="doc-law__statement">An arrival states the distance before it
+            is taken and then crosses it on the one code path. “Search and
+            notification arrivals show the distance being crossed rather than
+            cutting to the destination.” The hop count is on the offer, in words,
+            before anything is activated.</p>
+          <p class="doc-check">Instrument <code>RZ.travel</code>. Take a search
+            arrival and a reminder arrival: both call it with the same chain
+            <code>RZ.route(RZ.focus, target)</code> returns for a card click, and
+            both receive <code>RZ.PARAMS.nav_ms</code> — one code path, no second
+            duration. Then read each offer with the world hidden: the number of
+            veins it costs is legible from the offer alone.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C1, C2</span></p>
+          <p class="doc-law__statement">An arrival may only offer somewhere the
+            plane already drew. “Every navigation follows an edge that was
+            visible before the click.” If <code>RZ.route</code> finds no way
+            through, the arrival is not offered — a result the world cannot reach
+            is a defect in the graph, not a licence to invent a hop.</p>
+          <p class="doc-check">For every arrival offer on the page, assert
+            <code>RZ.route(RZ.focus, id).length &gt;= 2</code> and that each
+            consecutive pair is in <code>RZ.EDGES</code> with a drawn
+            <code>.rz-vein</code> in the DOM at first paint. After landing,
+            assert the node you came from still has a rendered element carrying a
+            rank attribute, and that <code>history.length</code> is
+            unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">Nothing arrives by moving you. A reminder
+            firing, a health score landing or an identification finishing may
+            offer a trip; only your own activation takes it. “There is exactly
+            one focal point, it owns the camera, and the camera never moves
+            without a user-attributable reason.”</p>
+          <p class="doc-check">Raise every arrival this page can raise and then
+            idle 60s: the camera transform is byte-identical, exactly one element
+            carries <code>data-focus="true"</code>, and it is the same element as
+            before. Diff every node's computed <code>left</code>/<code>top</code>
+            across the same window: an arrival is not a structural change, so
+            nothing moved.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">An arrival wears the traversal form and
+            no other. “A user can tell navigation from mutation before activating
+            it, from form alone.” Inside a card an offer is an outlined chip with
+            a caret; inside chrome it is the leading arrow mark. An arrival is
+            never a filled stake, because taking one changes nothing in your
+            garden.</p>
+          <p class="doc-check">Mask the text on every arrival offer and screenshot
+            it: each is a chip or a <code>.rz-chrome__item[data-means="travel"]</code>,
+            and none is a <code>.rz-stake</code>. Activate every offer and assert
+            no record field changed — only the focus and the camera did.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C13, C18</span></p>
+          <p class="doc-law__statement">An arrival is heard as well as seen, and
+            survives reduced motion. The distance is spoken before the crossing
+            and the landing is spoken after it, and “under prefers-reduced-motion,
+            direction is still shown and the you-are-here still updated — with no
+            transition replaced by an abrupt swap.”</p>
+          <p class="doc-check">With a screen reader, take an arrival: the polite
+            live region reads the hop count first and then names the origin, what
+            was crossed without opening, and the new degree. Set
+            <code>data-motion="reduced"</code> and take it again:
+            <code>#rz-trail</code> carries <code>data-on="true"</code> with a
+            <code>d</code> equal to <code>RZ.chainD(chain)</code>, and both the
+            world-view marker and its accessible label have moved.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Arrive at something</h2>
+        <p>You are at your garden. Two things have arrived: a search you ran for
+          “fig”, and a reminder that the Office Fig wants water today. Both are
+          offers sitting in the card you are already reading, both say how far
+          they are, and neither of them has moved you. Take one and watch the
+          camera take the veins in turn — the same crossing the cards themselves
+          would have run, at the same timing.</p>
+        <p>The veins-away count on each offer is written by the runtime from the
+          real route, not typed into this page. Drag nothing, change nothing:
+          come back with <em>My garden</em> in you-are-here and take the other
+          one.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Your garden, with two things that have arrived. Take an offer to cross to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,2"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p class="rz-label">Today</p>
+                        <p>Your Office Fig wants water — it is two days over.
+                          Nothing has moved; when you want to go and see it, this
+                          is the way:</p>
+                        <p><button type="button" class="rz-chip" data-rz-goto="n-office"
+                                   data-rz-arrival="Office Fig">Office Fig</button></p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p class="rz-label">You searched for “fig”</p>
+                        <p>Three things in your garden answer to it. Each one
+                          says how far it is from where you are standing, so you
+                          can choose the near one if that is all you wanted.</p>
+                        <p><button type="button" class="rz-chip" data-rz-goto="n-fig"
+                                   data-rz-arrival="Fiddle-leaf Fig">Fiddle-leaf Fig</button></p>
+                        <p><button type="button" class="rz-chip" data-rz-goto="n-treatment"
+                                   data-rz-arrival="Treatment course">Treatment course</button></p>
+                        <p>One more photo might be a fig — it is too dark to be
+                          sure, so we have not offered it as one.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>You arrived here from a reminder, and the reminder
+                          changed nothing on the way. Watering it is a separate
+                          decision, in a separate form.</p>
+                        <p><button type="button" class="rz-stake">Log a watering</button></p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-fig" data-cell="4,3"
+                         data-kind="Species" data-kind-key="species"
+                         data-name="Fiddle-leaf Fig" data-recap="2 of your plants · 1 overdue">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Species</p>
+                  <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span> · 2 of your plants
+                    <span class="rz-n__recap-second">· 1 overdue</span></p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="6,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+
+                <article class="rz-n" id="n-underwater" data-cell="8,3"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Underwatering" data-recap="Seen on 2 of your plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Underwatering</h3>
+                  <p class="rz-n__recap">Seen on 2 of your plants
+                    <span class="rz-n__recap-second">· one course running</span></p>
+                </article>
+
+                <article class="rz-n" id="n-treatment" data-cell="10,4"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Treatment course" data-recap="Step 2 of 4 · next step Friday">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Treatment course</p>
+                  <h3 class="rz-n__name">Treatment course</h3>
+                  <p class="rz-n__recap">Step 2 of 4
+                    <span class="rz-n__recap-second">· next step Friday</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-course">
+                        <div class="rz-course__step" data-done="true">
+                          <span class="rz-course__mark">Done</span>
+                          <span>Move it out of the draught</span>
+                        </div>
+                        <div class="rz-course__step" data-due="true">
+                          <span class="rz-course__mark">Friday</span>
+                          <span>Check the leaf tips again</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <div class="rz-chrome rz-chrome--gesture">
+                <p>Drag to pan · Alt and wheel to zoom · arrows follow the veins</p>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Two arrivals, each stating its distance, neither moving you</span>
+            <span>C1 · C14 · C15 · C16 · C21</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Nothing about the crossing is written on this page. The offers are
+          ordinary in-card hops; the route, the lighting, the timing and the
+          announcement come from the runtime, and the veins-away figure is read
+          back from the same route the camera will take.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-garden",
+  path: ["n-garden"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-office", "n-fig"],
+    ["n-fig", "n-problems"],
+    ["n-problems", "n-underwater"],
+    ["n-underwater", "n-treatment"]
+  ]
+});
+
+// what an arrival must be able to say, BEFORE it moves anything:
+RZ.route("n-garden", "n-treatment").length - 1;   // -&gt; 5 veins away
+
+// and how it crosses: the same call a card click makes.
+RZ.go("n-treatment");</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">One arrival, in order</h3>
+        <p>Four beats, always these and always this way round. <strong>It is
+          offered</strong> — the offer appears where you are already looking, in
+          the traversal form, with its distance written on it, and the world does
+          not stir. <strong>You take it</strong> — nothing at all happens until
+          you do; an offer you never read has changed nothing. <strong>The
+          distance is spoken</strong> — the live region says how far before the
+          camera starts, so the count is not something only a sighted reader
+          gets. <strong>The crossing runs</strong> — and from that point on this
+          is not an arrival any more, it is
+          <a href="traversal.html">traversal</a>, on its path and its timing,
+          with the landing announced the way every landing is.</p>
+
+        <h3 class="doc-h3">An arrival has no furniture of its own</h3>
+        <p>There is no arrivals dock, no toast layer and no notification tray in
+          this system, and adding one would be a new chrome member. An arrival
+          borrows a form that already exists: inside a card it is a chip in the
+          prose, and where it belongs to the fixed furniture it is a chrome item
+          with the travel mark, in the panel that already owns destinations —
+          <a href="../components/navigate-to.html">navigate to</a>. The register
+          those two forms belong to is
+          <a href="../components/chrome.html">chrome</a>. Nothing floats over the
+          world, because a thing that floats over the world hides part of it and
+          the geography is the one thing that never degrades.</p>
+
+        <h3 class="doc-h3">What an arrival may and may not do</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The offer's own contract</caption>
+            <thead><tr><th>Attribute or call</th><th>Form</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-rz-goto="&lt;id&gt;"</code></td>
+                <td>Outlined chip with a caret</td>
+                <td>An offer inside a card. Calls <code>RZ.go(id)</code>, so the
+                  crossing is the card click's crossing.</td>
+              </tr>
+              <tr>
+                <td><code>data-means="travel"</code></td>
+                <td>Chrome item, leading arrow mark</td>
+                <td>The same offer where it belongs to the fixed furniture.
+                  Chrome admits no chips and no stakes.</td>
+              </tr>
+              <tr>
+                <td><code>RZ.route(RZ.focus, id)</code></td>
+                <td>Read, not drawn</td>
+                <td>The distance the offer prints, minus one. An offer that
+                  cannot resolve a route is not shown at all.</td>
+              </tr>
+              <tr>
+                <td><code>RZ.say(text)</code></td>
+                <td>Polite live region</td>
+                <td>The distance, spoken before the crossing starts.</td>
+              </tr>
+              <tr>
+                <td><code>RZ.go(id)</code></td>
+                <td>No form of its own</td>
+                <td>The single door. An arrival never calls
+                  <code>RZ.travel</code> directly and never sets the focus
+                  itself.</td>
+              </tr>
+              <tr>
+                <td><code>RZ.zoomBy</code>, <code>RZ.recentre</code>,
+                  <code>RZ.fitAll</code></td>
+                <td>Camera cluster</td>
+                <td>Never touched by an arrival. Looking around is not
+                  navigating, and an arrival is not allowed to look around for
+                  you.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What a theme may set</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">An arrival's values</caption>
+            <thead><tr><th>Token or parameter</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-vital</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital)"></span></td>
+                <td>The offer's ink and rim: this will take you somewhere, and it
+                  will not change anything.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital-quiet</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-quiet)"></span></td>
+                <td>The offer under the pointer. A hover state, never a second
+                  form.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital-bright</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-bright)"></span></td>
+                <td>The trail the crossing leaves, and the whole of what reduced
+                  motion keeps: the distance, drawn on the real veins.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-mutate</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-mutate)"></span></td>
+                <td>Deliberately absent from an arrival. It appears here only so
+                  a theme can check its offers never wear it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-param-nav-ms</code></td>
+                <td></td>
+                <td>The crossing's one timing, read from the declared parameter.
+                  An arrival does not get its own, near or far — the prohibition
+                  is carried by <a href="../foundations/motion.html">motion</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>The distance has to be heard, not only read. Before the camera moves,
+          the polite live region says how many veins the crossing is; when it
+          lands, the ordinary landing announcement names where you came from,
+          what you crossed without opening, and how many veins lead out from
+          where you now are. A sighted reader and a screen-reader reader are told
+          the same two things in the same order, so nobody is asked to infer the
+          distance from a sweep they cannot see.</p>
+        <p>An arrival never takes the caret. It appears in the page in reading
+          order, in the card you are already in, and waits to be tabbed to —
+          because a control that grabs focus has moved you without asking, which
+          is the exact failure Law 3 exists to prevent. When you do take it, the
+          runtime hands focus to the destination card, so you are reading where
+          you are standing.</p>
+        <p>Nothing is timed out of reach. An offer does not expire, cannot be the
+          only route to a place, and never has to be caught: the plant it is
+          about is still sitting in the world, still reachable by walking the
+          veins. Time pressure is not a way to tell somebody about their
+          garden.</p>
+        <p>An offer is told apart from a mutation by form, not by colour — an
+          outline and a caret against a filled stake — so it survives without
+          colour vision and in either theme. Under reduced motion the crossing's
+          trail is drawn along the real veins and held, and the you-are-here has
+          already moved, so distance and direction survive when the sweep is
+          spent. Logical properties throughout, so the caret and the arrow mark
+          point the right way in RTL.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Every mistake here is a version of the same one: letting the system
+          decide the reader is somewhere else now. An arrival is an offer. If the
+          user did not activate it, nothing may have happened.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Print the real distance on the offer — “five veins away”, read
+              from <code>RZ.route</code> — and speak it before the crossing
+              starts. The count is what turns a result into a place you can put
+              on your own map (Law 1, C21).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Cut straight to the destination because it was searched for
+              rather than walked to. A search hit that teleports leaves the
+              reader somewhere new with no account of the distance, and no idea
+              how to get back (C21, C11).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a reminder sit in the card as an offer and leave the world
+              exactly where the reader put it. The fig has needed water since
+              this morning; it can wait for the reader's own hand (Law 3,
+              C16).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Move the camera, or re-rank the cards, because something arrived.
+              A notice that repositions the world takes the reader's place away
+              to tell them about a plant, and no non-structural change may move
+              anything (C9, C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw an offer as an outlined chip with a caret, so the reader can
+              see it will take them somewhere and change nothing before they
+              touch it (Law 4, C14).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Draw it as a filled stake, or fold a mutation into it — “water it
+              and go there”. The two meanings have two forms precisely so a
+              reader never has to guess which one they are about to do (C14,
+              C15).</p>
+          </div>
+        </div>
+
+        <p>Three more, stated as rules. <strong>Never raise an arrival about the
+          card the reader is already looking at</strong> — a watering they just
+          logged or a count going up updates in place, silently, where it
+          happened; an offer to travel nowhere teaches people to ignore the
+          offers that matter. <strong>One offer at a time per plant.</strong>
+          Three notices about the same fig turn a plant that wants a drink into
+          a wall of alarm, and this is an app about relief from guilt.
+          <strong>Say so when you are unsure.</strong> If a match is a guess,
+          write that it is a guess in plain words rather than ranking it quietly
+          in among the certain ones.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The crossing an arrival hands over to is
+          <a href="traversal.html">traversal</a>, which owns the timing, the
+          arc-length path and the interruption policy; the prohibition on a
+          per-component duration is carried by
+          <a href="../foundations/motion.html">motion</a>. The routes are
+          resolved over the single edge list at
+          <a href="../components/edge.html">edge</a>, on the plane at
+          <a href="../components/world.html">world</a>; the cards an arrival
+          offers and lands on are <a href="../components/node.html">node</a>. The
+          panel that already owns destinations is
+          <a href="../components/navigate-to.html">navigate to</a>, and the
+          register it belongs to is
+          <a href="../components/chrome.html">chrome</a>; the filled stakes an
+          arrival must never wear are
+          <a href="../components/action-rail.html">action rail</a>. The marker
+          that answers where you landed is
+          <a href="../components/minimap.html">minimap</a>. An arrival into
+          something not yet fetched, or refused because you are offline, is
+          <a href="degradation.html">degradation</a>; the first arrival in a new
+          garden is <a href="day-zero.html">day zero</a>. The announcement
+          contract in full is
+          <a href="../guidelines/accessibility.html">accessibility</a>, and the
+          two forms and their pointer behaviour are
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime, then asks the runtime — not this
+       page — how far each offer is, and has it speak the distance before the
+       crossing starts. Nothing about the crossing itself is implemented here. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-office", "n-fig"],
+        ["n-fig", "n-problems"],
+        ["n-problems", "n-underwater"],
+        ["n-underwater", "n-treatment"]
+      ]
+    });
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-rz-arrival]"),
+      function (offer) {
+        var to = offer.dataset.rzGoto;
+        var name = offer.dataset.rzArrival;
+        var veins = Math.max(0, RZ.route(RZ.focus, to).length - 1);
+        offer.textContent = name + " · " + veins + " veins away";
+        offer.addEventListener("click", function () {
+          RZ.say(name + " is " + veins + " veins from here. Crossing them now.");
+        }, true);
+      }
+    );
+  </script>
+</body>
+</html>

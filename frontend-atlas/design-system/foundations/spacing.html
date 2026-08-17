@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spacing · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Spacing</h1>
+      <p class="doc-lede">Two kinds of distance, and this page settles both: the gaps inside a card, which come off one scale, and the distance between cards in your garden, which is not a gap at all but a lattice — a cell written into the card and a formula that turns it into a position.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is one plane with your plants, your problems, your guides and your journal standing on it. Where each of those stands is not a layout decision made at render time; it is a cell that belongs to the record, the way its name does. A card knows it lives at column 8, row 4, and it will still be there tomorrow, after you add ten more plants, after a status changes, after a reload. That is what spacing means in an atlas: not air, but geography.</p>
+        <p>So there are two vocabularies on this page and they never mix. Inside a card, distance is the space scale — <code>--rz-space-1</code> to <code>--rz-space-10</code>, and the five gutters named on top of it — and a theme may re-pitch those to make the system denser or airier. Outside a card, distance is the lattice: a pitch, an origin, and a cell per node, declared once in <a href="../constitution.json">constitution.json</a> and read by both the stylesheet and the script. The lattice is not on the space scale and never has been. Nothing about a plant's position is a margin.</p>
+        <p>This page also carries the density rule, because density is a spacing question before it is anything else: how many cards a collection is allowed to put on the plane. It is stated here and on <a href="../components/aggregate.html">aggregate</a>, and nowhere else in the system.</p>
+        <div class="doc-note">
+          <p>Never say a cell out loud. Column, row, pitch and lattice are the system's private words. A card that stands for a collection says “Plants&nbsp;·&nbsp;12 plants”, never “column 6, row 4”.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C7</span></p>
+          <p class="doc-law__statement">“Two consecutive loads of the same graph lay out identically, with positions derived deterministically and persisted -- never from a live simulation or render order.” Position is the formula <code>origin + cell × pitch + the offset you dragged</code>, and there is no other way a card gets a place.</p>
+          <p class="doc-check">Load this page twice and diff the computed <code>left</code>/<code>top</code> of every <code>.rz-n</code>: equal. Then reverse the order of the card elements in the plane and reload: still equal, because the position was read from <code>data-cell</code> and not from where the card sat in the document. Then check the arithmetic by hand on any one card — <code>RZ.nodes["n-plants"].x</code> is <code>origin_x + col × pitch_x</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C8</span></p>
+          <p class="doc-law__statement">“Inserting a node leaves existing nodes put, and the design states its placement rule, its density strategy, and its growth ceiling.” A new card takes the lowest free row in the column its relationship assigns it; it never pushes, re-flows or renumbers anything already standing.</p>
+          <p class="doc-check">Call <code>RZ.freeCell(8)</code> for the column the new card belongs to, add a card at the cell it returns, and reload: every pre-existing card's computed <code>left</code>/<code>top</code> is unchanged. The worked case is the one to run — adding a thirteenth plant to your garden does not move Office Fig; either it outranks a drawn plant and the loser joins the aggregate, or only the aggregate's count changes.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">“No non-structural data change (status, count, new attachment) moves anything.” Watering a plant, a health reading arriving, a photo attaching, a count going from 12 to 13 — none of these is a position event.</p>
+          <p class="doc-check">Record every card's computed <code>left</code>/<code>top</code> and <code>RZ.extent()</code>. Change a card's <code>data-recap</code>, its health reading and its count. Diff: nothing moved and the extent is identical. Only two things ever change a position — a drag in <a href="../patterns/arrange-mode.html">arrange mode</a>, and a genuinely new card taking a free cell.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C8</span></p>
+          <p class="doc-law__statement">Density is one rule with two branches, parameterised: for any card joined to a collection of siblings of one kind, fewer than <code>--rz-param-density-threshold</code> members are all drawn; at or above it, the <code>--rz-param-density-shown</code> highest-ranked are drawn plus exactly one aggregate standing for the rest, labelled “+N more”. Ranking comes from your own garden — most overdue, then needing treatment, then most opened — never alphabetical, never insertion order.</p>
+          <p class="doc-check">For every collection card on the plane assert <code>drawn === (members &lt; 4 ? members : 2)</code>, that an aggregate exists exactly when <code>members &gt;= 4</code>, and that its count equals <code>members - 2</code>. Both branches are drawn in the specimen below, side by side; one branch alone reads as an example rather than a rule.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C7, C9</span></p>
+          <p class="doc-law__statement">The two vocabularies never cross. A gap inside a card comes from the space scale; a distance between cards comes from the lattice. No card is ever positioned by a margin, a transform written on the page, or a flow.</p>
+          <p class="doc-check">Search every page and stylesheet for a <code>margin</code>, <code>inset</code> or <code>transform</code> applied to <code>.rz-n</code>: the only ones are <code>system.css</code>'s centring <code>translate(-50%, -50%)</code> and the <code>left</code>/<code>top</code> written by <code>RZ.place()</code>. Then call <code>RZ.verifyParameters()</code>: it returns <code>[]</code>, proving the pitch the stylesheet holds and the pitch the script places from are the same number.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">The lattice, and both branches of the density rule</h3>
+        <p>One garden, two collections. Problems holds three, so all three are drawn. Plants holds twelve, so the two that want you most are drawn and a third card stands for the other ten — and that card is a real place: it has its own cell, its own veins, its own count, and you can travel into it. Every position on this plane came out of the formula; nothing here was placed by hand.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0" role="application"
+                 aria-label="A garden showing both branches of the density rule. Click a card to travel to it; arrow keys pick a vein.">
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="4,3"
+                         data-kind="PlantPal" data-kind-key="platform"
+                         data-name="Your garden" data-recap="12 plants · 3 problems open">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">PlantPal</p>
+                  <h3 class="rz-n__name">Your garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">3 problems open</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Two collections lead out of here, and they are drawn by the same rule. One is small enough to show whole. The other is not, so it shows you its two most pressing plants and keeps the rest one hop away.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="6,1"
+                         data-kind="Problems" data-kind-key="problem"
+                         data-name="Problems" data-recap="Problems · 3 active">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problems</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">Under the threshold, so all three are drawn</span></p>
+                </article>
+
+                <article class="rz-n" id="n-leaf-spot" data-cell="8,0"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf spot" data-recap="In treatment, second week">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf spot</h3>
+                  <p class="rz-n__recap">In treatment, second week
+                    <span class="rz-n__recap-second">Next step due tomorrow</span></p>
+                </article>
+
+                <article class="rz-n" id="n-overwatering" data-cell="8,1"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Overwatering" data-recap="Watch the Studio Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Overwatering</h3>
+                  <p class="rz-n__recap">Soil still wet after a week
+                    <span class="rz-n__recap-second">Two plants affected</span></p>
+                </article>
+
+                <article class="rz-n" id="n-root-rot" data-cell="8,2"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Root rot" data-recap="Caught early, one plant">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Root rot</h3>
+                  <p class="rz-n__recap">Caught early
+                    <span class="rz-n__recap-second">One plant, repotted</span></p>
+                </article>
+
+                <article class="rz-n" id="n-plants" data-cell="6,4"
+                         data-kind="Plants" data-kind-key="collection"
+                         data-name="Plants" data-recap="Plants · 12 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plants</p>
+                  <h3 class="rz-n__name">Plants</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">Two drawn, ten kept one hop away</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office-fig" data-cell="8,3"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Watering overdue by 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Watering overdue by 2 days
+                    <span class="rz-n__recap-second">The most overdue thing you own</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <div class="rz-n__section">
+                        <div class="rz-vitals">
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Health</span>
+                            <span class="rz-health" data-health="watch">Keep an eye on it</span>
+                          </div>
+                          <div class="rz-vital-row">
+                            <span class="rz-vital-row__key">Last watered</span>
+                            <span>9 days ago</span>
+                          </div>
+                        </div>
+                        <p>Drawn rather than folded into the aggregate because it is the most overdue plant in your garden — that is the ranking doing its job, not alphabetical luck.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio-fig" data-cell="8,4"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">Second-ranked: it needs treating</span></p>
+                </article>
+
+                <article class="rz-n" id="n-more-plants" data-cell="8,5"
+                         data-aggregate="true"
+                         data-kind="Plants" data-kind-key="collection"
+                         data-name="+10 more plants" data-recap="The rest of your plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plants</p>
+                  <h3 class="rz-n__name">+10 more plants</h3>
+                  <p class="rz-n__count">10</p>
+                  <p class="rz-n__recap">Nothing overdue among them
+                    <span class="rz-n__recap-second">Travel in for the full list</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Ten plants, and every one of them reachable — this card opens the full list a page at a time. A count you cannot walk into would be a defect, not a summary.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="6,6"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="12 June" data-recap="Repotted the Office Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">12 June</h3>
+                  <p class="rz-n__recap">Repotted the Office Fig
+                    <span class="rz-n__recap-second">New mix, one size up</span></p>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Both branches, and every position from the formula</span><span>C7 · C8 · C9</span>
+          </figcaption>
+        </figure>
+        <p>Hop to Plants and back to your garden. The cards resize as their rank recomputes, but not one of them moves: rank is spent on scale, position is spent on the lattice, and the two channels do not borrow from each other. That is the whole reason you can still find the Office Fig after ten hops.</p>
+
+        <pre class="doc-code"><code>&lt;article class="rz-n" id="n-office-fig" data-cell="8,3"
+         data-kind="Plant" data-kind-key="plant"
+         data-name="Office Fig"
+         data-recap="Watering overdue by 2 days"&gt;…&lt;/article&gt;
+
+RZ.mount({
+  edges: [["n-garden", "n-plants"], ["n-plants", "n-office-fig"]],
+  focus: "n-garden"
+});
+
+RZ.nodes["n-office-fig"].x   /* 200 + 8 * 300 = 2600 */
+RZ.freeCell(8)               /* the lowest free row in that column */
+RZ.verifyParameters()        /* [] — CSS and script hold the same numbers */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tokens and parameters</h2>
+
+        <h3 class="doc-h3">The lattice</h3>
+        <p>These are parameters, not preferences: they are declared once in the constitution, mirrored into <code>tokens.css</code> as <code>--rz-param-*</code> and into the script as <code>RZ.PARAMS</code>, and <code>RZ.verifyParameters()</code> reads them back so the two copies cannot drift. A theme may re-pitch the lattice under a recorded amendment; it may not replace the formula, and it may not change a parameter without an owner ruling.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Lattice geometry</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-pitch-x</code></td><td><code>300px</code></td><td>One column step. The horizontal distance between one tier of the world and the next.</td></tr>
+              <tr><td><code>--rz-pitch-y</code></td><td><code>180px</code></td><td>One row step. The distance between siblings of one kind inside a column.</td></tr>
+              <tr><td><code>--rz-origin-x</code></td><td><code>200px</code></td><td>Where column 0 starts. Fixed for the life of the world, so cells never renumber.</td></tr>
+              <tr><td><code>--rz-origin-y</code></td><td><code>80px</code></td><td>Where row 0 starts.</td></tr>
+              <tr><td><code>--rz-lattice-cols</code></td><td><code>12</code></td><td>Columns before the world extends rightward. Left is where you came from; right is where you can go.</td></tr>
+              <tr><td><code>--rz-lattice-rows</code></td><td><code>11</code></td><td>Rows in a column. With the columns, the hard ceiling on cards placed at once: 132 cells.</td></tr>
+              <tr><td><code>--rz-card-air</code></td><td><code>80px</code></td><td>The clearance the camera keeps around the focused card, so it is never flush to an edge.</td></tr>
+              <tr><td><code>--rz-card-reach</code></td><td><code>0.96</code></td><td>How much of the viewport the focused card may claim before the zoom gives way instead of the card.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">The density parameters</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Density</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-param-density-threshold</code></td><td><code>4</code></td><td>At this many members a collection stops drawing itself in full. The smallest number at which an aggregate saves more than it costs.</td></tr>
+              <tr><td><code>--rz-param-density-shown</code></td><td><code>2</code></td><td>How many members stay drawn. Two shows a collection is plural and lets you compare its top two; a third adds cost without adding that.</td></tr>
+              <tr><td><code>--rz-param-cols</code></td><td><code>12</code></td><td>The parameter the lattice column count mirrors, read by both the stylesheet and the script.</td></tr>
+              <tr><td><code>--rz-param-rows</code></td><td><code>11</code></td><td>The same, for rows.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Those two numbers are the growth ceiling as well as the density rule. Any collection contributes at most three cards to the plane — two members and an aggregate — whether it holds four plants or forty thousand. About thirty cards on screen is where the fringe rank stops being legible at minimum zoom; past that the world extends by adding columns, and the camera changes, not the layout.</p>
+
+        <h3 class="doc-h3">The space scale — distance inside a card</h3>
+        <p>Ten steps on a 4px base. Steps 1 to 4 are for the insides of a card, 5 and 6 for the distance between parts of a surface, 7 upward for the distance between sections of a document. A value not on this list is not allowed, including one you reached by arithmetic on two that are.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Space scale</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-space-0</code></td><td><code>0</code></td><td>A deliberate zero — a gap that was decided rather than forgotten.</td></tr>
+              <tr><td><code>--rz-space-1</code></td><td><code>0.25rem</code></td><td>Hairline: a card's kind label and the name under it.</td></tr>
+              <tr><td><code>--rz-space-2</code></td><td><code>0.5rem</code></td><td>Inside a control — the leading mark and the word beside it.</td></tr>
+              <tr><td><code>--rz-space-3</code></td><td><code>0.75rem</code></td><td>The inset of a small card, a table cell, a chrome row.</td></tr>
+              <tr><td><code>--rz-space-4</code></td><td><code>1rem</code></td><td>The inset of a note or a panel bar.</td></tr>
+              <tr><td><code>--rz-space-5</code></td><td><code>1.5rem</code></td><td>The padding of a card at rank near or focus.</td></tr>
+              <tr><td><code>--rz-space-6</code></td><td><code>2rem</code></td><td>Between the parts of a focused card's body.</td></tr>
+              <tr><td><code>--rz-space-7</code></td><td><code>3rem</code></td><td>The air around a specimen; a document's own inset.</td></tr>
+              <tr><td><code>--rz-space-8</code></td><td><code>4rem</code></td><td>Between one section of a document and the next.</td></tr>
+              <tr><td><code>--rz-space-9</code></td><td><code>6rem</code></td><td>Above a footer, and between the major movements of a long page.</td></tr>
+              <tr><td><code>--rz-space-10</code></td><td><code>8rem</code></td><td>The last gap on a long page, so the end of the reading is clearly the end.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">The gutters — the density a theme actually tunes</h3>
+        <p>A theme sets its density here, in five names, and every card and panel in the system inherits it. Re-pitching these makes Rhizome tighter or airier without touching a single component, and without touching the lattice.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Gutters</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-gutter-tight</code></td><td><code>--rz-space-1</code></td><td>Two lines that belong to one another.</td></tr>
+              <tr><td><code>--rz-gutter</code></td><td><code>--rz-space-3</code></td><td>The system's ordinary gap, and the padding of a far or fringe card.</td></tr>
+              <tr><td><code>--rz-gutter-card</code></td><td><code>--rz-space-5</code></td><td>Inside a card at rank near or focus.</td></tr>
+              <tr><td><code>--rz-gutter-wide</code></td><td><code>--rz-space-6</code></td><td>Between the blocks of a document.</td></tr>
+              <tr><td><code>--rz-gutter-air</code></td><td><code>--rz-space-7</code></td><td>The most air the system spends anywhere.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>This page adds nothing to <code>assets/</code>; every token above already existed, so there is no amendment to record.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Space says nothing out loud.</strong> Two blocks separated by <code>--rz-gutter-air</code> are read back-to-back with silence between them, and two cards four columns apart are adjacent to a screen reader unless something says otherwise. So a gap is never the only thing grouping a set: give the group a heading, a label, or a surface of its own. For the same reason, never make room with an empty element — use <code>gap</code>, <code>margin</code> or <code>padding</code>, which leave nothing to announce.</p>
+        <p><strong>Distance on the plane is spoken as connection, not as coordinates.</strong> A reader who cannot see the lattice needs the same fact a sighted reader gets from the gap — what is next to what — and gets it from the veins: arrow keys pick the neighbour that actually lies that way, and the live region names where you came from and how many veins lead out. A cell number would tell them nothing and would break the rule that a coordinate is never shown to a user. This behaviour belongs to <a href="../guidelines/accessibility.html">accessibility</a>; what spacing owes it is that the geography stays still, so a mental map built once stays true.</p>
+        <p><strong>The scale is in <code>rem</code>, so it grows.</strong> Never convert a step to <code>px</code> to hold a layout still; a layout that must not grow is a layout that fails at 200% text size. The lattice is deliberately the other way round — it is in <code>px</code>, because it is a distance in the world, and the camera, not the type size, is what scales it.</p>
+        <p><strong>Keep a step between two controls.</strong> The focus ring is drawn outside the element it belongs to, so anything sitting closer than <code>--rz-gutter</code> to its neighbour will have its ring clipped by whatever is beside it. On the plane the lattice does this work for free: cards stand far enough apart that a pointer or a switch never lands between two targets at any zoom.</p>
+        <p><strong>Density is an accessibility setting in disguise.</strong> Drawing two members and an aggregate rather than forty cards is what keeps the plane walkable by keyboard: the tab order through a focus's neighbours stays a short, countable list, and the count the live region announces matches what is actually drawn.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give a card a cell — <code>data-cell="8,3"</code> — and let the formula place it. It lands in the same spot on every load, and it keeps that spot for the life of the record.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Nudge a card with a margin or an inline offset because the demo looked better that way. It cannot be persisted, no other consumer of position knows about it, and Law 1's diff catches it on the second load.</p>
+          </div>
+        </div>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw a twelve-member collection as its two most pressing plants plus “+10 more plants”, and make that card a real place with its own veins and its own count.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Draw the first six and stop. A silent cut keeps a count the reader cannot reach, and it makes the plane's size depend on how much data you happen to hold rather than on the rule.</p>
+          </div>
+        </div>
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say “Plants&nbsp;·&nbsp;12 plants” on a collection card. It is your garden in your own words.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Say “column 6, row 4”, or let a tooltip leak a cell. The lattice is how the system thinks; it is not something you own a plant in.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="../components/aggregate.html">
+            <span class="doc-card__name">Aggregate</span>
+            <span class="doc-card__note">The other owner of the density rule — what the “+N more” card is and how you travel into it.</span>
+          </a>
+          <a class="doc-card" href="../components/world.html">
+            <span class="doc-card__name">World</span>
+            <span class="doc-card__note">The plane the lattice is drawn on, and what belongs to it rather than to the viewport.</span>
+          </a>
+          <a class="doc-card" href="../components/node.html">
+            <span class="doc-card__name">Node</span>
+            <span class="doc-card__note">The card contract, including the cell and the persisted drag offset it carries.</span>
+          </a>
+          <a class="doc-card" href="../patterns/arrange-mode.html">
+            <span class="doc-card__name">Arrange mode</span>
+            <span class="doc-card__note">The only way a card gets an offset, and what happens to every other consumer of position.</span>
+          </a>
+          <a class="doc-card" href="../patterns/day-zero.html">
+            <span class="doc-card__name">Day zero</span>
+            <span class="doc-card__note">An empty garden with room in it, and the first cell a plant keeps forever.</span>
+          </a>
+          <a class="doc-card" href="../foundations/typography.html">
+            <span class="doc-card__name">Typography</span>
+            <span class="doc-card__note">The prominence ladder that scale spends on rank, while the lattice holds position still.</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <p class="rz-sr" id="rz-live" role="status" aria-live="polite"></p>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* One declaration. The veins, the ranks, the keyboard directions and
+       every degree count are generated from it — this page re-implements
+       neither placement nor the density rule. */
+    RZ.mount({
+      edges: [
+        ["n-garden", "n-problems"],
+        ["n-garden", "n-plants"],
+        ["n-garden", "n-journal"],
+        ["n-problems", "n-leaf-spot"],
+        ["n-problems", "n-overwatering"],
+        ["n-problems", "n-root-rot"],
+        ["n-plants", "n-office-fig"],
+        ["n-plants", "n-studio-fig"],
+        ["n-plants", "n-more-plants"],
+        ["n-office-fig", "n-leaf-spot"],
+        ["n-journal", "n-office-fig"]
+      ],
+      focus: "n-garden"
+    });
+  </script>
+</body>
+</html>

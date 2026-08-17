@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edge · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Edge</h1>
+      <p class="doc-lede">A vein is the line between two cards, and it is the
+        only way from one to the other. This page settles that every vein you
+        can see is a vein you can take, and that both come from one
+        declaration — the edge list — which nothing on the plane is allowed to
+        contradict.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is joined up. The fig on your desk belongs to a species,
+          that species has a care guide, the guide is what the treatment course
+          for root rot points back to, and the photo you took on Jul 18 is
+          about that plant and nothing else. Each of those is a vein: a real
+          relationship in your garden, drawn on the plane as a line between two
+          cards, and travelled by the camera when you take it.</p>
+        <p>A vein is never decoration. If you can see it, you can take it; if
+          you can take it, you could already see it. Both halves of that come
+          from the same place — the edge list, declared once as
+          <code>RZ.EDGES</code>, from which the drawn veins, the keyboard
+          directions, the <a href="navigate-to.html">Navigate to</a> entries,
+          the <a href="minimap.html">world view</a>'s lines, every degree count
+          and the route of every hop are generated. There is no second list, and
+          there is nowhere to hand-draw a line.</p>
+        <div class="doc-note">
+          <p>This page owns the vein and its list. The plane it is drawn on and
+            the ownership of its layer are <a href="world.html">world</a>; the
+            cards at its ends are <a href="node.html">node</a>; the journey
+            along it is <a href="../patterns/traversal.html">traversal</a>,
+            which owns the one navigation timing. The rule deciding
+            <em>which</em> members of a collection get a vein at all is the
+            density rule, owned by <a href="aggregate.html">aggregate</a> and
+            <a href="../foundations/spacing.html">spacing</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C1, C3</span></p>
+          <p class="doc-law__statement">The edge list is the single source of
+            truth. Everything that draws a connection, counts a connection or
+            travels a connection reads that one array — so a drawn vein that
+            cannot be travelled, and a travelable vein that was never drawn,
+            both cannot exist. “On a focus change the surrounding nodes change
+            to that node's own neighbours, every drawn edge is actually
+            traversable, and the neighbour count tracks real degree.”</p>
+          <p class="doc-check">Iterate every <code>.rz-vein</code> in the
+            document and assert its <code>data-a</code>/<code>data-b</code> pair
+            is present in <code>RZ.EDGES</code>; then iterate
+            <code>RZ.EDGES</code> and assert each pair has a drawn
+            <code>.rz-vein</code>. For every node assert
+            <code>RZ.adj[id].length</code> equals the number of veins touching
+            it and equals the number Navigate to prints in its header.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C1</span></p>
+          <p class="doc-law__statement">A vein is drawn before it is travelled.
+            “Every navigation follows an edge that was visible before the
+            click.” Nothing appears because you hovered, and no destination is
+            reachable that was not already standing on the plane, joined to
+            where you are.</p>
+          <p class="doc-check">Take the set of <code>.rz-vein</code> elements at
+            first paint, before any pointer or key event. Then hop anywhere and
+            assert every consecutive pair of <code>RZ.route(from, to)</code> was
+            already in that first-paint set. Assert
+            <code>RZ.go(id)</code> for an unconnected <code>id</code> returns
+            with the camera and the focus unchanged — no path is ever
+            fabricated.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C3</span></p>
+          <p class="doc-law__statement">The vein layer is redrawn from the list,
+            never appended to. Any event that changes a position —
+            a drag in arrange mode, a resize, a new record — clears the layer
+            and regenerates all of it in one pass.</p>
+          <p class="doc-check">Drag one card ten times in arrange mode and count
+            <code>.rz-vein</code> after each release: the count equals
+            <code>RZ.EDGES.length</code> every time, and no two veins share a
+            <code>data-a</code>/<code>data-b</code> pair. Appending on release
+            would show as duplicates stacked on the same line.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C11</span></p>
+          <p class="doc-law__statement">A vein's geometry comes from the two
+            node records at its ends, in the plane's own coordinates, so the
+            path the camera travels <em>is</em> the line you were shown.
+            “Every transition carries direction, scale, and ownership — and the
+            camera follows the edge's own path.”</p>
+          <p class="doc-check">For any route, compare
+            <code>RZ.chainD(chain)</code> against the <code>d</code> attributes
+            of that route's drawn veins: the same points, in the same order.
+            Then pan the board and diff bounding boxes — every vein moved by the
+            same delta as the cards it joins, because the layer is a child of
+            the same transformed plane and paints beneath them.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C6</span></p>
+          <p class="doc-law__statement">The veins make a graph, not a tree
+            wearing one. Real gardens fold back on themselves: two problems
+            share one treatment course, a journal entry is about the plant it
+            photographed. Those cross-branch veins are why this surface is an
+            atlas at all, and removing them to tidy the picture removes the
+            reason for the picture.</p>
+          <p class="doc-check">Assert the edge list contains at least one vein
+            joining two different branches — a journal entry to its plant, or
+            two problems to one course — and that
+            <code>RZ.EDGES.length</code> is greater than or equal to the node
+            count. A list where every node has exactly one parent is a
+            hierarchy, and this regime is the wrong one for it.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C23</span></p>
+          <p class="doc-law__statement">A vein into a region you have not
+            fetched yet is still a vein: drawn dashed, stated in words, and
+            traversable. “On a partial graph, unloaded regions are drawn as
+            explicitly unknown — distinguishable from ‘loaded and empty’ — with
+            traversal into them allowed and never dead-ending.”</p>
+          <p class="doc-check">Find a vein carrying
+            <code>data-unknown="true"</code> and assert
+            <code>RZ.go</code> across it succeeds, that the node it lands on
+            offers a real way to fetch what is missing, and that it reads
+            differently from a node that is loaded and genuinely empty — with
+            the difference stated in words, not only in the stroke.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimen</h2>
+        <p>Five cards, six veins, one declaration. Click any card to travel to
+          it: the veins out of where you stand brighten and thicken, the camera
+          follows the line rather than cutting across the space, and Navigate to
+          prints the same count the veins do — all from the list below the
+          specimen. Drag the bare board to pan and watch the veins move with the
+          cards, not under them.</p>
+        <p>Two things in here are deliberate. <em>Journal · Jul 18 photo</em>
+          is joined both to Journal and to Office Fig — a cross-branch vein, so
+          this is a graph. And the vein to the unloaded region is dashed: it is
+          real, it is takeable, and we are honest that we have not fetched what
+          is on the other side.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Six veins between five cards. Click a card to travel along a vein; arrow keys follow them.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <p>Everything you keep. The veins out of here go to the
+                        plants that need you first.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Three veins lead out of this plant, and you can see
+                          all three from here: back to your garden, across to
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                          and out to the photo you took of it.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,1"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· below the threshold, so all three are drawn</span></p>
+                </article>
+
+                <article class="rz-n" id="n-j1" data-cell="2,3"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Jul 18 photo" data-recap="About Office Fig · lower leaves">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Jul 18 photo</h3>
+                  <p class="rz-n__recap">About Office Fig
+                    <span class="rz-n__recap-second">· the lower leaves</span></p>
+                </article>
+
+                <article class="rz-n" id="n-unknown" data-cell="4,3"
+                         data-state="unknown"
+                         data-kind="Region" data-kind-key="region"
+                         data-name="Older entries" data-recap="Not fetched yet">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Region</p>
+                  <h3 class="rz-n__name">Older entries</h3>
+                  <p class="rz-n__recap">We have not fetched this part of your
+                    journal yet — we do not know how much is here.
+                    <span class="rz-n__recap-second">Travel in and we will go and get it.</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Six veins from one declaration · one of them dashed and still takeable</span>
+            <span>C1 · C3 · C6 · C11 · C23</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>The whole specimen is mounted from the runtime. Nothing here draws a
+          line by hand, and nothing here counts a connection by hand — which is
+          exactly why the count beside Navigate to cannot drift from the picture
+          above it.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-j1"],
+    ["n-office", "n-problems"],
+    ["n-office", "n-j1"],        /* cross-branch: the photo is about the plant */
+    ["n-j1", "n-unknown"],       /* into a region we have not fetched */
+    ["n-problems", "n-unknown"]
+  ]
+});</code></pre>
+
+        <p>Reading a count back is the same shape of call, and it is how you
+          check Law 1 without opening the markup:</p>
+
+        <pre class="doc-code"><code>RZ.degree("n-office");                 /* 3 */
+RZ.adj["n-office"];                    /* ["n-garden", "n-problems", "n-j1"] */
+RZ.route("n-garden", "n-unknown");     /* ["n-garden", "n-j1", "n-unknown"] */
+document.querySelectorAll(".rz-vein").length === RZ.EDGES.length;  /* true */</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">At rest</h3>
+        <p>Every vein in the list is on the plane from first paint, at its
+          quiet weight, beneath the cards. A dot sits at the middle of each one
+          — a small confirmation that the line is a thing and not a shadow.
+          Veins take no pointer events at all: you travel a vein by taking one
+          of its ends, never by clicking the line, because a line is far too
+          thin a target to be honest about.</p>
+
+        <h3 class="doc-h3">Around the focus</h3>
+        <p>The veins touching where you stand brighten and thicken, and their
+          midpoint dots come up to full. That is the answer to <em>where can I
+          go from here</em> in the picture itself, and Navigate to prints the
+          same set in words. Both are recomputed on every hop from the same
+          adjacency, so they cannot disagree.</p>
+
+        <h3 class="doc-h3">While travelling</h3>
+        <p>The route is drawn as a trail along the real veins and the camera
+          centre is driven along it by arc length, so the motion says which vein
+          you took. A crossing of more than one vein lights each card as the
+          camera reaches it and opens only the one you asked for. The timing —
+          one duration for every hop from every trigger — belongs to
+          <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../foundations/motion.html">motion</a>; the vein's part is
+          only to be the shape the camera follows. Under reduced motion the
+          trail is still drawn along the real veins and held, so direction and
+          distance survive.</p>
+
+        <h3 class="doc-h3">When something moves</h3>
+        <p>Dragging a card in arrange mode re-reads both ends from the records
+          and regenerates the layer in one pass. Nothing is appended, so a
+          dragged card cannot leave a stale line behind or double the one it
+          had. The world view redraws from the same list at the same moment,
+          which is why the small map and the big plane never tell two stories.</p>
+
+        <h3 class="doc-h3">When the graph is incomplete</h3>
+        <p>A vein with an unfetched node at one end is dashed and paler, and the
+          node it leads to says in its own words that we have not been there
+          yet. That is a different material from a node that is loaded and
+          simply has nothing in it, and both must be legible without the
+          reader knowing the stroke pattern by heart. The full set of states
+          belongs to <a href="../patterns/degradation.html">degradation</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills</h2>
+        <p>A theme chooses how a vein reads; it does not choose which veins
+          exist, or whether a drawn one can be taken.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Vein tokens</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-vein</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vein)"></span></td>
+                <td>A vein at rest. Quiet enough to sit under the cards, present
+                  enough that the garden reads as joined up from across the
+                  room.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vein-live</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vein-live)"></span></td>
+                <td>A vein touching where you stand. Paired with
+                  <code>--rz-vein-width-live</code>, so the difference is
+                  carried by weight as well as by colour.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vein-unknown</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vein-unknown)"></span></td>
+                <td>A vein with an unfetched node at one end. Dashed as well as
+                  tinted — and the node at the far end says so in words.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vein-node</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vein-node)"></span></td>
+                <td>The dot at a vein's midpoint. Half-strength at rest, full
+                  when the vein is live.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vein-width</code> ·
+                  <code>--rz-vein-width-live</code></td>
+                <td></td>
+                <td>The two weights. A theme may re-pitch both, but the live one
+                  stays visibly heavier: weight is the channel that survives a
+                  palette with little contrast in it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital-bright</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-bright)"></span></td>
+                <td>The trail: the route just travelled, drawn along the real
+                  veins and held under reduced motion.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-z-vein</code></td>
+                <td></td>
+                <td>The vein rung. Above the decorative field, beneath every
+                  card — the stacking is owned by
+                  <a href="../foundations/elevation.html">elevation</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The attributes the runtime writes</caption>
+            <thead><tr><th>Attribute</th><th>On</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-a</code> · <code>data-b</code></td>
+                <td><code>.rz-vein</code>, <code>.rz-vein-node</code></td>
+                <td>The two node ids this vein joins, stamped from the list
+                  entry it was generated from. This is what makes Law 1
+                  checkable from the DOM alone.</td>
+              </tr>
+              <tr>
+                <td><code>data-live</code></td>
+                <td><code>.rz-vein</code>, <code>.rz-vein-node</code></td>
+                <td>This vein touches the focus. Rewritten on every hop from the
+                  adjacency, never set by hand.</td>
+              </tr>
+              <tr>
+                <td><code>data-unknown</code></td>
+                <td><code>.rz-vein</code></td>
+                <td>One of its ends is a node we have not fetched. Set from the
+                  node record, so it cannot be claimed for a node that is
+                  actually loaded.</td>
+              </tr>
+              <tr>
+                <td><code>data-on</code></td>
+                <td><code>.rz-trail</code></td>
+                <td>A route is being shown. Held longer under reduced motion,
+                  which is the whole of how direction survives there.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>The vein layer itself is hidden from assistive technology on
+          purpose: a curve announces nothing useful, and reading out
+          twenty-five of them would bury the one thing that matters. What
+          matters is carried in words instead, from the same list — so nothing
+          is lost by hiding the drawing.</p>
+        <p>Every vein out of where you stand is a real entry in Navigate to and
+          a real answer to an arrow key, which means no destination exists that
+          a keyboard user cannot reach. Arrow keys pick the neighbour that
+          actually lies that way, computed from the two cards' real positions
+          rather than from document order, so the direction you press and the
+          direction the vein runs are the same direction. A direction with no
+          vein is spoken by name — “no vein that way from Office Fig” — because
+          silence reads as a broken key. <kbd>Tab</kbd> walks the veins out of
+          the focus in turn and says which of how many.</p>
+        <p>After every hop one sentence names where you came from, anything you
+          crossed without opening, and how many veins lead out of where you now
+          are — the same number Navigate to prints and the same number the
+          picture draws. The world view's label is rewritten in the same breath.
+          Neither ever speaks a cell, a row or a coordinate; they speak your
+          garden.</p>
+        <p>Colour is never the only signal a vein carries. Live is heavier as
+          well as brighter, unknown is dashed as well as tinted, and the node at
+          the far end of an unknown vein says in plain words that we have not
+          fetched it — so a reader who cannot separate two strokes still gets
+          the fact. The layer uses logical properties throughout, so nothing
+          points the wrong way in RTL.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Almost every way to get this wrong is the same way: making a line by
+          hand, or making a number by hand. Both put a second truth on the
+          plane, and the second one is always the one that goes stale.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Add the relationship to the edge list and let the drawing, the
+              count, the keyboard direction and the route all fall out of it.
+              One entry, and the picture and the words agree by construction
+              (Law 1).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Place a rotated line between two cards to show a relationship the
+              list does not have. It cannot be travelled, it will not move when
+              a card moves, and it teaches your reader that the lines are
+              decoration — after which none of them are believed (Law 1, C1).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Print a degree from the adjacency, wherever it appears — the
+              Navigate to header, a card's recap, a spoken announcement. Then
+              the three of them are the same number because they are literally
+              the same number (Law 1, C3).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Write “6 veins” into the markup because that is how many there
+              were when you built the page. The first time a relationship is
+              added the interface starts lying, and it will keep lying quietly
+              for as long as nobody counts (C3).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw the vein into a region you have not fetched, dashed, and let
+              the user take it. Being honest about the edge of what you know is
+              what keeps the geography whole (Law 6, C23).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Leave the vein out until the data arrives. The garden silently
+              changes shape as things load, the user's map of it is invalidated
+              by a network event, and a part of their own garden becomes
+              unreachable for reasons they cannot see (C23).</p>
+          </div>
+        </div>
+
+        <p>One more, about restraint. Not every true relationship deserves a
+          vein on the plane: a collection with many members contributes its two
+          highest-ranked and one aggregate, and that ceiling is what keeps a
+          garden of forty thousand plants drawable. Which members earn a vein is
+          the density rule's decision, not this page's — see
+          <a href="aggregate.html">aggregate</a>. The veins that survive it are
+          all real, and all takeable.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The plane a vein is drawn on, and the rule about which layers move
+          with the camera, are <a href="world.html">world</a>. The cards at its
+          ends are <a href="node.html">node</a>; the aggregate at the end of a
+          collection's third vein, and the density rule that puts it there, are
+          <a href="aggregate.html">aggregate</a>. The same list in words is
+          <a href="navigate-to.html">navigate to</a>, and the same list in
+          miniature is <a href="minimap.html">minimap</a>; the register both of
+          those are dressed in is <a href="chrome.html">chrome</a>. The journey
+          along a vein, its one timing and its interruption policy are
+          <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../foundations/motion.html">motion</a>. Dashed veins and
+          everything else the board does when the data is late, partial or gone
+          are <a href="../patterns/degradation.html">degradation</a>. Keyboard
+          direction-finding and the announcement are
+          <a href="../guidelines/accessibility.html">accessibility</a>; the rule
+          that a vein takes no pointer events is
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The veins, the degrees, the
+       Navigate-to entries and every route below come from this one list. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-j1"],
+        ["n-office", "n-problems"],
+        ["n-office", "n-j1"],
+        ["n-j1", "n-unknown"],
+        ["n-problems", "n-unknown"]
+      ]
+    });
+  </script>
+</body>
+</html>
