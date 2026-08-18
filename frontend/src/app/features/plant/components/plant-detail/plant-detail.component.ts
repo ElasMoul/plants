@@ -26,9 +26,10 @@ import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-
 
 
 @Component({
-  selector: 'app-plant-detail',
-  templateUrl: './plant-detail.component.html',
-  styleUrls: ['./plant-detail.component.scss'],
+    selector: 'app-plant-detail',
+    templateUrl: './plant-detail.component.html',
+    styleUrls: ['./plant-detail.component.scss'],
+    standalone: false
 })
 export class PlantDetailComponent implements OnInit, OnDestroy {
   @ViewChild('scrollSentinel') set scrollSentinel(el: ElementRef<HTMLDivElement> | undefined) {

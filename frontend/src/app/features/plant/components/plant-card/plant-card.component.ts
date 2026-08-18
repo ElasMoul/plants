@@ -6,10 +6,11 @@ import { ImageLightboxComponent } from '../../../../shared/components/image-ligh
 import { healthBadgeClass } from '../../../../shared/utils/health-badge.util';
 
 @Component({
-  selector: 'app-plant-card',
-  templateUrl: './plant-card.component.html',
-  styleUrls: ['./plant-card.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-plant-card',
+    templateUrl: './plant-card.component.html',
+    styleUrls: ['./plant-card.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class PlantCardComponent {
   @Input() plant!: PlantResponse;

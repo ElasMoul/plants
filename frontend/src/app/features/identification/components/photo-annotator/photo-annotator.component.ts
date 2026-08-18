@@ -21,9 +21,10 @@ const REGION_COLORS: Record<AnnotationRegionType, { fill: string; stroke: string
 };
 
 @Component({
-  selector: 'app-photo-annotator',
-  templateUrl: './photo-annotator.component.html',
-  styleUrls: ['./photo-annotator.component.scss'],
+    selector: 'app-photo-annotator',
+    templateUrl: './photo-annotator.component.html',
+    styleUrls: ['./photo-annotator.component.scss'],
+    standalone: false
 })
 export class PhotoAnnotatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() imageUrl = '';

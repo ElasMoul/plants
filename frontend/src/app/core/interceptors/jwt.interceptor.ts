@@ -1,16 +1,10 @@
 import { Injectable } from '@angular/core';
-import {
-  HttpRequest,
-  HttpHandler,
-  HttpEvent,
-  HttpInterceptor,
-  HttpErrorResponse,
-} from '@angular/common/http';
+import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import * as Sentry from '@sentry/angular';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '@plantpal/shared-core';
 
 @Injectable()
 export class JwtInterceptor implements HttpInterceptor {

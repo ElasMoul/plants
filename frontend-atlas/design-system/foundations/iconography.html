@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iconography · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Iconography</h1>
+      <p class="doc-lede">Rhizome has no icon set. Meaning is <em>drawn</em> — a form, a rim, a fill, a rule — and the two-form grammar that tells travelling apart from changing your garden is geometry the stylesheet owns, not a picture anyone chooses.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is already a picture. Every plant, species, problem and journal entry is a body on one plane with veins between them, and a leaf glyph pinned to a plant or a droplet pinned to a watering control would put a second picture inside the first. So this system ships no icon font, no sprite sheet, no <code>rz-icon</code> class, and no place a component reserves for a glyph. What it ships instead is a small vocabulary of <strong>drawn marks</strong>: the filled stake, the outlined chip and its caret, the leading mark inside chrome, the graduation on a card's head, the health bead, the confidence track, the dashes on an unknown rim.</p>
+        <p>Every one of those comes out of <code>assets/system.css</code>, from tokens, with no image file and no network request. Which means a theme round changes what they look like by changing a token — and cannot change what they <em>mean</em>, because the meaning lives in the class, not in a picture someone picked.</p>
+        <p>This page settles one thing and defers the rest. It settles that the grammar of <span class="doc-cite">C14</span> — <em>"A user can tell navigation from mutation before activating it, from form alone."</em> — is carried by drawn form. What the two forms <em>do</em>, and what happens when you activate one, belongs to <a href="../components/action-rail.html">action-rail</a>, <a href="../components/navigate-to.html">navigate-to</a> and <a href="../guidelines/interaction-and-cursors.html">interaction-and-cursors</a>. What colour a mark takes belongs to <a href="colors.html">colors</a>. How long a mark's rule is at each rank belongs to <a href="../components/node.html">node</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">There is no icon set. A mark in Rhizome is geometry a class draws, and it is named in words beside itself.</p>
+          <p class="doc-check">Load any page of the running system and search it: no icon font is
+            loaded, no <code>@font-face</code> is declared, and the only <code>&lt;svg&gt;</code> in the
+            document is <code>.rz-veins</code> (the graph) and <code>.rz-map</code> (the world view).
+            Assert <code>document.querySelectorAll('.rz-n img, .rz-n svg, .rz-stake img, .rz-chip img').length === 0</code>
+            — no affordance contains an image, and no state is announced by a picture.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C14, C15</span></p>
+          <p class="doc-law__statement">The two forms are drawn by the class, never by a glyph placed inside them. A stake is filled, squared and weighted at its foot; a chip is outlined, pilled, and its caret arrives from the stylesheet.</p>
+          <p class="doc-check">For every <code>.rz-stake</code> and <code>.rz-chip</code> assert
+            <code>el.querySelector('svg, img')</code> is <code>null</code>, and that
+            <code>getComputedStyle(chip, '::after').content</code> is the single caret character. Remove
+            every text node from both and they are still two visibly different forms — the fill and the
+            rim are the message, not the label.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">Neither form may enter chrome. Inside chrome the same two meanings become a leading mark on an item — a square in the mutation ink, an arrow in the traversal ink — and nothing else.</p>
+          <p class="doc-check">Assert
+            <code>document.querySelectorAll('.rz-chrome .rz-stake, .rz-chrome .rz-chip').length === 0</code>,
+            and that every <code>.rz-chrome__item</code> carries <code>data-means="mutate"</code> or
+            <code>data-means="travel"</code>. The blur test that
+            <a href="../components/chrome.html">chrome</a> owns then still holds: no soft bright rectangle
+            appears in chrome.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C12</span></p>
+          <p class="doc-law__statement">A mark is never the only carrier of a meaning that colour alone distinguishes. Every mark that says something has a word next to it, and every mark that says nothing is inert.</p>
+          <p class="doc-check">Render the page in greyscale and read every mark: the two forms still differ
+            (fill against rim), health still reads (its word is beside the bead), the chrome marks still
+            differ (square against arrow). Then assert every <code>.rz-chrome__item</code>,
+            <code>.rz-health</code> and <code>.rz-conf</code> has non-empty text in or beside it — a bead
+            with no word is a defect.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C18</span></p>
+          <p class="doc-law__statement">A page never types a direction. Marks are placed with logical properties, and the two directional characters the system uses are supplied by the stylesheet, so they are one place to change and not a hundred.</p>
+          <p class="doc-check">Search every page's markup for <code>&amp;rarr;</code>, <code>&amp;raquo;</code>
+            and their literal characters: none appear. Set <code>dir="rtl"</code> on the document and assert
+            every mark has swapped side — the chip's caret, the chrome item's leading mark, the
+            graduation on a card's head — because all of them are placed with
+            <code>inline-start</code>/<code>inline-end</code>, never <code>left</code>/<code>right</code>.</p>
+        </div>
+
+        <div class="doc-note">
+          <p>Being honest about a limit, in the app's own spirit. Law 5's <em>placement</em> mirrors today, but the two characters themselves do not: <code>.rz-chip::after</code> and <code>.rz-chrome__item[data-means="travel"]::before</code> hold a right-pointing character, and a right-to-left build needs those two declarations restated under <code>[dir="rtl"]</code>. That is a two-line change in <code>assets/system.css</code>, and the amendment path in <a href="../guidelines/extending-this-system.html">extending this system</a> is how it gets made. It has not been made yet, and no page should pretend otherwise.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The two forms, drawn</h2>
+        <p>This is the whole grammar a user has to learn, and they learn it once. A filled stake changes your garden. An outlined chip with a caret takes you somewhere. Both specimens below are the real classes — no mock-up, no drawing of a button.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-stake">Log watering</button>
+            <button type="button" class="rz-stake">Mark treated</button>
+            <button type="button" class="rz-chip">Fiddle-leaf Fig</button>
+            <button type="button" class="rz-chip">Leaf-spot</button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Two forms, no glyph in either</span><span>C14 · C15</span>
+          </figcaption>
+        </figure>
+
+        <p>Mask the words and the row still sorts itself into two groups: two solid blocks with a heavy foot, two open pills with a caret. That is the test <span class="doc-cite">C14</span> asks for, and it is why no third form is allowed inside a node — a third shape would make the sort ambiguous, and there is nothing a third shape could mean that is not already one of these two.</p>
+
+        <p>The camera cluster is the one thing that changes neither your garden nor where you are. It gets its own quiet square, and it lives in chrome:</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-cam-btn">&minus;<span class="rz-sr">Zoom out</span></button>
+            <button type="button" class="rz-cam-btn">+<span class="rz-sr">Zoom in</span></button>
+            <span class="rz-label">The view moves, you do not</span>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The camera's third category</span><span>C15 · C16</span>
+          </figcaption>
+        </figure>
+
+        <p>Plus and minus are the only two characters this system types into a control, and they earn it: they are arithmetic rather than pictures, they read the same in every language PlantPal ships in, they are symmetrical so they need no mirroring, and they belong to an instrument that moves the view rather than your garden. A character that fails any of those four tests does not get in.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Inside chrome, a form becomes a mark</h2>
+        <p>Chrome is a different material from a card, so it cannot borrow a card's forms — see <a href="../components/chrome.html">chrome</a> for why. The two meanings survive the crossing as a leading mark: a small square in the mutation ink, an arrow in the traversal ink.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-chrome__item" data-means="travel">Fiddle-leaf Fig
+              <small>Ficus lyrata · 12 plants</small></button>
+            <button type="button" class="rz-chrome__item" data-means="travel">Leaf-spot
+              <small>3 plants affected</small></button>
+            <button type="button" class="rz-chrome__item" data-means="mutate">Log watering
+              <small>Today, for this plant</small></button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The same two meanings, as marks</span><span>C14</span>
+          </figcaption>
+        </figure>
+
+        <p>Those are the real items, shown out of their panel on purpose: a chrome member is fixed to a viewport edge and bleeds off it, so this page cannot stand one inside a figure without overriding the very thing that makes it chrome. The assembled Navigate-to panel is on <a href="../components/navigate-to.html">navigate-to</a>. In the app the items sit inside their member, and it is written like this:</p>
+
+        <pre class="doc-code"><code>&lt;div class="rz-chrome rz-chrome--rail"&gt;
+  &lt;div class="rz-chrome__head"&gt;
+    &lt;span class="rz-chrome__title"&gt;Navigate to&lt;/span&gt;
+    &lt;span&gt;3 veins&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;button type="button" class="rz-chrome__item" data-means="travel"&gt;Fiddle-leaf Fig
+    &lt;small&gt;Ficus lyrata &amp;middot; 12 plants&lt;/small&gt;&lt;/button&gt;
+  &lt;button type="button" class="rz-chrome__item" data-means="mutate"&gt;Log watering
+    &lt;small&gt;Today, for this plant&lt;/small&gt;&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The rest of the mark vocabulary</h2>
+        <p>These are all of them. If the mark you want is not here, this system does not have it, and the answer is a word in a <code>.rz-label</code> — not a new shape.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Every drawn mark</caption>
+            <thead><tr><th>Mark</th><th>Drawn by</th><th>Says</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>The stake</td>
+                <td><code>.rz-stake</code> — fill plus a heavy foot rule</td>
+                <td>Activating this changes your garden's data.</td>
+              </tr>
+              <tr>
+                <td>The chip and its caret</td>
+                <td><code>.rz-chip</code> — rim, pill, <code>::after</code></td>
+                <td>Activating this travels a vein you can already see.</td>
+              </tr>
+              <tr>
+                <td>The leading mark</td>
+                <td><code>.rz-chrome__item::before</code>, keyed by <code>data-means</code></td>
+                <td>The same two meanings, in chrome's own material.</td>
+              </tr>
+              <tr>
+                <td>The graduation</td>
+                <td><code>.rz-n__grad</code> — length is rank, colour is kind</td>
+                <td>How far this is from you, and what kind of thing it is, at a size where its name cannot be read. Owned by <a href="../components/node.html">node</a>.</td>
+              </tr>
+              <tr>
+                <td>The health bead</td>
+                <td><code>.rz-health</code></td>
+                <td>Thriving, stable, watch, ailing or lost — always with the word beside it.</td>
+              </tr>
+              <tr>
+                <td>The confidence track</td>
+                <td><code>.rz-conf__fill</code></td>
+                <td>How sure the assistant is. Graded HIGH, MEDIUM or LOW in text as well.</td>
+              </tr>
+              <tr>
+                <td>The step mark</td>
+                <td><code>.rz-course__mark</code> and the step's start rule</td>
+                <td>Where you are in a treatment course, and whether a step is done or due.</td>
+              </tr>
+              <tr>
+                <td>The dashed rim</td>
+                <td><code>.rz-n[data-state="unknown"]</code> and <code>[data-state="empty"]</code></td>
+                <td>Not fetched yet, or fetched and genuinely nothing. Two different dashes for two different pieces of news — see <a href="../patterns/degradation.html">degradation</a>.</td>
+              </tr>
+              <tr>
+                <td>The you-are-here</td>
+                <td><code>.rz-map__you</code>, <code>.rz-map__you-halo</code></td>
+                <td>Where you are standing, at every zoom. Owned by <a href="../components/minimap.html">minimap</a>.</td>
+              </tr>
+              <tr>
+                <td>The focus ring</td>
+                <td><code>--rz-focus</code> on <code>:focus-visible</code></td>
+                <td>The keyboard is here. It belongs to focus and may never be borrowed.</td>
+              </tr>
+              <tr>
+                <td>The mote field</td>
+                <td><code>.rz-motes</code></td>
+                <td>Nothing at all. It is texture, it carries no state, and it must never be made to carry one.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Two of those are decoration and the rest are load-bearing. The mote field says nothing; the focus ring says exactly one thing. Everything else in the table is state, and state is always doubled in words.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme fills for the marks</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-mutate</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-mutate)"></span></td>
+                <td>The stake's fill and the chrome mutation square. This ink appears nowhere else on screen.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital)"></span></td>
+                <td>The chip's ink and the chrome travel arrow — the traversal voice.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vital-edge</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-edge)"></span></td>
+                <td>The chip's rim. The rim is what makes a chip an outline instead of a fill, so a theme may re-key it and may never remove it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-corner-chip</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vital-quiet); border-radius: var(--rz-corner-chip)"></span></td>
+                <td>The chip's pill. Against <code>--rz-corner-inner</code> on the stake, this is half of the form difference.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-strong</code></td>
+                <td></td>
+                <td>The stake's foot rule and the graduation's weight — the mark that reads as pressed into soil.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-focus</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-focus)"></span></td>
+                <td>The focus ring, drawn clear of the element's own edge. No mark may be placed where it would hide this.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The marks are tokens, so they follow the key</h2>
+        <p>Because no mark is a picture, a live palette change re-keys the whole vocabulary — the stake's fill, the chip's rim, the caret's ink, the health bead — with nothing to re-export and nothing to redraw. Switch the key below and the forms hold their <em>meaning</em> while changing their <em>colour</em>. The buttons are wired by <code>RZ.mount({})</code> at the foot of this page; nothing here is re-implemented.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-palette" data-rz-palette="potting-bench" aria-pressed="true">
+              <span class="rz-palette__swatch" style="background: var(--rz-terra-300)"></span>Potting Bench</button>
+            <button type="button" class="rz-palette" data-rz-palette="terrarium" aria-pressed="false">
+              <span class="rz-palette__swatch" style="background: var(--rz-sill-200)"></span>Terrarium</button>
+            <button type="button" class="rz-palette" data-rz-palette="night-canopy" aria-pressed="false">
+              <span class="rz-palette__swatch" style="background: var(--rz-leaf-300)"></span>Night Canopy</button>
+            <button type="button" class="rz-palette" data-rz-palette="clinic" aria-pressed="false">
+              <span class="rz-palette__swatch" style="background: var(--rz-chlorosis-300)"></span>Clinic</button>
+            <div class="rz-vitals">
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Health</span>
+                <span class="rz-health" data-health="watch">Watch — one lower leaf yellowing</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Confidence</span>
+                <span class="rz-conf" data-conf="low">
+                  <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                  <span class="rz-label">Low — send a photo in daylight and I will look again</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Live palette · the marks re-key, the grammar does not</span><span>C12 · C14</span>
+          </figcaption>
+        </figure>
+
+        <p>That second half also shows Law 4 doing its work. The bead and the track carry colour; the words carry the claim. Take the colour away and you still know that one plant is being watched and that the assistant is not sure.</p>
+
+        <p>A refusal is drawn on the form itself rather than announced somewhere else. Take the world offline from the probe below and the stake goes visibly refused while the chip keeps travelling — being offline does not stop you looking around your own garden.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-probe__btn" data-rz-state="net:offline" aria-pressed="false"
+                    data-rz-says="Offline. Your garden is still here; changes are refused until you are back.">Offline</button>
+            <button type="button" class="rz-stake" data-refused="true" aria-disabled="true">Log watering</button>
+            <button type="button" class="rz-chip">Fiddle-leaf Fig</button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The refusal is a mark on the form</span><span>C24</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>No mark in Rhizome is the only carrier of its meaning, and that is not a concession — it is PlantPal's own instruction to its assistant applied to geometry. If the system knows something about a plant, it says it. A coloured bead on its own is not saying it.</p>
+        <p>Colour is never the difference between two marks. The stake and the chip differ in fill and rim before they differ in ink. The chrome marks differ in shape — a square against an arrow. The unknown rim is dashed, not merely dimmer. Test any mark you use by asking what is left of it in greyscale; if the answer is "nothing", the mark is wrong.</p>
+        <p>Decorative marks are hidden from the accessibility tree and interactive ones are named. <code>.rz-motes</code> is a canvas with nothing to announce, and <code>.rz-veins</code> is presentational because the graph is announced instead: <code>RZ.present()</code> writes the focus, what you crossed and how many veins lead out of it into the live region. That is what <span class="doc-cite">C18</span> asks for, and <a href="../guidelines/accessibility.html">accessibility</a> owns it in full.</p>
+        <p>When a control's visible content is a character — the two camera buttons, and only those — the word goes beside it in <code>.rz-sr</code>. Never a <code>title</code> attribute: a keyboard user cannot reach one and a touch user cannot either.</p>
+
+        <pre class="doc-code"><code>&lt;button type="button" class="rz-cam-btn"&gt;&amp;minus;&lt;span class="rz-sr"&gt;Zoom out&lt;/span&gt;&lt;/button&gt;
+&lt;button type="button" class="rz-cam-btn"&gt;+&lt;span class="rz-sr"&gt;Zoom in&lt;/span&gt;&lt;/button&gt;</code></pre>
+
+        <p>The focus ring is not one of the decorative marks and must never be treated as one. It is drawn with an offset, clear of the element's own edge, so it survives against a filled stake and an outlined chip alike — and it survives forced-colours modes, where a soft halo does not. No mark may be positioned so that it clips the ring.</p>
+        <p>Every mark is placed with logical properties, so the caret, the leading mark and the graduation all move to the other side under RTL on their own. If you find yourself nudging a mark with <code>margin-left</code>, the mark is right and the nudge is wrong. The limit noted under Law 5 is real and stands until that amendment is made.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do / Don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Write the verb and the noun in full and let the form carry the grammar: <em>Log watering</em> on a stake, <em>Fiddle-leaf Fig</em> on a chip. Whoever reads either one knows what will happen before they touch it.</p>
+            <p><button type="button" class="rz-stake">Log watering</button>
+               <button type="button" class="rz-chip">Fiddle-leaf Fig</button></p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Put a droplet glyph on the watering control and a leaf glyph on the plant, then shorten both labels to fit them. There is now a symbol set to learn, and nobody learns one for an app they opened because a plant looks unwell (<span class="doc-cite">C14</span>).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a mark that means nothing keep meaning nothing. The mote field is texture: inert, seeded so it does not reshuffle between loads, and it moves no node.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Make a mark move to get attention. A pulsing bead is alarm, and this product does not raise its voice — an ailing plant states what is wrong inside its own card, with the time and a way forward (<span class="doc-cite">C25</span>).</p>
+          </div>
+        </div>
+
+        <p>Three more rules follow and are worth stating plainly. <strong>Never put a picture inside a node</strong> — the world is the picture, and a glyph competes with the card's own name at exactly the sizes where names are already hard to read. <strong>Never make a mark a control</strong>: the bead, the graduation and the track are drawn, not clicked; anything clickable is a card, a stake, a chip or a chrome item. <strong>Never invent a shape</strong> — if the vocabulary has no mark for what you mean, either the meaning belongs in words, or you have found a genuine gap, and the amendment path in <a href="../guidelines/extending-this-system.html">extending this system</a> is how you close it. Do not close it locally in a page.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="../components/action-rail.html">action-rail</a> and <a href="../components/navigate-to.html">navigate-to</a> — what each of the two forms does once activated.</li>
+          <li><a href="../components/chrome.html">chrome</a> — the register that owns the leading mark, and the blur test Law 3 leans on.</li>
+          <li><a href="../guidelines/interaction-and-cursors.html">interaction-and-cursors</a> — the cursor law, and which pointer a refused mark shows.</li>
+          <li><a href="colors.html">colors</a> — the kind channel and the live-palette mechanism the marks read from.</li>
+          <li><a href="../components/node.html">node</a> — the graduation: its length is rank, its colour is kind.</li>
+          <li><a href="../patterns/degradation.html">degradation</a> — the dashed rims, and why unknown and empty are drawn unlike each other.</li>
+          <li><a href="../guidelines/accessibility.html">accessibility</a> — what the live region says on every hop.</li>
+          <li><a href="../guidelines/extending-this-system.html">extending this system</a> — the amendment path, including the RTL gap noted above.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>RZ.mount({});</script>
+</body>
+</html>

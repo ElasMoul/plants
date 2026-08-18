@@ -6,9 +6,10 @@ import { PlantService } from '../../services/plant.service';
 import { CreatePlantRequest, UpdatePlantRequest } from '../../models/plant.model';
 
 @Component({
-  selector: 'app-plant-form',
-  templateUrl: './plant-form.component.html',
-  styleUrls: ['./plant-form.component.scss'],
+    selector: 'app-plant-form',
+    templateUrl: './plant-form.component.html',
+    styleUrls: ['./plant-form.component.scss'],
+    standalone: false
 })
 export class PlantFormComponent implements OnInit {
   form!: FormGroup;

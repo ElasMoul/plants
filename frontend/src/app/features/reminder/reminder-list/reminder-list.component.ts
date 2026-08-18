@@ -13,10 +13,11 @@ import { PLACEHOLDER_IMAGE } from '../../../shared/constants/placeholder-image.c
 import { CreateReminderFormComponent } from '../components/create-reminder-form/create-reminder-form.component';
 
 @Component({
-  selector: 'app-reminder-list',
-  templateUrl: './reminder-list.component.html',
-  styleUrls: ['./reminder-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-reminder-list',
+    templateUrl: './reminder-list.component.html',
+    styleUrls: ['./reminder-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class ReminderListComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

@@ -96,6 +96,24 @@ services:
     networks:
       - plantpal-network
 
+  # Atlas — the Rhizome "botanical network" frontend. Same backend, its own port.
+  # Served same-origin behind this nginx (/api → backend:8080), which is what lets
+  # it share the JWT session with the classic frontend.
+  frontend-atlas:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.atlas
+    container_name: plantpal-frontend-atlas
+    restart: unless-stopped
+    ports:
+      - "8182:80"
+      - "8445:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - plantpal-network
+
   # ─────────────────────────────────────────
   # Redis (cache + rate limiting via Bucket4j)
   # ─────────────────────────────────────────

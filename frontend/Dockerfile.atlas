@@ -1,0 +1,19 @@
+# Atlas frontend — the Rhizome "botanical network" UI. Second app in the same
+# Angular workspace, served on its own container/port against the same backend.
+
+# Stage 1 — build the atlas project
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build:atlas:prod
+
+# Stage 2 — serve with Nginx (reuses the shared nginx.conf: /api → backend:8080)
+FROM nginx:alpine
+# The @angular/build application builder nests output under /browser.
+COPY --from=builder /app/dist/atlas/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx/certs /etc/nginx/certs
+EXPOSE 80 443
+CMD ["nginx", "-g", "daemon off;"]

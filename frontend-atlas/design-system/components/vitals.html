@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vitals · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Vitals</h1>
+      <p class="doc-lede">The short block inside a card that answers <em>what
+        state is this thing in</em> — how the plant is doing, and how sure we
+        are about anything we worked out for you. This page settles where
+        vitals live, what they are allowed to say, and why reading them never
+        moves your garden.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>A vitals block is the health readout of one plant, species, problem
+          or treatment course, written as a few labelled rows in that thing's
+          own card: how it is doing, when you last watered it, how confident we
+          are that the species we identified is really the species you have. It
+          is the second of the four questions the focused card has to answer on
+          its own — what is this, <strong>what state is it in</strong>, what can
+          I do here, where can I go from here (<span class="doc-cite">C19</span>).</p>
+        <p>Vitals are a readout, not a control. Nothing in the block changes
+          anything: the watering lives on <a href="action-rail.html">the action
+          rail</a> as a stake, and the treatment steps live in
+          <a href="treatment-course.html">the treatment course</a>. If a row
+          tempts you to make it clickable, what you actually want is a stake or
+          a chip, and those two forms are settled on
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+        <p>Be honest here, in the app's own spirit. A vital we measured — when
+          you last watered — is stated flatly. A vital we inferred — a species
+          read from your photo, a diagnosis read from a leaf — carries its
+          confidence beside it, and if we are not sure, the row says so in
+          words as well as in the meter.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">A vital changing changes the vital and
+            nothing else. No health, count, staleness or confidence value ever
+            moves a card, resizes one, re-ranks one, or grows the world.</p>
+          <p class="doc-check">Record every <code>.rz-n</code>'s computed
+            <code>left</code>/<code>top</code> and <code>RZ.extent()</code>.
+            Flip every <code>data-health</code> through
+            <code>thriving</code>, <code>watch</code>, <code>ailing</code> and
+            <code>lost</code>, and rewrite every recap count. Diff both
+            recordings: identical.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C19</span></p>
+          <p class="doc-law__statement">Health is said in words as well as in
+            colour. The dot is a second reading of the row, never the only
+            one.</p>
+          <p class="doc-check">Render the page with
+            <code>filter: grayscale(1)</code> applied to the plane. Every
+            <code>.rz-health</code> still states its condition — "Wants water",
+            "New growth this month", "Losing lower leaves" — from its text
+            alone, and no vitals row is left carrying meaning only in a
+            swatch.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C19, C12</span></p>
+          <p class="doc-law__statement">Vitals belong to the body, and the body
+            belongs to the focused card. A card you have not travelled to says
+            its state in one clause of its recap instead — "overdue 2 days",
+            "3 active" — never as an instrument panel.</p>
+          <p class="doc-check">For every <code>.rz-vitals</code> in the
+            document, assert its <code>offsetParent</code> is
+            <code>null</code> unless its enclosing <code>.rz-n</code> carries
+            <code>data-focus="true"</code>. Hop with <code>RZ.go(id)</code> and
+            re-run: exactly one vitals block is visible, and it is the new
+            focus's.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C19</span></p>
+          <p class="doc-law__statement">Anything we worked out rather than
+            watched carries its confidence in the same row, and a low
+            confidence says so in a sentence too.</p>
+          <p class="doc-check">For every inferred vital — identification,
+            diagnosis, any AI-read value — assert its
+            <code>.rz-vital-row</code> contains an <code>.rz-conf</code> whose
+            <code>data-conf</code> is <code>high</code>, <code>medium</code> or
+            <code>low</code>, and that every <code>data-conf="low"</code> row
+            also carries a plain-language sentence saying we are not sure.</p>
+        </div>
+
+        <div class="doc-note">
+          <p>Staleness, slow reads and failed reads are states of the node, not
+            of the vitals block, and they are settled once on
+            <a href="../patterns/degradation.html">degradation</a>. A vitals
+            block under those states keeps its rows and its row heights; it does
+            not empty itself out and it does not reflow.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <p>The world below is live. Office Fig is the focus and carries its
+          vitals; travel to another card — click it, or press an arrow key with
+          the world focused — and watch the block go with the focus while every
+          card stays exactly where it stands.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Three cards. Office Fig is focused and shows its vitals. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-office" data-cell="3,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig"
+                         data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__skel">
+                    <div class="rz-skel">
+                      <div class="rz-skel__row" data-w="short"></div>
+                      <div class="rz-skel__row"></div>
+                      <div class="rz-skel__row" data-w="mid"></div>
+                    </div>
+                  </div>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>12 days ago, by you</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Species</span>
+                          <span><span class="rz-binomial">Ficus lyrata</span>, read from your photo</span>
+                          <span class="rz-conf" data-conf="high">
+                            <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                            <span class="rz-label">Confident</span>
+                          </span>
+                        </div>
+                      </div>
+                      <p class="rz-n__stale">Last read before you went offline,
+                        about an hour ago.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-garden" data-cell="1,2"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="thriving">Eleven of twelve doing well</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Needs you</span>
+                          <span>Office Fig, overdue 2 days</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-rot" data-cell="4,3"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Root rot" data-recap="Suspected · 1 plant">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Root rot</h3>
+                  <p class="rz-n__recap">Suspected
+                    <span class="rz-n__recap-second">· 1 plant</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="ailing">Active on Office Fig</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Diagnosis</span>
+                          <span>Read from the leaf drop. We are not sure this is
+                            rot rather than underwatering — compare it with what
+                            you are seeing before you repot.</span>
+                          <span class="rz-conf" data-conf="low">
+                            <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                            <span class="rz-label">Not sure</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Vitals travel with the focus; nothing on the plane moves</span>
+            <span>C9 · C19</span>
+          </figcaption>
+        </figure>
+
+        <h3 class="doc-h3">The health scale and the confidence meter</h3>
+        <p>Five conditions, each with its own word. The word is the reading;
+          the dot repeats it. Write the word in the plant's terms, not the
+          system's: "Wants water" beats "Watch", and "We think this one is
+          gone" beats "Lost".</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <div class="rz-vitals">
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Thriving</span>
+                <span class="rz-health" data-health="thriving">New growth this month</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Stable</span>
+                <span class="rz-health">Holding steady, nothing due</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Watch</span>
+                <span class="rz-health" data-health="watch">Wants water</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Ailing</span>
+                <span class="rz-health" data-health="ailing">Losing lower leaves</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Lost</span>
+                <span class="rz-health" data-health="lost">We think this one is gone</span>
+              </div>
+            </div>
+            <div class="rz-vitals">
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">High</span>
+                <span class="rz-conf" data-conf="high">
+                  <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                  <span class="rz-label">Confident</span>
+                </span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Medium</span>
+                <span class="rz-conf" data-conf="medium">
+                  <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                  <span class="rz-label">Fairly sure</span>
+                </span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Low</span>
+                <span class="rz-conf" data-conf="low">
+                  <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                  <span class="rz-label">Not sure</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Five conditions, three confidences — each readable in grey</span>
+            <span>C19</span>
+          </figcaption>
+        </figure>
+
+        <pre class="doc-code"><code>&lt;div class="rz-n__section rz-vitals"&gt;
+  &lt;div class="rz-vital-row"&gt;
+    &lt;span class="rz-vital-row__key"&gt;Health&lt;/span&gt;
+    &lt;span class="rz-health" data-health="watch"&gt;Wants water&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="rz-vital-row"&gt;
+    &lt;span class="rz-vital-row__key"&gt;Species&lt;/span&gt;
+    &lt;span&gt;&lt;span class="rz-binomial"&gt;Ficus lyrata&lt;/span&gt;, read from your photo&lt;/span&gt;
+    &lt;span class="rz-conf" data-conf="high"&gt;
+      &lt;span class="rz-conf__track"&gt;&lt;span class="rz-conf__fill"&gt;&lt;/span&gt;&lt;/span&gt;
+      &lt;span class="rz-label"&gt;Confident&lt;/span&gt;
+    &lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills</h2>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Health</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-thriving</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-thriving)"></span></td>
+                <td>Growing well. Nothing is asked of you.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-stable</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-stable)"></span></td>
+                <td>Holding steady. The default when no <code>data-health</code> is set.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-watch</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-watch)"></span></td>
+                <td>Something is due or drifting — water, light, a check.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-ailing</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-ailing)"></span></td>
+                <td>Actually unwell. A problem or a treatment course is attached.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-lost</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-lost)"></span></td>
+                <td>Gone. The node stays in your garden and stays traversable.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Confidence</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-conf-high</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-conf-high)"></span></td>
+                <td>A full track. We would act on this ourselves.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-conf-medium</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-conf-medium)"></span></td>
+                <td>Most of the track. Worth a look before you act.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-conf-low</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-conf-low)"></span></td>
+                <td>A short fill. Say it in words in the same row as well.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-conf-track</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-conf-track)"></span></td>
+                <td>The unfilled remainder, so the fill reads as a proportion.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Attributes and classes</caption>
+            <thead><tr><th>Hook</th><th>Values</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-vitals</code></td>
+                <td>—</td>
+                <td>The block. Sits inside <code>.rz-n__body</code>, usually
+                  also carrying <code>.rz-n__section</code> for its rule.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-vital-row</code></td>
+                <td>—</td>
+                <td>One reading: its key, its value, and its confidence if it
+                  has one.</td>
+              </tr>
+              <tr>
+                <td><code>data-health</code></td>
+                <td><code>thriving</code> · <code>watch</code> ·
+                  <code>ailing</code> · <code>lost</code></td>
+                <td>On <code>.rz-health</code>. Omit it for stable.</td>
+              </tr>
+              <tr>
+                <td><code>data-conf</code></td>
+                <td><code>high</code> · <code>medium</code> · <code>low</code></td>
+                <td>On <code>.rz-conf</code>. Three steps only — a percentage
+                  we cannot defend is worse than a word we can.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>The palette switcher in Settings re-keys all of these live, because
+          every value above is a token reference — see
+          <a href="../foundations/colors.html">colors</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>Vitals are read, not operated, so their whole accessibility burden is
+          in being legible and in being announced when they change hands.</p>
+        <ul>
+          <li><strong>Colour is never the reading.</strong> Law 2 is the
+            accessible-name rule in disguise: the dot on
+            <code>.rz-health</code> is a CSS pseudo-element and is invisible to
+            a screen reader by construction, so the condition has to be in the
+            text or it does not exist. The same holds for
+            <code>.rz-conf</code> — the meter is decoration over the
+            <code>.rz-label</code> beside it.</li>
+          <li><strong>The key/value pairing survives linearisation.</strong>
+            Read in DOM order, a row is "Health — Wants water", which is the
+            sentence you want. Keep the key first and keep it a real word, not
+            an abbreviation.</li>
+          <li><strong>A vitals block is not focusable.</strong> It holds no
+            control, takes no tab stop, and never interrupts the keyboard walk
+            of the graph — arrow keys with the world focused still follow the
+            veins, and that walk is settled on
+            <a href="../guidelines/accessibility.html">accessibility</a>.</li>
+          <li><strong>Arriving is announced with the state.</strong> Travelling
+            to a node hands the reader that node's recap through
+            <code>RZ.say</code>'s live region along with the origin and the new
+            degree — so a screen-reader user learns the plant wants water at the
+            same moment a sighted user sees the amber dot, without hunting for
+            it.</li>
+          <li><strong>Everything is written with logical properties</strong>
+            (<code>inline-size</code>, <code>border-inline-start</code>), so the
+            confidence meter fills from the reading edge in RTL and the rows do
+            not point the wrong way.</li>
+        </ul>
+        <p class="doc-check">Render the plane in greyscale with
+          <code>::before</code> suppressed, then read every
+          <code>.rz-vital-row</code>'s <code>textContent</code>: each is a
+          complete statement of that reading, with no residual meaning left in
+          the colour that is now missing.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say the condition in the plant's own words and let the dot agree
+              with it — "Wants water", with the watch colour behind it. The
+              sentence carries the meaning; the colour makes it findable at a
+              glance.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Ship a row whose only content is a coloured dot, or one labelled
+              "Status: amber". A colour is not a reading, and the system's own
+              state words are not the user's
+              (<span class="doc-cite">C19</span>).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Put the confidence in the same row as the value it qualifies, and
+              when it is low, write the doubt out: "We are not sure this is rot
+              rather than underwatering."</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Print "87% confident". We cannot defend the second digit, and a
+              number invites a decision the reading was never accurate enough to
+              support. Three steps, and words for the low one.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a health change repaint the row in place. The card keeps its
+              width, its cell and its rank, and the world view does not redraw
+              its extent (<span class="doc-cite">C9</span>).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Sort, promote or enlarge a card because it turned ailing. The
+              moment a status can move a plant, you can no longer find your
+              plant where you left it, and the whole geography stops being
+              trustworthy.</p>
+          </div>
+        </div>
+
+        <p>Vitals belong to something that <em>has</em> a state. A guide has
+          none — do not give it an empty block for the sake of consistency. If a
+          node has no honest reading to offer, it has no vitals, and its recap
+          does the whole job.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="node.html">Node</a> — the card contract the vitals block
+            lives inside, where rank, recap and the show-modes are settled.</li>
+          <li><a href="focus-panel.html">Focus panel</a> — the four questions
+            the focused card answers, of which vitals are the second.</li>
+          <li><a href="treatment-course.html">Treatment course</a> — what you do
+            about an ailing reading, once the vitals have stated it.</li>
+          <li><a href="action-rail.html">Action rail</a> — where the mutations a
+            vital might prompt actually live.</li>
+          <li><a href="../patterns/degradation.html">Degradation</a> — slow,
+            stale, unknown and failed readings, stated once for the whole
+            system.</li>
+          <li><a href="../foundations/colors.html">Colors</a> — the health and
+            confidence groups beside the kind channel, and the live palette.</li>
+          <li><a href="../guidelines/accessibility.html">Accessibility</a> — the
+            graph walk and the live region this page relies on.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen runs from the runtime: placement, rank, the veins and every
+       hop are RZ's. Nothing on this page re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      edges: [
+        ["n-office", "n-garden"],
+        ["n-office", "n-rot"],
+        ["n-garden", "n-rot"]
+      ]
+    });
+  </script>
+</body>
+</html>

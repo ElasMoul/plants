@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">World</h1>
+      <p class="doc-lede">The world is the one place PlantPal happens: a single
+        plane your garden stands on, a camera that moves over it, and a register
+        of chrome around it that never moves at all. This page settles what
+        belongs to which of those three, and shows them assembled.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is a place. Every plant you keep, every species behind
+          them, every problem, treatment course and journal entry stands at its
+          own spot on one plane, joined by veins. Opening a plant does not take
+          you to a plant screen — the camera travels to it and the plane
+          rescales around it, and the thing you came from is still standing
+          where you left it, smaller. That is the whole of the world:
+          <code>.rz-world</code> is the frame you look through,
+          <code>.rz-plane</code> is the single subtree the camera moves, and
+          everything the camera must <em>not</em> move sits beside the plane, in
+          the chrome register.</p>
+        <p>There is one world per surface and it owns all of it. Never two
+          worlds side by side, never a world nested in a panel, never a second
+          one opened in a drawer — two worlds mean two answers to <em>where am
+          I</em>, and your reader will trust neither. If a thing has no place on
+          the plane — a sign-in form, a settings panel — it is not part of the
+          world, and dressing it as one costs the plane its meaning.</p>
+        <div class="doc-note">
+          <p>This page owns the plane, its layers and its camera. The cards on
+            it are <a href="node.html">node</a>, the lines between them are
+            <a href="edge.html">edge</a>, the furniture around them is
+            <a href="chrome.html">chrome</a>, and the journey between two cards
+            is <a href="../patterns/traversal.html">traversal</a>. The density
+            rule that decides how many cards a collection contributes is owned
+            by <a href="aggregate.html">aggregate</a> and
+            <a href="../foundations/spacing.html">spacing</a>; the lattice the
+            cells are counted on is owned by spacing.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C4, C16</span></p>
+          <p class="doc-law__statement">There is one world and one plane, and
+            every navigation is a rescale of it. “Nothing is replaced,
+            unmounted, or routed to — every navigation is a rescale.”</p>
+          <p class="doc-check">Record the set of <code>.rz-n</code> elements,
+            hop ten times, and compare: they are the identical objects, nothing
+            was added to or removed from the plane, and
+            <code>location.href</code> never changed. Assert exactly one
+            element carries <code>data-focus="true"</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C9, C20</span></p>
+          <p class="doc-law__statement">What belongs to the world is a child of
+            <code>.rz-plane</code> and is therefore scaled and translated with
+            it. What belongs to the viewport is a sibling of the plane and never
+            moves with the camera. Membership is the whole rule; nothing else
+            decides it.</p>
+          <p class="doc-check">Pan the camera and diff every bounding box: the
+            veins, the motes and the cards all moved by the same delta, and the
+            bounding box of every <code>.rz-chrome</code> member is unchanged to
+            the pixel. Then assert no element under <code>.rz-plane</code>
+            carries a <code>.rz-chrome</code> class, and no chrome member is a
+            descendant of the plane.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C17</span></p>
+          <p class="doc-law__statement">The world pans; it never scrolls.
+            “Nothing other than the focused node's body scrolls.”</p>
+          <p class="doc-check">With the specimen mounted, assert
+            <code>document.body.scrollHeight</code> equals its
+            <code>clientHeight</code>, and that of every element in the document
+            only the focused card's <code>.rz-n__body</code> has
+            <code>scrollHeight &gt; clientHeight</code>. Drag the board a long
+            way in one direction: no scrollbar appears anywhere.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C15, C16</span></p>
+          <p class="doc-law__statement">The pointer has a precedence order and
+            the world is last in it: the pan handler returns immediately if the
+            pointer went down inside a card, and a card's own travel listener
+            stands aside for its controls, its in-card hops and its links.
+            Camera controls change neither data nor focus — looking around is
+            not navigating.</p>
+          <p class="doc-check">Press inside a card and drag: the camera
+            transform is identical afterwards. Press on bare board and drag: the
+            transform changed and <code>RZ.focus</code> did not. Click every
+            camera control and assert <code>RZ.focus</code> and every record
+            field are unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C5, C19</span></p>
+          <p class="doc-law__statement">The world is reviewed assembled, never
+            in parts. A plane with no chrome around it cannot answer where you
+            are or what you can do from here, so a specimen of the world always
+            carries the top bar, Navigate to, Actions, the world view and the
+            camera cluster together.</p>
+          <p class="doc-check">On the assembled specimen below, point at each of
+            the four answers without hopping: what is this (the focused card's
+            kind and name), what state is it in (its vitals), what can I do here
+            (Actions), where can I go from here (Navigate to). Then zoom to both
+            ends of the clamp and assert the world view's you-are-here marker is
+            still inside its frame.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The assembled surface</h2>
+        <p>Five cards, five veins, one camera, and the whole chrome register
+          around them. Click a card to travel to it: the camera follows the vein
+          rather than cutting across the space, every card's rank is recomputed
+          from where you now are, and nothing on the page is replaced. Drag the
+          bare board to pan. Hold <kbd>Alt</kbd> and use the wheel to zoom, so a
+          bare wheel stays free to scroll the focused card's own body.</p>
+        <p>This is the same garden, at the same cells, as the one on the
+          system's front page — a graph that shifts between two pages of one
+          system teaches its reader that positions are decorative.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__section">
+                      <p>Everything you keep, in one place. Two plants are drawn
+                        here and the rest stand behind a single aggregate.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Light</span>
+                          <span>Bright indirect, north window</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>12 days ago, by you</span>
+                        </div>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The lower leaves have been dropping since the
+                          radiator came on. We are not certain this is
+                          underwatering — if you want, look at
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                          and compare.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-garden-more" data-cell="2,4"
+                         data-aggregate="true"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="10 more plants" data-recap="Opens the full list">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name"><span class="rz-n__count">+10</span> more plants</h3>
+                  <p class="rz-n__recap">Opens the full list</p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">World view</span>
+                  <button type="button" class="rz-probe__btn" id="rz-arrange"
+                          aria-pressed="false">Arrange</button>
+                </p>
+                <svg class="rz-map" id="rz-map" width="208" height="104"
+                     viewBox="0 0 208 104" role="img"
+                     aria-label="World view">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The world assembled · plane, camera and the whole chrome register</span>
+            <span>C4 · C5 · C15 · C16 · C17 · C19</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>The specimen is mounted from the runtime, not re-implemented here.
+          The edge list is declared once; the drawn veins, every card's rank,
+          the Navigate-to entries, the degree beside them and the route of every
+          hop are all generated from it — which is why a drawn-but-untraversable
+          vein cannot exist on this page.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-garden", "n-garden-more"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ],
+  actions: {
+    "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+  }
+});</code></pre>
+
+        <p>One amendment was needed to build this page and is recorded as
+          <code>A1</code> in the constitution's register: chrome is fixed to a
+          <em>viewport</em> edge by contract, and a documentation stage is not a
+          viewport, so <code>.doc-specimen__stage[data-stage="world"]</code>
+          now establishes a containing block so an assembled specimen can hold
+          its own chrome. It moves nothing.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The parts, and who owns them</h2>
+        <p>Membership is the design decision here — the column that matters is
+          the last one. A layer inside the plane is part of the garden and moves
+          with the camera; a layer beside it is part of the apparatus and does
+          not.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Layer ownership (Law 2)</caption>
+            <thead><tr><th>Element</th><th>What it is</th><th>Belongs to</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-world</code></td>
+                <td>The frame you look through. It pans; it does not scroll, and
+                  it carries the grab cursor.</td>
+                <td>The viewport. It is the surface, not a layer on it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-plane</code></td>
+                <td>The single transformed subtree. The camera writes one
+                  transform here and nowhere else.</td>
+                <td>The world. Everything in the garden is inside it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-veins</code></td>
+                <td>The edge layer, redrawn from the edge list and painted
+                  beneath the cards.</td>
+                <td>The world — a child of the plane, so a vein cannot drift
+                  away from the cards it joins.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-trail</code></td>
+                <td>The route just travelled, drawn along the real veins.</td>
+                <td>The world, inside the vein layer.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-n</code></td>
+                <td>A card, placed from its own cell and persisted offset.</td>
+                <td>The world.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-motes</code></td>
+                <td>The decorative field: deterministic, seeded, bounded by a
+                  ceiling, and it reads its colours back out of the tokens.</td>
+                <td>Whichever surface it decorates. In the app it is a sibling
+                  of the plane and belongs to the viewport; in overview it
+                  covers the shrunken app card and nothing beyond it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome</code> members</td>
+                <td>Top bar, Navigate to, Actions, world view, camera cluster,
+                  live region.</td>
+                <td>The viewport. Siblings of the plane, flush to an edge, and
+                  they never move with the camera.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme fills</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-void</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-void)"></span></td>
+                <td>The ground the whole world sits on, at the frame's centre.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-void-deep</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-void-deep)"></span></td>
+                <td>The same ground at its edges. The frame is one soft gradient
+                  between the two, so the plane has a centre without a spotlight
+                  on it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-mote</code> · <code>--rz-mote-link</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-mote)"></span></td>
+                <td>The field's motes and the links between near ones. The
+                  canvas reads both back from the tokens, so a live palette
+                  change re-keys the decoration too.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-cam-k</code></td>
+                <td></td>
+                <td>The live camera scale, published to CSS by the runtime. It
+                  is what lets the focused card compensate for zoom in pure CSS
+                  and never be clipped. Read it; never write it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-z-world</code> … <code>--rz-z-live</code></td>
+                <td></td>
+                <td>The stacking rungs: field, vein, node, panel, chrome, live
+                  region. Chrome has its own rung above every card — and, per
+                  <a href="../foundations/elevation.html">elevation</a>, no
+                  shadow at any of them.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-pitch-x</code> · <code>--rz-pitch-y</code> ·
+                  <code>--rz-origin-x</code> · <code>--rz-origin-y</code></td>
+                <td></td>
+                <td>The lattice a cell is counted on. Declared once as
+                  parameters and read by both the CSS and the runtime; the
+                  geometry itself is owned by
+                  <a href="../foundations/spacing.html">spacing</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Pointer</h3>
+        <p>Dragging bare board pans. Pressing inside a card never pans — the pan
+          handler returns the moment it sees a card under the pointer, which is
+          why you can drag a long paragraph's selection inside the focused card
+          without the world sliding out from under you. Clicking a card that is
+          not the focus travels to it; clicking its own controls, chips, stakes
+          or links does not, because the card's travel listener stands aside for
+          them. There is no grab cursor anywhere inside a card: the board pans,
+          the node reads. The full cursor table is on
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+
+        <h3 class="doc-h3">Camera</h3>
+        <p>Zoom, fit, recentre and pan are a third category of control: they
+          change no data and they change no focus. Zoom is clamped at both ends
+          and steps by a declared factor, so two people zooming the same world
+          arrive at the same scales. <kbd>Alt</kbd> and the wheel zooms; a bare
+          wheel is deliberately left alone so the focused card's body can scroll
+          under the pointer. Recentre says so out loud — “you did not move” —
+          because moving the camera back is the one camera action most easily
+          mistaken for a hop.</p>
+
+        <h3 class="doc-h3">Travel</h3>
+        <p>Every hop, from every trigger, runs one code path at one timing, and
+          the camera centre follows the polyline of the real veins by arc length
+          rather than cutting across the space. A multi-hop crossing lights what
+          it passes through as it reaches it and opens only the destination. A
+          hop asked for while one is still in flight is refused out loud, never
+          queued or blended. All of that is owned by
+          <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../foundations/motion.html">motion</a>; the world's part is
+          only that it holds still while it happens.</p>
+
+        <h3 class="doc-h3">Fit</h3>
+        <p>The focused card is shown in full, top edge to bottom edge, at any
+          zoom. If it does not fit the frame, the zoom gives way — not the card.
+          The runtime measures the card against the live camera scale on every
+          arrival and on every resize, so the rule survives a window being
+          dragged smaller mid-read.</p>
+
+        <h3 class="doc-h3">Arrange, states and modes</h3>
+        <p>Arrange is entered from the button beside the world view and is a
+          mode, not a layer: the camera fits every card, every card renders
+          full, the whole card becomes the handle and everything else goes
+          inert. Degradation is material on the cards themselves — never a
+          global overlay, and the geography never degrades under it. Leaving for
+          settings shrinks the whole world into a floating card rather than
+          opening a dialog over it. Each of those has its own page:
+          <a href="../patterns/arrange-mode.html">arrange mode</a>,
+          <a href="../patterns/degradation.html">degradation</a>,
+          <a href="../patterns/settings-exit.html">settings exit</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>The world is a graph, and a graph has to be walkable without being
+          seen. The frame itself is focusable and takes the arrow keys; each one
+          proposes the neighbour that actually <em>lies</em> that way, computed
+          from real positions rather than document order, and <kbd>Enter</kbd>
+          travels there on exactly the path a click would take. A direction with
+          no vein is spoken — “no vein that way from Office Fig” — rather than
+          silently ignored, because silence reads as a broken key.
+          <kbd>Tab</kbd> walks the veins out of the focus in turn and announces
+          which of how many; <kbd>Escape</kbd> steps back one hop along the path
+          you actually took.</p>
+        <p>Every focus change is announced in one sentence that names where you
+          came from, what you crossed without opening, and how many veins lead
+          out from here. The world view's accessible label is rewritten on the
+          same hop, in lockstep with the visible you-are-here, so a screen-reader
+          user and a sighted user are never told two different stories about
+          where they are. Neither of those ever speaks a cell, a row, a column or
+          a lattice coordinate: they speak the garden — “Plants · 12 plants”,
+          “Problems · 3 active”.</p>
+        <p>Under reduced motion the camera stops animating but the direction
+          survives: the trail is drawn along the real veins and held, and both
+          the marker and its label move. Nothing is replaced by an abrupt swap,
+          and the announcement is held longer. The decorative field stops
+          drifting; it does not disappear, because it carries no meaning either
+          way.</p>
+        <p>The vein layer is <code>aria-hidden</code> on purpose — drawn curves
+          announce nothing useful. Every vein it draws is also a real entry in
+          Navigate to, generated from the same list, so no destination exists
+          that a keyboard user cannot reach. Colour is never the only signal:
+          rank is carried by four visibly different card widths and by the length
+          of the graduation on each card's head, so the hierarchy survives with
+          the text blurred, and kind is carried by that graduation's colour
+          <em>and</em> by the card's own kind line. Logical properties are used
+          throughout, so nothing points the wrong way in RTL.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>The mistake to guard against is putting something in the plane
+          because it is easier to position there. A layer's membership is a
+          statement about whether it is part of your garden, and the camera will
+          enforce that statement whether or not you meant it.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Put the world view, Navigate to, Actions, the top bar and the
+              camera cluster beside the plane, as siblings, flush to the edge
+              they own. They are apparatus: they must stay put while the garden
+              moves under them, and staying put is what makes them readable as
+              apparatus at a glance (Law 2).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Park a panel inside <code>.rz-plane</code> so it sits “near” the
+              focused card. It will scale with the zoom, drift with the pan, and
+              become a piece of the garden the user cannot travel to — apparatus
+              wearing a plant's clothes (Law 2, C9).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the camera move only for a reason the user can point at: a
+              card they clicked, a key they pressed, a search result they chose,
+              a camera control they used. A world you can predict is a world you
+              can map (C16).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Move the camera because something arrived — a watering logged, a
+              health score landing, a notification. A world that drifts on its
+              own is a world the user stops mapping, and a non-structural change
+              is required to move nothing at all (C9).</p>
+          </div>
+        </div>
+
+        <p>Two more, both about restraint. Never re-place a card because
+          something about it changed: only two things move a card, a drag you
+          made and a genuinely new record taking a free cell. And keep the frame
+          generous — air in this system is spent separating cards on the plane,
+          not padding the insides of them. A crowded world reads as a list, and a
+          list is the one thing the world is not.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The cards on the plane are <a href="node.html">node</a>; the veins
+          between them and their single source of truth are
+          <a href="edge.html">edge</a>; “+N more” and the density rule it serves
+          are <a href="aggregate.html">aggregate</a>. The furniture around the
+          frame is <a href="chrome.html">chrome</a>, and its members have their
+          own pages: <a href="navigate-to.html">navigate to</a>,
+          <a href="action-rail.html">action rail</a>,
+          <a href="minimap.html">minimap</a>, and the focused card's own answers
+          in <a href="focus-panel.html">focus panel</a>. The journey is
+          <a href="../patterns/traversal.html">traversal</a>; the modes are
+          <a href="../patterns/arrange-mode.html">arrange mode</a> and
+          <a href="../patterns/settings-exit.html">settings exit</a>; the states
+          are <a href="../patterns/degradation.html">degradation</a>. The lattice
+          is <a href="../foundations/spacing.html">spacing</a>, the stacking and
+          the shadow rule are
+          <a href="../foundations/elevation.html">elevation</a>, and the pointer
+          table is
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>. The amendment path this page used is
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. Nothing here re-implements
+       travel, rank, placement or the density rule. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-garden-more"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion and scale · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Guidelines</p>
+      <h1 class="doc-title">Motion and scale</h1>
+      <p class="doc-lede">Two channels, two questions, and no swapping them: motion answers how you got here, scale answers what you are looking at. This page settles what happens where the two meet.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You click the Fiddle-leaf Fig. The camera pulls across your garden along the vein that joins it to the Office Fig, and when it comes to rest the Fig is the big card in front of you and the Office Fig is a smaller one, one hop back, still on screen. Two things happened in that one crossing, and they are carrying two different facts. The <em>movement</em> said which way you went and how far. The <em>size</em> says which card you are now reading. A garden where those two agree is a place; a garden where they disagree is a slideshow.</p>
+        <p>This page owns the join, and nothing else. It does not set the clock — there is one navigation timing and it lives on <a href="../foundations/motion.html">motion</a>. It does not choreograph the crossing — the route, the polyline and what lights on the way through are settled on <a href="../patterns/traversal.html">traversal</a>. It does not define rank or the widths rank is spent on — those belong to <a href="../components/node.html">node</a> and the ladder to <a href="../foundations/typography.html">typography</a>. What is left over is the part every one of those pages assumes and none of them states: which channel is allowed to carry which fact, and what must be true of the two together at the end of a hop.</p>
+        <p>Reach for this page when something in a view feels wrong and no single component is at fault. Two cards competing to be the subject, a change that wants to be staged as a journey, a zoom that quietly reads as promotion, a size that grows to say <em>look at this</em> — those are all one fault seen from four sides. A signal was spent on something that did not happen.</p>
+        <div class="doc-note">
+          <p>If unsure which channel a thing belongs to, ask what a user would have to have done for it to be honest. If they would have had to travel, it is motion. If they would have had to arrive, it is scale. If they would have had to do nothing at all, it is neither, and the change says itself in words where it stands.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C9 · C10 · C15</span></p>
+          <p class="doc-law__statement">Neither channel may stand in for the other. Motion is spent only when the focus changed, and scale changes only because the focus changed. A reading that arrives, a count that ticks, a treatment step you check off and a node that finishes fetching move nothing and resize nothing — they say themselves in place.</p>
+          <p class="doc-check">Sample the camera transform and the computed <code>inline-size</code> of every <code>.rz-n</code>, then change a node's <code>data-recap</code>, its health and its count, and check off a course step. Assert both sets are byte-identical afterwards, and that no element gained or lost <code>data-rank</code>. Then run a hop and assert both sets changed. Finally activate every stake on the focused card: the camera transform is unchanged after each.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C10 · C12 · C16</span></p>
+          <p class="doc-law__statement">Where the camera stopped and what wears the focus size are the same card, always. Exactly one card is at focus size when a crossing lands, and it is the one the camera travelled to — never none, never two, and never a card the route did not end on.</p>
+          <p class="doc-check">After each of ten hops, assert exactly one element carries <code>data-focus="true"</code>, that its id equals <code>RZ.focus</code> and the last entry of the route just travelled, and that its computed <code>inline-size</code> resolves to <code>--rz-card-focus</code> while no other card's does. Do it again after a hop that passes through two nodes: the passed-through cards are lit and neither is at focus size.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C4 · C10 · C12</span></p>
+          <p class="doc-law__statement">Size changes only as the handover a hop causes, on the navigation timing, and never as emphasis. Nothing grows to be noticed, nothing pulses to be found, and no type size is ever transitioned — a rung is a fact about a card's role, not an animation.</p>
+          <p class="doc-check">Walk every rule in <code>system.css</code> and assert no <code>transition-property</code> anywhere includes <code>font-size</code>, and that every rule transitioning <code>inline-size</code> on <code>.rz-n</code> or <code>.rz-n__grad</code> uses <code>var(--rz-dur-nav)</code>. At runtime, hover ten cards, let a slow node resolve, and idle sixty seconds: no card's computed <code>inline-size</code> changes in any of the three.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C12 · C15 · C16</span></p>
+          <p class="doc-law__statement">Zoom is not rank. The camera scales every card by the same factor and promotes none of them: after any amount of zooming, panning, fitting or recentring, every card holds the rank it held before, and the focus is where it was. Looking closer at a neighbour is not arriving at it.</p>
+          <p class="doc-check">Record every card's <code>data-rank</code> and <code>RZ.focus</code>, then zoom to <code>zoom.max</code>, back to <code>zoom.min</code>, pan, fit and recentre. Assert both records are unchanged and that <code>--rz-cam-k</code> moved. Assert the clamp holds: no sequence of zoom steps drives <code>RZ.cam.k</code> outside <code>[0.28, 1.9]</code>, so a fringe card can never be zoomed to focus size.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C12 · C17</span></p>
+          <p class="doc-law__statement">When the focused card and the zoom disagree about the room available, the zoom gives way. The card you are reading is shown top edge to bottom edge at any camera scale; it is never cropped, never given a scrollbar of its own to hide behind, and never shrunk below its rank to fit.</p>
+          <p class="doc-check">Focus a long card in a short world and call <code>RZ.fitFocus()</code>. Assert the card's full height times <code>RZ.cam.k</code> is within the world's height, that its computed <code>inline-size</code> still resolves to <code>--rz-card-focus</code>, and that the only element in the document with <code>scrollHeight &gt; clientHeight</code> is that card's own body.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">The handover, and the three things that must not cause one</h3>
+        <p>A small garden with a real graph in it. Travel by clicking a card and watch the two channels hand over: the camera crosses the vein, and the card it stops at takes the focus size while the one you left drops to the size its new role earns. Then use the camera cluster — zoom in hard, pan the dark, recentre — and watch nothing at all change rank. The sizes on screen all grow together, which is exactly why zoom cannot say what rank says.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0" role="application"
+                 aria-label="A small garden. Click a card to travel to it; arrow keys pick a vein; drag the dark to pan; Alt and the wheel zooms.">
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="3,3"
+                         data-kind="PlantPal" data-kind-key="platform"
+                         data-name="Your garden" data-recap="12 plants · 3 need something today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">PlantPal</p>
+                  <h3 class="rz-n__name">Your garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">3 need something today</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Everything you keep, on one plane. Hop out to <a href="#n-office-fig" data-rz-goto="n-office-fig">the Office Fig</a> and back, and watch which card is big at each end of the crossing.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-study" data-cell="4,2"
+                         data-kind="Room" data-kind-key="collection"
+                         data-name="The Study" data-recap="5 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Room</p>
+                  <h3 class="rz-n__name">The Study</h3>
+                  <p class="rz-n__recap">5 plants
+                    <span class="rz-n__recap-second">North window, cool in winter</span></p>
+                </article>
+
+                <article class="rz-n" id="n-ficus" data-cell="4,4"
+                         data-kind="Species" data-kind-key="species"
+                         data-name="Fiddle-leaf Fig" data-recap="12 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Species</p>
+                  <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">12 plants</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office-fig" data-cell="5,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Watered 3 days ago · 1 problem open">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Watered 3 days ago
+                    <span class="rz-n__recap-second">1 problem open</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <div class="rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">How it is</span>
+                          <span class="rz-health" data-health="watch">Watch — two lower leaves yellowing</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>3 days ago, half a litre</span>
+                        </div>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The reading above is the kind of thing that arrives on its own. When it changes, it changes here, in words, at the size it already had — no card moves, nothing grows, and the camera stays where you left it. There is <a href="#n-leaf-spot" data-rz-goto="n-leaf-spot">a leaf spot in its second week</a> on this one if you want to go and look.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-leaf-spot" data-cell="6,0"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf spot" data-recap="In treatment, second week">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf spot</h3>
+                  <p class="rz-n__recap">In treatment, second week
+                    <span class="rz-n__recap-second">Next step due tomorrow</span></p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="6,2"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="12 June" data-recap="Repotted the Office Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">12 June</h3>
+                  <p class="rz-n__recap">Repotted the Office Fig
+                    <span class="rz-n__recap-second">New mix, one size up</span></p>
+                </article>
+
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">+</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>One handover; zoom promotes nothing</span><span>C10 · C12 · C15 · C16</span>
+          </figcaption>
+        </figure>
+        <p>The page declares an edge list, a starting focus and the actions the Office Fig offers. It declares no size, no duration and no rank — every one of those is computed, and there is nowhere on a page to write them:</p>
+        <pre class="doc-code"><code>RZ.mount({
+  edges: [
+    ["n-garden", "n-study"],
+    ["n-garden", "n-ficus"],
+    ["n-study", "n-office-fig"],
+    ["n-ficus", "n-office-fig"],
+    ["n-office-fig", "n-leaf-spot"],
+    ["n-office-fig", "n-journal"],
+    ["n-journal", "n-ficus"]
+  ],
+  actions: { "n-office-fig": ["Log a watering", "Mark the leaf spot treated"] },
+  focus: "n-garden"
+});</code></pre>
+        <p>Run Law 4's check against that garden in a console, while you zoom:</p>
+        <pre class="doc-code"><code>var before = Object.keys(RZ.nodes).map(function (id) {
+  return id + ":" + RZ.nodes[id].el.dataset.rank;
+}).join(" ");
+
+RZ.zoomBy(RZ.PARAMS.zoom.step);   // and again, and again
+RZ.recentre();
+
+Object.keys(RZ.nodes).map(function (id) {
+  return id + ":" + RZ.nodes[id].el.dataset.rank;
+}).join(" ") === before;          // true &mdash; the camera promoted nobody
+RZ.cam.k &gt;= RZ.PARAMS.zoom.min &amp;&amp; RZ.cam.k &lt;= RZ.PARAMS.zoom.max;   // true</code></pre>
+
+        <h3 class="doc-h3">The blur test, walkable</h3>
+        <p>Both channels are checked the same way: take the meaning out of the words and see what survives. Blur the garden above until no name is legible and you should still be able to point at the card you are reading, tell a neighbour from something two hops out, and see nothing moving that you did not set off. Press the buttons below to hold the garden still while you look, and to see what the crossing leaves behind for a reader who cannot be moved across a screen.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-probe__btn" aria-pressed="false"
+                    data-rz-state="motion:reduced"
+                    data-rz-says="Reduced motion. The crossing is immediate; the trail along the veins is drawn and held, and the handover still happens.">Reduced motion</button>
+            <button type="button" class="rz-probe__btn" aria-pressed="false"
+                    data-rz-state="speed:slow"
+                    data-rz-says="The garden is answering slowly. Nothing moved, nothing changed rank, and nothing resized.">The garden is answering slowly</button>
+            <button type="button" class="rz-probe__btn" aria-pressed="false"
+                    data-rz-state="net:offline"
+                    data-rz-says="Offline. The world is still navigable and every card is the size it was.">Offline</button>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Three states, no size and no camera between them</span><span>C9 · C12 · C13</span>
+          </figcaption>
+        </figure>
+        <p>The last two buttons are here to be uneventful. Slowness and being offline are conditions the garden is in, not places you went and not roles anything took on — so they change what a card <em>says</em> and never how big it is or where the camera points. They are settled on <a href="../patterns/degradation.html">degradation</a>; what they prove here is that the two channels stayed out of it.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The two channels, and what a theme fills</h2>
+        <p>Neither channel is this page's to define — the sizes belong to <a href="../components/node.html">node</a> and <a href="../foundations/typography.html">typography</a>, the timings to <a href="../foundations/motion.html">motion</a>. What follows is the join, so you can see at a glance which fact each token is carrying and which of them a theme may re-key.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Scale — what am I looking at</caption>
+            <thead><tr><th>Token</th><th>Carries</th><th>Judgement</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-card-focus</code></td>
+                <td>The one card you are reading</td>
+                <td>Exactly one card wears it at rest (Law 2). A theme may set the width; it may not give it to a second card, and it may not withhold it from the card the camera stopped at.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-card-near</code>, <code>--rz-card-far</code>, <code>--rz-card-fringe</code></td>
+                <td>Graph distance from you, one step each</td>
+                <td>Three widths for three distances, and they must stay visibly three under blur. A theme may compress the ladder; a theme that compresses it until two of them read the same has broken the test, not tightened the design.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-cap-near</code>, <code>--rz-cap-far</code>, <code>--rz-cap-fringe</code></td>
+                <td>How much a card at that distance may say</td>
+                <td>Height is the second half of the same fact. Capping is what keeps a far card from out-shouting a near one by being longer.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-grad-focus</code> … <code>--rz-grad-fringe</code></td>
+                <td>Rank where no text is legible</td>
+                <td>The signature channel: length is the rank, colour is the kind. This is what makes the blur test survivable at fringe size, so a theme may restyle it but may not remove it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-cam-k</code></td>
+                <td>The live camera scale, published by the script</td>
+                <td>Read it, never set it. It is the bridge that lets a card compensate for zoom in pure CSS, which is how Law 5 stays true at every camera scale.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Motion — how did I get here</caption>
+            <thead><tr><th>Token</th><th>Carries</th><th>Judgement</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-dur-nav</code></td>
+                <td>Distance crossed</td>
+                <td>The one timing a hop may spend, pinned to the parameter <code>nav_ms</code>. Not a theme's to change, and not a component's to choose — see <a href="../foundations/motion.html">motion</a>.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-ease-travel</code></td>
+                <td>Arriving rather than stopping</td>
+                <td>The camera's curve, and the curve the rank handover rides, so the two read as one event and not as a move followed by a resize.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-ease-rest</code></td>
+                <td>A state settling, with nobody having moved</td>
+                <td>Everything that is not a hop. If you are reaching for it on the plane's transform, or for the travel curve on a hover, the channels have crossed.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>This page added no token and no class, so there is no amendment to record. If you find the join genuinely needs one — a channel that carries rank where the graduation cannot — take it through <a href="../guidelines/extending-this-system.html">extending this system</a> rather than opening a size or a duration on your page.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Neither channel may be the only carrier of a fact.</strong> Scale is invisible to a screen reader and motion is invisible to it twice over, so every hierarchy the widths draw is also stated in words: the focused card carries <code>aria-current</code>, every card's label names its kind, its recap and how many veins lead out of it, and the crossing itself is announced. Turn all motion off and shrink every card to the same size, and nothing that mattered has been deleted — that is the test.</p>
+        <p><strong>Under reduced motion the handover still happens.</strong> The crossing collapses to a single step and the trail along the real veins is drawn and held instead; the card the camera arrived at still takes the focus size, and the you-are-here still moves. Scale is doing the work motion cannot do here, which is the whole reason the two are separate channels — the reduced-motion path is settled on <a href="../foundations/motion.html">motion</a> and <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+        <p><strong>Zoom is a camera control and must never move keyboard focus.</strong> Zooming, panning, fitting and recentring leave your focus exactly where it was, so a keyboard reader who looked around is not silently relocated. A card only takes focus when a hop lands on it, and it takes it without scrolling the document.</p>
+        <p><strong>Text scaling is a user's own zoom, and the ladder must survive it.</strong> Every rung and every card width is expressed in relative units, so a reader who scales their text up scales the whole hierarchy with it. Never pin a size in a page to make a card fit — Law 5 says the zoom gives way, not the card, and that includes giving way to somebody's own text settings.</p>
+        <p><strong>Nothing animates without your asking.</strong> The camera never moves on a timer, on an incoming record, or on a status change, and no card ever changes size on one. The single thing that moves on its own is the drifting field behind the world, which is decoration, carries nothing, and stops entirely under reduced motion.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a new reading arrive where the card already stands, in the card's own words, at the size it already had. The garden's shape did not change, so nothing about the view should say it did.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Stage “needs water” as an arrival, with a crossing and a card that grows. The user reads a journey they never took and then goes hunting for a plant they think they moved to (C9).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give one view one subject: the card the camera stopped at, at focus size, with its neighbours below it at the size their distance earns.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put two cards at focus size because both matter. A view with two subjects cannot tell the user which one the camera actually brought them to, and the blur test fails before a word is read (C12, C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let zoom make everything bigger together, and leave rank alone. Looking closely at a neighbour is looking; going there is a hop, and only the hop changes what you are reading.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Promote a card because the camera happens to be near it, or grow one on hover to advertise that it is clickable. Both spend the scale channel on something that did not happen (C12, C15).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Believe the camera when the two channels disagree in review. Motion records what the user did; scale is something you chose, so scale is the one to fix.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Shorten a crossing because it feels long on the fiftieth viewing, or crop the focused card to save a hop's worth of zoom. The first turns distance into a cut; the second hides the thing the user came to read (C10, C17).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="../foundations/motion.html">
+            <span class="doc-card__name">Motion</span>
+            <span class="doc-card__note">The one navigation timing, the two resting timings, and the ban on a third.</span>
+          </a>
+          <a class="doc-card" href="../foundations/typography.html">
+            <span class="doc-card__name">Typography</span>
+            <span class="doc-card__note">The prominence ladder as ratios, and what a theme may move in it.</span>
+          </a>
+          <a class="doc-card" href="../components/node.html">
+            <span class="doc-card__name">Node</span>
+            <span class="doc-card__note">Rank, the four widths it is spent on, and the graduation that carries it at fringe size.</span>
+          </a>
+          <a class="doc-card" href="../patterns/traversal.html">
+            <span class="doc-card__name">Traversal</span>
+            <span class="doc-card__note">The crossing itself: the route, the polyline, and what lights on the way through.</span>
+          </a>
+          <a class="doc-card" href="../patterns/arrivals.html">
+            <span class="doc-card__name">Arrivals</span>
+            <span class="doc-card__note">A hop that begins in search or a notification — same crossing, same handover.</span>
+          </a>
+          <a class="doc-card" href="../components/world.html">
+            <span class="doc-card__name">World</span>
+            <span class="doc-card__note">The plane and the camera, and the scale the script publishes back to CSS.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/interaction-and-cursors.html">
+            <span class="doc-card__name">Interaction and cursors</span>
+            <span class="doc-card__note">Why camera controls are a third category that changes neither data nor focus.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/accessibility.html">
+            <span class="doc-card__name">Accessibility</span>
+            <span class="doc-card__note">The announcement after a hop, and traversal that follows the graph.</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <p class="rz-sr" id="rz-live" role="status" aria-live="polite"></p>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen garden, mounted from the system's own primitives. The page
+       declares the graph and where you start; rank, size, route and timing are
+       all RZ's. */
+    RZ.mount({
+      edges: [
+        ["n-garden", "n-study"],
+        ["n-garden", "n-ficus"],
+        ["n-study", "n-office-fig"],
+        ["n-ficus", "n-office-fig"],
+        ["n-office-fig", "n-leaf-spot"],
+        ["n-office-fig", "n-journal"],
+        ["n-journal", "n-ficus"]
+      ],
+      actions: { "n-office-fig": ["Log a watering", "Mark the leaf spot treated"] },
+      focus: "n-garden"
+    });
+  </script>
+</body>
+</html>

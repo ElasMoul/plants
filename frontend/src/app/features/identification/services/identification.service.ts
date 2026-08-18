@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, interval } from 'rxjs';
 import { filter, map, startWith, switchMap, takeWhile, timeout } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
+import { ApiResponse, PageResponse } from '@plantpal/shared-core';
 import {
   ActionPlanDto,
   CarePlanDto,

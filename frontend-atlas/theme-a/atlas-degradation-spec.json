@@ -1,0 +1,108 @@
+{
+  "document": "Degradation spec",
+  "regime": "atlas-class",
+  "mission": "cae942ee-927d-40f5-ad8f-1d72122d1a1f",
+  "round": 9,
+  "target": "plantpal",
+  "design_system": {
+    "name": "Rhizome",
+    "slug": "plantpal-cae942ee",
+    "version": "1.0.0"
+  },
+  "applies_to": [
+    "theme-a",
+    "theme-b"
+  ],
+  "round_direction": "Owner direction for round 9, verbatim: “good, / now lets fix some problems, / change this css to : .ch-btn--square { width: 1.5rem; height: 1.5rem; justify-content: center; padding: 0; } / when a node is the visible, ( when navigating to it, it should be in the center, and fot the adgacent nodes they should superpose, recalucate their position so they dont collide / make the node link clickable, and redirect to to connecting node, / also change to this css : .n[data-rank=\\\"fringe\\\"] { width: auto;} / and make the buttons (reduced motion / slow >10 s ) work like before, / and for the nodes, (not the focused one) make them move like the particle js, minimal mvmnt almost not visible, / and when a node is the focus, / the adjacent visible nodes (if possible , because if there a lost of node, its not) , and the nodes with not a direct conection , its oky if they move out of screen.” Round 8 was ACCEPTED in its look and rejected only on these points, so round 9 is round 8 carried forward and repaired — not a new key, not a new board, not a new edge set. Both propositions change identically, which is why one copy of each of these three documents covers both.",
+  "doctrine_section": "design-doctrine-atlas-interface.md §11 (R13) — invariants C22, C23, C24, C25",
+  "governing_rule": {
+    "statement": "Degradation is MATERIAL ON THE BOARD, per node. The geography never degrades.",
+    "why_not_a_banner": "A global bar is a lie about the parts that are current. Most of this board is fine most of the time; saying so per node is both truer and more useful.",
+    "assertion": "Before and after every state change the page compares the concatenated left/top of all 25 nodes. Identical, in every state, in both interfaces.",
+    "walkable": "Every state below is reachable from the probe panel on the right, without a rebuild and without a network."
+  },
+  "states": {
+    "slow": {
+      "trigger": "Any node's data outstanding at 10 s.",
+      "C22": "The geography holds. Every node is already in its cell, at its rank, with its vein drawn, before any content arrives.",
+      "what_the_node_shows": "Its own skeleton in place of its body — the same block shapes at the same sizes the real content will take, so nothing reflows when it lands.",
+      "what_it_never_shows": "No spinner, no overlay, no blocking dialog, and not the word “loading” as a state of the whole app.",
+      "on_arrival": "The skeleton is replaced in place. The card does not resize, the node does not move, and no neighbour is repositioned.",
+      "camera": "Untouched. A slow node is not a reason to move you.",
+      "brief_item": "state:loading — card-state-loading, drawn on the node it belongs to.",
+      "verification": "Hold every response past 10 s and diff all left/top before and after: identical. Then time the arrival and confirm no element's box changes size.",
+      "round_9_geography_note": "The geography holds. Entering or leaving this state changes what a card SAYS and how tall it is; it never changes a cell, an offset, or which side of the focus a neighbour sits on. Where a card's own height changes, the clearance pass travels it to its new place over the same 300ms — it does not jump, and it does not land on anything."
+    },
+    "partial_graph": {
+      "trigger": "A region of the world has not been fetched.",
+      "C23": "An unfetched region is drawn as an EXPLICITLY UNKNOWN node — its own cell, its own vein, its own dashed rim and neutral kind colour.",
+      "distinguishable_from_empty": "“Unknown” and “loaded and empty” are different materials and different words. Unknown says “not fetched yet”; empty says “nothing here, and here is what would go here”.",
+      "traversal_into_it": "Allowed. Travelling into an unknown region fetches it and it resolves in place, in the cell it was already drawn in — it never dead-ends and it never lands somewhere else.",
+      "on_this_board": "n-unknown, at cell (8,3), reached from the garden aggregate.",
+      "veins_into_it": "Drawn in the unknown vein colour, so the edge is honest about what is on the other end before you cross it.",
+      "verification": "Note the unknown node's left/top, travel into it, and confirm the resolved node has the same left/top and the same neighbours it advertised.",
+      "round_9_geography_note": "The geography holds. Entering or leaving this state changes what a card SAYS and how tall it is; it never changes a cell, an offset, or which side of the focus a neighbour sits on. Where a card's own height changes, the clearance pass travels it to its new place over the same 300ms — it does not jump, and it does not land on anything."
+    },
+    "offline": {
+      "trigger": "No connection.",
+      "C24": "The last-known world stays navigable. Every node keeps its cell; travel, zoom and the world view all work.",
+      "staleness_is_per_node": "Each node states its own age (“last synced 09:12”, “cached Jul 20”), because a cached care guide is fine and a cached watering count is not.",
+      "mutations": "Explicitly refused or explicitly queued, never silently accepted. A queued action says it is queued, on the node it belongs to, and appears in the journal as queued.",
+      "geography": "Stays put. Going offline moves nothing.",
+      "verification": "Cut the network, walk five hops, come back: same cells, same veins, and every node's stated age is the age of what it is showing.",
+      "round_9_geography_note": "The geography holds. Entering or leaving this state changes what a card SAYS and how tall it is; it never changes a cell, an offset, or which side of the focus a neighbour sits on. Where a card's own height changes, the clearance pass travels it to its new place over the same 300ms — it does not jump, and it does not land on anything."
+    },
+    "failure": {
+      "trigger": "A request fails — on this board, PlantNet answering 503 during a scan.",
+      "C25": "The error is a STATE INSIDE THE NODE. Retry is in place, next to what failed.",
+      "camera": "Undisturbed. A failure never moves you and never opens a screen of its own.",
+      "the_rest_of_the_board": "Unaffected and still current; nothing else greys out.",
+      "what_is_kept": "The user's own input survives the failure and is named as surviving (“your photo is kept”).",
+      "a_second_way_through": "Where one exists it is offered beside the retry — identify by hand when the scan will not come back.",
+      "brief_item": "state:error — card-state-error, on n-ident.",
+      "verification": "Fail the scan and diff all left/top: identical. Retry from inside the node and confirm the camera never moved.",
+      "round_9_geography_note": "The geography holds. Entering or leaving this state changes what a card SAYS and how tall it is; it never changes a cell, an offset, or which side of the focus a neighbour sits on. Where a card's own height changes, the clearance pass travels it to its new place over the same 300ms — it does not jump, and it does not land on anything."
+    }
+  },
+  "also_specified": {
+    "empty": "state:empty — card-state-empty. An empty collection says what would be here and offers the one action that would put something in it. It is never an unknown node and never an error.",
+    "day_zero": "C26. One node, the lattice faint around it, in the cell it will keep. No tour, no empty dashboard.",
+    "waiting_before_10s": "Below the threshold a node shows its skeleton without comment. The 10 s threshold is when it starts saying so.",
+    "reduced_motion": "C13. Direction and the you-are-here update survive; duration collapses; nothing becomes a swap."
+  },
+  "the_interface_switch_under_degradation": {
+    "statement": "Switching interface is available and safe in every one of the four states, because it reads nothing from the network.",
+    "what_happens_to_a_pending_node": "It rescales with the rest of the board and keeps its skeleton. It does not restart, and its pending request is not re-issued.",
+    "what_happens_to_an_unknown_region": "It stays unknown, in its own cell, at the new pitch.",
+    "verification": "Turn on slow, partial and offline together, switch interface, and confirm: no request is issued, no node changes state, and every node's cell is unchanged."
+  },
+  "prohibitions": [
+    "No spinner, anywhere, in any state.",
+    "No global blocking overlay and no modal dialog for an error.",
+    "No banner standing in for per-node truth.",
+    "No node moving because its data changed, arrived late, or failed.",
+    "No dead end: every unknown region can be entered.",
+    "No silent acceptance of a mutation that did not happen.",
+    "No spinner, and the word ‘loading’ appears nowhere a user can read it.",
+    "No global blocking overlay and no modal dialog, in any of the four states.",
+    "No blanket opacity over the whole world to mean ‘stale’ — staleness is stated per node, in that node's own words.",
+    "No card is allowed to overlap another in ANY of the four states. Round 9 asserts this by script, not by eye."
+  ],
+  "what_changed_in_round_9": {
+    "summary": "The four states are as round 8 specified them. What changed is that the probes that walk them work — in both directions — and that entering or leaving a state can no longer leave two cards on top of each other.",
+    "the_defect_the_owner_was_pointing_at": {
+      "symptom": "“make the buttons (reduced motion / slow >10 s) work like before”.",
+      "cause": "A boot-order defect in round 8, found and fixed in round 9. The mote field's state was declared with the painter at the foot of the script, but the interface switch — which runs as the file is read, higher up — calls readMoteColours(). Every load of round 8 therefore threw a ReferenceError at that line, and everything after it never ran. That is why the probes were dead: their listeners are wired below the throw.",
+      "fix": "The field's state is declared at the top of the file, before anything can reach it. Verified: zero console errors on load, and each probe toggles its body attribute, its aria-pressed and its own node marks on and off again.",
+      "lesson_recorded": "A round that adds a mechanism above an existing call site can kill everything below it silently, because a page that throws at parse time still LOOKS finished — the markup is all there. The check that catches it is not reading the file; it is loading the page and asserting the console is empty."
+    },
+    "a_probe_now_re_runs_the_clearance_pass": "Slow and Offline both change how tall a card is — a pending node hides its body, a stale node gains a line. Round 9 re-runs the clearance pass after each, so a state a reviewer walks can never leave the world overlapping itself. It is the same 300ms travel as everything else, and the camera does not move: nobody navigated.",
+    "reduced_motion_is_now_visible": "body[data-motion=\"reduced\"] collapses every transition and animation on the page, so the probe and the media query have the same effect and the toggle can be seen to do something. The drift stops and every card's --jx/--jy is zeroed; turning it off starts the field and the drift again rather than leaving them dead, which is the second half of the same bug."
+  },
+  "verification_run_in_round_9": {
+    "harness": "Headless Chrome driven over the DevTools protocol in real time — not virtual time, which distorts requestAnimationFrame badly enough to make an animated layout look broken when it is not.",
+    "walked": "boot → hop by panel → hop by vein click → hop to a fringe card → slow on → slow off → reduced motion on → off → offline on → off → arrange mode on → off → interface to Table → back → palette switch → settings exit → back in app → hop → search arrival → bell arrival.",
+    "asserted_at_every_step": "zero overlapping card pairs across all 25 nodes; the focused card centred in the free space between the rails; zero console errors.",
+    "result": "Passed, identically, for both propositions."
+  }
+}

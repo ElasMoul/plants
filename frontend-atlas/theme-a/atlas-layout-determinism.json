@@ -1,0 +1,457 @@
+{
+  "document": "Layout determinism statement",
+  "regime": "atlas-class",
+  "mission": "cae942ee-927d-40f5-ad8f-1d72122d1a1f",
+  "round": 9,
+  "target": "plantpal",
+  "design_system": {
+    "name": "Rhizome",
+    "slug": "plantpal-cae942ee",
+    "version": "1.0.0"
+  },
+  "applies_to": [
+    "theme-a",
+    "theme-b"
+  ],
+  "round_direction": "Owner direction for round 9, verbatim: “good, / now lets fix some problems, / change this css to : .ch-btn--square { width: 1.5rem; height: 1.5rem; justify-content: center; padding: 0; } / when a node is the visible, ( when navigating to it, it should be in the center, and fot the adgacent nodes they should superpose, recalucate their position so they dont collide / make the node link clickable, and redirect to to connecting node, / also change to this css : .n[data-rank=\\\"fringe\\\"] { width: auto;} / and make the buttons (reduced motion / slow >10 s ) work like before, / and for the nodes, (not the focused one) make them move like the particle js, minimal mvmnt almost not visible, / and when a node is the focus, / the adjacent visible nodes (if possible , because if there a lost of node, its not) , and the nodes with not a direct conection , its oky if they move out of screen.” Round 8 was ACCEPTED in its look and rejected only on these points, so round 9 is round 8 carried forward and repaired — not a new key, not a new board, not a new edge set. Both propositions change identically, which is why one copy of each of these three documents covers both.",
+  "doctrine_section": "design-doctrine-atlas-interface.md §11 (R4, R5) — invariants C7, C8, C9, C26",
+  "source_of_record": {
+    "cells": "The markup. Every node carries data-cell=\"col,row\"; there is no other place a position is written.",
+    "pitch": "tokens.css — --vs-pitch-x / --vs-pitch-y, one pair per interface. The script reads them back with readPitch() rather than holding a second opinion.",
+    "runtime": "index.html §2 (deterministic positions), place(), relayout(). One record per node in nodes[id]; the veins, the world view and the camera all read that one record."
+  },
+  "placement_rule": {
+    "statement": "A node's position is a formula, never a flow — in three named layers, each a pure function of the one before it.",
+    "layer_1_home": {
+      "formula": "hx = ORIGIN.x + col × PITCH.x ; hy = ORIGIN.y + row × PITCH.y",
+      "origin": {
+        "x": 200,
+        "y": 80
+      },
+      "identity": "The CELL is the node's identity. It is never derived from DOM order, from a layout pass, from a force simulation, or from the order data arrived in."
+    },
+    "layer_2_anchor": {
+      "formula": "ax = hx + dx ; ay = hy + dy",
+      "dx_dy": "The offset the user themselves dragged in arrange mode. Zero until they touch it, and the only part of position a user authors."
+    },
+    "layer_3_placed": {
+      "formula": "(x, y) = clearance(anchor, focus, measured card boxes)",
+      "focus": "Pinned at its own anchor. Weight 0 in every pass; it never yields.",
+      "direct_neighbours": "Placed on an ellipse around the focus. Each neighbour's radius is computed from the two cards' own measured half-sizes plus CLEAR=34px — rx = (focus.w + n.w)/2 + CLEAR, ry = (focus.h + n.h)/2 + CLEAR — so a neighbour cannot overlap the focus by construction rather than by luck. Each keeps the ANGLE its lattice home had from the focus, so it arrives on the side the user already expected it on; angles are then spread, in a 60-pass circular sweep, until no two neighbours' angular widths intersect.",
+      "everyone_else": "Left at its anchor, then a 160-iteration separation pass pushes any still-overlapping pair apart along its axis of least penetration, weighted so the focus absorbs none of it. Nodes with no direct vein to the focus are permitted to be pushed off screen — the owner asked for this in as many words. They remain on the world view, remain reachable, and remain exactly where this rule puts them.",
+      "measurement": "Card boxes are read with transitions suspended (body[data-measuring]) and with --cam-k pinned to 1, so the pass always asks how big a card is AT REST. Measuring the focused card at a zoomed-out camera would report it several times taller than the screen — its cap is (viewport × reach − air) / --cam-k — and a layout computed from that height pushes the world apart, which makes the camera zoom out further, which makes the card taller again. Pinning the read at 1 cuts that loop. Boxes are additionally capped at 1.2× the viewport so no single pathological measurement can reach the rest of the world.",
+      "purity": "No randomness, no clock, no iteration over a hash, no dependence on which node was drawn first: every loop walks one fixed id order taken from the markup, and both passes have a fixed iteration ceiling rather than a convergence test on floating point."
+    },
+    "pitch_by_interface": {
+      "sill-line": {
+        "x": 300,
+        "y": 180,
+        "note": "the constitution's own lattice pitch, unamended"
+      },
+      "glasshouse-table": {
+        "x": 380,
+        "y": 210,
+        "note": "amendment A2, carried from round 7 theme-a; declared, never smuggled"
+      }
+    },
+    "interface_switch_is_a_rescale": "Changing interface changes PITCH and nothing else about layer 1. Every node keeps its cell, so home is recomputed with a new constant, the whole board scales uniformly, and no node moves relative to any other. Layer 3 then re-runs against the same focus. Rank order, direction, adjacency and the shape of the world are all preserved.",
+    "verification": "1. Load either page twice at the same window size and diff the computed left/top of every .n: identical, to the pixel. 2. Travel A → B → A and diff against the first load of A: identical — layer 3 is a function of the focus, not of the route taken to it. 3. Switch interface and diff: every home equals ORIGIN + cell × the new pitch, and (x−200)/(x'−200) is 380/300 for every node without exception. 4. Automated in this round: over 25 nodes, at boot and after every hop, probe, arrange cycle, interface switch, palette switch and settings exit, the count of overlapping card pairs is 0."
+  },
+  "persistence": {
+    "in_this_static_page": "The cell is in the markup, so it survives reload by construction. Arrange-mode offsets are held on the node record and, in production, written back to the user's own record.",
+    "in_production": "cell (col,row) and offset (dx,dy) belong on the user's own record for the node, written once when the node is created and thereafter only when the user drags it.",
+    "layer_3_is_never_persisted": "The clearance pass is recomputed, never stored. It is a rendering of the anchors around a focus, and storing it would make a transient view into a fact about the world. This is the point that keeps geography a promise: what is remembered about a node is still only its cell and the offset its owner gave it.",
+    "not_persisted": "Camera position, zoom, and the current focus. Where you are is answered by the world view's marker, not by a restored camera; a reload lands you at your garden with the same geography.",
+    "interface_and_palette": "Both are user settings and both persist. Neither is a position."
+  },
+  "insertion_rule": {
+    "statement": "Inserting a node leaves every existing node's IDENTITY and ANCHOR exactly where they were, and changes no drawn position anywhere the new node is not adjacent to the current focus.",
+    "mechanism": "A new node takes the first free ROW in its family's own COLUMN, scanning downward from row 0. Nothing already placed is consulted for anything but freeness, and no existing cell or offset is ever rewritten.",
+    "column_convention": {
+      "0": "the far edge — the collection a path started from",
+      "2": "your own account, today's summary, and the aggregates that stand for the rest of a collection",
+      "4": "the focus's own relations, one per kind",
+      "6": "members — individual plants, problems, journal entries",
+      "8": "second-order things — treatment courses, the companion, unfetched regions"
+    },
+    "worked_example": "Adding a thirteenth plant: column 6 is occupied at rows 1,2,3,4,6,7,8,9,10, so the new plant takes (6,0). Twelve existing nodes: zero cells changed, zero offsets changed, zero drawn positions changed — (6,0) is nowhere near the current focus, so the clearance pass returns the same answer it returned before.",
+    "the_honest_edge_case": "If the inserted node lands INSIDE the current focus's clearance ring — that is, if it is a direct neighbour of where you are standing right now — the ring gains a member and its angles re-spread, so its siblings shift around the focus. They travel to their new angle over the same 300ms as everything else; nothing pops. This is the one place where C8's strictest reading is not met, it is met again the moment you move on, and it is the direct cost of the owner's instruction to make the neighbours not collide.",
+    "day_zero": "C26. The same formula against one node. Your first plant lands at (6,1) — the cell it will still be in when there are forty — with the lattice drawn faintly around it, so day zero reads as a world with room in it rather than an empty screen.",
+    "verification": "Append an article with a free data-cell and reload: every pre-existing node's cell is unchanged, and every drawn left/top outside the focus's own ring is byte-identical to the previous load."
+  },
+  "density_strategy": {
+    "statement": "One rule, applied to every node-to-collection relation on the board: fewer than 4 members are all drawn; 4 or more are drawn as the 2 highest-ranked members plus ONE aggregate node standing for the rest.",
+    "parameters": {
+      "threshold": 4,
+      "shown": 2,
+      "aggregate": 1
+    },
+    "ranking": "From the user's own data, in this order: most overdue actions, then needing treatment, then most recently opened.",
+    "the_aggregate_is_a_node": "It has its own cell, its own veins, its own stated count, and it is traversable. It is not a “+26” label; travelling into it is an ordinary hop and the origin stays on screen.",
+    "applied_on_this_board": [
+      {
+        "collection": "Species",
+        "members": 28,
+        "drawn": [
+          "n-fig",
+          "n-monstera"
+        ],
+        "aggregate": "n-species-more"
+      },
+      {
+        "collection": "My garden",
+        "members": 12,
+        "drawn": [
+          "n-office",
+          "n-studio"
+        ],
+        "aggregate": "n-garden-more"
+      },
+      {
+        "collection": "Problems",
+        "members": 3,
+        "drawn": [
+          "n-underwater",
+          "n-overwater",
+          "n-rootrot"
+        ],
+        "aggregate": null,
+        "note": "fewer than four, so the rule draws all three and no aggregate exists — both branches of the rule are visible on one screen"
+      },
+      {
+        "collection": "Journal",
+        "members": 14,
+        "drawn": [
+          "n-j1",
+          "n-j2"
+        ],
+        "aggregate": "n-journal-more"
+      }
+    ],
+    "assertion": "On load the page asserts, per collection: drawn_members = min(members, 2) and aggregate_present = (members >= 4).",
+    "unaffected_by_interface": "The density RULE is not the density SETTING. Switching interface changes how much air is between cards; it never changes how many cards are drawn.",
+    "unchanged_in_round_9": "drawn members == min(members, shown) + (members >= threshold ? 1 : 0), with threshold=4 and shown=2, and the aggregate's stated N == members − shown. Round 9 changed how cards are PLACED, not how many are drawn."
+  },
+  "growth_ceiling": {
+    "statement": "At most three nodes per collection — 2 members plus 1 aggregate — so node count on the plane is bounded by the number of COLLECTIONS, not by the size of the garden.",
+    "consequence": "A garden of 12 plants and a garden of 900 draw the same number of nodes. The atlas does not scale by drawing more; it scales by drawing the same and letting you travel.",
+    "lattice_ceiling": "12 columns × 11 rows = 132 cells. This board uses 25, so the lattice is 19% full and the next several years of families fit without an amendment.",
+    "clearance_ceiling": "The clearance pass is O(n²) per iteration over the nodes on the plane. At 25 nodes that is 300 pairs and it runs in under a millisecond. The growth ceiling that matters for it is the same one as above: because the density rule bounds the plane at roughly three nodes per collection, the pass cannot be handed a graph large enough to be slow. If a future board ever exceeds ~150 nodes on one plane, the pass gets a spatial grid — that is an amendment, recorded, not a silent reach for a physics library.",
+    "ring_ceiling": "A node with a very high degree would ask its ring for more angular room than a circle has. The spread pass gives every neighbour its share and lets the ellipse grow rather than letting two cards touch: past roughly a dozen direct veins the ring reads as a crowd and the honest answer is an aggregate, which the density rule already provides. The owner's own words allowed for this — “if possible, because if there a lot of node, its not”.",
+    "at_the_ceiling": "If a family ever needs a thirteenth column, that is an amendment to the constitution's lattice parameters, raised and recorded — not a silent overflow into a scrollbar."
+  },
+  "no_movement_from_data": {
+    "statement": "C9. No non-structural change moves anything. A plant going from stable to ailing recolours its tick and its tag; its cell, its veins and its neighbours' cells are untouched.",
+    "verification": "Drive every degradation state and every palette from the probe panel and diff the concatenated left/top of all 25 nodes before and after: identical strings. Verified in this round by script.",
+    "the_named_exceptions": [
+      "relayout(), reachable only from the interface control in Settings, and a uniform rescale rather than a re-placement.",
+      "The clearance pass, which re-runs when the FOCUS changes — a user-attributable navigation, never a data arrival — and when a card's own size changes because the user pressed MIN/AUTO/FULL, entered arrange mode, or turned on a probe. In every one of those cases a person asked for it by pressing something."
+    ]
+  },
+  "board": {
+    "node_count": 25,
+    "nodes": [
+      {
+        "id": "n-species",
+        "cell": [
+          0,
+          5
+        ],
+        "kind": "Collection",
+        "name": "Species",
+        "degree": 3
+      },
+      {
+        "id": "n-monstera",
+        "cell": [
+          2,
+          2
+        ],
+        "kind": "Species",
+        "name": "Monstera",
+        "degree": 1
+      },
+      {
+        "id": "n-species-more",
+        "cell": [
+          2,
+          8
+        ],
+        "kind": "Collection",
+        "name": "26 more species",
+        "degree": 1
+      },
+      {
+        "id": "n-fig",
+        "cell": [
+          2,
+          5
+        ],
+        "kind": "Species",
+        "name": "Fiddle-leaf Fig",
+        "degree": 7
+      },
+      {
+        "id": "n-platform",
+        "cell": [
+          4,
+          0
+        ],
+        "kind": "Platform",
+        "name": "Platform link",
+        "degree": 2
+      },
+      {
+        "id": "n-garden",
+        "cell": [
+          4,
+          2
+        ],
+        "kind": "Collection",
+        "name": "My garden",
+        "degree": 7
+      },
+      {
+        "id": "n-care",
+        "cell": [
+          4,
+          4
+        ],
+        "kind": "Guide",
+        "name": "Care Guide",
+        "degree": 4
+      },
+      {
+        "id": "n-problems",
+        "cell": [
+          4,
+          6
+        ],
+        "kind": "Problems",
+        "name": "Problems",
+        "degree": 4
+      },
+      {
+        "id": "n-journal",
+        "cell": [
+          4,
+          8
+        ],
+        "kind": "Journal",
+        "name": "Journal",
+        "degree": 4
+      },
+      {
+        "id": "n-ident",
+        "cell": [
+          4,
+          10
+        ],
+        "kind": "Identification",
+        "name": "Identification",
+        "degree": 3
+      },
+      {
+        "id": "n-office",
+        "cell": [
+          6,
+          1
+        ],
+        "kind": "Plant",
+        "name": "Office Fig",
+        "degree": 2
+      },
+      {
+        "id": "n-studio",
+        "cell": [
+          6,
+          2
+        ],
+        "kind": "Plant",
+        "name": "Studio Fig",
+        "degree": 1
+      },
+      {
+        "id": "n-garden-more",
+        "cell": [
+          6,
+          3
+        ],
+        "kind": "Collection",
+        "name": "10 more plants",
+        "degree": 2
+      },
+      {
+        "id": "n-reminders",
+        "cell": [
+          6,
+          4
+        ],
+        "kind": "Reminders",
+        "name": "Reminders",
+        "degree": 2
+      },
+      {
+        "id": "n-underwater",
+        "cell": [
+          6,
+          6
+        ],
+        "kind": "Problem",
+        "name": "Underwatering",
+        "degree": 2
+      },
+      {
+        "id": "n-overwater",
+        "cell": [
+          6,
+          7
+        ],
+        "kind": "Problem",
+        "name": "Overwatering",
+        "degree": 1
+      },
+      {
+        "id": "n-rootrot",
+        "cell": [
+          6,
+          8
+        ],
+        "kind": "Problem",
+        "name": "Root rot",
+        "degree": 2
+      },
+      {
+        "id": "n-j1",
+        "cell": [
+          6,
+          9
+        ],
+        "kind": "Entry",
+        "name": "Jul 18 · photo",
+        "degree": 2
+      },
+      {
+        "id": "n-j2",
+        "cell": [
+          6,
+          10
+        ],
+        "kind": "Entry",
+        "name": "Jul 15 · watering",
+        "degree": 1
+      },
+      {
+        "id": "n-journal-more",
+        "cell": [
+          8,
+          9
+        ],
+        "kind": "Collection",
+        "name": "12 more entries",
+        "degree": 1
+      },
+      {
+        "id": "n-treatment",
+        "cell": [
+          8,
+          7
+        ],
+        "kind": "Treatment",
+        "name": "Treatment plan",
+        "degree": 3
+      },
+      {
+        "id": "n-account",
+        "cell": [
+          2,
+          0
+        ],
+        "kind": "Account",
+        "name": "Your account",
+        "degree": 2
+      },
+      {
+        "id": "n-today",
+        "cell": [
+          2,
+          3
+        ],
+        "kind": "Dashboard",
+        "name": "Today",
+        "degree": 2
+      },
+      {
+        "id": "n-ask",
+        "cell": [
+          8,
+          5
+        ],
+        "kind": "Companion",
+        "name": "Ask PlantPal",
+        "degree": 2
+      },
+      {
+        "id": "n-unknown",
+        "cell": [
+          8,
+          3
+        ],
+        "kind": "Region",
+        "name": "Unloaded region",
+        "degree": 1
+      }
+    ]
+  },
+  "amendments": [
+    {
+      "id": "A2",
+      "parameter": "lattice pitch",
+      "from": "300 × 180",
+      "to": "380 × 210",
+      "scope": "only while data-ui=\"glasshouse-table\"",
+      "reason": "The Glasshouse Table's cards are wider at every rank; at the constitution's pitch they would touch. Carried from round 7 theme-a, where the same amendment was declared."
+    },
+    {
+      "id": "A3",
+      "parameter": "placement — a third layer between the anchor and the pixel",
+      "from": "px = ORIGIN + cell × PITCH + drag offset",
+      "to": "the same, then a focus-relative clearance pass (ring + separation) that guarantees no two cards overlap",
+      "scope": "both interfaces, every focus",
+      "reason": "Owner direction for round 9, in as many words: the focused node must be centred, its adjacent nodes must not superpose, and their positions are to be recalculated so they do not collide. Also forced by the round's own CSS instruction, .n[data-rank=\"fringe\"] { width: auto }, which removes the last fixed card width the lattice could have been budgeted against.",
+      "cost_stated_plainly": "C7 now reads ‘same cells, same offsets, same focus, same window → same pixels’ rather than ‘same cells → same pixels’, and C8's insertion guarantee has the one edge case written out under insertion_rule. Both are the owner's call, taken knowingly, and both are checkable exactly as written."
+    },
+    {
+      "id": "A4",
+      "parameter": "card clearance",
+      "from": "— (did not exist)",
+      "to": "CLEAR = 34px of air kept around every card, in world coordinates",
+      "scope": "both interfaces",
+      "reason": "The separation pass needs a number. This is it, and it is one number, in one place."
+    }
+  ],
+  "unamended_and_asserted": [
+    "nav_ms = 300",
+    "density threshold = 4",
+    "shown = 2",
+    "lattice 12 × 11",
+    "origin (200, 80)",
+    "zoom clamp",
+    "slow threshold = 10s"
+  ],
+  "what_changed_in_round_9": {
+    "summary": "Position gained a third layer. Round 8 had two — the lattice formula, and the arrange-mode offset the user drags on top of it. Round 9 adds a CLEARANCE PASS between the anchor and the pixel, because the owner asked for two things that cannot both be true on a fixed lattice: the focused card must sit in the centre of the screen at full size, and no two cards may overlap — while a fringe card is now width:auto and so has no width the lattice could have budgeted for in advance.",
+    "why_a_fixed_lattice_could_not_answer_it": "The focused card is 436px wide and up to 780px tall. At the constitution's 300×180 pitch that card covers parts of eight neighbouring cells. Round 8 drew them on top of each other. A bigger pitch would have pushed the whole world apart at every rank to solve a problem that only exists next to the focus — so the answer is local, and it moves with the focus rather than being paid for everywhere all the time.",
+    "the_owner_directed_departure": "C7 and C8 in their strictest reading say a node's drawn position is a function of its cell alone. Under this round's binding direction it is a function of its cell AND the current focus. That is a real departure and it is recorded here rather than hidden: the identity layer (cell) and the user layer (drag offset) are untouched and still the only things persisted; what became focus-relative is the last layer, the one that turns an anchor into a pixel. The determinism claim is correspondingly restated below — same inputs, same pixels — rather than quietly dropped."
+  },
+  "idle_drift": {
+    "statement": "Every card that is not the focus carries a drift of two to three pixels, on its own phase, from the same family of slow sines the particle field is made of — the owner's “minimal mvmnt almost not visible”.",
+    "why_it_is_not_a_position": "It is written to --jx/--jy and composited into the card's own transform. It never touches x/y, it is never read by the clearance pass, the veins, the world view, or anything the layout is derived from. A breathing card has not moved: two loads still diff identical, and the world view's dot does not stir.",
+    "phase": "index × 1.7113 rad, modulo 2π — an index, never a random seed.",
+    "amplitude": "2.4px base plus a 1.08px second harmonic; peak excursion under 3.5px, at 30fps.",
+    "the_focus_never_breathes": "C16. There is exactly one still thing on the plane and it is where you are.",
+    "under_reduced_motion": "--jx/--jy are set to 0px and the loop stops. Nothing drifts; nothing jumps when it stops.",
+    "verification": "Read --jx on a non-focused card at 1.2s intervals: it changes. Read it on the focused card: 0px, always. Turn on Reduced motion: every card reads 0px. Turn it off: they move again. Verified in this round by script."
+  },
+  "unamended_and_asserted_round_9": "nav_ms 300, rank_count 4, density threshold 4 / shown 2, zoom clamp 0.28–1.9, slow_threshold_ms 10000, origin (200,80), the edge set, the column convention and the board itself are all exactly as round 8 shipped them. Round 9 touched placement, the vein's affordance, two CSS declarations the owner wrote out, and one boot-order defect."
+}

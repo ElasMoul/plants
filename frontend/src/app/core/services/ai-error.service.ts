@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ApiResponse } from '../models/api-response.model';
+import { ApiResponse } from '@plantpal/shared-core';
 
 // Surfaces AI-call errors (identification submit, cure advice, craft-plan, chat) consistently —
 // a structured 429 from Bucket4j gets an actionable snackbar pointing at Settings, anything else

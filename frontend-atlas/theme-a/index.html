@@ -1,0 +1,3559 @@
+<!DOCTYPE html>
+<html lang="en" data-palette="first-light" data-ui="sill-line">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlantPal · Botanical Network — Fiddle-leaf Fig · round 9 · Sill Line, with the Table as a reading</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ==========================================================================
+   THEME B — "VASCULAR · SILL LINE"   round 10, variation 2 of 3.
+   All three round-10 propositions are variations INSIDE Theme A (owner
+   direction round 9 § 0) — same lattice, same veins, same travel. This one
+   is the tight instrument reading: a cold sill key with green kept back for
+   health alone, HIGH density, a type ladder pitched a full octave below
+   theme-a's, sharp 5px corners, and the measure tick in place of the kind
+   spine.
+
+   Every colour, size, radius and duration comes from tokens.css. The only
+   raw numbers are structural SVG/lattice arithmetic, which is declared in
+   tokens.css and mirrored in the script.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--vs-void-deep);
+  color: var(--vs-ink);
+  font-family: var(--vs-face-body);
+  font-size: var(--vs-rung-30);
+  line-height: var(--vs-lead-body);
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   THE PARTICLE FIELD — two canvases, one painter.
+
+   ROUND-10 § 3. Outside the settings view the field covers the WHOLE PAGE
+   (#motes, fixed, edge to edge — the round-5 direction, unchanged). While the
+   settings view is open the field must cover ONLY the app, which by then is
+   the scaled #shell — so it is painted into #motes-app instead, a canvas
+   living INSIDE #shell and therefore scaled and translated with it. Exactly
+   one of the two is ever visible, and both are painted by the same code, so
+   the field cannot differ between the two.
+   -------------------------------------------------------------------------- */
+#motes {
+  position: fixed;
+  inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+#motes-app {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  display: none;
+  z-index: 0;
+  pointer-events: none;
+}
+body[data-mode="overview"] #motes    { display: none; }
+body[data-mode="overview"] #motes-app { display: block; }
+
+#motes-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 45%, var(--vs-vital-quiet), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 50%, transparent 40%, var(--vs-void-deep) 100%);
+}
+/* In overview the wash belongs to the app card too, not to the page. */
+body[data-mode="overview"] #motes-wash { opacity: 0.35; }
+
+.skip {
+  position: absolute; inset-inline-start: -999px; top: 0;
+  z-index: var(--vs-z-live);
+  background: var(--vs-vital); color: var(--vs-ink-on-fill);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+}
+.skip:focus { inset-inline-start: var(--vs-gutter); top: var(--vs-gutter); }
+
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; }
+:focus-visible {
+  outline: var(--vs-focus-width) solid var(--vs-focus);
+  outline-offset: var(--vs-focus-offset);
+}
+
+.label {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-ink-muted);
+}
+
+/* ==========================================================================
+   1 — THE APP SHELL
+   ========================================================================== */
+
+#shell {
+  position: fixed;
+  inset: 0;
+  z-index: var(--vs-z-node);
+  transform-origin: 22% 50%;
+  transition: transform var(--vs-dur-nav) var(--vs-ease-travel),
+              border-radius var(--vs-dur-nav) var(--vs-ease-travel),
+              box-shadow var(--vs-dur-nav) var(--vs-ease-travel);
+  border-radius: 0;
+  overflow: hidden;
+}
+body[data-mode="overview"] #shell {
+  /* ROUND-8 § 1: the owner's own hand-tuned transform. Verbatim. */
+  transform: scale(0.42) translateX(-25%);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-lit);
+  border: var(--vs-hair) solid var(--vs-membrane-lit);
+  cursor: zoom-in;
+}
+body[data-mode="overview"] #shell > *:not(#world-wrap):not(#motes-app) { pointer-events: none; }
+body[data-mode="overview"] #world { pointer-events: none; }
+
+/* ==========================================================================
+   2 — THE CHROME REGISTER   (round-10 owner direction § 2)
+
+   Fixed furniture must never be mistaken for a node. The separation is a
+   MATERIAL one, made once here and inherited by every fixed element, and it
+   differentiates INSIDE this theme's own palette and type — no second
+   aesthetic is introduced.
+
+       a node                          the chrome
+       ------                          ----------
+       a lifted sheet                  smoked glass set into the frame
+       filled --vs-sheet               translucent --vs-chrome over the world
+       18px corners                    2px corners
+       1px membrane border + halo      one hairline rule, no shadow at all
+       serif plate name                monospace, uppercase, wide tracking
+       full-strength ink               ink one step quieter
+       floats free in the world        flush to a viewport edge, bleeding off it
+       moves with the camera           never moves
+
+   Blur the screen and the difference still holds: the sheets are the only
+   bright soft-cornered rectangles anywhere, and the chrome is a dark border
+   around the frame.
+   ========================================================================== */
+
+.chrome {
+  position: absolute;
+  z-index: var(--vs-z-chrome);
+  background: var(--vs-chrome);
+  border: 0;
+  border-radius: var(--vs-corner-chrome);
+  box-shadow: none;
+  backdrop-filter: var(--vs-chrome-blur);
+  color: var(--vs-chrome-ink);
+  font-family: var(--vs-chrome-face);
+  font-size: var(--vs-chrome-size);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: var(--vs-chrome-case);
+  font-variant: var(--vs-chrome-variant);
+  line-height: var(--vs-lead-snug);
+}
+/* SILL LINE'S CHROME EXPRESSION: solid, machined, keylined. Where theme-a's
+   chrome is smoked glass with a hairline, this is an opaque band carrying a
+   2px rule in the key colour along the edge it is attached to — the fixed
+   furniture reads as the instrument's own bezel. Same principle, different
+   material: still one register, still inside this theme's own palette, and
+   still nothing a card could be mistaken for. */
+#topbar  { box-shadow: inset 0 calc(-1 * var(--vs-strong)) 0 0 var(--vs-chrome-key); }
+#rail    { box-shadow: inset calc(-1 * var(--vs-strong)) 0 0 0 var(--vs-chrome-key); }
+#actions { box-shadow: inset calc(-1 * var(--vs-strong)) 0 0 0 var(--vs-mutate); }
+#navto   { box-shadow: inset var(--vs-strong) 0 0 0 var(--vs-chrome-key); }
+#atlas   { box-shadow: inset 0 var(--vs-strong) 0 0 var(--vs-chrome-key); }
+#probe   { box-shadow: inset var(--vs-strong) 0 0 0 var(--vs-chrome-rule); }
+#gesture { box-shadow: inset 0 var(--vs-strong) 0 0 var(--vs-chrome-rule); }
+#camera  { box-shadow: inset 0 calc(-1 * var(--vs-strong)) 0 0 var(--vs-chrome-key); }
+
+.chrome__title {
+  display: block;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  color: var(--vs-chrome-ink);
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+.chrome__title b { color: var(--vs-chrome-ink-lit); font-weight: var(--hbm-weight-regular); }
+.chrome__body { padding: var(--vs-chrome-pad); display: grid; gap: 1px; }
+.chrome__foot {
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  color: var(--vs-ink-faint);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Every control that lives in the chrome. Never a stake, never a hop —
+   those two forms belong to the nodes and mean "mutation" and "traversal".
+   A chrome control is a flat tracked label with a rule under it on hover. */
+.ch-btn {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  width: 100%;
+  padding: var(--vs-chrome-pad) var(--vs-gutter-tight);
+  border-radius: var(--vs-corner-chrome);
+  font-family: var(--vs-chrome-face);
+  font-size: var(--vs-chrome-size);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: var(--vs-chrome-case);
+  font-variant: var(--vs-chrome-variant);
+  color: var(--vs-chrome-ink);
+  text-align: start;
+  border-bottom: var(--vs-hair) solid transparent;
+}
+.ch-btn:hover  { background: var(--vs-chrome-hover); color: var(--vs-chrome-ink-lit); border-bottom-color: var(--vs-chrome-rule-lit); }
+.ch-btn[aria-pressed="true"], .ch-btn[aria-current="page"], .ch-btn[aria-current="true"] {
+  color: var(--vs-chrome-key);
+  border-bottom-color: var(--vs-chrome-key);
+}
+.ch-btn small { color: var(--vs-ink-faint); text-transform: none; letter-spacing: 0; margin-inline-start: auto; }
+/* .ch-btn--square is re-declared in the round-9 block at the end of this
+   sheet, at the size the owner gave. */
+
+/* -- top bar: flush to the top edge, full width, one rule beneath. ------- */
+#topbar {
+  top: 0; inset-inline: 0;
+  display: flex; align-items: center; gap: var(--vs-gutter);
+  padding: var(--vs-chrome-pad) var(--vs-gutter-wide);
+  border-radius: 0;
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#topbar .mark {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  color: var(--vs-chrome-ink-lit);
+  letter-spacing: var(--vs-chrome-track);
+}
+#topbar .mark .glyph { color: var(--vs-chrome-key); }
+#topbar .sub { color: var(--vs-ink-faint); }
+#topbar .spacer { flex: 1; }
+
+/* ROUND-8 § 5: you-are-here IS the top bar's centre column, not a second
+   element above it. It is chrome, so it is tracked monospace and squared. */
+#here { display: flex; align-items: center; gap: var(--vs-gutter); }
+#here > .label { color: var(--vs-ink-faint); letter-spacing: var(--vs-chrome-track); }
+#here > .label::before {
+  content: ""; display: inline-block;
+  width: 5px; height: 5px; border-radius: var(--vs-corner-chip);
+  background: var(--vs-chrome-key);
+  margin-inline-end: var(--vs-gutter-tight);
+}
+#crumbs { display: flex; align-items: center; gap: var(--vs-gutter-tight); }
+#crumbs .crumb {
+  font: inherit; letter-spacing: var(--vs-chrome-track); text-transform: uppercase;
+  color: var(--vs-chrome-ink);
+  padding: 2px var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid transparent;
+}
+#crumbs .crumb:hover { color: var(--vs-chrome-ink-lit); border-bottom-color: var(--vs-chrome-rule-lit); }
+#crumbs .crumb[aria-current="true"] { color: var(--vs-chrome-key); border-bottom-color: var(--vs-chrome-key); }
+#crumbs .sep { color: var(--vs-ink-faint); }
+
+.ch-field {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  min-width: 16rem;
+  padding: var(--vs-chrome-pad) var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+  color: var(--vs-chrome-ink);
+}
+.ch-field:focus-within { border-bottom-color: var(--vs-chrome-key); }
+.ch-field input {
+  flex: 1; background: none; border: 0; outline: none;
+  font-family: var(--vs-face-label); font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-chrome-track); text-transform: uppercase;
+  color: var(--vs-chrome-ink-lit);
+}
+.ch-count {
+  font-size: var(--vs-rung-18);
+  color: var(--vs-chrome-key);
+  border: var(--vs-hair) solid var(--vs-chrome-key);
+  border-radius: var(--vs-corner-chrome);
+  padding: 0 4px;
+}
+
+/* -- far-left destination rail: app-level places, flush to the left edge. */
+#rail {
+  inset-inline-start: 0;
+  top: 3.25rem;
+  display: grid; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: 0;
+}
+
+/* ==========================================================================
+   3 — THE WORLD.  One plane, translated and scaled. Nothing routes.
+   ========================================================================== */
+
+#world-wrap { position: absolute; inset: 0; overflow: hidden; }
+#world {
+  position: absolute; inset: 0;
+  /* ROUND-10 § 1: THE BOARD PANS, so outside a node the cursor is grab. */
+  cursor: grab;
+  touch-action: none;
+}
+#world[data-panning="true"] { cursor: grabbing; }
+
+#plane {
+  position: absolute;
+  top: 0; left: 0;
+  width: 3600px;   /* 12 lattice columns × 300px pitch — see tokens.css */
+  height: 1980px;  /* 11 lattice rows    × 180px pitch                  */
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+#veins { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#veins .vein {
+  fill: none;
+  stroke: var(--vs-vein);
+  stroke-width: var(--vs-vein-width);
+  stroke-linecap: round;
+  transition: stroke var(--vs-dur-settle) var(--vs-ease-settle),
+              stroke-width var(--vs-dur-settle) var(--vs-ease-settle),
+              opacity var(--vs-dur-settle) var(--vs-ease-settle);
+  opacity: 0.75;
+}
+#veins .vein[data-live="true"] {
+  stroke: var(--vs-vein-live);
+  stroke-width: var(--vs-vein-width-live);
+  opacity: 1;
+}
+#veins .vein[data-unknown="true"] { stroke: var(--vs-vein-unknown); stroke-dasharray: 3 9; }
+#veins .vein-node { fill: var(--vs-vein-node); opacity: 0.55; }
+#veins .vein-node[data-live="true"] { opacity: 1; }
+#veins #trail {
+  fill: none;
+  stroke: var(--vs-vital-bright);
+  stroke-width: var(--vs-vein-width-live);
+  stroke-linecap: round;
+  opacity: 0;
+}
+#veins #trail[data-on="true"] { opacity: 1; }
+
+/* ==========================================================================
+   4 — NODES.  Four ranks, four sizes: scale carries rank (C12).
+   ========================================================================== */
+
+.n {
+  position: absolute;
+  /* FIX 6 — the drift rides in the card's own transform, composited,
+     so a breathing card costs no layout and moves nothing the layout
+     is derived from. --jx/--jy are 0 for the focus, always. */
+  transform: translate(calc(-50% + var(--jx, 0px)), calc(-50% + var(--jy, 0px)));
+  width: var(--vs-card-far);
+  background: var(--vs-sheet-quiet);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-quiet);
+  transition: width var(--vs-dur-nav) var(--vs-ease-travel),
+              background-color var(--vs-dur-nav) var(--vs-ease-travel),
+              box-shadow var(--vs-dur-nav) var(--vs-ease-travel),
+              border-color var(--vs-dur-nav) var(--vs-ease-travel),
+              opacity var(--vs-dur-nav) var(--vs-ease-travel);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  /* ROUND-10 § 1: INSIDE A NODE, ORDINARY CURSORS. Never grab. The board's
+     grab cursor stops at the card's edge. */
+  cursor: default;
+}
+/* SILL LINE'S SIGNATURE ELEMENT — the measure tick. A short graduation
+   sits on the card's top edge, in the node's own kind colour, and its
+   LENGTH is the card's rank: a stub at the fringe, half at a near
+   neighbour, long at the focus. Blur the screen and you can still read both
+   what kind of thing a card is and how far it is from where you are.
+   Chrome carries no tick, so a tick also means "this is a node, not
+   furniture". */
+.n::before {
+  content: "";
+  position: absolute;
+  top: 0; inset-inline-start: 0;
+  height: var(--vs-tick-weight);
+  width: var(--vs-tick-fringe);
+  background: var(--kind, var(--vs-membrane));
+  opacity: var(--vs-tick-op);
+  transition: width var(--vs-dur-nav) var(--vs-ease-travel),
+              height var(--vs-dur-nav) var(--vs-ease-travel);
+}
+/* ROUND 8: the four lengths are tokens, because the second interface
+   re-pitches them — a stub / half / long tick at Sill Line's density
+   becomes a hair-thin ruled pencil line at the Table's. Same law either
+   way: with the text blurred, LENGTH is rank and COLOUR is kind. */
+.n[data-rank="far"]::before   { width: var(--vs-tick-far); }
+.n[data-rank="near"]::before  { width: var(--vs-tick-near); }
+.n[data-focus="true"]::before { width: var(--vs-tick-focus); opacity: 1; }
+.n[data-kindkey="collection"] { --kind: var(--vs-kind-collection); }
+.n[data-kindkey="species"]    { --kind: var(--vs-kind-species); }
+.n[data-kindkey="plant"]      { --kind: var(--vs-kind-plant); }
+.n[data-kindkey="guide"]      { --kind: var(--vs-kind-guide); }
+.n[data-kindkey="problem"]    { --kind: var(--vs-kind-problem); }
+.n[data-kindkey="journal"]    { --kind: var(--vs-kind-journal); }
+.n[data-kindkey="platform"]   { --kind: var(--vs-kind-platform); }
+.n[data-kindkey="region"]     { --kind: var(--vs-kind-region); }
+
+.n[data-rank="fringe"] { opacity: 0.62; max-height: var(--vs-cap-fringe); }  /* width: see the round-9 block */
+.n[data-rank="far"]    { width: var(--vs-card-far);    opacity: 0.82; max-height: var(--vs-cap-far); }
+.n[data-rank="near"]   { width: var(--vs-card-near);   opacity: 1;    max-height: var(--vs-cap-near); }
+
+/* ROUND-7 § 3 — the focused card is always shown in full, top edge to
+   bottom edge, at any zoom: its cap is the viewport height less the air
+   kept around it, divided by the live camera scale (--cam-k). */
+.n[data-focus="true"] {
+  width: var(--vs-card-focus);
+  max-height: calc((100vh * var(--vs-card-reach) - var(--vs-card-air)) / var(--cam-k, 1));
+  background: var(--vs-sheet);
+  border-color: var(--vs-membrane-lit);
+  box-shadow: var(--vs-halo-lit);
+  opacity: 1;
+  z-index: 3;
+}
+.n[data-dragging="true"] { z-index: 5; box-shadow: var(--vs-halo-lit); }
+
+/* ROUND-7 § 4: the whole surface of a non-focused card is the target — so
+   it, and only it, takes the pointer cursor. */
+.n:not([data-focus="true"]) { cursor: pointer; }
+.n:not([data-focus="true"]):hover { border-color: var(--vs-membrane-lit); background: var(--vs-hover); }
+
+/* ROUND-10 § 4: A NODE INTERIOR IS AN ORDINARY DOCUMENT. Text takes the
+   default cursor; links and buttons take the pointer; nothing inside a card
+   ever takes grab. */
+.n[data-focus="true"] .n__body,
+.n[data-focus="true"] .n__body p,
+.n[data-focus="true"] .n__body dl { cursor: default; }
+.n a, .n button { cursor: pointer; }
+.n a[aria-disabled="true"], .n button[disabled] { cursor: not-allowed; }
+
+.n[data-passing="true"] { border-color: var(--vs-vital-edge); box-shadow: var(--vs-halo-lit); }
+
+.n__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter-tight) var(--vs-gutter-tight) var(--vs-gutter);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.n__thumb {
+  width: 1.75rem; height: 1.75rem;
+  display: grid; place-items: center;
+  border-radius: var(--vs-corner-well);
+  background: var(--vs-vital-quiet);
+  color: var(--kind, var(--vs-vital));
+  border: var(--vs-hair) solid var(--vs-vital-edge);
+  font-size: var(--vs-rung-25);
+}
+.n[data-focus="true"] .n__thumb { width: 2.5rem; height: 2.5rem; font-size: var(--vs-rung-55); }
+.n__kind {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-ink-faint);
+}
+.n__name {
+  font-family: var(--vs-face-name);
+  font-size: var(--vs-rung-25);
+  line-height: var(--vs-lead-name);
+  margin: 0;
+  color: var(--vs-ink);
+}
+.n[data-rank="near"] .n__name  { font-size: var(--vs-rung-30); }
+.n[data-focus="true"] .n__name { font-size: var(--vs-rung-55); }
+
+.n__tools { display: flex; align-items: center; gap: 2px; }
+.n__modes { display: flex; gap: 1px; padding: 1px; background: var(--vs-well); border-radius: var(--vs-corner-chip); }
+.n__modes button, .n__grip {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  color: var(--vs-ink-muted);
+  padding: 2px 6px;
+  border-radius: var(--vs-corner-chip);
+  line-height: 1.4;
+}
+.n__modes button[aria-pressed="true"] { background: var(--vs-vital); color: var(--vs-ink-on-fill); }
+.n__grip { padding: 2px 5px; border: var(--vs-hair) solid var(--vs-membrane); }
+/* ROUND-8 § 4 + ROUND-10 § 1: only the focused card carries controls, and
+   the grip is a control, not a hand on the board — pointer, not grab. */
+.n[data-focus="false"] .n__tools { display: none; }
+
+/* Body — the ONLY scroller on this screen is the FOCUSED node's body. */
+.n__body { min-height: 0; overflow: hidden; }
+.n[data-focus="true"] .n__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vs-membrane-lit) transparent;
+}
+.n__recap { padding: var(--vs-gutter); display: grid; gap: var(--vs-gutter-tight); }
+.n__full  { padding: var(--vs-gutter-card); display: none; gap: var(--vs-gutter-wide); }
+.n__skel  { padding: var(--vs-gutter-card); display: none; gap: var(--vs-gutter); }
+.n[data-show="recap"] .n__recap { display: grid; }
+.n[data-show="skel"]  .n__recap { display: none; }
+.n[data-show="skel"]  .n__skel  { display: grid; }
+.n[data-show="full"]  .n__recap { display: none; }
+.n[data-show="full"]  .n__full  { display: grid; }
+
+.n__recap-line {
+  display: flex; align-items: baseline; gap: var(--vs-gutter-tight); flex-wrap: wrap;
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  color: var(--vs-ink-second);
+  margin: 0;
+}
+.n__recap-note { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink-muted); max-width: var(--hbm-measure-note); }
+.n[data-rank="fringe"] .n__recap { padding: var(--vs-gutter-tight) var(--vs-gutter); }
+.n[data-rank="fringe"] .n__recap-note { display: none; }
+
+/* The shaped placeholder shown WHILE a card expands (round-5 § 6). */
+.sk { background: var(--vs-skeleton); border-radius: var(--vs-corner-well); }
+.sk--plate  { height: 8rem; border-radius: var(--vs-corner-inner); }
+.sk--name   { height: var(--vs-rung-100); width: 72%; background: var(--vs-skeleton-lit); }
+.sk--sub    { height: var(--vs-rung-30); width: 42%; }
+.sk--line   { height: var(--vs-rung-25); }
+.sk--line.is-short { width: 58%; }
+.sk--grid   { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+.sk--cell   { height: 2.5rem; }
+.sk--row    { height: 3rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .n[data-show="skel"] .sk { animation: sk-breathe var(--hbm-dur-4) var(--vs-ease-settle) infinite alternate; }
+}
+@keyframes sk-breathe { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* ==========================================================================
+   5 — FOCUSED-CARD MATERIAL
+   ========================================================================== */
+
+.plate { display: grid; grid-template-columns: 9.5rem 1fr; gap: var(--vs-gutter-card); align-items: start; }
+.plate__specimen {
+  aspect-ratio: 3 / 4;
+  border-radius: var(--vs-corner-inner);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  background:
+    radial-gradient(circle at 34% 26%, var(--vs-vital-bright) 0 4%, transparent 32%),
+    linear-gradient(152deg, var(--vs-vital-deep) 0%, var(--vs-void) 78%);
+  position: relative;
+  overflow: hidden;
+}
+/* Drawn from tokens. Nothing external loads, anywhere on this page. */
+.plate__specimen::after {
+  content: "";
+  position: absolute; inset: 18% 14%;
+  border-radius: 60% 8% 60% 8%;
+  background: linear-gradient(140deg, var(--vs-vital) 0%, var(--vs-vital-deep) 100%);
+  box-shadow: inset 0 0 0 var(--vs-hair) var(--vs-membrane-lit);
+}
+.plate__score {
+  position: absolute; inset-block-end: var(--vs-gutter-tight); inset-inline-end: var(--vs-gutter-tight);
+  z-index: 1;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border-radius: var(--vs-corner-chip);
+  background: var(--vs-vital); color: var(--vs-ink-on-fill);
+  font-family: var(--vs-face-label); font-size: var(--vs-rung-18);
+}
+.plate__name {
+  margin: 0;
+  font-family: var(--vs-face-name);
+  font-size: var(--vs-rung-100);
+  line-height: var(--vs-lead-name);
+  letter-spacing: var(--vs-track-name);
+}
+/* The ONE place a serif survives in Sill Line: the italic binomial. */
+.plate__binomial {
+  margin: 0 0 var(--vs-gutter) 0;
+  font-family: var(--vs-face-latin);
+  font-style: italic;
+  font-size: var(--vs-rung-55);
+  color: var(--vs-binomial);
+}
+.plate__meta { display: grid; gap: var(--vs-gutter-tight); }
+
+h3.sec {
+  margin: 0 0 var(--vs-gutter) 0;
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-vital);
+  padding-bottom: var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+h4.subsec { margin: 0 0 var(--vs-gutter-tight) 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-30); font-weight: var(--hbm-weight-medium); }
+p { margin: 0 0 var(--vs-gutter) 0; max-width: var(--hbm-measure-prose); }
+p:last-child { margin-bottom: 0; }
+
+.rows { display: grid; gap: var(--vs-gutter-tight); margin: 0; }
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--vs-gutter);
+  align-items: baseline;
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  background: var(--vs-well);
+  border-radius: var(--vs-corner-well);
+  border: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.row dt, .row .k { font-size: var(--vs-rung-25); color: var(--vs-ink-muted); margin: 0; }
+.row dd, .row .v { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink); text-align: end; }
+.row .v.mono { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+
+/* ROUND-10 § 4: an ordinary inline document link inside a node's prose. It
+   is a real anchor, it navigates the graph, and the pan layer never
+   swallows it. */
+.doc-link {
+  color: var(--vs-vital);
+  text-decoration-color: var(--vs-vital-edge);
+  text-underline-offset: 3px;
+}
+.doc-link:hover { text-decoration-color: var(--vs-vital); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: 2px var(--vs-gutter-tight);
+  border-radius: var(--vs-corner-chip);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  border: var(--vs-hair) solid currentColor;
+}
+.tag::before { content: ""; width: 5px; height: 5px; border-radius: var(--vs-corner-chip); background: currentColor; }
+.tag--thriving { color: var(--vs-thriving); }
+.tag--watch    { color: var(--vs-watch); }
+.tag--ailing   { color: var(--vs-ailing); }
+.tag--unknown  { color: var(--vs-unknown); }
+.tag--offline  { color: var(--vs-offline); }
+
+.conf {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border: var(--vs-hair) dashed var(--vs-conf-medium);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-vital-quiet);
+}
+.conf__bar { height: 4px; border-radius: var(--vs-corner-chip); background: var(--vs-conf-track); overflow: hidden; }
+.conf__bar i { display: block; height: 100%; background: var(--vs-conf-medium); }
+
+/* Mutation = a filled terracotta stake. Navigation = an outlined vein chip
+   with a directional caret. Tellable apart by form alone, before activation
+   (C14) — and neither form exists anywhere in the chrome. */
+.stake {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+  background: var(--vs-mutate);
+  color: var(--vs-mutate-ink);
+  font-size: var(--vs-rung-25);
+  font-weight: var(--hbm-weight-medium);
+  border-bottom: var(--vs-strong) solid var(--vs-mutate-quiet);
+}
+.stake:hover { filter: brightness(1.08); }
+.stake--quiet { background: none; color: var(--vs-mutate); border: var(--vs-hair) solid var(--vs-mutate); border-bottom-width: var(--vs-strong); }
+.stake[disabled] { opacity: 0.5; }
+
+.hop {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-vital-edge);
+  border-radius: var(--vs-corner-chip);
+  background: none;
+  color: var(--vs-vital);
+  font-size: var(--vs-rung-25);
+  text-align: start;
+}
+.hop::after { content: "→"; margin-inline-start: auto; color: var(--vs-vital); }
+.hop:hover { background: var(--vs-vital-quiet); }
+.hop--block { display: flex; width: 100%; }
+.hop small { color: var(--vs-ink-muted); font-family: var(--vs-face-label); font-size: var(--vs-rung-18); }
+.hop span { display: grid; }
+
+/* ==========================================================================
+   6 — STATE MATERIALS. Each is a state INSIDE the node that owns it.
+   ========================================================================== */
+
+.state {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-well);
+  border: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.state__head { display: flex; align-items: center; justify-content: space-between; gap: var(--vs-gutter); flex-wrap: wrap; }
+.state__title { margin: 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-30); font-weight: var(--hbm-weight-medium); }
+.state__id { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); letter-spacing: var(--vs-track-label); color: var(--vs-ink-faint); }
+.state__note { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink-second); }
+.state--error  { border-color: var(--vs-error); background: var(--vs-error-quiet); }
+.state--empty  { border-style: dashed; border-color: var(--vs-membrane-lit); }
+.state--unknown{ border-style: dashed; border-color: var(--vs-unknown); background: var(--vs-unknown-fill); }
+.state--loading{ border-color: var(--vs-membrane-lit); }
+
+.feed { display: grid; gap: var(--vs-gutter-tight); }
+.feed__row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: var(--vs-gutter);
+  align-items: baseline;
+  padding: var(--vs-gutter-tight) 0;
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+  font-size: var(--vs-rung-25);
+}
+.feed__row:last-child { border-bottom: 0; }
+.feed__when { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); color: var(--vs-ink-faint); }
+.feed__val  { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); color: var(--vs-vital); }
+
+.empty-plot {
+  display: grid; place-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-wide);
+  border: var(--vs-hair) dashed var(--vs-membrane-lit);
+  border-radius: var(--vs-corner-inner);
+  color: var(--vs-ink-muted);
+  text-align: center;
+}
+.empty-plot .glyph { font-size: var(--vs-rung-75); color: var(--vs-ink-faint); }
+
+.btn-row { display: flex; gap: var(--vs-gutter-tight); flex-wrap: wrap; }
+
+/* ==========================================================================
+   7 — FIXED SIDE FURNITURE. Left = Actions (mutation). Right = Navigate to
+   (traversal). Both are CHROME, and both are flush to their own edge.
+   ========================================================================== */
+
+.side { width: 15rem; overflow: hidden; }
+/* ROUND-8 § 3: Actions clears the world view by referencing its own height,
+   so the two can never come to overlap again. */
+#actions {
+  inset-inline-start: 0;
+  inset-block-end: calc(var(--vs-atlas-h) + var(--vs-gutter-wide));
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#navto {
+  inset-inline-end: 0;
+  inset-block-end: var(--vs-gutter-wide);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+/* Actions and Navigate-to are chrome, so their entries are chrome controls,
+   NOT stakes and hops. The stake/hop forms stay inside the nodes where the
+   data lives; here the same two meanings are carried by a leading mark: a
+   filled square for a mutation, an arrow for a traversal. */
+.ch-btn--mutate::before { content: "▪"; color: var(--vs-mutate); }
+.ch-btn--travel::before { content: "→"; color: var(--vs-chrome-key); }
+
+/* Bottom-left: the persistent world view — chrome, flush to the corner. */
+#atlas {
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  display: flex; align-items: flex-end; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-radius: 0;
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#minimap {
+  position: relative;
+  width: 13rem; height: var(--vs-atlas-h);
+  background: var(--vs-chrome-solid);
+  border: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: var(--vs-corner-chrome);
+  overflow: hidden;
+}
+#minimap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#minimap .mm-edge { stroke: var(--vs-vein); stroke-width: 0.6; fill: none; }
+#minimap .mm-dot  { fill: var(--vs-ink-faint); }
+#minimap .mm-dot[data-rank="near"] { fill: var(--vs-chrome-ink); }
+#minimap .mm-dot[data-moved="true"] { fill: var(--vs-mutate); }
+#minimap .mm-you { fill: none; stroke: var(--vs-vital-bright); stroke-width: 1.6;
+  transition: cx var(--vs-dur-nav) var(--vs-ease-travel), cy var(--vs-dur-nav) var(--vs-ease-travel); }
+#minimap .mm-you-core { fill: var(--vs-vital-bright);
+  transition: cx var(--vs-dur-nav) var(--vs-ease-travel), cy var(--vs-dur-nav) var(--vs-ease-travel); }
+#minimap #mm-view { fill: none; stroke: var(--vs-chrome-rule-lit); stroke-width: 1;
+  transition: all var(--vs-dur-nav) var(--vs-ease-travel); }
+#zoomstack { display: grid; gap: 1px; }
+
+/* ==========================================================================
+   DRAG MODE (round-8 § 2) — an explicit MODE.
+   ========================================================================== */
+body[data-drag="on"] #world { cursor: default; }
+/* The card IS the handle here, so it takes `move` — never `grab`, which
+   round-10 § 1 reserves for the board and forbids inside a node. */
+body[data-drag="on"] .n { cursor: move; }
+body[data-drag="on"] .n[data-dragging="true"] { cursor: move; }
+body[data-drag="on"] .n__tools { display: none; }
+body[data-drag="on"] .n .stake,
+body[data-drag="on"] .n .hop,
+body[data-drag="on"] .n .doc-link,
+body[data-drag="on"] .n__body { pointer-events: none; }
+body[data-drag="on"] .n__body { overflow: hidden; }
+body[data-drag="on"] #topbar,
+body[data-drag="on"] #rail,
+body[data-drag="on"] #actions,
+body[data-drag="on"] #navto,
+body[data-drag="on"] #camera,
+body[data-drag="on"] #probe,
+body[data-drag="on"] #minimap { pointer-events: none; opacity: 0.5; }
+body[data-drag="on"] #zoom-in,
+body[data-drag="on"] #zoom-out-small,
+body[data-drag="on"] #recenter { pointer-events: none; opacity: 0.5; }
+#drag-banner { display: none; }
+body[data-drag="on"] #drag-banner {
+  display: flex; align-items: center; gap: var(--vs-gutter);
+  inset-block-end: var(--vs-gutter-wide);
+  left: 50%; transform: translateX(-50%);
+  padding: var(--vs-chrome-pad) var(--vs-gutter-wide);
+  border: var(--vs-hair) solid var(--vs-mutate);
+}
+body[data-drag="on"] #camera { display: none; }
+
+/* Bottom-centre: camera only. Looking around is not navigating. */
+#camera {
+  inset-block-end: var(--vs-gutter-wide);
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: 1px;
+  padding: var(--vs-chrome-pad);
+}
+#camera .ch-btn { width: auto; padding-inline: var(--vs-gutter); }
+
+#gesture {
+  inset-inline-end: 0;
+  inset-block-end: 0;
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  margin: 0;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  color: var(--vs-ink-faint);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--vs-rung-18);
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: 0;
+}
+
+/* The live region + direction readout: chrome, so it can never be read as a
+   node that appeared. */
+#live {
+  top: 3.25rem;
+  left: 50%; transform: translateX(-50%);
+  z-index: var(--vs-z-live);
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  margin: 0;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-chrome-rule-lit);
+  color: var(--vs-chrome-key);
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0;
+  transition: opacity var(--vs-dur-settle) var(--vs-ease-settle);
+  pointer-events: none;
+}
+#live[data-on="true"] { opacity: 1; }
+
+/* Degradation switches — how this static page is put into each R13 state. */
+#probe {
+  top: 3.25rem;
+  inset-inline-end: 0;
+  display: grid; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-block-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+
+/* Offline: the world stays put and navigable; mutation is refused. */
+#offline-bar {
+  position: absolute;
+  top: 0; inset-inline: 0;
+  z-index: var(--vs-z-live);
+  display: none;
+  align-items: center; justify-content: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-chrome-pad);
+  background: var(--vs-chrome-solid);
+  border-bottom: var(--vs-hair) solid var(--vs-offline);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: uppercase;
+  color: var(--vs-offline);
+}
+body[data-net="offline"] #offline-bar { display: flex; }
+body[data-net="offline"] .stake:not(.stake--queue) { opacity: 0.45; cursor: not-allowed; }
+body[data-net="offline"] .n .staleness { display: flex; }
+.staleness {
+  display: none; align-items: center; gap: var(--vs-gutter-tight);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  color: var(--vs-stale);
+  padding: 0 var(--vs-gutter) var(--vs-gutter-tight);
+}
+.n[data-show="recap"] .staleness { padding-top: 0; }
+
+/* Slow (≥10s): the geography holds; each node resolves in place. */
+body[data-speed="slow"] .n[data-pending="true"] .n__recap > *:not(.staleness):not(.pending) { display: none; }
+.pending { display: none; }
+body[data-speed="slow"] .n[data-pending="true"] .pending { display: grid; gap: var(--vs-gutter-tight); }
+
+/* ==========================================================================
+   8 — THE L4 EXIT. The app becomes a card; settings sits BESIDE it.
+   ========================================================================== */
+
+#overview { position: fixed; inset: 0; z-index: var(--vs-z-panel); display: none; pointer-events: none; }
+body[data-mode="overview"] #overview { display: block; }
+
+#app-caption {
+  position: absolute;
+  inset-inline-start: 4%;
+  bottom: 14%;
+  width: 34%;
+  text-align: center;
+  pointer-events: auto;
+  display: grid; gap: var(--vs-gutter-tight);
+}
+#settings {
+  position: absolute;
+  inset-inline-end: 3%;
+  top: 8%; bottom: 8%;
+  width: 46%;
+  pointer-events: auto;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--vs-sheet);
+  border: var(--vs-hair) solid var(--vs-membrane-lit);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-lit);
+  overflow: hidden;
+}
+#settings header, #settings footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--vs-gutter);
+  padding: var(--vs-gutter) var(--vs-gutter-card);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+#settings footer { border-bottom: 0; border-top: var(--vs-hair) solid var(--vs-membrane-rule); }
+#settings h2 { margin: 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-55); }
+#settings .cols { display: grid; grid-template-columns: 12rem 1fr; min-height: 0; }
+#settings nav {
+  border-inline-end: var(--vs-hair) solid var(--vs-membrane-rule);
+  padding: var(--vs-gutter-tight);
+  display: grid; gap: 1px; align-content: start;
+  overflow-y: auto;
+}
+#settings nav button {
+  text-align: start;
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+  font-size: var(--vs-rung-25);
+  color: var(--vs-ink-second);
+}
+#settings nav button[aria-current="true"] { background: var(--vs-vital-quiet); color: var(--vs-vital-bright); }
+#settings .pane { padding: var(--vs-gutter-card); overflow-y: auto; }
+
+.palettes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+.palette {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-well);
+  text-align: start;
+}
+.palette[aria-pressed="true"] { border-color: var(--vs-vital); box-shadow: 0 0 0 var(--vs-hair) var(--vs-vital); }
+.palette__swatches { display: flex; gap: 3px; }
+.palette__swatches i { width: 1.25rem; height: 1.25rem; border-radius: var(--vs-corner-well); border: var(--vs-hair) solid var(--vs-membrane); }
+.palette__name { font-family: var(--vs-face-name); font-size: var(--vs-rung-30); }
+.palette__note { font-size: var(--vs-rung-18); color: var(--vs-ink-muted); font-family: var(--vs-face-label); }
+
+#overview-bar {
+  position: absolute;
+  inset-block-end: var(--vs-gutter);
+  inset-inline-start: 4%;
+  width: 34%;
+  display: flex; justify-content: center; gap: 1px;
+  pointer-events: auto;
+  padding: var(--vs-chrome-pad);
+  background: var(--vs-chrome);
+  border-radius: var(--vs-corner-chrome);
+}
+#overview-bar .ch-btn { width: auto; padding-inline: var(--vs-gutter); }
+
+/* ==========================================================================
+   9 — REDUCED MOTION. Direction is still shown, you-are-here still updates.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; animation: none !important; }
+  .n { transition: none; }
+}
+/* ==========================================================================
+   ROUND 9 — the six fixes the owner named on 2026-08-17.
+   ========================================================================== */
+
+/* FIX 1 — verbatim. */
+.ch-btn--square {
+    width: 1.5rem;
+    height: 1.5rem;
+    justify-content: center;
+    padding: 0;
+}
+
+/* FIX 4 — verbatim. A fringe card is now as wide as its own words, which is
+   precisely why fix 2 had to become a real clearance pass rather than a
+   pitch: card widths at the fringe are no longer a number the layout knows
+   in advance, so it MEASURES them. */
+.n[data-rank="fringe"] {
+    width: auto;
+}
+
+/* FIX 2 — the measuring read. Transitions are suspended for the frame in
+   which the script reads every card's settled size, so it never computes
+   clearance against a width that is still travelling. */
+body[data-measuring] .n,
+body[data-measuring] .n::before,
+body[data-measuring] .n * { transition: none !important; }
+
+/* FIX 3 — the vein is a control. An invisible wide stroke rides the same
+   path as the drawn vein and takes the pointer; the drawn vein stays as
+   thin as it looks. Hovering it says, in the cursor, that this is a
+   TRAVERSAL and not a mutation (C14). */
+#veins { pointer-events: none; }
+#veins .vein-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+#veins .vein[data-hint="true"] {
+  stroke: var(--vs-vein-live);
+  stroke-width: var(--vs-vein-width-live);
+  opacity: 1;
+}
+#veins .vein-hit:hover { stroke: var(--vs-vein-live); stroke-opacity: 0.14; }
+
+/* FIX 5 — reduced motion is now a state the page can SEE, so the probe and
+   the media query have the same effect and the toggle is visible either
+   way. Direction is still stated (the trail still draws, the you-are-here
+   still moves); nothing is swapped abruptly, it simply arrives. */
+body[data-motion="reduced"] *,
+body[data-motion="reduced"] *::before,
+body[data-motion="reduced"] *::after {
+  transition-duration: 1ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}
+</style>
+</head>
+
+<body data-mode="app" data-net="online" data-speed="normal">
+
+<a class="skip" href="#focused-node">Skip to the focused node</a>
+
+<!-- Page-wide particle field: used everywhere EXCEPT the settings view. -->
+<canvas id="motes" aria-hidden="true"></canvas>
+<div id="motes-wash" aria-hidden="true"></div>
+
+<div id="shell">
+
+  <!-- App-only particle field: used ONLY in the settings view, where it is
+       scaled with #shell and therefore covers the app and nothing else. -->
+  <canvas id="motes-app" aria-hidden="true"></canvas>
+
+  <div id="offline-bar" role="status">
+    <span>Offline · showing the world as it was at 09:12 · changes will be queued</span>
+  </div>
+
+  <!-- ===== CHROME: the persistent top bar, flush to the top edge ===== -->
+  <header id="topbar" class="chrome">
+    <span class="mark"><span class="glyph" aria-hidden="true">❧</span> PlantPal</span>
+    <span class="sub">Botanical Network</span>
+    <span class="spacer"></span>
+    <div id="here">
+      <span class="label">You are here</span>
+      <nav id="crumbs" aria-label="Path travelled"></nav>
+    </div>
+    <span class="spacer"></span>
+    <div class="ch-field" role="search">
+      <span aria-hidden="true">⌕</span>
+      <input id="search" type="search" placeholder="Search…" aria-label="Search the network">
+    </div>
+    <button class="ch-btn" id="bell" type="button" style="width:auto">
+      Notifications <span class="ch-count">2</span>
+    </button>
+    <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false">Amine</button>
+  </header>
+
+  <!-- ===== CHROME: app-level destinations (not graph edges) ===== -->
+  <nav id="rail" class="chrome" aria-label="Places in PlantPal">
+    <button class="ch-btn ch-btn--square" type="button" aria-current="page" title="Network"><span aria-hidden="true">❋</span><span class="sr">Network</span></button>
+    <button class="ch-btn ch-btn--square" type="button" title="My garden"><span aria-hidden="true">♣</span><span class="sr">My garden</span></button>
+    <button class="ch-btn ch-btn--square" type="button" title="Due today"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
+    <button class="ch-btn ch-btn--square" type="button" title="Identify"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
+    <button class="ch-btn ch-btn--square" type="button" title="Journal"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
+    <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
+  </nav>
+
+  <!-- ===== the world ===== -->
+  <div id="world-wrap">
+    <div id="world" role="application" tabindex="0"
+         aria-label="PlantPal botanical network. Arrow keys move along the veins to a neighbour, Enter travels to it, Alt plus the scroll wheel zooms.">
+      <div id="plane">
+
+        <svg id="veins" viewBox="0 0 3600 1980" aria-hidden="true" preserveAspectRatio="none">
+          <g id="vein-group"></g>
+          <path id="trail" d=""></path>
+          <g id="vein-nodes"></g>
+        </svg>
+
+        <!-- ------------------------------------------------------------------
+             NODES. Every node declares its lattice cell in data-cell="col,row".
+             Pixel position is origin + cell × pitch, computed once at load and
+             persisted — never a live simulation, never render order (C7).
+
+             WHICH NEIGHBOURS EXIST AT ALL is the round-10 § 5 rule, applied
+             uniformly: for any node connected to a collection of sibling
+             nodes of one kind, fewer than 4 members are all drawn; 4 or more
+             are drawn as the 2 highest-ranked members plus ONE aggregate node
+             standing for the rest. Ranking is by most overdue actions, then
+             needing treatment, then most accessed. Full statement in
+             atlas-layout-determinism.json.
+
+               Species (28)  → 4+  → Fiddle-leaf Fig, Monstera, +26 more
+               My garden (12)→ 4+  → Office Fig, Studio Fig, +10 more
+               Problems (3)  → <4  → all three drawn
+               Journal (14)  → 4+  → Jul 18, Jul 15, +12 more
+             ------------------------------------------------------------------ -->
+
+        <!-- Species index — the collection the path started from -->
+        <article class="n" id="n-species" data-cell="0,5" data-kind="Collection" data-kindkey="collection"
+                 data-name="Species" data-recap="28 species">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">❋</span>
+            <div><span class="n__kind">Collection</span><h2 class="n__name">Species</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">28 species</p>
+              <p class="n__recap-note">Everything you have identified or added by hand.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--sub"></div><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/species/**" data-component="card-action-api-v1-species">
+                <div class="state__head">
+                  <h4 class="state__title">The species index</h4>
+                  <span class="state__id">action · /api/v1/species/**</span>
+                </div>
+                <p class="state__note">Search it, read one, add one that is missing. A species is a reference thing, not one of your plants, so nothing here is ever overdue and nothing here can be watered.</p>
+                <dl class="rows">
+                  <div class="row"><dt>In the index</dt><dd>28 · 3 added by you</dd></div>
+                  <div class="row"><dt>Last added</dt><dd>Calathea orbifolia · Jul 22</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Add a species</button>
+                  <button class="stake stake--quiet" type="button">Search the index</button>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="sec">28 species in your collection</h3>
+                <p>Two are drawn beside this card as their own nodes — the two that want you most. The other twenty-six are one node away, and travelling into them does not move anything already on screen.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Fiddle-leaf Fig</dt><dd>12 plants · 1 overdue</dd></div>
+                  <div class="row"><dt>Monstera</dt><dd>3 plants · 1 wants repotting</dd></div>
+                  <div class="row"><dt>The other 26</dt><dd class="v mono">one hop</dd></div>
+                </dl>
+                <button class="hop hop--block" type="button" data-goto="n-species-more" style="margin-top:var(--hbm-space-4)">Reach the other 26 species <small>+26 more</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- Species rule, member 2 of 2 drawn -->
+        <article class="n" id="n-monstera" data-cell="2,2" data-kind="Species" data-kindkey="species"
+                 data-name="Monstera" data-recap="3 plants · wants repotting">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">♣</span>
+            <div><span class="n__kind">Species</span><h2 class="n__name">Monstera</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">3 plants · wants repotting</p>
+              <p class="n__recap-note">Monstera deliciosa · ranked 2nd by what is owed</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--plate"></div><div class="sk sk--line"></div></div>
+            <div class="n__full">
+              <p>Monstera deliciosa. The splits in the leaves arrive with age and light, not with feeding. One of your three has outgrown its pot.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Species rule, the aggregate -->
+        <article class="n" id="n-species-more" data-cell="2,8" data-kind="Collection" data-kindkey="collection"
+                 data-name="26 more species" data-recap="+26 more">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">⋯</span>
+            <div><span class="n__kind">Collection</span><h2 class="n__name">26 more species</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">+26 more</p><p class="n__recap-note">Everything below the two highest-ranked, drawn as one node.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">26 more species</h3>
+                <p>Nothing here is hidden — it is grouped. The board draws two members plus this node for every collection of four or more, so the geography stays the same size as your garden grows.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Snake Plant</dt><dd>4 plants</dd></div>
+                  <div class="row"><dt>Pothos</dt><dd>2 plants</dd></div>
+                  <div class="row"><dt>ZZ Plant</dt><dd>1 plant</dd></div>
+                </dl>
+                <p class="state__note" style="margin-top:var(--hbm-space-3)">Opening one of these makes it the focus, and this node stays where it is.</p>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- ===== THE FOCUS: a species record ===== -->
+        <article class="n" id="n-fig" data-cell="2,5" data-kind="Species" data-kindkey="species"
+                 data-name="Fiddle-leaf Fig" data-recap="12 plants · 1 overdue">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">❧</span>
+            <div><span class="n__kind">Species</span><h2 class="n__name" id="focused-node">Fiddle-leaf Fig</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">12 plants · 1 overdue</p>
+              <p class="n__recap-note">Ficus lyrata · one plant needs water</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12 · one plant's health may be older</div>
+            <div class="n__skel" aria-hidden="true">
+              <div class="sk--grid" style="grid-template-columns:9.5rem 1fr">
+                <div class="sk sk--plate" style="height:12rem"></div>
+                <div style="display:grid;gap:var(--hbm-space-3)">
+                  <div class="sk sk--name"></div><div class="sk sk--sub"></div>
+                  <div class="sk sk--line"></div><div class="sk sk--line is-short"></div>
+                </div>
+              </div>
+              <div class="sk--grid">
+                <div class="sk sk--cell"></div><div class="sk sk--cell"></div>
+                <div class="sk sk--cell"></div><div class="sk sk--cell"></div>
+              </div>
+              <div class="sk sk--row"></div><div class="sk sk--row"></div>
+            </div>
+
+            <div class="n__full">
+              <div class="plate">
+                <div class="plate__specimen"><span class="plate__score">82</span></div>
+                <div>
+                  <h2 class="plate__name">Fiddle-leaf Fig</h2>
+                  <p class="plate__binomial">Ficus lyrata</p>
+                  <div class="plate__meta">
+                    <p class="n__recap-line"><span class="tag tag--watch">Needs water</span> Last watered Jul 12 · overdue 3 days</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- C19: the focused node answers all four questions in place. -->
+              <section>
+                <h3 class="sec">This node</h3>
+                <dl class="rows">
+                  <div class="row"><dt>What is this?</dt><dd>A species record — one row in your collection.</dd></div>
+                  <div class="row"><dt>Where am I?</dt><dd>Species › Fiddle-leaf Fig</dd></div>
+                  <div class="row"><dt>What can I do here?</dt><dd>Water, fertilize, note, photo, scan a leaf.</dd></div>
+                  <div class="row"><dt>Where can I go?</dt><dd class="v mono">6 veins out</dd></div>
+                </dl>
+              </section>
+
+              <section>
+                <h3 class="sec">About</h3>
+                <!-- ROUND-10 § 4: ordinary prose with ordinary links in it.
+                     These are real anchors; clicking one travels the graph,
+                     and the pan layer never swallows the click. -->
+                <p>Native to West Africa. Large violin-shaped leaves and a strong architectural presence. It wants bright, indirect light and consistent moisture — the <a class="doc-link" href="#n-care" data-goto="n-care">care guide</a> has the watering rhythm, and the two plants of yours that are struggling are in <a class="doc-link" href="#n-garden" data-goto="n-garden">my garden</a>.</p>
+                <div class="pair">
+                  <dl class="rows">
+                    <div class="row"><dt>Family</dt><dd>Moraceae</dd></div>
+                    <div class="row"><dt>Native to</dt><dd>West Africa</dd></div>
+                    <div class="row"><dt>Growth habit</dt><dd>Tree</dd></div>
+                  </dl>
+                  <dl class="rows">
+                    <div class="row"><dt>Light</dt><dd>Bright, indirect</dd></div>
+                    <div class="row"><dt>Water</dt><dd>Top 2–3 cm dry</dd></div>
+                    <div class="row"><dt>Humidity</dt><dd>40–60%</dd></div>
+                  </dl>
+                </div>
+              </section>
+
+              <section class="conf">
+                <p class="label" style="margin:0">Confidence · medium</p>
+                <div class="conf__bar"><i style="width:82%"></i></div>
+                <p class="state__note">82% is a pattern match, not certainty. Ask “why” to hear the reasoning in plain words.</p>
+              </section>
+
+              <section>
+                <h3 class="sec">Recent activity</h3>
+                <div class="feed">
+                  <div class="feed__row"><span class="feed__when">Jul 18</span><span>Photo logged</span><span class="feed__val">·</span></div>
+                  <div class="feed__row"><span class="feed__when">Jul 15</span><span>Watered</span><span class="feed__val">·</span></div>
+                  <div class="feed__row"><span class="feed__when">Jul 10</span><span>Leaf cleaned</span><span class="feed__val">·</span></div>
+                </div>
+                <p class="state__note" style="margin-top:var(--hbm-space-3)">Showing 3 of 14 entries.</p>
+                <button class="hop hop--block" type="button" data-goto="n-journal">View the whole journal <small>14 entries</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- Relations of the focus: one node per kind, so all are drawn -->
+        <article class="n" id="n-platform" data-cell="4,0" data-kind="Platform" data-kindkey="platform"
+                 data-name="Platform link" data-recap="Healthy · 2 feeds out">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◈</span>
+            <div><span class="n__kind">Platform</span><h2 class="n__name">Platform link</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line"><span class="tag tag--thriving">Up</span> 2 feeds out</p>
+              <p class="n__recap-note">What PlantPal tells the platform about itself.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Health last checked 09:12 · feeds may be older</div>
+            <div class="n__skel" aria-hidden="true">
+              <div class="sk sk--sub"></div><div class="sk sk--row"></div><div class="sk sk--row"></div><div class="sk sk--row"></div>
+            </div>
+            <div class="n__full">
+
+              <section class="state" data-brief-item="data:dimension.event" data-component="card-data-dimension-event">
+                <div class="state__head">
+                  <h4 class="state__title">Dimension events</h4>
+                  <span class="state__id">data · dimension.event</span>
+                </div>
+                <p class="state__note">Your plant count, each time it changes. Scoped to you. 20 shown, 500 kept.</p>
+                <div class="feed">
+                  <div class="feed__row"><span class="feed__when">09:04</span><span>plant_count</span><span class="feed__val">12</span></div>
+                  <div class="feed__row"><span class="feed__when">Jul 28</span><span>plant_count</span><span class="feed__val">11</span></div>
+                  <div class="feed__row"><span class="feed__when">Jul 24</span><span>plant_count</span><span class="feed__val">10</span></div>
+                </div>
+              </section>
+
+              <section class="state" data-brief-item="data:state.event" data-component="card-data-state-event">
+                <div class="state__head">
+                  <h4 class="state__title">State events</h4>
+                  <span class="state__id">data · state.event</span>
+                </div>
+                <p class="state__note">App-global. One on each boot, one per completed identification. 20 shown, 200 kept.</p>
+                <div class="feed">
+                  <div class="feed__row"><span class="feed__when">08:58</span><span>app.status</span><span class="feed__val">UP</span></div>
+                  <div class="feed__row"><span class="feed__when">08:41</span><span>activity.count</span><span class="feed__val">7</span></div>
+                </div>
+              </section>
+
+              <section class="state" data-brief-item="action:`app.health`" data-component="card-action-app-health">
+                <div class="state__head">
+                  <h4 class="state__title">Health check</h4>
+                  <span class="state__id">action · app.health</span>
+                </div>
+                <p class="state__note"><span class="tag tag--thriving">Up</span> Checked 09:12. Database up, gateway up, PlantNet up.</p>
+                <button class="stake" type="button">Check again</button>
+              </section>
+
+              <section class="state">
+                <div class="state__head">
+                  <h4 class="state__title">Sign-in</h4>
+                  <span class="state__id">action · none · own JWT issuance</span>
+                </div>
+                <p class="state__note">PlantPal issues its own token. The platform is not asked, and no platform action is exposed here — there is nothing to press, so nothing is drawn as a control.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Issuer</dt><dd class="v mono">plantpal</dd></div>
+                  <div class="row"><dt>Session</dt><dd>Valid until 18:40</dd></div>
+                </dl>
+              </section>
+
+              <section class="state">
+                <div class="state__head">
+                  <h4 class="state__title">Internal API</h4>
+                  <span class="state__id">action · none · app-internal REST</span>
+                </div>
+                <p class="state__note">Every screen in PlantPal reads its own JWT-authenticated REST API. This is not a platform action either; it is stated so you can see where the data came from.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Base</dt><dd class="v mono">/api/v1</dd></div>
+                  <div class="row"><dt>Auth</dt><dd class="v mono">bearer JWT</dd></div>
+                </dl>
+              </section>
+
+              <section class="state">
+                <div class="state__head">
+                  <h4 class="state__title">What PlantPal emits</h4>
+                  <span class="state__id">action · dimension.event, state.event</span>
+                </div>
+                <p class="state__note">Two emitters, both read-only from your side. Nothing you do on this screen writes to either.</p>
+                <dl class="rows">
+                  <div class="row"><dt>dimension.event</dt><dd>on plant create / archive</dd></div>
+                  <div class="row"><dt>state.event</dt><dd>on boot, on identification</dd></div>
+                </dl>
+              </section>
+
+
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-garden" data-cell="4,2" data-kind="Collection" data-kindkey="collection"
+                 data-name="My garden" data-recap="12 plants · 2 need water">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">♣</span>
+            <div><span class="n__kind">Collection</span><h2 class="n__name">My garden</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">12 plants · 2 need water</p>
+              <p class="n__recap-note">Your own plants of every species.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12 · watering counts may be stale</div>
+            <div class="n__skel" aria-hidden="true">
+              <div class="sk sk--sub"></div><div class="sk sk--row"></div><div class="sk sk--row"></div><div class="sk sk--row"></div>
+            </div>
+            <div class="pending">
+              <p class="label" style="margin:0">Still arriving</p>
+              <div class="sk sk--row"></div><div class="sk sk--row"></div>
+            </div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/plants/**" data-component="card-action-api-v1-plants">
+                <div class="state__head">
+                  <h4 class="state__title">Your plants</h4>
+                  <span class="state__id">action · /api/v1/plants/**</span>
+                </div>
+                <p class="state__note">Add one, rename one, move one to another room, retire one. Retiring keeps it — its journal, its photographs and its history stay readable; it simply stops asking anything of you.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Alive</dt><dd>12 · 2 want water</dd></div>
+                  <div class="row"><dt>Retired</dt><dd>3 · still readable</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Add a plant</button>
+                  <button class="stake stake--quiet" type="button">Show retired plants</button>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="sec">12 plants</h3>
+                <p>Twelve is four or more, so the board draws the two that want you most and one node for the rest. Ranked by what is overdue, then by what is being treated, then by what you open most.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Office Fig <span class="tag tag--watch">Needs water</span></dt><dd class="v mono">65</dd></div>
+                  <div class="row"><dt>Studio Fig <span class="tag tag--watch">Watch</span></dt><dd class="v mono">58</dd></div>
+                  <div class="row"><dt>The other 10</dt><dd class="v mono">one hop</dd></div>
+                </dl>
+                <button class="hop hop--block" type="button" data-goto="n-garden-more" style="margin-top:var(--hbm-space-4)">Reach the other 10 plants <small>+10 more</small></button>
+              </section>
+
+              <!-- state: LOADING — a feed inside this node still arriving. -->
+              <section class="state state--loading" data-brief-item="state:loading" data-component="card-state-loading">
+                <div class="state__head">
+                  <h4 class="state__title">Health scores</h4>
+                  <span class="state__id">state · loading</span>
+                </div>
+                <p class="state__note">Still checking. Twelve plants, three answered.</p>
+                <div class="sk sk--row"></div>
+                <div class="sk sk--row"></div>
+                <p class="state__note">The nodes stay where they are while this resolves.</p>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-care" data-cell="4,4" data-kind="Guide" data-kindkey="guide"
+                 data-name="Care Guide" data-recap="Water · light · soil">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">☂</span>
+            <div><span class="n__kind">Guide</span><h2 class="n__name">Care Guide</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">Water · light · soil</p>
+              <p class="n__recap-note">Best practice for Ficus lyrata.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Cached Jul 20 · guides change rarely</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--sub"></div><div class="sk sk--line"></div><div class="sk sk--line is-short"></div></div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/care/**" data-component="card-action-api-v1-care">
+                <div class="state__head">
+                  <h4 class="state__title">Care, and what you actually did</h4>
+                  <span class="state__id">action · /api/v1/care/**</span>
+                </div>
+                <p class="state__note">The guide above is what a Ficus lyrata wants. This is the record of what it got: every watering, feeding and repotting you logged, and the schedule they are measured against.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Watered</dt><dd>Jul 24 · 300 ml</dd></div>
+                  <div class="row"><dt>Fed</dt><dd>Jul 04 · half strength</dd></div>
+                  <div class="row"><dt>Next due</dt><dd>Today</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Log a watering</button>
+                  <button class="stake stake--quiet" type="button">Change the schedule</button>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="sec">Watering</h3>
+                <p>Water slowly until it drains from the bottom, then let the top 2–3 cm dry before the next drink. If the leaves are drooping and the soil is dry all the way down, see <a class="doc-link" href="#n-underwater" data-goto="n-underwater">underwatering</a>.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Ideal moisture</dt><dd>40 – 60%</dd></div>
+                  <div class="row"><dt>Soil</dt><dd>Well-draining, rich</dd></div>
+                  <div class="row"><dt>Pot</dt><dd>With drainage</dd></div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-problems" data-cell="4,6" data-kind="Problems" data-kindkey="problem"
+                 data-name="Problems" data-recap="3 active">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">⚠</span>
+            <div><span class="n__kind">Problems</span><h2 class="n__name">Problems</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">3 active</p>
+              <p class="n__recap-note">Underwatering · overwatering · root rot</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">3 active problems</h3>
+                <p>Three is fewer than four, so every one of them is drawn as its own node beside this card. No aggregate, no truncation, nothing folded away.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Underwatering <span class="tag tag--watch">Moderate</span></dt><dd>Detected Jul 18</dd></div>
+                  <div class="row"><dt>Overwatering <span class="tag tag--thriving">Resolving</span></dt><dd>Detected Jul 02</dd></div>
+                  <div class="row"><dt>Root rot <span class="tag tag--ailing">Serious</span></dt><dd>Detected Jun 28</dd></div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-journal" data-cell="4,8" data-kind="Journal" data-kindkey="journal"
+                 data-name="Journal" data-recap="14 entries">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">▤</span>
+            <div><span class="n__kind">Journal</span><h2 class="n__name">Journal</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">14 entries</p>
+              <p class="n__recap-note">Watering, notes and photos, newest first.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">14 entries</h3>
+                <p>Fourteen is four or more, so the same rule applies here as to species and to plants: the two highest-ranked entries are drawn, and one node holds the other twelve.</p>
+                <div class="feed">
+                  <div class="feed__row"><span class="feed__when">Jul 18</span><span>Photo logged · Office Fig</span><span class="feed__val">·</span></div>
+                  <div class="feed__row"><span class="feed__when">Jul 15</span><span>Watered · 4 plants</span><span class="feed__val">·</span></div>
+                </div>
+                <button class="hop hop--block" type="button" data-goto="n-journal-more" style="margin-top:var(--hbm-space-4)">Reach the other 12 entries <small>+12 more</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-ident" data-cell="4,10" data-kind="Identification" data-kindkey="platform"
+                 data-name="Identification" data-recap="Last scan failed">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◎</span>
+            <div><span class="n__kind">Identification</span><h2 class="n__name">Identification</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line"><span class="tag tag--ailing">Scan failed</span></p>
+              <p class="n__recap-note">The last leaf scan did not come back.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last attempt 09:14</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--plate"></div><div class="sk sk--line"></div></div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/identifications/**" data-component="card-action-api-v1-identifications">
+                <div class="state__head">
+                  <h4 class="state__title">Your identifications</h4>
+                  <span class="state__id">action · /api/v1/identifications/**</span>
+                </div>
+                <p class="state__note">Every scan you have run, kept with its photograph and its answer — including the ones PlantPal got wrong, because a wrong answer you corrected is worth more than a tidy list.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Run</dt><dd>9 · 7 confirmed by you</dd></div>
+                  <div class="row"><dt>This one</dt><dd>Jul 18 · confirmed</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Identify a plant</button>
+                  <button class="stake stake--quiet" type="button">Correct this answer</button>
+                </div>
+              </section>
+
+              <section class="state" data-brief-item="action:/api/v1/plantnet/**" data-component="card-action-api-v1-plantnet">
+                <div class="state__head">
+                  <h4 class="state__title">Where the answer came from</h4>
+                  <span class="state__id">action · /api/v1/plantnet/**</span>
+                </div>
+                <p class="state__note">PlantNet, an outside service, looked at the photograph and offered candidates with a confidence each. PlantPal does not pretend that work is its own, and it does not hide the number.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Ficus lyrata</dt><dd>0.94</dd></div>
+                  <div class="row"><dt>Ficus elastica</dt><dd>0.05</dd></div>
+                  <div class="row"><dt>Quota</dt><dd>17 of 50 this month</dd></div>
+                </dl>
+                <p class="state__note">If it is unavailable, identification by hand stays open — the error is a state inside this node, never a screen of its own.</p>
+              </section>
+
+              <section class="state state--error" data-brief-item="state:error" data-component="card-state-error">
+                <div class="state__head">
+                  <h4 class="state__title">The scan did not come back</h4>
+                  <span class="state__id">state · error</span>
+                </div>
+                <p class="state__note">PlantNet answered with a 503 at 09:14. Your photo is kept. Nothing was lost and nothing moved.</p>
+                <div class="btn-row">
+                  <button class="stake" type="button">Try the scan again</button>
+                  <button class="stake stake--quiet" type="button">Identify by hand</button>
+                </div>
+              </section>
+              <p class="state__note">Retry sits here, in the node. The camera does not move and no other node changes.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- Garden rule: 2 members drawn + 1 aggregate -->
+        <article class="n" id="n-office" data-cell="6,1" data-kind="Plant" data-kindkey="plant"
+                 data-name="Office Fig" data-recap="Needs water · 65">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">♠</span>
+            <div><span class="n__kind">Plant</span><h2 class="n__name">Office Fig</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">Needs water · 65</p><p class="n__recap-note">Overdue 2 days · PL-002 · ranked 1st</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--plate"></div></div>
+            <div class="n__full"><p>Low light and a draught from the door. Two lower leaves dropped this week. Drawn as its own node because it is the most overdue thing in your garden.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-studio" data-cell="6,2" data-kind="Plant" data-kindkey="plant"
+                 data-name="Studio Fig" data-recap="Watch · 58">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">♠</span>
+            <div><span class="n__kind">Plant</span><h2 class="n__name">Studio Fig</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">Watch · 58</p><p class="n__recap-note">Under treatment · PL-005 · ranked 2nd</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--plate"></div></div>
+            <div class="n__full"><p>Watered three days ago and still limp. It is on the treatment plan for underwatering, which is why it ranks second rather than by score alone.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-garden-more" data-cell="6,3" data-kind="Collection" data-kindkey="collection"
+                 data-name="10 more plants" data-recap="+10 more">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">⋯</span>
+            <div><span class="n__kind">Collection</span><h2 class="n__name">10 more plants</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">+10 more</p><p class="n__recap-note">Drawn as one node so the geography holds.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">10 more plants</h3>
+                <dl class="rows">
+                  <div class="row"><dt>Living Room Fig</dt><dd class="v mono">82</dd></div>
+                  <div class="row"><dt>Bedroom Fig</dt><dd class="v mono">90</dd></div>
+                  <div class="row"><dt>Hallway Fig</dt><dd class="v mono">85</dd></div>
+                </dl>
+                <p class="state__note" style="margin-top:var(--hbm-space-3)">All ten are reachable from here; each opens as its own node beside this one, and this card keeps its cell.</p>
+                <button class="hop hop--block" type="button" data-goto="n-unknown">Travel into the unloaded region <small>not yet fetched</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- state: EMPTY — a designed day-zero, not a failure -->
+        <article class="n" id="n-reminders" data-cell="6,4" data-kind="Reminders" data-kindkey="journal"
+                 data-name="Reminders" data-recap="Nothing due">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◷</span>
+            <div><span class="n__kind">Reminders</span><h2 class="n__name">Reminders</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">Nothing due today</p><p class="n__recap-note">Next check-in tomorrow, 09:00.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/reminders/**" data-component="card-action-api-v1-reminders">
+                <div class="state__head">
+                  <h4 class="state__title">What PlantPal will remind you of</h4>
+                  <span class="state__id">action · /api/v1/reminders/**</span>
+                </div>
+                <p class="state__note">A reminder belongs to a plant and to a kind of care. Snoozing one moves that reminder and nothing else; it never silently reschedules the rest of your garden.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Water · Office Fig</dt><dd>Overdue 2 days</dd></div>
+                  <div class="row"><dt>Water · Studio Fig</dt><dd>Today, 18:00</dd></div>
+                  <div class="row"><dt>Feed · all figs</dt><dd>Aug 04</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Add a reminder</button>
+                  <button class="stake stake--quiet" type="button">Snooze the overdue one</button>
+                </div>
+              </section>
+
+              <section class="state" data-brief-item="action:/api/v1/notifications/**" data-component="card-action-api-v1-notifications">
+                <div class="state__head">
+                  <h4 class="state__title">How it reaches you</h4>
+                  <span class="state__id">action · /api/v1/notifications/**</span>
+                </div>
+                <p class="state__note">A reminder is the thing; a notification is the knock. They are separate on purpose — you can keep every reminder and turn every knock off.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Push</dt><dd>On · not during quiet hours</dd></div>
+                  <div class="row"><dt>Email</dt><dd>Weekly digest, Sundays</dd></div>
+                  <div class="row"><dt>Unread</dt><dd>3</dd></div>
+                </dl>
+                <p class="state__note">An arrival never moves the camera. It lights the node it concerns and waits — see the vein to <a class="doc-link" href="#n-office" data-goto="n-office">Office Fig</a>.</p>
+                <div class="btn-row">
+                  <button class="stake stake--quiet" type="button">Mark all read</button>
+                </div>
+              </section>
+
+              <section class="state state--empty" data-brief-item="state:empty" data-component="card-state-empty">
+                <div class="state__head">
+                  <h4 class="state__title">Nothing due today</h4>
+                  <span class="state__id">state · empty</span>
+                </div>
+                <div class="empty-plot">
+                  <span class="glyph" aria-hidden="true">◌</span>
+                  <p class="state__note">No reminder is due. This is an empty plot with room in it, not a failure — the next check-in is tomorrow at 09:00.</p>
+                </div>
+                <button class="stake stake--quiet" type="button">Add a reminder</button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- Problems rule: fewer than four, so all three are drawn -->
+        <article class="n" id="n-underwater" data-cell="6,6" data-kind="Problem" data-kindkey="problem"
+                 data-name="Underwatering" data-recap="Moderate · Jul 18">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◍</span>
+            <div><span class="n__kind">Problem</span><h2 class="n__name">Underwatering</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line"><span class="tag tag--watch">Moderate</span> Jul 18</p><p class="n__recap-note">Drooping leaves, dry soil, crispy edges.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--line"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">Underwatering · moderate</h3>
+                <p>The plant is showing signs of not getting enough water. Recovery usually takes three to seven days once the rhythm is corrected.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Cause</dt><dd>Infrequent watering</dd></div>
+                  <div class="row"><dt>Ideal moisture</dt><dd>40 – 60%</dd></div>
+                </dl>
+                <button class="hop hop--block" type="button" data-goto="n-treatment" style="margin-top:var(--hbm-space-4)">Open the treatment plan <small>4 steps</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-overwater" data-cell="6,7" data-kind="Problem" data-kindkey="problem"
+                 data-name="Overwatering" data-recap="Resolving · Jul 02">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◍</span>
+            <div><span class="n__kind">Problem</span><h2 class="n__name">Overwatering</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line"><span class="tag tag--thriving">Resolving</span> Jul 02</p><p class="n__recap-note">Yellowing lower leaves, soil wet for days.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--line"></div></div>
+            <div class="n__full"><p>Improving since the watering interval was lengthened on Jul 09. No action is needed unless the lower leaves start dropping again.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-rootrot" data-cell="6,8" data-kind="Problem" data-kindkey="problem"
+                 data-name="Root rot" data-recap="Serious · Jun 28">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◍</span>
+            <div><span class="n__kind">Problem</span><h2 class="n__name">Root rot</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line"><span class="tag tag--ailing">Serious</span> Jun 28</p><p class="n__recap-note">Soft brown roots, a sour smell at the pot.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--line"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section>
+                <h3 class="sec">Root rot · serious</h3>
+                <p>This one shares a treatment plan with underwatering, because both are corrected by changing how the pot drains rather than how often you water.</p>
+                <button class="hop hop--block" type="button" data-goto="n-treatment">Open the treatment plan <small>4 steps</small></button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- Journal rule: 2 members drawn + 1 aggregate -->
+        <article class="n" id="n-j1" data-cell="6,9" data-kind="Entry" data-kindkey="journal"
+                 data-name="Jul 18 · photo" data-recap="Photo · Office Fig">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">▤</span>
+            <div><span class="n__kind">Entry</span><h2 class="n__name">Jul 18 · photo</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">Photo · Office Fig</p><p class="n__recap-note">Most recent entry.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--plate"></div></div>
+            <div class="n__full"><p>A photo of the two lower leaves that dropped, logged so the next scan has something to compare against.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-j2" data-cell="6,10" data-kind="Entry" data-kindkey="journal"
+                 data-name="Jul 15 · watering" data-recap="Watered · 4 plants">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">▤</span>
+            <div><span class="n__kind">Entry</span><h2 class="n__name">Jul 15 · watering</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">Watered · 4 plants</p><p class="n__recap-note">Second most recent.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--line"></div></div>
+            <div class="n__full"><p>Four plants watered in one round: Living Room, Bedroom, Hallway and Terrace.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-journal-more" data-cell="8,9" data-kind="Collection" data-kindkey="collection"
+                 data-name="12 more entries" data-recap="+12 more">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">⋯</span>
+            <div><span class="n__kind">Collection</span><h2 class="n__name">12 more entries</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">+12 more</p><p class="n__recap-note">The rest of the journal, as one node.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div></div>
+            <div class="n__full"><p>Twelve older entries, oldest Jun 02. Opening one makes it the focus; this node keeps its cell.</p></div>
+          </div>
+        </article>
+
+        <article class="n" id="n-treatment" data-cell="8,7" data-kind="Treatment" data-kindkey="problem"
+                 data-name="Treatment plan" data-recap="4 steps · active">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◈</span>
+            <div><span class="n__kind">Treatment</span><h2 class="n__name">Treatment plan</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line">4 steps · active</p><p class="n__recap-note">Shared by underwatering and root rot.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Last synced 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section class="state" data-brief-item="action:/api/v1/treatment-plans/**" data-component="card-action-api-v1-treatment-plans">
+                <div class="state__head">
+                  <h4 class="state__title">The course you are running</h4>
+                  <span class="state__id">action · /api/v1/treatment-plans/**</span>
+                </div>
+                <p class="state__note">A plan is a sequence with an end, not a setting. You can start one, mark a step done, pause it while you are away, or abandon it — and abandoning it says so in the journal rather than deleting the fortnight you spent.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Running</dt><dd>Root rot · day 6 of 14</dd></div>
+                  <div class="row"><dt>Next step</dt><dd>Tomorrow · check the crown</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Mark today done</button>
+                  <button class="stake stake--quiet" type="button">Pause this course</button>
+                </div>
+              </section>
+
+              <section>
+                <h3 class="sec">Four steps</h3>
+                <dl class="rows">
+                  <div class="row"><dt>1 · Deep water</dt><dd>Today</dd></div>
+                  <div class="row"><dt>2 · Monitor soil moisture</dt><dd>Daily</dd></div>
+                  <div class="row"><dt>3 · Improve environment</dt><dd>This week</dd></div>
+                  <div class="row"><dt>4 · Evaluate recovery</dt><dd>In 1 week</dd></div>
+                </dl>
+                <button class="stake" type="button" style="margin-top:var(--hbm-space-4)">Mark step 1 as done</button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <!-- Explicitly unknown region: not "loaded and empty". Traversable. -->
+
+        <!-- ==================================================================
+             ROUND 8. Three nodes the brief's action list needs a home for:
+             your account, today's dashboard, and the companion. Each lands
+             in a free lattice cell that was always free — no existing node
+             moved to make room for them (C8). Their veins are in the DOM
+             before anything is pressed (C1).
+             ================================================================== -->
+
+        <article class="n" id="n-account" data-cell="2,0" data-kind="Account" data-kindkey="platform"
+                 data-name="Your account" data-recap="Signed in · 12 plants">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◉</span>
+            <div><span class="n__kind">Account</span><h2 class="n__name">Your account</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">Signed in · 12 plants</p>
+              <p class="n__recap-note">Who PlantPal thinks you are, and how it knows.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Token refreshed 08:41 · valid until 18:40</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--sub"></div><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+
+              <section class="state" data-brief-item="action:POST /api/v1/auth/register" data-component="card-action-post-api-v1-auth-register">
+                <div class="state__head">
+                  <h4 class="state__title">Make an account</h4>
+                  <span class="state__id">action · POST /api/v1/auth/register</span>
+                </div>
+                <p class="state__note">You already have one, so this is shown as it stands rather than as a form: an email, a password, and a name PlantPal will greet you by. Nothing else is asked for and nothing else is kept.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Registered</dt><dd>14 March</dd></div>
+                  <div class="row"><dt>Email</dt><dd class="v mono">you@example.org</dd></div>
+                </dl>
+                <p class="state__note">Registering signs you in on the same answer — one round trip, not two.</p>
+              </section>
+
+              <section class="state" data-brief-item="action:POST /api/v1/auth/login" data-component="card-action-post-api-v1-auth-login">
+                <div class="state__head">
+                  <h4 class="state__title">Signing in</h4>
+                  <span class="state__id">action · POST /api/v1/auth/login</span>
+                </div>
+                <p class="state__note">Email and password, back a token that lasts a working day. When it lapses PlantPal asks again in place — it does not throw you out of where you were standing.</p>
+                <dl class="rows">
+                  <div class="row"><dt>This session</dt><dd>Since 08:41 · this device</dd></div>
+                  <div class="row"><dt>Expires</dt><dd>18:40</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Sign in on another device</button>
+                  <button class="stake stake--quiet" type="button">Sign out here</button>
+                </div>
+              </section>
+
+              <section class="state" data-brief-item="action:/api/v1/users/**" data-component="card-action-api-v1-users">
+                <div class="state__head">
+                  <h4 class="state__title">You, as PlantPal holds you</h4>
+                  <span class="state__id">action · /api/v1/users/**</span>
+                </div>
+                <p class="state__note">Your name, your email, your units and your quiet hours. Everything on this list is editable and everything on it can be exported or deleted — if a field is not here, PlantPal is not keeping it.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Display name</dt><dd>Sam</dd></div>
+                  <div class="row"><dt>Units</dt><dd>Metric · °C</dd></div>
+                  <div class="row"><dt>Quiet hours</dt><dd>21:00 – 07:30</dd></div>
+                </dl>
+                <div class="btn-row">
+                  <button class="stake" type="button">Edit your details</button>
+                  <button class="stake stake--quiet" type="button">Export everything</button>
+                </div>
+              </section>
+
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-today" data-cell="2,3" data-kind="Dashboard" data-kindkey="guide"
+                 data-name="Today" data-recap="2 due · 1 overdue">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◷</span>
+            <div><span class="n__kind">Dashboard</span><h2 class="n__name">Today</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line"><span class="tag tag--watch">2 due</span> 1 overdue</p>
+              <p class="n__recap-note">What your garden wants from you before this evening.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Counted 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--sub"></div><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+
+              <section class="state" data-brief-item="action:/api/v1/dashboard/**" data-component="card-action-api-v1-dashboard">
+                <div class="state__head">
+                  <h4 class="state__title">Today's summary</h4>
+                  <span class="state__id">action · /api/v1/dashboard/**</span>
+                </div>
+                <p class="state__note">A count, not a feed. Every line here is a door: pressing one travels to the plant it is about, and the plant is already drawn beside this card, so you can see where you are going before you go.</p>
+                <dl class="rows">
+                  <div class="row"><dt>Water</dt><dd><a class="doc-link" href="#n-office" data-goto="n-office">Office Fig</a> · 2 days overdue</dd></div>
+                  <div class="row"><dt>Water</dt><dd><a class="doc-link" href="#n-studio" data-goto="n-studio">Studio Fig</a> · today</dd></div>
+                  <div class="row"><dt>Check on</dt><dd><a class="doc-link" href="#n-rootrot" data-goto="n-rootrot">Root rot</a> · day 6 of 14</dd></div>
+                </dl>
+                <p class="state__note">Counts move; nothing on the plane moves with them (C9).</p>
+              </section>
+
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-ask" data-cell="8,5" data-kind="Companion" data-kindkey="guide"
+                 data-name="Ask PlantPal" data-recap="Ask about this fig">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">✎</span>
+            <div><span class="n__kind">Companion</span><h2 class="n__name">Ask PlantPal</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap">
+              <p class="n__recap-line">Ask about this fig</p>
+              <p class="n__recap-note">The knowledgeable friend, not the botanist.</p>
+            </div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Answers use your garden as it stood at 09:12</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--sub"></div><div class="sk sk--line"></div><div class="sk sk--line is-short"></div></div>
+            <div class="n__full">
+
+              <section class="state" data-brief-item="action:/api/v1/chat/**" data-component="card-action-api-v1-chat">
+                <div class="state__head">
+                  <h4 class="state__title">Ask about this fig</h4>
+                  <span class="state__id">action · /api/v1/chat/**</span>
+                </div>
+                <p class="state__note">A conversation, kept per plant, so it starts already knowing which one you mean. It reads your garden; it never writes to it — anything it suggests arrives as a proposal you press, over on the plant itself.</p>
+                <div class="feed">
+                  <div class="feed__row"><span class="feed__when">09:06</span><span>you</span><span class="feed__val">why are the low leaves going?</span></div>
+                  <div class="feed__row"><span class="feed__when">09:06</span><span>PlantPal</span><span class="feed__val">draught, most likely</span></div>
+                </div>
+                <div class="btn-row">
+                  <button class="stake" type="button">Ask something</button>
+                  <button class="stake stake--quiet" type="button">Read the whole thread</button>
+                </div>
+                <p class="state__note">If it is not sure, it says so. It would rather be honest than confident.</p>
+              </section>
+
+            </div>
+          </div>
+        </article>
+
+        <article class="n" id="n-unknown" data-cell="8,3" data-kind="Region" data-kindkey="region"
+                 data-name="Unloaded region" data-recap="Not fetched yet" data-unknown="true">
+          <div class="n__head">
+            <span class="n__thumb" aria-hidden="true">◌</span>
+            <div><span class="n__kind">Region</span><h2 class="n__name">Unloaded region</h2></div>
+            <div class="n__tools"></div>
+          </div>
+          <div class="n__body">
+            <div class="n__recap"><p class="n__recap-line"><span class="tag tag--unknown">Unknown</span></p><p class="n__recap-note">Ten plants and their journals live here. Not fetched yet.</p></div>
+            <div class="staleness"><span aria-hidden="true">◷</span> Never fetched</div>
+            <div class="n__skel" aria-hidden="true"><div class="sk sk--row"></div><div class="sk sk--row"></div></div>
+            <div class="n__full">
+              <section class="state state--unknown">
+                <div class="state__head">
+                  <h4 class="state__title">Not fetched yet</h4>
+                  <span class="state__id">region · unknown</span>
+                </div>
+                <p class="state__note">This is not an empty region — it is one we have not read. Ten plants, their journals and their problems are in here. Travelling in fetches it; the nodes already drawn will not move when it arrives.</p>
+                <button class="stake stake--quiet" type="button">Fetch this region</button>
+              </section>
+            </div>
+          </div>
+        </article>
+
+      </div><!-- /#plane -->
+    </div><!-- /#world -->
+  </div><!-- /#world-wrap -->
+
+  <!-- ===== CHROME left: mutation. Changes with focus, never moves the camera. -->
+  <aside class="chrome side" id="actions" aria-labelledby="actions-h">
+    <span class="chrome__title" id="actions-h">Actions · <b id="actions-scope">Fiddle-leaf Fig</b></span>
+    <div class="chrome__body" id="actions-body"></div>
+    <span class="chrome__foot">These change data. They never move the camera.</span>
+  </aside>
+
+  <!-- ===== CHROME right: traversal. Changes with focus; counts are real degree. -->
+  <aside class="chrome side" id="navto" aria-labelledby="navto-h">
+    <span class="chrome__title" id="navto-h">Navigate to · <b id="navto-degree">6 veins</b></span>
+    <div class="chrome__body" id="navto-body"></div>
+    <span class="chrome__foot"><button class="ch-btn" type="button" id="show-all">Show all connections</button></span>
+  </aside>
+
+  <!-- ===== CHROME bottom-left: the persistent world view -->
+  <div id="atlas" class="chrome">
+    <div id="minimap" role="img" aria-label="World view. Loading." tabindex="0">
+      <svg viewBox="0 0 208 104" preserveAspectRatio="none" aria-hidden="true">
+        <g id="mm-edges"></g>
+        <g id="mm-dots"></g>
+        <rect id="mm-view" x="0" y="0" width="60" height="30" rx="2"></rect>
+        <circle class="mm-you" id="mm-you" cx="0" cy="0" r="6"></circle>
+        <circle class="mm-you-core" id="mm-you-core" cx="0" cy="0" r="2.2"></circle>
+      </svg>
+    </div>
+    <div id="zoomstack">
+      <button class="ch-btn ch-btn--square" type="button" id="zoom-in" title="Zoom in">+</button>
+      <button class="ch-btn ch-btn--square" type="button" id="recenter" title="Recentre on where I am">◎</button>
+      <button class="ch-btn ch-btn--square" type="button" id="zoom-out-small" title="Zoom out">−</button>
+      <!-- ROUND-8 § 2: the drag-mode entry, in the map's own button cluster. -->
+      <button class="ch-btn ch-btn--square" type="button" id="drag-mode" aria-pressed="false"
+              title="Arrange mode — reposition the nodes">✥</button>
+    </div>
+  </div>
+
+  <div id="drag-banner" class="chrome" role="status">
+    <span>Arrange mode · drag any card anywhere · nothing else responds until you leave</span>
+    <button class="ch-btn" type="button" id="drag-done" style="width:auto">Done arranging</button>
+  </div>
+
+  <div id="camera" class="chrome">
+    <button class="ch-btn" type="button" id="zoom-out">⌕− Zoom out</button>
+    <button class="ch-btn" type="button" id="fit">▢ Fit to screen</button>
+  </div>
+
+  <p id="gesture" class="chrome">Drag to pan · <strong>Alt</strong>+scroll to zoom · scroll to read a node · click a card to travel
+    <button class="ch-btn ch-btn--square" type="button" title="Help">?</button>
+  </p>
+
+  <div id="probe" class="chrome">
+    <span class="chrome__title">Show this screen</span>
+    <button class="ch-btn" type="button" id="p-slow" aria-pressed="false">Slow (≥10s)</button>
+    <button class="ch-btn" type="button" id="p-offline" aria-pressed="false">Offline</button>
+    <button class="ch-btn" type="button" id="p-motion" aria-pressed="false">Reduced motion</button>
+  </div>
+
+  <p id="live" class="chrome" role="status" aria-live="polite"></p>
+
+</div><!-- /#shell -->
+
+<!-- ==========================================================================
+     THE L4 EXIT. Not a modal: the app above shrinks into a card and this
+     panel sits beside it on the same plane, at the same depth.
+     ========================================================================== -->
+<div id="overview">
+  <div id="app-caption">
+    <span class="label">PlantPal application</span>
+    <p class="state__note">You are in overview mode. This is the entire PlantPal application, still laid out exactly as you left it — including its own particle field, which now covers the app card and nothing beyond it. Click the app card to dive back in.</p>
+    <button class="hop" type="button" id="dive-back" style="justify-self:center">Return to the app</button>
+  </div>
+
+  <div id="overview-bar">
+    <button class="ch-btn" type="button">✥ Move</button>
+    <button class="ch-btn" type="button">⬚ Select</button>
+    <button class="ch-btn" type="button">⌕ Zoom</button>
+    <button class="ch-btn" type="button">◎ Recentre</button>
+  </div>
+
+  <section id="settings" aria-labelledby="settings-h">
+    <header>
+      <h2 id="settings-h">Settings</h2>
+      <button class="ch-btn ch-btn--square" type="button" id="close-settings" title="Close settings">✕</button>
+    </header>
+    <div class="cols">
+      <nav aria-label="Settings sections">
+        <button type="button">General</button>
+        <button type="button">Profile</button>
+        <button type="button">Notifications</button>
+        <button type="button" aria-current="true">Appearance</button>
+        <button type="button">Data &amp; Sync</button>
+        <button type="button">AI Preferences</button>
+        <button type="button">Privacy &amp; Security</button>
+        <button type="button">Integrations</button>
+        <button type="button">Advanced</button>
+      </nav>
+      <div class="pane">
+        <h3 class="sec">Appearance · interface</h3>
+        <p class="state__note" style="margin-bottom:var(--vs-gutter-wide)">Two readings of the same world. They share every lattice cell, every vein and every timing — what changes is how close the sheets lie, how the type is pitched, and what the chrome is made of. Choosing one applies it at once, behind this panel as well as on it. No node changes cell, so nothing you know about where things are stops being true.</p>
+        <div class="palettes" id="interfaces" role="group" aria-label="Interface">
+          <button class="palette" type="button" data-ui="sill-line" aria-pressed="true">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-sill-500)"></i>
+              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+            </span>
+            <span class="palette__name">Sill line</span>
+            <span class="palette__note">default · instrument density, 300×180, machined chrome, compressed type</span>
+          </button>
+          <button class="palette" type="button" data-ui="glasshouse-table" aria-pressed="false">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
+              <i style="background:var(--hbm-leaf-600)"></i><i style="background:var(--hbm-terra-500)"></i>
+            </span>
+            <span class="palette__name">Glasshouse table</span>
+            <span class="palette__note">airy sheets, 380×210, gauze chrome, serif plate names</span>
+          </button>
+        </div>
+
+        <h3 class="sec" style="margin-top:var(--vs-gutter-wide)">Appearance · palette</h3>
+        <p class="state__note" style="margin-bottom:var(--hbm-space-5)">The keys that belong to the reading you have chosen. Sill line offers five; the Glasshouse table offers its own two, because that interface and those two keys were drawn together. Choosing one applies it immediately, to the world behind this panel as well as to the panel itself. Nothing moves; only the colour changes.</p>
+        <div class="palettes" id="palettes" role="group" aria-label="Colour palette">
+          <button class="palette" type="button" data-palette="first-light" aria-pressed="true" data-for-ui="sill-line">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-sill-500)"></i>
+              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+            </span>
+            <span class="palette__name">First light</span>
+            <span class="palette__note">default · sill light; green kept for health</span>
+          </button>
+          <button class="palette" type="button" data-palette="night-canopy" aria-pressed="false" data-for-ui="sill-line">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-humus-700)"></i><i style="background:var(--hbm-humus-500)"></i>
+              <i style="background:var(--hbm-leaf-300)"></i><i style="background:var(--hbm-terra-300)"></i>
+            </span>
+            <span class="palette__name">Night canopy</span>
+            <span class="palette__note">theme-a's key, at this density</span>
+          </button>
+          <button class="palette" type="button" data-palette="terrarium" aria-pressed="false" data-for-ui="sill-line">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-ink-500)"></i>
+              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-200)"></i>
+            </span>
+            <span class="palette__name">Terrarium</span>
+            <span class="palette__note">glass and condensation</span>
+          </button>
+          <button class="palette" type="button" data-palette="potting-shed" aria-pressed="false" data-for-ui="sill-line">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-humus-600)"></i><i style="background:var(--hbm-humus-400)"></i>
+              <i style="background:var(--hbm-terra-300)"></i><i style="background:var(--hbm-leaf-300)"></i>
+            </span>
+            <span class="palette__name">Potting shed</span>
+            <span class="palette__note">terracotta at dusk</span>
+          </button>
+          <button class="palette" type="button" data-palette="pressed-sheet" aria-pressed="false" data-for-ui="sill-line">
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
+              <i style="background:var(--hbm-leaf-500)"></i><i style="background:var(--hbm-terra-500)"></i>
+            </span>
+            <span class="palette__name">Pressed sheet</span>
+            <span class="palette__note">the herbarium sheet, in daylight</span>
+          </button>
+          <button class="palette" type="button" data-palette="late-bench" aria-pressed="false" data-for-ui="glasshouse-table" hidden>
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-humus-500)"></i><i style="background:var(--hbm-humus-300)"></i>
+              <i style="background:var(--hbm-leaf-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+            </span>
+            <span class="palette__name">Late bench</span>
+            <span class="palette__note">the same glasshouse an hour after sunset</span>
+          </button>
+          <button class="palette" type="button" data-palette="glasshouse-table" aria-pressed="true" data-for-ui="glasshouse-table" hidden>
+            <span class="palette__swatches" aria-hidden="true">
+              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
+              <i style="background:var(--hbm-leaf-600)"></i><i style="background:var(--hbm-terra-500)"></i>
+            </span>
+            <span class="palette__name">Glasshouse table</span>
+            <span class="palette__note">default for this reading · daylight on the bench</span>
+          </button>
+        </div>
+
+        <h3 class="sec" style="margin-top:var(--hbm-space-7)">Appearance · motion</h3>
+        <dl class="rows">
+          <div class="row"><dt>Travel duration</dt><dd class="v mono">300ms · one timing everywhere</dd></div>
+          <div class="row"><dt>Follow the system's reduced-motion setting</dt><dd class="v mono">on</dd></div>
+        </dl>
+      </div>
+    </div>
+    <footer>
+      <button class="hop" type="button">Reset to defaults</button>
+      <span style="display:flex;gap:var(--hbm-space-3)">
+        <button class="stake stake--quiet" type="button" id="cancel-settings">Cancel</button>
+        <button class="stake" type="button" id="save-settings">Save</button>
+      </span>
+    </footer>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   ROUND 9 — behaviour. Round 8's engine, with the six things the owner
+   named on 2026-08-17 actually built:
+
+     1. .ch-btn--square is 1.5rem square.                        (CSS)
+     2. The focused node lands in the CENTRE of the free space, and its
+        neighbours are RE-PLACED around it so no two cards collide.
+     3. A vein is clickable: it carries you to the node on its other end.
+     4. .n[data-rank="fringe"] { width: auto } — so a fringe card is as wide
+        as its own words, which is exactly why 2 had to become real.
+     5. The Slow (>=10s) and Reduced-motion probes toggle both ways again.
+     6. Every card that is not the focus drifts — a particle-field drift,
+        two or three pixels, at the edge of visible. Neighbours are kept
+        on screen where they fit; a node with no direct vein to here is
+        allowed to leave the frame.
+   ========================================================================== */
+
+/* ---- 1. THE GRAPH. Edges are declared once. Both the drawn veins and the
+          keyboard traversal are generated FROM this list, so a drawn edge
+          that is not traversable cannot exist, and vice versa. ---------- */
+const EDGES = [
+  /* Species (28 members) -> 2 drawn + 1 aggregate */
+  ["n-species","n-fig"], ["n-species","n-monstera"], ["n-species","n-species-more"],
+  /* the focus's own relations — one node per kind, so all are drawn */
+  ["n-fig","n-garden"], ["n-fig","n-care"], ["n-fig","n-problems"],
+  ["n-fig","n-journal"], ["n-fig","n-ident"], ["n-fig","n-platform"],
+  /* My garden (12 members) -> 2 drawn + 1 aggregate */
+  ["n-garden","n-office"], ["n-garden","n-studio"], ["n-garden","n-garden-more"],
+  ["n-garden","n-reminders"],
+  /* Problems (3 members) -> fewer than four, so all three are drawn */
+  ["n-problems","n-underwater"], ["n-problems","n-overwater"], ["n-problems","n-rootrot"],
+  ["n-underwater","n-treatment"], ["n-rootrot","n-treatment"], ["n-treatment","n-care"],
+  /* Journal (14 members) -> 2 drawn + 1 aggregate */
+  ["n-journal","n-j1"], ["n-journal","n-j2"], ["n-journal","n-journal-more"],
+  /* the rest */
+  ["n-ident","n-care"], ["n-garden-more","n-unknown"], ["n-j1","n-office"],
+  /* Round 8's three added nodes. Every one of these veins is drawn on load,
+     is clickable — on the card AND now on the vein itself — and is walkable
+     with the arrow keys (C1, C18). */
+  ["n-account","n-platform"], ["n-account","n-garden"],
+  ["n-today","n-garden"], ["n-today","n-reminders"],
+  ["n-ask","n-care"], ["n-ask","n-ident"]
+];
+
+/* Lattice pitch — mirrors tokens.css (--vs-pitch-x / --vs-pitch-y). A LET,
+   not a const: the second interface re-pitches the lattice. The cells never
+   move; only the spacing between them does. */
+let PITCH_X = 300, PITCH_Y = 180;
+const ORIGIN_X = 200, ORIGIN_Y = 80;
+const NAV_MS = 300;   /* mirrors --vs-dur-nav. ONE timing, everywhere. */
+const CLEAR  = 34;    /* the air every card keeps around itself, in world px */
+
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+const plane = $("#plane");
+const world = $("#world");
+const nodes = {};
+const adj   = {};
+const order = [];     /* one fixed id order. Every loop below walks it, so
+                         nothing in this file depends on iteration order. */
+
+/* THE MOTE FIELD'S STATE IS DECLARED HERE, AT THE TOP, ON PURPOSE.
+   Round 8 declared it beside the painter at the foot of the file — but the
+   interface switch calls readMoteColours() while it re-keys the world, and
+   that call runs earlier in the file than the declaration did. So every
+   load of round 8 threw a ReferenceError at that line and everything after
+   it never ran: no clearance, no world view, and the probe buttons wired
+   after it were dead. That is the "make the buttons work like before" bug,
+   and this is its fix. */
+var cv = null, ctx = null, fieldW = 0, fieldH = 0;
+var motes = [], moteColour = "rgba(143,178,106,.55)", linkColour = "rgba(143,178,106,.16)";
+var moteRunning = false;
+
+/* ---- 2. POSITION, IN THREE LAYERS. -----------------------------------
+     HOME     hx,hy = ORIGIN + cell x PITCH. The lattice. A formula.
+     ANCHOR   home + the node's persisted drag offset (dx,dy).
+     PLACED   x,y — where the card actually is right now, which is the
+              anchor except where THIS focus's clearance pass had to move
+              it. Round 9's new layer, and the whole of fix 2.
+
+     All three are pure functions of (lattice cell, drag offsets, focus id).
+     No simulation, no DOM order, no randomness, no time: load twice with
+     the same focus and every left/top is identical (C7). --------------- */
+$$(".n").forEach(function (el, i) {
+  const cell = el.dataset.cell.split(",").map(Number);
+  const rec = {
+    el: el, id: el.id, col: cell[0], row: cell[1],
+    dx: 0, dy: 0,
+    hx: 0, hy: 0, x: 0, y: 0, w: 180, h: 110,
+    ph: (i * 1.7113) % 6.2831853,   /* drift phase — index, not chance */
+    name: el.dataset.name, kind: el.dataset.kind, recap: el.dataset.recap,
+    unknown: el.dataset.unknown === "true",
+    mode: "auto"
+  };
+  nodes[el.id] = rec;
+  adj[el.id] = [];
+  order.push(el.id);
+  home(rec);
+  rec.x = rec.hx; rec.y = rec.hy;
+  place(rec);
+});
+EDGES.forEach(function (e) { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); });
+
+function home(rec) {
+  rec.hx = ORIGIN_X + rec.col * PITCH_X;
+  rec.hy = ORIGIN_Y + rec.row * PITCH_Y;
+}
+function anchorX(rec) { return rec.hx + rec.dx; }
+function anchorY(rec) { return rec.hy + rec.dy; }
+function place(rec) {
+  rec.el.style.left = rec.x + "px";
+  rec.el.style.top  = rec.y + "px";
+}
+function centre(rec) { return { x: rec.x, y: rec.y }; }
+
+/* Measure every card at its SETTLED size. Transitions are suspended for the
+   read (body[data-measuring]) so offsetWidth/offsetHeight are the sizes the
+   cards are going to be, not the sizes they are half-way through becoming.
+   This is why fringe cards may be width:auto and still never collide. */
+function measureBoxes() {
+  /* --cam-k is PINNED TO 1 for the read. The focused card's cap is
+     (viewport x reach - air) / --cam-k, so measuring it at a zoomed-out
+     camera reports a card several times taller than the screen — and a
+     layout computed from that height pushes the world apart, which makes
+     the camera zoom out further, which makes the card taller again. Pinning
+     the read at 1 cuts that loop: the clearance pass always asks how big
+     this card is AT REST, which is the only size that is a property of the
+     card rather than of where the camera happens to be. */
+  const root = document.documentElement;
+  const prev = root.style.getPropertyValue("--cam-k");
+  root.style.setProperty("--cam-k", "1");
+  document.body.dataset.measuring = "1";
+  void document.body.offsetWidth;
+  const wcap = Math.max(600, world.clientWidth  * 1.2);
+  const hcap = Math.max(400, world.clientHeight * 1.2);
+  order.forEach(function (id) {
+    const r = nodes[id];
+    r.w = Math.min(wcap, r.el.offsetWidth  || 180);
+    r.h = Math.min(hcap, r.el.offsetHeight || 110);
+  });
+  document.body.removeAttribute("data-measuring");
+  if (prev) root.style.setProperty("--cam-k", prev);
+  else root.style.removeProperty("--cam-k");
+}
+
+/* ---- 2b. THE CLEARANCE PASS (round 9, fix 2 and fix 7).
+      Given a focus, produce a target position for every node.
+
+        focus        pinned at its own anchor. It never moves; the camera
+                     comes to it, and it lands in the centre of the free
+                     space between the two rails (see freeCentre).
+        neighbours   placed on an ELLIPSE around the focus whose radius is
+                     computed from the two cards' real measured half-sizes
+                     plus CLEAR, so a neighbour cannot overlap the focus by
+                     construction. Each keeps the ANGLE its lattice home
+                     had from the focus, so it arrives on the side you
+                     already expected it on; angles are then spread until
+                     no two neighbours' angular widths intersect.
+        everything   left at its anchor, then a fixed-iteration separation
+        else         pass pushes apart any remaining overlapping pair along
+                     its axis of least penetration. The focus has weight 0
+                     and so absorbs none of it.
+
+      A node with no direct vein to the focus is allowed to be pushed off
+      screen — the owner asked for that explicitly. It is still on the world
+      view, still reachable, and still exactly where this rule puts it. */
+function computeTargets(focusId) {
+  const t = {};
+  order.forEach(function (id) {
+    t[id] = { x: anchorX(nodes[id]), y: anchorY(nodes[id]) };
+  });
+  /* In arrange mode the user is placing cards on the lattice itself, so the
+     lattice is what they must see: no ring, no clearance, anchors only. */
+  if (dragMode) return t;
+
+  const F = nodes[focusId];
+  const fx = anchorX(F), fy = anchorY(F);
+  t[focusId] = { x: fx, y: fy };
+
+  const ring = adj[focusId].slice().sort(function (a, b) {
+    return order.indexOf(a) - order.indexOf(b);
+  }).map(function (id, i) {
+    const n = nodes[id];
+    let ax = anchorX(n) - fx, ay = anchorY(n) - fy;
+    if (!ax && !ay) { ax = Math.cos(i); ay = Math.sin(i); }
+    return {
+      id: id,
+      a: Math.atan2(ay, ax),
+      rx: F.w / 2 + n.w / 2 + CLEAR,
+      ry: F.h / 2 + n.h / 2 + CLEAR
+    };
+  });
+  ring.forEach(function (c) {
+    /* half the angle this card subtends at its own radius */
+    c.half = Math.atan2(nodes[c.id].w / 2 + CLEAR / 2, Math.max(60, c.rx));
+  });
+  ring.sort(function (a, b) { return a.a - b.a || order.indexOf(a.id) - order.indexOf(b.id); });
+
+  /* spread until neighbouring angular slots stop intersecting */
+  const TAU = Math.PI * 2, m = ring.length;
+  if (m > 1) {
+    for (let pass = 0; pass < 60; pass++) {
+      let moved = false;
+      for (let i = 0; i < m; i++) {
+        const A = ring[i], B = ring[(i + 1) % m];
+        let gap = B.a - A.a;
+        while (gap < 0) gap += TAU;
+        const need = A.half + B.half;
+        if (gap < need) {
+          const push = (need - gap) / 2;
+          A.a -= push; B.a += push; moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+  ring.forEach(function (c) {
+    t[c.id] = { x: fx + Math.cos(c.a) * c.rx, y: fy + Math.sin(c.a) * c.ry };
+  });
+
+  /* separation pass — deterministic order, fixed iteration count */
+  const weight = {};
+  order.forEach(function (id) { weight[id] = id === focusId ? 0 : 1; });
+  for (let it = 0; it < 160; it++) {
+    let moved = false;
+    for (let i = 0; i < order.length; i++) {
+      for (let j = i + 1; j < order.length; j++) {
+        const ia = order[i], ib = order[j];
+        const A = t[ia], B = t[ib], ra = nodes[ia], rb = nodes[ib];
+        const need_x = (ra.w + rb.w) / 2 + CLEAR;
+        const need_y = (ra.h + rb.h) / 2 + CLEAR;
+        const ox = need_x - Math.abs(A.x - B.x);
+        const oy = need_y - Math.abs(A.y - B.y);
+        if (ox <= 0 || oy <= 0) continue;
+        const wsum = weight[ia] + weight[ib];
+        if (!wsum) continue;
+        moved = true;
+        if (ox < oy) {
+          const s = (A.x <= B.x ? -1 : 1) * ox;
+          A.x += s * (weight[ia] / wsum);
+          B.x -= s * (weight[ib] / wsum);
+        } else {
+          const s = (A.y <= B.y ? -1 : 1) * oy;
+          A.y += s * (weight[ia] / wsum);
+          B.y -= s * (weight[ib] / wsum);
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return t;
+}
+
+/* ---- 3. VEINS. Built ONCE from the edge list, then only their geometry is
+          updated — so a redraw can never duplicate or drop an edge, and a
+          vein can hold a listener for its whole life (fix 3). Every vein
+          carries an invisible wide HIT stroke: click it and you travel to
+          the node on its other end. ------------------------------------ */
+const vgroup = $("#vein-group"), vnodes = $("#vein-nodes"), trail = $("#trail");
+const SVG = "http://www.w3.org/2000/svg";
+const veins = [];
+
+function buildVeins() {
+  vgroup.textContent = ""; vnodes.textContent = "";
+  veins.length = 0;
+  EDGES.forEach(function (e) {
+    const A = nodes[e[0]], B = nodes[e[1]];
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("class", "vein");
+    if (A.unknown || B.unknown) path.setAttribute("data-unknown", "true");
+    path.dataset.a = e[0]; path.dataset.b = e[1];
+    vgroup.appendChild(path);
+
+    /* the hit stroke — the vein you can actually hit with a pointer */
+    const hit = document.createElementNS(SVG, "path");
+    hit.setAttribute("class", "vein-hit");
+    hit.dataset.a = e[0]; hit.dataset.b = e[1];
+    const tip = document.createElementNS(SVG, "title");
+    tip.textContent = A.name + " — " + B.name + " · click the vein to travel along it";
+    hit.appendChild(tip);
+    hit.addEventListener("click", function (ev) {
+      ev.stopPropagation(); ev.preventDefault();
+      travelAlongVein(e[0], e[1]);
+    });
+    vgroup.appendChild(hit);
+
+    const dot = document.createElementNS(SVG, "circle");
+    dot.setAttribute("class", "vein-node");
+    dot.setAttribute("r", 3.2);
+    dot.dataset.a = e[0]; dot.dataset.b = e[1];
+    vnodes.appendChild(dot);
+
+    veins.push({ a: e[0], b: e[1], path: path, hit: hit, dot: dot });
+  });
+  updateVeins();
+}
+function updateVeins() {
+  for (let i = 0; i < veins.length; i++) {
+    const v = veins[i], A = nodes[v.a], B = nodes[v.b];
+    const d = "M " + A.x + " " + A.y + " L " + B.x + " " + B.y;
+    v.path.setAttribute("d", d);
+    v.hit.setAttribute("d", d);
+    v.dot.setAttribute("cx", (A.x + B.x) / 2);
+    v.dot.setAttribute("cy", (A.y + B.y) / 2);
+  }
+}
+function markLiveVeins(id) {
+  for (let i = 0; i < veins.length; i++) {
+    const v = veins[i], live = v.a === id || v.b === id;
+    if (live) { v.path.setAttribute("data-live", "true"); v.dot.setAttribute("data-live", "true"); }
+    else { v.path.removeAttribute("data-live"); v.dot.removeAttribute("data-live"); }
+  }
+}
+/* Clicking a vein means "take me along this vein". From the focus that is
+   one hop to the other end. From anywhere else it is the near end first —
+   the same go() as every other hop, so the camera still crosses every vein
+   between here and there and nothing is teleported to (C1, C10). */
+function travelAlongVein(a, b) {
+  if (dragMode || travelling) return;
+  let to;
+  if (a === focus) to = b;
+  else if (b === focus) to = a;
+  else {
+    const d = ranks(focus);
+    const da = d[a] === undefined ? 99 : d[a], db = d[b] === undefined ? 99 : d[b];
+    to = da <= db ? a : b;
+  }
+  if (to === focus) return;
+  say("Following the vein to " + nodes[to].name + ".");
+  go(to);
+}
+buildVeins();
+
+/* ---- 4. CAMERA. translate + scale of the one plane. Nothing routes and
+          nothing unmounts: every navigation is a rescale (C4). ---------- */
+const cam = { x: 0, y: 0, k: 1 };
+function applyCam() {
+  plane.style.transform = "translate(" + cam.x + "px," + cam.y + "px) scale(" + cam.k + ")";
+  document.documentElement.style.setProperty("--cam-k", String(cam.k));
+  drawViewport();
+}
+
+/* ROUND 9, fix 2 — "when navigating to it, it should be in the center".
+   The centre of the SCREEN is not the centre of the space the user can see:
+   the two rails and the top bar own the edges. So the focus is centred in
+   the box left over between them, measured live. */
+function freeCentre() {
+  const wr = world.getBoundingClientRect();
+  const box = function (sel, d) {
+    const el = $(sel);
+    return el ? el.getBoundingClientRect() : d;
+  };
+  const act = box("#actions", null), nav = box("#navto", null);
+  const top = box("#topbar", null),  bot = box("#camera", null);
+  let l = wr.left, r = wr.right, t = wr.top, b = wr.bottom;
+  if (act && act.width) l = Math.max(l, act.right);
+  if (nav && nav.width) r = Math.min(r, nav.left);
+  if (top && top.height) t = Math.max(t, top.bottom);
+  if (bot && bot.height) b = Math.min(b, bot.top);
+  if (r - l < 240) { l = wr.left; r = wr.right; }
+  if (b - t < 200) { t = wr.top;  b = wr.bottom; }
+  return { x: (l + r) / 2 - wr.left, y: (t + b) / 2 - wr.top };
+}
+function camForPoint(x, y, k) {
+  const c = freeCentre();
+  return { x: c.x - x * k, y: c.y - y * k, k: k };
+}
+function camFor(rec, k) { return camForPoint(rec.x, rec.y, k); }
+
+const reduced = function () {
+  return document.body.dataset.motion === "reduced" ||
+         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+};
+
+/* ---- 4b. THE ONE ANIMATOR. Cards move and the camera travels in the SAME
+      loop, on the SAME timing, so the world never tears in two. The camera's
+      centre is driven along the polyline of the real edges by arc length,
+      over the cards' own destinations, so the motion states which veins were
+      crossed and in which order (C10, C11). A second hop cancels the first
+      rather than fighting it for the camera. ---------------------------- */
+let anim = 0;
+function chainDFrom(t, chain) {
+  let d = "M " + t[chain[0]].x + " " + t[chain[0]].y + " ";
+  for (let i = 1; i < chain.length; i++) d += "L " + t[chain[i]].x + " " + t[chain[i]].y + " ";
+  return d.trim();
+}
+function settle(t) {
+  order.forEach(function (id) {
+    const r = nodes[id]; r.x = t[id].x; r.y = t[id].y; place(r);
+  });
+  updateVeins();
+}
+function animateTo(t, chain, then) {
+  cancelAnimationFrame(anim);
+  const target = camForPoint(t[focus].x, t[focus].y, 1);
+  const hasChain = chain && chain.length > 1;
+
+  if (reduced() || !hasChain) {
+    if (hasChain) {
+      trail.setAttribute("d", chainDFrom(t, chain));
+      trail.setAttribute("data-on", "true");
+      setTimeout(function () { trail.removeAttribute("data-on"); }, 900);
+      for (let i = 1; i < chain.length - 1; i++) markPassing(nodes[chain[i]]);
+    }
+    settle(t);
+    if (hasChain || !chain) { cam.x = target.x; cam.y = target.y; cam.k = target.k; }
+    applyCam(); drawMinimap();
+    if (then) then();
+    return;
+  }
+
+  const start = {};
+  order.forEach(function (id) { start[id] = { x: nodes[id].x, y: nodes[id].y }; });
+  const pts = chain.map(function (id) { return { x: t[id].x, y: t[id].y, id: id }; });
+  const seg = [], cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i - 1].x, dy = pts[i].y - pts[i - 1].y;
+    const l = Math.sqrt(dx * dx + dy * dy) || 1;
+    seg.push(l); cum.push(cum[i - 1] + l);
+  }
+  const total = cum[cum.length - 1];
+  trail.setAttribute("d", chainDFrom(t, chain));
+  trail.setAttribute("data-on", "true");
+  const k0 = cam.k;
+  let announced = 1;
+  const t0 = performance.now();
+
+  function frame(now) {
+    const p = Math.min(1, (now - t0) / NAV_MS);
+    const e = 1 - Math.pow(1 - p, 3);
+    order.forEach(function (id) {
+      const r = nodes[id];
+      r.x = start[id].x + (t[id].x - start[id].x) * e;
+      r.y = start[id].y + (t[id].y - start[id].y) * e;
+      place(r);
+    });
+    updateVeins();
+    const want = e * total;
+    let i = 1;
+    while (i < cum.length - 1 && cum[i] < want) i++;
+    const f = Math.min(1, Math.max(0, (want - cum[i - 1]) / (seg[i - 1] || 1)));
+    const px = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f;
+    const py = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f;
+    while (announced < i) {
+      if (pts[announced].id !== chain[chain.length - 1]) markPassing(nodes[pts[announced].id]);
+      announced++;
+    }
+    const k = k0 + (1 - k0) * e;
+    const c = freeCentre();
+    cam.k = k; cam.x = c.x - px * k; cam.y = c.y - py * k;
+    applyCam();
+    if (p < 1) anim = requestAnimationFrame(frame);
+    else {
+      settle(t);
+      cam.x = target.x; cam.y = target.y; cam.k = target.k; applyCam();
+      trail.removeAttribute("data-on");
+      drawMinimap();
+      if (then) then();
+    }
+  }
+  anim = requestAnimationFrame(frame);
+}
+function markPassing(rec) {
+  rec.el.dataset.passing = "true";
+  setTimeout(function () { rec.el.removeAttribute("data-passing"); }, NAV_MS + 260);
+}
+
+/* Any change that changes how big a card is — a size mode, arrange mode, a
+   probe, the interface switch — re-runs the clearance pass, because a card
+   that grew must not be allowed to land on its neighbour. The camera does
+   not travel for these: nobody navigated. */
+function refocus(animateIt) {
+  measureBoxes();
+  const t = computeTargets(focus);
+  if (animateIt === false || reduced()) { settle(t); drawMinimap(); return; }
+  cancelAnimationFrame(anim);
+  const start = {};
+  order.forEach(function (id) { start[id] = { x: nodes[id].x, y: nodes[id].y }; });
+  const t0 = performance.now();
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / NAV_MS);
+    const e = 1 - Math.pow(1 - p, 3);
+    order.forEach(function (id) {
+      const r = nodes[id];
+      r.x = start[id].x + (t[id].x - start[id].x) * e;
+      r.y = start[id].y + (t[id].y - start[id].y) * e;
+      place(r);
+    });
+    updateVeins();
+    if (p < 1) anim = requestAnimationFrame(step);
+    else { settle(t); drawMinimap(); }
+  })(performance.now());
+}
+
+/* ---- 5. RANK + PRESENTATION. Rank is graph distance from the focus,
+          recomputed on every hop, so the sizes on screen always describe
+          THIS node's neighbourhood (C3, C12). ---------------------------- */
+function ranks(focusId) {
+  const dist = {}; dist[focusId] = 0;
+  const q = [focusId];
+  while (q.length) {
+    const cur = q.shift();
+    adj[cur].forEach(function (n) { if (dist[n] === undefined) { dist[n] = dist[cur] + 1; q.push(n); } });
+  }
+  return dist;
+}
+function rankName(d) { return d === 0 ? "focus" : d === 1 ? "near" : d === 2 ? "far" : "fringe"; }
+function present(focusId, expandingId) {
+  const dist = ranks(focusId);
+  order.forEach(function (id) {
+    const rec = nodes[id], el = rec.el;
+    const d = dist[id] === undefined ? 9 : dist[id];
+    const isFocus = id === focusId;
+    el.dataset.rank = isFocus ? "focus" : rankName(d);
+    el.dataset.focus = isFocus ? "true" : "false";
+    let show;
+    if (rec.mode === "min") show = "recap";
+    else if (rec.mode === "full") show = "full";
+    else show = isFocus ? "full" : "recap";
+    if (id === expandingId) show = "skel";
+    if (dragMode) show = "full";
+    el.dataset.show = show;
+    el.setAttribute("aria-current", isFocus ? "true" : "false");
+    el.tabIndex = -1;
+    el.setAttribute("role", "group");
+    el.setAttribute("aria-label",
+      rec.kind + " · " + rec.name + " · " + rec.recap + " · " +
+      adj[id].length + " veins out" + (isFocus ? " · you are here" : ""));
+  });
+  markLiveVeins(focusId);
+}
+
+/* ---- 6. NODE HEAD TOOLS: three size modes plus the drag grip. --------- */
+var dragMode = false;
+
+function beginDrag(rec, handle, ev) {
+  ev.stopPropagation(); ev.preventDefault();
+  handle.setPointerCapture(ev.pointerId);
+  rec.el.dataset.dragging = "true";
+  const sx = ev.clientX, sy = ev.clientY, ox = rec.dx, oy = rec.dy;
+  function move(e) {
+    rec.dx = ox + (e.clientX - sx) / cam.k;
+    rec.dy = oy + (e.clientY - sy) / cam.k;
+    rec.x = anchorX(rec); rec.y = anchorY(rec);
+    place(rec); updateVeins(); drawMinimap();
+  }
+  function up() {
+    rec.el.removeAttribute("data-dragging");
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", up);
+    handle.removeEventListener("pointercancel", up);
+    updateVeins(); drawMinimap();
+    say(rec.name + " moved. Its position is kept.");
+  }
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", up);
+  handle.addEventListener("pointercancel", up);
+}
+
+order.forEach(function (id) {
+  const rec = nodes[id], tools = $(".n__tools", rec.el);
+  const modes = document.createElement("div");
+  modes.className = "n__modes";
+  modes.setAttribute("role", "group");
+  modes.setAttribute("aria-label", rec.name + " card size");
+  [["min", "MIN", "Pin to summary"], ["auto", "AUTO", "Follow focus"], ["full", "FULL", "Pin to full content"]]
+    .forEach(function (m) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = m[1]; b.title = m[2];
+      b.setAttribute("aria-pressed", m[0] === "auto" ? "true" : "false");
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        rec.mode = m[0];
+        $$("button", modes).forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        present(focus, null);
+        refocus();               /* a card that grew must not land on its neighbour */
+      });
+      modes.appendChild(b);
+    });
+  tools.appendChild(modes);
+
+  const grip = document.createElement("button");
+  grip.type = "button"; grip.className = "n__grip"; grip.title = "Drag this node";
+  grip.innerHTML = '<span aria-hidden="true">✥</span><span class="sr">Drag ' + rec.name + '</span>';
+  tools.appendChild(grip);
+  grip.addEventListener("pointerdown", function (ev) { beginDrag(rec, grip, ev); });
+
+  /* In arrange mode the ENTIRE card is the drag surface. Outside arrange
+     mode this listener does nothing, so an ordinary press on a card still
+     means "travel" and only that. */
+  rec.el.addEventListener("pointerdown", function (ev) {
+    if (!dragMode) return;
+    beginDrag(rec, rec.el, ev);
+  });
+
+  /* A non-focused card is clickable across its whole surface, EXCEPT where
+     the surface is an ordinary document control: the card's own tools, an
+     explicit hop, a stake, or a link. Those are handled by their own
+     listeners and are never swallowed here. */
+  rec.el.addEventListener("click", function (ev) {
+    if (dragMode) return;
+    if (id === focus) return;
+    if (ev.target.closest(".n__modes, .n__grip, [data-goto], .stake, a")) return;
+    go(id);
+  });
+});
+
+/* ---- 7. NAVIGATION. One code path for every hop. ---------------------- */
+let focus = "n-fig";
+let path  = ["n-species", "n-fig"];
+let travelling = false;
+
+function go(toId) {
+  if (dragMode) return;
+  if (toId === focus || travelling) return;
+  const chain = shortest(focus, toId);
+  if (chain.length < 2) return;          /* unreachable: nothing is faked */
+  const fromId = focus;
+  const via = chain.slice(1, -1);
+
+  focus = toId;
+  const at = path.indexOf(toId);
+  if (at >= 0) path = path.slice(0, at + 1);
+  else path = path.concat(chain.slice(1));
+
+  /* Measure at the destination's SETTLED presentation, so the clearance
+     pass is computed against the size the focused card is going to be —
+     never against the skeleton it wears on the way. */
+  present(focus, null);
+  measureBoxes();
+  const t = computeTargets(focus);
+  present(focus, focus);                 /* the destination shows its SKELETON */
+
+  drawCrumbs(); drawPanels(); drawMinimap();
+  say("Travelled " + nodes[fromId].name + " → " + nodes[toId].name +
+      (via.length ? ", through " + via.map(function (v) { return nodes[v].name; }).join(", ") +
+        " — none of them opened" : "") +
+      ". " + adj[toId].length + " veins out from here, and every one of them is a vein you can click.");
+  travelling = true;
+  animateTo(t, chain, function () {
+    travelling = false;
+    present(focus, null);                /* real content, only now expanded */
+    fitFocus();
+    nodes[focus].el.focus({ preventScroll: true });
+  });
+}
+function shortest(a, b) {
+  const prev = {}; prev[a] = null; const q = [a];
+  while (q.length) {
+    const c = q.shift();
+    if (c === b) break;
+    adj[c].forEach(function (n) { if (prev[n] === undefined) { prev[n] = c; q.push(n); } });
+  }
+  if (prev[b] === undefined) return [];
+  const out = []; let c = b;
+  while (c !== null) { out.unshift(c); c = prev[c]; }
+  return out;
+}
+
+/* ---- 7b. THE FOCUSED NODE IS ALWAYS SHOWN IN FULL. If the current zoom
+           would clip it, the zoom — not the card — gives way. It stays in
+           the centre of the free space either way. */
+const CARD_MARGIN_PX = 80;   /* mirrors --vs-card-air   */
+const CARD_REACH     = 0.96; /* mirrors --vs-card-reach */
+function fitFocus() {
+  const r = nodes[focus];
+  const room = world.clientHeight * CARD_REACH - CARD_MARGIN_PX;
+  /* r.h was measured at rest, so this asks a question with one answer:
+     does this card fit at 1:1? If it does — and the CSS cap is written so
+     that it always does — the camera settles at 1 and simply centres it.
+     If a card ever cannot, the ZOOM gives way, never the card. */
+  const k = r.h > room ? Math.max(0.28, room / r.h) : 1;
+  const c = camForPoint(r.x, r.y, k);
+  cam.x = c.x; cam.y = c.y; cam.k = c.k;
+  applyCam();
+}
+
+/* ---- 8. CRUMBS, PANELS, MINIMAP — regenerated on every hop. ----------- */
+function drawCrumbs() {
+  const c = $("#crumbs"); c.textContent = "";
+  path.forEach(function (id, i) {
+    if (i) { const s = document.createElement("span"); s.className = "sep"; s.textContent = "›"; c.appendChild(s); }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "crumb"; b.textContent = nodes[id].name;
+    if (id === focus) b.setAttribute("aria-current", "true");
+    b.addEventListener("click", function () { go(id); });
+    c.appendChild(b);
+  });
+}
+
+const ACTIONS = {
+  "n-fig":           ["Water plant", "Fertilize", "Add note", "Log photo", "Scan leaf (AI)"],
+  "n-garden":        ["Add new plant", "Water all", "Fertilize schedule", "Add note"],
+  "n-species":       ["Add a species by hand", "Import a list"],
+  "n-species-more":  ["Add a species by hand"],
+  "n-monstera":      ["Water plant", "Add note"],
+  "n-problems":      ["Log a symptom", "Start a treatment plan"],
+  "n-underwater":    ["Start a treatment plan", "Dismiss this problem"],
+  "n-overwater":     ["Mark as resolved", "Add note"],
+  "n-rootrot":       ["Start a treatment plan", "Add note"],
+  "n-treatment":     ["Mark step done", "Reschedule", "Abandon plan"],
+  "n-journal":       ["Add note", "Log photo"],
+  "n-j1":            ["Add note"],
+  "n-j2":            ["Add note"],
+  "n-journal-more":  ["Add note"],
+  "n-reminders":     ["Add a reminder", "Snooze all"],
+  "n-ident":         ["Try the scan again", "Identify by hand"],
+  "n-care":          ["Save to my notes"],
+  "n-platform":      ["Check health again"],
+  "n-garden-more":   ["Add new plant"],
+  "n-unknown":       ["Fetch this region"],
+  "n-office":        ["Water plant", "Add note"],
+  "n-studio":        ["Water plant", "Add note"]
+};
+
+function drawPanels() {
+  const rec = nodes[focus];
+  $("#actions-scope").textContent = rec.name;
+  const ab = $("#actions-body"); ab.textContent = "";
+  (ACTIONS[focus] || []).forEach(function (a) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ch-btn ch-btn--mutate";
+    b.appendChild(document.createTextNode(" " + a));
+    b.addEventListener("click", function () {
+      if (document.body.dataset.net === "offline") say("Offline: “" + a + "” is queued. It will run when you are back.");
+      else say("“" + a + "” recorded on " + rec.name + ". The camera did not move.");
+    });
+    ab.appendChild(b);
+  });
+
+  const nb = $("#navto-body"); nb.textContent = "";
+  const list = adj[focus].slice();
+  $("#navto-degree").textContent = list.length + (list.length === 1 ? " vein" : " veins");
+  list.forEach(function (id) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "ch-btn ch-btn--travel";
+    b.appendChild(document.createTextNode(" " + nodes[id].name));
+    const s = document.createElement("small");
+    s.textContent = nodes[id].unknown ? "not fetched yet" : nodes[id].recap;
+    b.appendChild(s);
+    b.addEventListener("click", function () { go(id); });
+    /* hovering the list lights the vein it names, so the panel and the world
+       are visibly the same edge (C3) */
+    b.addEventListener("pointerenter", function () { hintVein(focus, id, true); });
+    b.addEventListener("pointerleave", function () { hintVein(focus, id, false); });
+    nb.appendChild(b);
+  });
+}
+function hintVein(a, b, on) {
+  for (let i = 0; i < veins.length; i++) {
+    const v = veins[i];
+    if ((v.a === a && v.b === b) || (v.a === b && v.b === a)) {
+      if (on) v.path.setAttribute("data-hint", "true"); else v.path.removeAttribute("data-hint");
+    }
+  }
+}
+
+const MMW = 208, MMH = 104, WORLD_W = 3600, WORLD_H = 1980;
+
+/* The map's extent is the union of the lattice and every node's LIVE
+   position — so a node pushed off the screen by the clearance pass, or
+   dragged past the lattice edge, is still ON THE MAP and the map's frame
+   grows to hold it. That is the whole point of fix 7: a node may leave the
+   frame, but it may never leave the world view. The extent deliberately
+   excludes the camera, so panning never rescales the map under the user. */
+function mapExtent() {
+  let x0 = 0, y0 = 0, x1 = WORLD_W, y1 = WORLD_H;
+  order.forEach(function (id) {
+    const r = nodes[id];
+    if (r.x < x0) x0 = r.x; if (r.x > x1) x1 = r.x;
+    if (r.y < y0) y0 = r.y; if (r.y > y1) y1 = r.y;
+  });
+  const pad = 160;
+  x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  const w = x1 - x0, h = y1 - y0;
+  const s = Math.min(MMW / w, MMH / h);
+  return { x0: x0, y0: y0, w: w, h: h, s: s, ox: (MMW - w * s) / 2, oy: (MMH - h * s) / 2 };
+}
+function mapPt(ex, x, y) { return { x: ex.ox + (x - ex.x0) * ex.s, y: ex.oy + (y - ex.y0) * ex.s }; }
+
+function drawMinimap() {
+  const es = $("#mm-edges"), ds = $("#mm-dots");
+  es.textContent = ""; ds.textContent = "";
+  const ex = mapExtent();
+  EDGES.forEach(function (e) {
+    const A = nodes[e[0]], B = nodes[e[1]];
+    const p = mapPt(ex, A.x, A.y), q = mapPt(ex, B.x, B.y);
+    const l = document.createElementNS(SVG, "line");
+    l.setAttribute("class", "mm-edge");
+    l.setAttribute("x1", p.x); l.setAttribute("y1", p.y);
+    l.setAttribute("x2", q.x); l.setAttribute("y2", q.y);
+    es.appendChild(l);
+  });
+  const dist = ranks(focus);
+  order.forEach(function (id) {
+    const r = nodes[id];
+    const p = mapPt(ex, r.x, r.y);
+    const c = document.createElementNS(SVG, "rect");
+    c.setAttribute("class", "mm-dot");
+    if (dist[id] === 1) c.setAttribute("data-rank", "near");
+    if (r.dx || r.dy) c.setAttribute("data-moved", "true");
+    c.setAttribute("x", p.x - 2); c.setAttribute("y", p.y - 2);
+    c.setAttribute("width", 4); c.setAttribute("height", 4); c.setAttribute("rx", 1);
+    ds.appendChild(c);
+  });
+  const f = nodes[focus];
+  const fp = mapPt(ex, f.x, f.y);
+  $("#mm-you").setAttribute("cx", fp.x); $("#mm-you").setAttribute("cy", fp.y);
+  $("#mm-you-core").setAttribute("cx", fp.x); $("#mm-you-core").setAttribute("cy", fp.y);
+  $("#minimap").setAttribute("aria-label",
+    "World view. You are at " + f.name + ", " + f.kind.toLowerCase() +
+    ", column " + f.col + " row " + f.row + " of the lattice. " +
+    adj[focus].length + " veins out. Path: " + path.map(function (p) { return nodes[p].name; }).join(", then "));
+  drawViewport();
+}
+function drawViewport() {
+  const ex = mapExtent();
+  const vw = world.clientWidth / cam.k, vh = world.clientHeight / cam.k;
+  const p = mapPt(ex, -cam.x / cam.k, -cam.y / cam.k);
+  const r = $("#mm-view");
+  r.setAttribute("x", p.x); r.setAttribute("y", p.y);
+  r.setAttribute("width", Math.max(6, vw * ex.s));
+  r.setAttribute("height", Math.max(4, vh * ex.s));
+}
+
+let sayTimer = null;
+function say(msg) {
+  const l = $("#live");
+  l.textContent = msg;
+  l.setAttribute("data-on", "true");
+  clearTimeout(sayTimer);
+  sayTimer = setTimeout(function () { l.removeAttribute("data-on"); }, reduced() ? 2600 : 1800);
+}
+
+/* ---- 9. GESTURES. Alt+wheel zooms; a bare wheel is left alone so it
+          scrolls the focused node's own body. ---------------------------- */
+world.addEventListener("wheel", function (ev) {
+  if (dragMode) return;
+  if (!ev.altKey) return;
+  ev.preventDefault();
+  const before = cam.k;
+  const k = Math.min(1.9, Math.max(0.28, cam.k * (ev.deltaY < 0 ? 1.12 : 0.89)));
+  const rect = world.getBoundingClientRect();
+  const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+  cam.x = mx - (mx - cam.x) * (k / before);
+  cam.y = my - (my - cam.y) * (k / before);
+  cam.k = k; applyCam();
+}, { passive: false });
+
+/* Panning the board is a camera move and changes no data. It never begins
+   inside a card, and never on a vein — so neither a click meant for node
+   content nor a click meant for a vein can be swallowed by the pan layer. */
+world.addEventListener("pointerdown", function (ev) {
+  if (dragMode) return;
+  if (ev.target.closest && ev.target.closest(".n")) return;
+  if (ev.target.classList && ev.target.classList.contains("vein-hit")) return;
+  world.dataset.panning = "true";
+  world.setPointerCapture(ev.pointerId);
+  const sx = ev.clientX, sy = ev.clientY, ox = cam.x, oy = cam.y;
+  function move(e) { cam.x = ox + (e.clientX - sx); cam.y = oy + (e.clientY - sy); applyCam(); }
+  function up() {
+    world.removeAttribute("data-panning");
+    world.removeEventListener("pointermove", move);
+    world.removeEventListener("pointerup", up);
+  }
+  world.addEventListener("pointermove", move);
+  world.addEventListener("pointerup", up);
+});
+
+/* ---- 10. KEYBOARD TRAVERSAL follows the GRAPH, not the DOM (C18). ----- */
+let cursor = null;
+function neighbourInDirection(dir) {
+  const f = nodes[focus];
+  const cands = adj[focus].map(function (id) {
+    const n = nodes[id];
+    return { id: id, dx: n.x - f.x, dy: n.y - f.y };
+  }).filter(function (c) {
+    if (dir === "ArrowRight") return c.dx > 40;
+    if (dir === "ArrowLeft")  return c.dx < -40;
+    if (dir === "ArrowDown")  return c.dy > 40;
+    if (dir === "ArrowUp")    return c.dy < -40;
+    return false;
+  }).sort(function (a, b) { return (a.dx * a.dx + a.dy * a.dy) - (b.dx * b.dx + b.dy * b.dy); });
+  return cands.length ? cands[0].id : null;
+}
+world.addEventListener("keydown", function (ev) {
+  if (dragMode) {
+    if (ev.key === "Escape") { ev.preventDefault(); setDragMode(false); }
+    return;
+  }
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(ev.key)) {
+    ev.preventDefault();
+    const id = neighbourInDirection(ev.key);
+    if (!id) { say("No vein that way from " + nodes[focus].name + "."); return; }
+    if (cursor) hintVein(focus, cursor, false);
+    cursor = id;
+    hintVein(focus, cursor, true);
+    say("Vein to " + nodes[id].name + " · " + nodes[id].recap + " · press Enter to travel");
+  } else if (ev.key === "Enter" || ev.key === " ") {
+    if (cursor) { ev.preventDefault(); const t = cursor; hintVein(focus, cursor, false); cursor = null; go(t); }
+  } else if (ev.key === "Tab" && !ev.shiftKey) {
+    const list = adj[focus];
+    if (list.length) {
+      ev.preventDefault();
+      if (cursor) hintVein(focus, cursor, false);
+      const i = list.indexOf(cursor);
+      cursor = list[(i + 1) % list.length];
+      hintVein(focus, cursor, true);
+      say("Vein " + (list.indexOf(cursor) + 1) + " of " + list.length + " · " + nodes[cursor].name);
+    }
+  } else if (ev.key === "Escape") {
+    if (path.length > 1) go(path[path.length - 2]);
+  }
+});
+
+/* Every in-card hop button AND every ordinary in-prose link. Both are real
+   controls inside the document; both traverse the graph. */
+$$("[data-goto]").forEach(function (b) {
+  b.addEventListener("click", function (ev) {
+    ev.preventDefault(); ev.stopPropagation();
+    go(b.dataset.goto);
+  });
+});
+$("#show-all").addEventListener("click", function () {
+  say(nodes[focus].name + " has " + adj[focus].length + " veins: " +
+      adj[focus].map(function (i) { return nodes[i].name; }).join(", "));
+});
+
+/* ---- 11. CAMERA CONTROLS. Looking around is not navigating. ----------- */
+function zoomBy(f) {
+  const k = Math.min(1.9, Math.max(0.28, cam.k * f));
+  const cx = world.clientWidth / 2, cy = world.clientHeight / 2;
+  cam.x = cx - (cx - cam.x) * (k / cam.k);
+  cam.y = cy - (cy - cam.y) * (k / cam.k);
+  cam.k = k; applyCam();
+}
+$("#zoom-in").addEventListener("click", function () { zoomBy(1.18); });
+$("#zoom-out-small").addEventListener("click", function () { zoomBy(0.85); });
+$("#zoom-out").addEventListener("click", function () { zoomBy(0.7); });
+$("#recenter").addEventListener("click", function () {
+  const t = camFor(nodes[focus], 1); cam.x = t.x; cam.y = t.y; cam.k = t.k; applyCam();
+  say("Recentred on " + nodes[focus].name + ".");
+});
+function fitAll() {
+  const ex = mapExtent();
+  const k = Math.min(world.clientWidth / ex.w, world.clientHeight / ex.h);
+  cam.k = Math.max(0.28, k);
+  cam.x = (world.clientWidth - ex.w * cam.k) / 2 - ex.x0 * cam.k;
+  cam.y = (world.clientHeight - ex.h * cam.k) / 2 - ex.y0 * cam.k;
+  applyCam();
+}
+$("#fit").addEventListener("click", function () {
+  fitAll();
+  say("Whole world in view. You are still at " + nodes[focus].name + ".");
+});
+
+/* ---- 11b. ARRANGE MODE. ---------------------------------------------- */
+function setDragMode(on) {
+  if (on === dragMode) return;
+  dragMode = on;
+  $("#drag-mode").setAttribute("aria-pressed", String(on));
+  if (on) {
+    setDragMode.restore = { x: cam.x, y: cam.y, k: cam.k };
+    document.body.dataset.drag = "on";
+    present(focus, null);
+    refocus();                 /* back to the lattice — the thing you place on */
+    setTimeout(fitAll, NAV_MS);
+    say("Arrange mode. Every card is open, back on its own lattice cell, and the whole world is in view. Drag any card to place it; nothing else responds until you leave.");
+  } else {
+    document.body.removeAttribute("data-drag");
+    present(focus, null);
+    refocus();                 /* and back to this focus's clearance */
+    const r = setDragMode.restore;
+    if (r) { cam.x = r.x; cam.y = r.y; cam.k = r.k; applyCam(); }
+    say("Left arrange mode. Positions kept. You are still at " + nodes[focus].name + ".");
+  }
+}
+$("#drag-mode").addEventListener("click", function () { setDragMode(!dragMode); });
+$("#drag-done").addEventListener("click", function () { setDragMode(false); });
+
+/* ---- 12. SEARCH and NOTIFICATION ARRIVALS show the distance crossed:
+           they walk the real chain, never cut to the destination (C21). -- */
+$("#search").addEventListener("keydown", function (ev) {
+  if (ev.key !== "Enter") return;
+  const q = ev.target.value.trim().toLowerCase();
+  if (!q) return;
+  const hit = order.find(function (id) { return nodes[id].name.toLowerCase().includes(q); });
+  if (!hit) { say("Nothing in the network matches “" + ev.target.value + "”."); return; }
+  const chain = shortest(focus, hit);
+  say("Found " + nodes[hit].name + ", " + (chain.length - 1) + " hops away. Crossing the veins to get there; nothing on the way opens.");
+  go(hit);
+  ev.target.blur();
+});
+$("#bell").addEventListener("click", function () {
+  const chain = shortest(focus, "n-reminders");
+  say("2 reminders, " + (chain.length - 1) + " hops from here. Crossing the veins to get there; nothing on the way opens.");
+  go("n-reminders");
+});
+
+/* ---- 13. THE L4 EXIT. The app shrinks; the panel arrives beside it. --- */
+function setMode(m) {
+  document.body.dataset.mode = m;
+  sizeCanvas();                     /* the field follows whichever surface is live */
+  if (m === "overview") say("Overview mode. The whole application is a card, its particle field is scoped to that card, and settings sit beside it.");
+  else say("Back in the app, still at " + nodes[focus].name + ".");
+}
+$("#open-settings").addEventListener("click", function () { setMode("overview"); });
+$("#close-settings").addEventListener("click", function () { setMode("app"); });
+$("#cancel-settings").addEventListener("click", function () { setMode("app"); });
+$("#save-settings").addEventListener("click", function () { setMode("app"); });
+$("#dive-back").addEventListener("click", function () { setMode("app"); });
+$("#shell").addEventListener("click", function (ev) {
+  if (document.body.dataset.mode === "overview") { ev.preventDefault(); setMode("app"); }
+}, true);
+
+
+/* ---- THE SECOND INTERFACE.
+        The interface attribute lives on <html>, exactly like the palette,
+        so one attribute re-keys and re-pitches the world, the chrome, the
+        panels and the particle field at once.
+
+        A pitch change is a RELAYOUT, and a relayout is only ever allowed
+        because the user asked for it here, by name. It is safe because it is
+        a UNIFORM RESCALE: every node keeps its lattice cell, so home =
+        ORIGIN + cell x PITCH is recomputed with a new PITCH and nothing
+        changes place relative to anything else. Two loads under the same
+        interface and the same focus still lay out identically (C7), and
+        inserting a node still leaves the others put (C8). ------------- */
+
+function readPitch() {
+  const cs = getComputedStyle(document.documentElement);
+  const px = parseFloat(cs.getPropertyValue("--vs-pitch-x"));
+  const py = parseFloat(cs.getPropertyValue("--vs-pitch-y"));
+  if (px) PITCH_X = px;
+  if (py) PITCH_Y = py;
+}
+
+function relayout() {
+  readPitch();
+  order.forEach(function (id) { home(nodes[id]); });
+  present(focus, null);
+  drawPanels();
+  readMoteColours();
+  refocus();
+  setTimeout(fitFocus, NAV_MS + 20);
+}
+
+/* PROPOSITION A: the interface is a COUPLED READING. Choosing one also
+   brings that reading's default key, and the palette list below it becomes
+   that reading's own keys — a palette a reading was not drawn for is not
+   offered, rather than being offered and looking wrong. */
+const UI_DEFAULT_KEY = { "sill-line": "first-light", "glasshouse-table": "glasshouse-table" };
+
+function setUI(ui) {
+  const root = document.documentElement;
+  root.dataset.ui = ui;
+  root.dataset.palette = UI_DEFAULT_KEY[ui];
+  $$("#interfaces .palette").forEach(function (x) {
+    x.setAttribute("aria-pressed", x.dataset.ui === ui ? "true" : "false");
+  });
+  $$("#palettes .palette").forEach(function (x) {
+    const mine = x.dataset.forUi === ui;
+    x.hidden = !mine;
+    x.setAttribute("aria-pressed", mine && x.dataset.palette === root.dataset.palette ? "true" : "false");
+  });
+  relayout();
+}
+
+$$("#interfaces .palette").forEach(function (b) {
+  b.addEventListener("click", function () {
+    setUI(b.dataset.ui);
+    say("Interface: " + $(".palette__name", b).textContent + ". Applied. Every node kept its place; the spacing and the type changed with it.");
+  });
+});
+setUI("sill-line");
+
+$$("#palettes .palette").forEach(function (b) {
+  b.addEventListener("click", function () {
+    $$("#palettes .palette").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+    document.documentElement.dataset.palette = b.dataset.palette;
+    readMoteColours();
+    say("Palette: " + $(".palette__name", b).textContent + ". Applied.");
+  });
+});
+
+/* ---- 14. DEGRADATION PROBES.
+           ROUND 9, fix 5: all three toggle BOTH ways, and each one that
+           changes how tall a card is re-runs the clearance pass, so a probe
+           can never leave two cards on top of each other. --------------- */
+const SLOW_NODES = ["n-garden","n-garden-more","n-platform","n-journal","n-species-more"];
+$("#p-slow").addEventListener("click", function () {
+  const on = document.body.dataset.speed !== "slow";
+  document.body.dataset.speed = on ? "slow" : "normal";
+  this.setAttribute("aria-pressed", String(on));
+  SLOW_NODES.forEach(function (id) {
+    if (on) nodes[id].el.dataset.pending = "true"; else nodes[id].el.removeAttribute("data-pending");
+  });
+  refocus();
+  say(on ? "Slow network, ten seconds and counting. The geography is already drawn; each node fills in where it stands, and not one of them moves as it resolves."
+         : "Network normal. Every node has its content back, in the place it was already in.");
+});
+$("#p-offline").addEventListener("click", function () {
+  const on = document.body.dataset.net !== "offline";
+  document.body.dataset.net = on ? "offline" : "online";
+  this.setAttribute("aria-pressed", String(on));
+  refocus();
+  say(on ? "Offline. The last-known world is still navigable; each node says how stale it is; changes are queued."
+         : "Back online.");
+});
+$("#p-motion").addEventListener("click", function () {
+  const on = document.body.dataset.motion !== "reduced";
+  if (on) document.body.dataset.motion = "reduced";
+  else document.body.removeAttribute("data-motion");
+  this.setAttribute("aria-pressed", String(on));
+  if (on) {
+    clearDrift();
+  } else {
+    startMotes();               /* fix 5: the field starts again, it does not stay dead */
+    startDrift();
+  }
+  say(on ? "Reduced motion. Direction is still stated and you-are-here still moves; nothing is swapped abruptly, and nothing drifts."
+         : "Motion restored. The field is running again and the cards breathe.");
+});
+
+/* ---- 15. THE PARTICLE FIELD. Own code, no library, no network.
+           One painter, two surfaces. In app mode it paints the page-wide
+           canvas; in the settings view it paints the canvas inside #shell,
+           so the field covers the app card and nothing else. ------------ */
+function activeCanvas() {
+  return document.body.dataset.mode === "overview" ? $("#motes-app") : $("#motes");
+}
+function readMoteColours() {
+  const cs = getComputedStyle(document.documentElement);
+  moteColour = cs.getPropertyValue("--vs-mote").trim() || moteColour;
+  linkColour = cs.getPropertyValue("--vs-mote-link").trim() || linkColour;
+}
+function sizeCanvas() {
+  cv = activeCanvas();
+  if (cv.id === "motes-app") {
+    fieldW = $("#shell").offsetWidth;
+    fieldH = $("#shell").offsetHeight;
+  } else {
+    fieldW = window.innerWidth;
+    fieldH = window.innerHeight;
+  }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.floor(fieldW * dpr);
+  cv.height = Math.floor(fieldH * dpr);
+  ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  seedMotes();
+  paintMotes();
+}
+function seedMotes() {
+  const n = Math.round(Math.min(190, (fieldW * fieldH) / 11000));
+  motes = [];
+  /* A fixed seed: the field is decoration, but it should not flicker into a
+     different arrangement on every reload. */
+  let s = 20260730;
+  const rnd = function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  for (let i = 0; i < n; i++) {
+    motes.push({ x: rnd() * fieldW, y: rnd() * fieldH,
+                 vx: (rnd() - 0.5) * 0.14, vy: (rnd() - 0.5) * 0.14,
+                 r: 0.7 + rnd() * 1.5 });
+  }
+}
+function paintMotes() {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, fieldW, fieldH);
+  ctx.strokeStyle = linkColour; ctx.lineWidth = 0.6;
+  for (let i = 0; i < motes.length; i++) {
+    for (let j = i + 1; j < motes.length; j++) {
+      const dx = motes[i].x - motes[j].x, dy = motes[i].y - motes[j].y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < 15000) {
+        ctx.globalAlpha = 1 - d2 / 15000;
+        ctx.beginPath(); ctx.moveTo(motes[i].x, motes[i].y); ctx.lineTo(motes[j].x, motes[j].y); ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1; ctx.fillStyle = moteColour;
+  motes.forEach(function (m) { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill(); });
+}
+function moteFrame() {
+  if (reduced()) { moteRunning = false; paintMotes(); return; }
+  motes.forEach(function (m) {
+    m.x += m.vx; m.y += m.vy;
+    if (m.x < 0) m.x += fieldW; if (m.x > fieldW) m.x -= fieldW;
+    if (m.y < 0) m.y += fieldH; if (m.y > fieldH) m.y -= fieldH;
+  });
+  paintMotes();
+  requestAnimationFrame(moteFrame);
+}
+function startMotes() {
+  if (moteRunning || reduced()) return;
+  moteRunning = true;
+  requestAnimationFrame(moteFrame);
+}
+
+/* ---- 16. THE CARDS BREATHE (round 9, fix 6).
+      Every card that is not the focus carries a drift of two or three
+      pixels, on its own phase, from the same family of slow sines the
+      particle field is made of. It is at the edge of visible on purpose:
+      the world should feel alive, not restless.
+
+      It is a RENDER offset and nothing else. It is written to --jx/--jy and
+      composited into the card's own transform; it never touches x/y, the
+      veins, the world view, or anything the layout is derived from. So a
+      breathing card has not moved: two loads still diff identical (C7), and
+      no non-structural change has shifted anything (C9). The focus never
+      breathes — it is the one still thing on the plane (C16). ---------- */
+let driftId = 0, driftTick = 0;
+function driftFrame(now) {
+  driftId = requestAnimationFrame(driftFrame);
+  if (++driftTick % 2) return;              /* ~30fps is far more than enough */
+  if (reduced()) return;
+  const still = document.body.dataset.mode === "overview" || dragMode;
+  for (let i = 0; i < order.length; i++) {
+    const r = nodes[order[i]];
+    if (still || r.id === focus) {
+      if (r.jset) { r.el.style.setProperty("--jx", "0px"); r.el.style.setProperty("--jy", "0px"); r.jset = false; }
+      continue;
+    }
+    const a = 2.4;
+    const jx = Math.sin(now / 4300 + r.ph) * a + Math.sin(now / 7100 + r.ph * 1.7) * a * 0.45;
+    const jy = Math.cos(now / 5200 + r.ph * 1.3) * a + Math.sin(now / 8300 + r.ph) * a * 0.40;
+    r.el.style.setProperty("--jx", jx.toFixed(2) + "px");
+    r.el.style.setProperty("--jy", jy.toFixed(2) + "px");
+    r.jset = true;
+  }
+}
+function startDrift() {
+  if (driftId || reduced()) return;
+  driftId = requestAnimationFrame(driftFrame);
+}
+function clearDrift() {
+  cancelAnimationFrame(driftId); driftId = 0;
+  order.forEach(function (id) {
+    nodes[id].el.style.setProperty("--jx", "0px");
+    nodes[id].el.style.setProperty("--jy", "0px");
+    nodes[id].jset = false;
+  });
+}
+
+/* ---- 17. BOOT. ------------------------------------------------------- */
+function boot() {
+  /* The interface switch above ran relayout() as the file was read, and
+     relayout animates. Boot is the last word on where things are, so it
+     cancels that animation before it computes its own layout — otherwise a
+     stale frame from it lands after boot and puts two cards on top of each
+     other. */
+  cancelAnimationFrame(anim); anim = 0;
+  readMoteColours(); sizeCanvas();
+  startMotes();
+  present(focus, null);
+  drawCrumbs(); drawPanels();
+  measureBoxes();
+  settle(computeTargets(focus));
+  const t = camFor(nodes[focus], 1); cam.x = t.x; cam.y = t.y; cam.k = t.k; applyCam();
+  fitFocus();
+  drawMinimap();
+  startDrift();
+}
+window.addEventListener("resize", function () {
+  sizeCanvas();
+  refocus(false);
+  fitFocus();
+  drawMinimap();
+});
+boot();
+</script>
+</body>
+</html>

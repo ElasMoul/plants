@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessibility · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Guidelines</p>
+      <h1 class="doc-title">Accessibility</h1>
+      <p class="doc-lede">Accessibility here is behaviour, not markup hygiene:
+        this page settles how a keyboard walks your garden by its veins rather
+        than by document order, and what the world says out loud each time you
+        arrive somewhere.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is a world, and the whole point of a world is that you
+          can tell where you are in it and what lies next to you. A pointer gets
+          that for free: the veins are drawn, the neighbouring cards are on
+          screen, and Office Fig is plainly two steps from the root-rot
+          treatment course. None of it arrives on its own for someone
+          travelling by keyboard or listening to a screen reader — and if it is
+          rebuilt out of tab stops and headings, what they get is a list of
+          cards in the order somebody happened to write them, which is not the
+          shape of your garden at all.</p>
+        <p>So the same graph that draws the veins drives the keyboard. Press
+          the right arrow and you are offered the neighbour that really lies to
+          the right, because the system asked the edge list who the neighbours
+          are and then asked where they sit. Press Enter and you travel that
+          vein. Arrive, and the world tells you where you came from, what you
+          crossed without opening, and how many veins lead out of where you now
+          stand. Where the geography is the interface, the geography is what
+          has to be spoken.</p>
+        <div class="doc-note">
+          <p>Traversal's timing, its interruption policy and the trail it draws
+            belong to <a href="../patterns/traversal.html">traversal</a> and
+            <a href="../foundations/motion.html">motion</a>; the pointer's side
+            of the same story belongs to
+            <a href="interaction-and-cursors.html">interaction and cursors</a>.
+            This page owns the keyboard, the announcement and the accessible
+            label — the parts of the world that only exist when nobody is
+            looking at it.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C18</span></p>
+          <p class="doc-law__statement">The keyboard follows the graph, not the
+            document. An arrow key proposes the neighbour that really lies that
+            way, chosen from where the neighbours actually sit — never the next
+            element in source order.</p>
+          <p class="doc-check">With the focus on any node, call
+            <code>RZ.neighbourInDirection("ArrowRight")</code> and assert the id
+            it returns is in <code>RZ.adj[RZ.focus]</code> and has the greatest
+            positive horizontal offset from the focus. Then reverse the order of
+            the <code>.rz-n</code> elements in the plane and call it again: the
+            answer is unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C18</span></p>
+          <p class="doc-law__statement">A direction with no vein is spoken, not
+            swallowed. Silence is indistinguishable from a broken key.</p>
+          <p class="doc-check">Focus a node with no neighbour above it and press
+            <code>ArrowUp</code>: <code>#rz-live</code> gains text naming that
+            node and the direction that has nothing in it, and the camera
+            transform is unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C18</span></p>
+          <p class="doc-law__statement">Every focus change is announced through
+            one polite live region, and the announcement names four things:
+            where you came from, where you are, what you crossed without opening
+            it, and how many veins lead out from here.</p>
+          <p class="doc-check">Hop across two edges and read
+            <code>#rz-live</code>: it contains the origin's name, the
+            destination's name, the name of each node the route passed through
+            with a statement that it did not open, and a count equal to
+            <code>RZ.adj[RZ.focus].length</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C5, C18</span></p>
+          <p class="doc-law__statement">The world view's accessible label is
+            rewritten on every hop, in lockstep with the visible you-are-here,
+            and says the same thing in words — the node, its kind and the path
+            travelled. Never a cell, never a coordinate.</p>
+          <p class="doc-check">After each of ten hops, compare the
+            <code>aria-label</code> of <code>#rz-map</code> with the text of
+            <code>#rz-here</code>: both name the current node, and both changed
+            on the same hop. Assert the label matches no digit-comma-digit
+            pattern.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C13</span></p>
+          <p class="doc-law__statement">Under reduced motion nothing is
+            replaced by an abrupt swap: the trail is still drawn along the real
+            veins and held, the you-are-here still moves, and the announcement
+            is held longer so it can be read at rest.</p>
+          <p class="doc-check">Set <code>data-motion="reduced"</code> and hop:
+            <code>#rz-trail</code> carries <code>data-on="true"</code> along the
+            route's own polyline, the world-view marker and its label have both
+            moved, and <code>#rz-live</code> holds its text longer than it does
+            with motion on.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C18</span></p>
+          <p class="doc-law__statement">Direction is written in logical
+            properties throughout, so a world read right-to-left points the way
+            its reader expects and nothing has to be re-authored.</p>
+          <p class="doc-check">Search <code>assets/system.css</code> for
+            <code>left:</code>, <code>right:</code>, <code>margin-left</code>,
+            <code>padding-right</code>, <code>border-left</code> and
+            <code>text-align: left</code>: there are none. Then set
+            <code>dir="rtl"</code> on the document and assert every chrome
+            member swaps to the edge its logical property names, and the caret
+            on <code>.rz-chip</code> still leads away from the label.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Walk it with the keyboard</h2>
+        <p>Four plants, the same four as everywhere else in this system, at the
+          same cells. Click the dark once — or tab to it — and then put your
+          mouse away. Arrow keys propose a neighbour and say what it is;
+          <code>Enter</code> travels the vein; <code>Tab</code> cycles the
+          neighbours in graph order, counting them out; <code>Escape</code>
+          comes back the way you came, along a real edge rather than a history
+          stack. Everything the world says appears in the live region below the
+          specimen, which is heard and not seen in the product and is shown here
+          on purpose, so you can read what a screen reader would be told.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Arrow keys propose the neighbour that lies that way; Enter travels the vein; Tab cycles the neighbours of where you stand; Escape returns along the path you travelled.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>You can reach this plant by pressing a key, and the
+                          world says so out loud before you arrive. Inside the
+                          card you are in an ordinary document again: this
+                          sentence is text, and <a href="#" data-rz-goto="n-problems">the
+                          dry-air problem</a> is a real link that travels the
+                          same vein a card press would, on the same timing.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The two forms keep their meanings for a keyboard
+                          exactly as they do for a pointer: the filled stake
+                          changes this plant, the outlined chip travels away
+                          from it, and each is reached and named on its own
+                          rather than being swallowed by the card around it.</p>
+                        <p>
+                          <button type="button" class="rz-stake">Log watering</button>
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <svg class="rz-map" id="rz-map" width="208" height="104"
+                     viewBox="0 0 208 104" role="img"
+                     aria-label="World view. The label is rewritten on every hop.">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <p class="rz-chrome rz-chrome--gesture">Arrows propose · Enter travels · Tab cycles · Esc returns</p>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The graph, walked by keyboard and spoken as you go</span>
+            <span>C5 · C13 · C18</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>That line above is the live region itself, shown here rather than
+          hidden so you can read what is said. In the product it also wears
+          <code>rz-sr</code>: heard, never seen.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ]
+});
+
+/* what an arrow key asks, and what an empty direction is answered with */
+RZ.neighbourInDirection("ArrowRight");   /* an id from RZ.adj[RZ.focus], or null */
+RZ.say("No vein that way from Office Fig.");</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The key map</h2>
+        <p>Six behaviours, and no seventh. Each is a promise about the graph,
+          not about the page: a key that moved you through the document would be
+          a seventh thing to learn and a different world from the drawn one.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Keyboard traversal</caption>
+            <thead><tr><th>Key</th><th>What it does</th><th>What is said</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>Arrow</code> keys</td>
+                <td>Propose the nearest real neighbour that lies that way,
+                  computed from the neighbours' own positions.</td>
+                <td>That neighbour's name and its recap, then that Enter will
+                  travel there.</td>
+              </tr>
+              <tr>
+                <td><code>Enter</code> · <code>Space</code></td>
+                <td>Travel the proposed vein, through the same one code path a
+                  card press uses.</td>
+                <td>Origin, destination, anything crossed and not opened, and
+                  the new degree.</td>
+              </tr>
+              <tr>
+                <td><code>Tab</code></td>
+                <td>Cycle the focused node's neighbours in graph order.</td>
+                <td>“Vein N of M”, then that neighbour's name.</td>
+              </tr>
+              <tr>
+                <td><code>Escape</code></td>
+                <td>Return along the path you travelled — a real edge, never a
+                  history stack.</td>
+                <td>The same arrival announcement as any other hop.</td>
+              </tr>
+              <tr>
+                <td><code>Escape</code> in arrange mode</td>
+                <td>Leave the mode. It is the only key the mode answers, so a
+                  keyboard user is never shut inside it.</td>
+                <td>That positions were kept, and where you still stand.</td>
+              </tr>
+              <tr>
+                <td>A direction with no vein</td>
+                <td>Nothing moves and the camera is untouched.</td>
+                <td>That there is no vein that way, naming the node you are on.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills, and what it may not</h2>
+        <p>Almost nothing on this page is a theme's to choose. The focus ring is
+          the exception, and it is a colour and a weight — not a decision about
+          whether the ring exists.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Tokens and hooks</caption>
+            <thead><tr><th>Token or hook</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-focus</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-focus)"></span></td>
+                <td>The focus ring's colour. A theme keys it to its own palette
+                  and may not set it to the surface it sits on.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-focus-width</code></td>
+                <td></td>
+                <td>The ring's weight. It is drawn as an <code>outline</code>,
+                  so it never changes a card's size and nothing on the plane
+                  moves when focus lands.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-focus-offset</code></td>
+                <td></td>
+                <td>Its stand-off from the edge, so a ring on a card reads
+                  clear of the card's own membrane.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-sr</code></td>
+                <td></td>
+                <td>Heard, not seen. What the live region and any
+                  keyboard-only wording wears in the product.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-live</code> on <code>#rz-live</code></td>
+                <td></td>
+                <td>The single polite live region. One per surface: every
+                  announcement in the system goes through <code>RZ.say</code>
+                  and lands here, so two of them can never talk over each
+                  other.</td>
+              </tr>
+              <tr>
+                <td><code>aria-current</code> on a node</td>
+                <td></td>
+                <td>Set by the system on the focused card and cleared from the
+                  rest, so “where am I” is answerable without sight of the
+                  camera.</td>
+              </tr>
+              <tr>
+                <td><code>aria-label</code> on <code>#rz-map</code></td>
+                <td></td>
+                <td>The world view in words, rewritten every hop. A theme
+                  writes the wording; it may not leave it standing still.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Ask the edge list which neighbours exist, and their positions
+              which one lies that way. The keyboard then walks the same world
+              the eye does, and a card moved in arrange mode is reachable by the
+              arrow that now points at it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Hand the keyboard to tab order and call it done. Source order is
+              the order somebody typed the cards in; it is not a direction, and
+              following it makes the spoken world a different shape from the
+              drawn one (C18).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say the whole arrival: “Travelled My garden to Problems, past
+              Office Fig, which stayed shut. Three veins lead out from here.”
+              Where you came from and what you crossed are the two things a
+              listener cannot recover from the screen.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don't</p>
+            <p>Announce the destination's name alone. It is the one fact the
+              new card already carries, and it leaves distance, direction and
+              degree unsaid — which is the whole of the geography (C18).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="../patterns/traversal.html">traversal</a> — the one
+            timing, the route along the real veins, and what happens when a
+            second hop is asked for mid-flight.</li>
+          <li><a href="../components/edge.html">edge</a> — the edge list every
+            arrow key and every degree count is read from.</li>
+          <li><a href="../components/minimap.html">minimap</a> — the world view
+            whose label Law 4 keeps in lockstep with the you-are-here.</li>
+          <li><a href="../components/chrome.html">chrome</a> — the register the
+            live region and the you-are-here belong to.</li>
+          <li><a href="interaction-and-cursors.html">interaction and cursors</a>
+            — the pointer's route to everything the keyboard reaches here.</li>
+          <li><a href="motion-and-scale.html">motion and scale</a> and
+            <a href="../foundations/motion.html">motion</a> — reduced motion,
+            and why a duration is not a per-component choice.</li>
+          <li><a href="voice-and-copy.html">voice and copy</a> — how an
+            announcement is worded once it knows what it has to say.</li>
+          <li><a href="../patterns/arrange-mode.html">arrange mode</a> — the
+            mode whose single answered key keeps a keyboard user free.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log watering"],
+        "n-studio": ["Mark step 2 done"],
+        "n-garden": ["Add a plant"],
+        "n-problems": ["Note what you saw"]
+      }
+    });
+  </script>
+</body>
+</html>

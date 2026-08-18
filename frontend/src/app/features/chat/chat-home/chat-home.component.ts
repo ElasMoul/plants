@@ -1,10 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import {
-  HttpDownloadProgressEvent,
-  HttpErrorResponse,
-  HttpEventType,
-} from '@angular/common/http';
+import { HttpDownloadProgressEvent, HttpErrorResponse, HttpEventType } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ChatService } from '../services/chat.service';
@@ -26,9 +22,10 @@ interface ChatMessage {
 const GREETING_ID = 1;
 
 @Component({
-  selector: 'app-chat-home',
-  templateUrl: './chat-home.component.html',
-  styleUrls: ['./chat-home.component.scss'],
+    selector: 'app-chat-home',
+    templateUrl: './chat-home.component.html',
+    styleUrls: ['./chat-home.component.scss'],
+    standalone: false
 })
 export class ChatHomeComponent implements OnInit, OnDestroy {
   readonly quickChips: string[] = [

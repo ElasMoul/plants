@@ -1,0 +1,612 @@
+{
+  "document": "Traversal map",
+  "regime": "atlas-class",
+  "mission": "cae942ee-927d-40f5-ad8f-1d72122d1a1f",
+  "round": 9,
+  "target": "plantpal",
+  "design_system": {
+    "name": "Rhizome",
+    "slug": "plantpal-cae942ee",
+    "version": "1.0.0"
+  },
+  "applies_to": [
+    "theme-a",
+    "theme-b"
+  ],
+  "round_direction": "Owner direction for round 9, verbatim: “good, / now lets fix some problems, / change this css to : .ch-btn--square { width: 1.5rem; height: 1.5rem; justify-content: center; padding: 0; } / when a node is the visible, ( when navigating to it, it should be in the center, and fot the adgacent nodes they should superpose, recalucate their position so they dont collide / make the node link clickable, and redirect to to connecting node, / also change to this css : .n[data-rank=\\\"fringe\\\"] { width: auto;} / and make the buttons (reduced motion / slow >10 s ) work like before, / and for the nodes, (not the focused one) make them move like the particle js, minimal mvmnt almost not visible, / and when a node is the focus, / the adjacent visible nodes (if possible , because if there a lost of node, its not) , and the nodes with not a direct conection , its oky if they move out of screen.” Round 8 was ACCEPTED in its look and rejected only on these points, so round 9 is round 8 carried forward and repaired — not a new key, not a new board, not a new edge set. Both propositions change identically, which is why one copy of each of these three documents covers both.",
+  "doctrine_section": "design-doctrine-atlas-interface.md §11 (R3, R12) — invariants C1, C2, C3, C14, C18",
+  "counts": {
+    "nodes": 25,
+    "edges": 31,
+    "is_a_tree": false,
+    "why_not_a_tree": "A tree on 25 nodes has 24 edges; this graph has 31. Root rot and underwatering both reach the same treatment course; the care guide is reached from the fig, from the treatment course and from the companion; the fig is in your garden AND under the species index. Those extra edges are the reason this is an atlas at all (C6).",
+    "max_degree": 7,
+    "min_degree": 1,
+    "orphans": 0
+  },
+  "one_code_path": {
+    "statement": "Every hop, from every trigger, runs go() → shortest() → travelChain(). There is no second navigation.",
+    "triggers": [
+      "a chip inside a card",
+      "a doc-link inside a card's prose",
+      "clicking a node",
+      "Enter or Space on the proposed vein",
+      "the arrow keys",
+      "the neighbours panel",
+      "the world view's marker",
+      "a search hit",
+      "a notification arrival"
+    ],
+    "timing": "300 ms for all nine, from --vs-dur-nav. Pinned by the constitution; not theme latitude, and NOT changed by the interface control.",
+    "verification": "Instrument travelChain and fire each of the nine: one function, one duration, one path."
+  },
+  "geometry_of_travel": {
+    "statement": "The camera's centre is driven along the polyline of the real edges by arc length, over the cards' own destinations — so the motion states which veins were crossed and in which order (C11).",
+    "round_9_correction": "The polyline is now built from the TARGET positions rather than the current ones. It has to be: the cards are moving under the camera during the same 300ms, and a path drawn through where they used to be would have curved away from where they were going. Both read the same array.",
+    "one_movement_one_duration": "A chain of any length is one movement of one duration — 300ms, the constitution's nav_ms, everywhere. Nodes the chain passes through are lit as it reaches them and are never opened.",
+    "under_reduced_motion": "C13. The trail still draws, the passed nodes still light, the world view's marker still moves, the cards still take their new places — all of it arrives at once instead of travelling. Nothing is replaced by an abrupt swap of a different thing."
+  },
+  "interruption_policy": {
+    "statement": "A second hop begun mid-travel cancels the first rather than fighting it for the camera.",
+    "mechanism": "One animation handle. Every animator — the travel, the clearance re-run — cancels it before scheduling its own frames, so there is never a second loop writing to the camera or to a card's position. Boot cancels it too: the interface switch runs as the file is read and animates, and boot is the last word on where things are.",
+    "why_that_matters_this_round": "Round 9's animator moves the CARDS as well as the camera, on the same clock. Two overlapping loops would not merely have jittered the camera — they would have landed cards from one layout on top of cards from another. The guard is what makes ‘no two cards overlap’ true during the motion and not only at rest.",
+    "verification": "Click two different Navigate-to entries 80ms apart: one travel, one arrival, one focus, no overlapping pair at any frame."
+  },
+  "keyboard": {
+    "statement": "C18. Every edge is traversable by keyboard, following the GRAPH rather than DOM order.",
+    "arrows": "neighbourInDirection() filters the focus's real adjacency by geometric direction, so an arrow only ever proposes a node an edge actually reaches.",
+    "enter": "Enter or Space crosses the proposed vein.",
+    "escape": "Steps back one node along the path travelled — never the browser's history.",
+    "announcement": "After each hop the live region names the origin, anything crossed, the arrival and its neighbour count.",
+    "verification": "For every node, for every neighbour, some arrow direction proposes it. Assert set(reachable_by_arrows(n)) == set(adj[n]) for all 25 nodes."
+  },
+  "pointer": {
+    "cursors": "grab on the board, grabbing while panning, ordinary cursors inside a card. The board's grab stops at the card's edge.",
+    "zoom": "Alt+wheel zooms, so a bare wheel is free to scroll the focused node's body — and nothing but that body scrolls (C17)."
+  },
+  "form_tells_you_what_it_does": {
+    "mutation": "A filled stake with a heavy bottom rule, in the mutation colour. Inside a card only.",
+    "traversal": "An outlined chip with a caret. Inside a card only.",
+    "camera": "A third form — a square outlined button. Changes neither data nor focus.",
+    "in_chrome": "Neither node form appears in chrome; chrome controls are tracked labels with a rule under them.",
+    "enforcement": "C14/C15 are physical here, not a naming convention: the panels are built from separate registries, and no dialog on this screen contains a traversal.",
+    "the_settings_interface_control": "It is a MUTATION of a preference, drawn in the mutation register, and it moves no camera and crosses no vein. It changes how the world is drawn; it never changes where you are.",
+    "round_9_addition": "A vein is a line, and a line is a traversal. Nothing in the design mutates from a line, so the new affordance needed no new vocabulary — it made an existing one reachable."
+  },
+  "origin_stays_visible": {
+    "statement": "C2. After any hop the origin is still rendered with a rank, and it is exactly one visible hop back. No history stack is consulted.",
+    "you_are_here": "C5. Answered without hovering or reading, by the marker in the persistent world view, at every zoom level.",
+    "round_9_note": "C2 is now stronger than it was, not weaker: because the clearance pass rings the focus with its own direct neighbours, the node you just came from is one of them by definition, and so is on screen beside where you landed. The nodes permitted to leave the frame are the ones with no direct vein to here — which are, by construction, never the origin of the hop you just made."
+  },
+  "arrivals": {
+    "statement": "C21. A search hit and a notification arrival show the distance being crossed rather than cutting to the destination.",
+    "mechanism": "Both resolve a route from the current focus and hand it to the same travelChain(). A notification lights the node it concerns and waits; it never moves the camera on its own (C16)."
+  },
+  "settings_exit": {
+    "statement": "C20. Leaving to settings is a choreography: the camera pulls out, the whole app shrinks to a floating card, and the panel sits BESIDE it. Never a centred modal over a blur.",
+    "no_traversal_in_it": "C15. The panel contains no chip and calls go() nowhere.",
+    "the_world_is_still_there": "Both the interface and the palette controls apply live to the app card behind the panel, so you judge the change on the world rather than on a swatch."
+  },
+  "edges": [
+    {
+      "from": "n-species",
+      "to": "n-fig",
+      "from_name": "Species",
+      "to_name": "Fiddle-leaf Fig",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-species",
+      "to": "n-monstera",
+      "from_name": "Species",
+      "to_name": "Monstera",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-species",
+      "to": "n-species-more",
+      "from_name": "Species",
+      "to_name": "26 more species",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-garden",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "My garden",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-care",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "Care Guide",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-problems",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "Problems",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-journal",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "Journal",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-ident",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "Identification",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-fig",
+      "to": "n-platform",
+      "from_name": "Fiddle-leaf Fig",
+      "to_name": "Platform link",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-garden",
+      "to": "n-office",
+      "from_name": "My garden",
+      "to_name": "Office Fig",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-garden",
+      "to": "n-studio",
+      "from_name": "My garden",
+      "to_name": "Studio Fig",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-garden",
+      "to": "n-garden-more",
+      "from_name": "My garden",
+      "to_name": "10 more plants",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-garden",
+      "to": "n-reminders",
+      "from_name": "My garden",
+      "to_name": "Reminders",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-problems",
+      "to": "n-underwater",
+      "from_name": "Problems",
+      "to_name": "Underwatering",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-problems",
+      "to": "n-overwater",
+      "from_name": "Problems",
+      "to_name": "Overwatering",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-problems",
+      "to": "n-rootrot",
+      "from_name": "Problems",
+      "to_name": "Root rot",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-underwater",
+      "to": "n-treatment",
+      "from_name": "Underwatering",
+      "to_name": "Treatment plan",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-rootrot",
+      "to": "n-treatment",
+      "from_name": "Root rot",
+      "to_name": "Treatment plan",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-treatment",
+      "to": "n-care",
+      "from_name": "Treatment plan",
+      "to_name": "Care Guide",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-journal",
+      "to": "n-j1",
+      "from_name": "Journal",
+      "to_name": "Jul 18 · photo",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-journal",
+      "to": "n-j2",
+      "from_name": "Journal",
+      "to_name": "Jul 15 · watering",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-journal",
+      "to": "n-journal-more",
+      "from_name": "Journal",
+      "to_name": "12 more entries",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-ident",
+      "to": "n-care",
+      "from_name": "Identification",
+      "to_name": "Care Guide",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-garden-more",
+      "to": "n-unknown",
+      "from_name": "10 more plants",
+      "to_name": "Unloaded region",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-j1",
+      "to": "n-office",
+      "from_name": "Jul 18 · photo",
+      "to_name": "Office Fig",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-account",
+      "to": "n-platform",
+      "from_name": "Your account",
+      "to_name": "Platform link",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-account",
+      "to": "n-garden",
+      "from_name": "Your account",
+      "to_name": "My garden",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-today",
+      "to": "n-garden",
+      "from_name": "Today",
+      "to_name": "My garden",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-today",
+      "to": "n-reminders",
+      "from_name": "Today",
+      "to_name": "Reminders",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-ask",
+      "to": "n-care",
+      "from_name": "Ask PlantPal",
+      "to_name": "Care Guide",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    },
+    {
+      "from": "n-ask",
+      "to": "n-ident",
+      "from_name": "Ask PlantPal",
+      "to_name": "Identification",
+      "drawn_before_click": true,
+      "pointer": true,
+      "keyboard": true
+    }
+  ],
+  "degrees": {
+    "n-species": {
+      "name": "Species",
+      "degree": 3,
+      "neighbours": [
+        "n-fig",
+        "n-monstera",
+        "n-species-more"
+      ]
+    },
+    "n-monstera": {
+      "name": "Monstera",
+      "degree": 1,
+      "neighbours": [
+        "n-species"
+      ]
+    },
+    "n-species-more": {
+      "name": "26 more species",
+      "degree": 1,
+      "neighbours": [
+        "n-species"
+      ]
+    },
+    "n-fig": {
+      "name": "Fiddle-leaf Fig",
+      "degree": 7,
+      "neighbours": [
+        "n-care",
+        "n-garden",
+        "n-ident",
+        "n-journal",
+        "n-platform",
+        "n-problems",
+        "n-species"
+      ]
+    },
+    "n-platform": {
+      "name": "Platform link",
+      "degree": 2,
+      "neighbours": [
+        "n-account",
+        "n-fig"
+      ]
+    },
+    "n-garden": {
+      "name": "My garden",
+      "degree": 7,
+      "neighbours": [
+        "n-account",
+        "n-fig",
+        "n-garden-more",
+        "n-office",
+        "n-reminders",
+        "n-studio",
+        "n-today"
+      ]
+    },
+    "n-care": {
+      "name": "Care Guide",
+      "degree": 4,
+      "neighbours": [
+        "n-ask",
+        "n-fig",
+        "n-ident",
+        "n-treatment"
+      ]
+    },
+    "n-problems": {
+      "name": "Problems",
+      "degree": 4,
+      "neighbours": [
+        "n-fig",
+        "n-overwater",
+        "n-rootrot",
+        "n-underwater"
+      ]
+    },
+    "n-journal": {
+      "name": "Journal",
+      "degree": 4,
+      "neighbours": [
+        "n-fig",
+        "n-j1",
+        "n-j2",
+        "n-journal-more"
+      ]
+    },
+    "n-ident": {
+      "name": "Identification",
+      "degree": 3,
+      "neighbours": [
+        "n-ask",
+        "n-care",
+        "n-fig"
+      ]
+    },
+    "n-office": {
+      "name": "Office Fig",
+      "degree": 2,
+      "neighbours": [
+        "n-garden",
+        "n-j1"
+      ]
+    },
+    "n-studio": {
+      "name": "Studio Fig",
+      "degree": 1,
+      "neighbours": [
+        "n-garden"
+      ]
+    },
+    "n-garden-more": {
+      "name": "10 more plants",
+      "degree": 2,
+      "neighbours": [
+        "n-garden",
+        "n-unknown"
+      ]
+    },
+    "n-reminders": {
+      "name": "Reminders",
+      "degree": 2,
+      "neighbours": [
+        "n-garden",
+        "n-today"
+      ]
+    },
+    "n-underwater": {
+      "name": "Underwatering",
+      "degree": 2,
+      "neighbours": [
+        "n-problems",
+        "n-treatment"
+      ]
+    },
+    "n-overwater": {
+      "name": "Overwatering",
+      "degree": 1,
+      "neighbours": [
+        "n-problems"
+      ]
+    },
+    "n-rootrot": {
+      "name": "Root rot",
+      "degree": 2,
+      "neighbours": [
+        "n-problems",
+        "n-treatment"
+      ]
+    },
+    "n-j1": {
+      "name": "Jul 18 · photo",
+      "degree": 2,
+      "neighbours": [
+        "n-journal",
+        "n-office"
+      ]
+    },
+    "n-j2": {
+      "name": "Jul 15 · watering",
+      "degree": 1,
+      "neighbours": [
+        "n-journal"
+      ]
+    },
+    "n-journal-more": {
+      "name": "12 more entries",
+      "degree": 1,
+      "neighbours": [
+        "n-journal"
+      ]
+    },
+    "n-treatment": {
+      "name": "Treatment plan",
+      "degree": 3,
+      "neighbours": [
+        "n-care",
+        "n-rootrot",
+        "n-underwater"
+      ]
+    },
+    "n-account": {
+      "name": "Your account",
+      "degree": 2,
+      "neighbours": [
+        "n-garden",
+        "n-platform"
+      ]
+    },
+    "n-today": {
+      "name": "Today",
+      "degree": 2,
+      "neighbours": [
+        "n-garden",
+        "n-reminders"
+      ]
+    },
+    "n-ask": {
+      "name": "Ask PlantPal",
+      "degree": 2,
+      "neighbours": [
+        "n-care",
+        "n-ident"
+      ]
+    },
+    "n-unknown": {
+      "name": "Unloaded region",
+      "degree": 1,
+      "neighbours": [
+        "n-garden-more"
+      ]
+    }
+  },
+  "degree_is_honest": {
+    "statement": "C3. The neighbour count shown on a node equals its real degree in this edge list, and every drawn vein is traversable.",
+    "verification": "For every node: the count rendered in its neighbours panel == len(adj[id]) == the number of veins with that node as an endpoint."
+  },
+  "what_changed_in_round_9": {
+    "summary": "The vein itself became a control. Round 8 drew every edge and made every edge traversable — from the card, from the Navigate-to rail, from the keyboard — but the drawn line was scenery you could not press. The owner asked for it: “make the node link clickable, and redirect to the connecting node”. It now is.",
+    "nothing_else_moved": "The edge set is unchanged, the one code path is unchanged, the timing is unchanged, the keyboard is unchanged. A fourth way to walk the same edge was added; no edge was added, removed, or made to behave differently depending on which of the four you used."
+  },
+  "the_vein_as_a_control": {
+    "mechanism": "Every drawn vein carries an invisible 20px-wide hit stroke riding the identical path. The drawn line stays as thin as it looks; the thing you can hit is as wide as a finger.",
+    "what_a_click_means": "‘Take me along this vein.’ From the focus that is its other end. From anywhere else it is the end nearer to you, by graph distance — and it goes through go(), the same one code path, so the camera still crosses every vein between here and there and nothing is teleported to.",
+    "it_is_visibly_a_traversal_not_a_mutation": "C14. Pointer cursor, a soft widening of the vein under the pointer, and a title that reads ‘A — B · click the vein to travel along it’. No vein anywhere in the design changes data; no mutating affordance anywhere is a line.",
+    "it_never_steals_a_pan": "The board's pan handler declines to start on a vein hit stroke, exactly as it already declined to start inside a card — so a press meant for an edge cannot be swallowed by the layer under it, and a press meant for the board still pans.",
+    "the_panel_and_the_world_are_the_same_edge": "C3. Hovering an entry in the Navigate-to rail lights the vein it names, and walking the keyboard cursor lights the vein it is on. The rail is a reading of the edge list; the veins are a drawing of it; the arrow keys are a walk of it. One list, three surfaces.",
+    "keyboard_parity": "C18. The vein hit stroke is a pointer affordance and adds no keyboard-only path, because one already exists and is better: arrow keys walk the graph by direction, Tab cycles the focus's veins in order, Enter travels, Escape retreats one hop along the path actually taken. Every edge reachable by clicking a vein is reachable by those keys.",
+    "verification": "For each of the 31 veins, dispatch a click on its hit stroke and assert the focus changed to the intended end and the camera travelled rather than cut. Verified in this round by script for the focus's own veins."
+  },
+  "everything_that_moves_the_camera": [
+    "A card click on a non-focused card, anywhere on its surface that is not one of its own controls.",
+    "A click on a vein — new in round 9.",
+    "An in-card hop button, and an ordinary in-prose link.",
+    "An entry in the Navigate-to rail.",
+    "A crumb in the You-are-here path.",
+    "Arrow keys to aim, Enter to travel; Tab to cycle; Escape to retreat one hop.",
+    "Search, and the notification bell — both walk the real chain and show the distance crossed (C21).",
+    "The camera controls themselves: zoom in/out, recentre, fit to screen, Alt+wheel. These look; they do not navigate, and none of them changes the focus."
+  ]
+}

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Degradation · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Degradation</h1>
+      <p class="doc-lede">When something is slow, missing, absent or broken, it
+        is the card that says so — never the screen. This page settles the six
+        states your garden can be in when the world is not whole, the material
+        each one wears, and the one thing that never degrades: the geography.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You photograph a leaf and ask PlantPal what it is. That answer takes
+          five to fifteen seconds, honestly — it is a real request to a real
+          identification service, and sometimes that service is having a bad
+          afternoon. Meanwhile your care guides are cached from last week, the
+          part of your garden you have not opened since Tuesday has not been
+          fetched at all, one plant you archived in spring is still there, and
+          you are on a train with no signal.</p>
+        <p>All of that is one screen at once, and none of it is an interruption.
+          Your garden keeps its shape: every card stays in the cell it holds,
+          the veins stay drawn and stay traversable, the world view still says
+          where you are, and the camera stays where you left it. What changes is
+          the ink inside the cards that are waiting, unknown, empty, stale or
+          broken — each in its own body, in its own words.</p>
+        <p>This page owns all six states and the probe that walks them. The
+          source it is written from is
+          <a href="../degradation-spec.json">degradation-spec.json</a>, which is
+          the record; where this page and that file could differ, the file wins.</p>
+        <div class="doc-note">
+          <p>What this page does <em>not</em> own: the register that makes the
+            probe panel furniture rather than content is
+            <a href="../components/chrome.html">chrome</a>; the material of the
+            cards themselves is <a href="../components/node.html">node</a>; the
+            fact that “+N more” is a density decision and never a gap is
+            <a href="../components/aggregate.html">aggregate</a>; the 300ms a hop
+            takes, including a hop into something unfetched, is
+            <a href="traversal.html">traversal</a>; and the rule that a node
+            keeps its cell when the graph grows is
+            <a href="../foundations/spacing.html">spacing</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C22, C9</span></p>
+          <p class="doc-law__statement">The geography never degrades. Whatever
+            state the world is in, no card moves, no card changes rank and no
+            card changes cell: “At &gt;=10s the geography holds, with per-node
+            loading in place and no repositioning as nodes resolve.” The cells
+            come from the record list, which is small and arrives first, so
+            every card is placed before any of its contents resolve.</p>
+          <p class="doc-check">Snapshot the computed <code>left</code>/<code>top</code>
+            of every <code>.rz-n</code>, toggle each probe control in turn, and
+            snapshot again. The diff is empty in every state. Assert the camera
+            transform and the world-view extent are unchanged too.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C22</span></p>
+          <p class="doc-law__statement">Slowness is per card, never global.
+            Past <code>parameters.slow_threshold_ms</code> — 10 seconds — a card
+            whose payload has not resolved shows a skeleton shaped like the
+            content it stands in for, at that content's real row heights, and
+            says in its own words what it is waiting for. There is no spinner,
+            no word “loading”, and no blocking layer over the world anywhere in
+            this system.</p>
+          <p class="doc-check">Set <code>data-speed="slow"</code> from the
+            probe. Assert no element covers the plane with a blocking layer and
+            that <code>document.querySelector("[role=dialog]")</code> is
+            <code>null</code>. Grep the built artifact for “spinner”, for the
+            standalone word “Loading” and for any infinite rotation keyframe:
+            all absent. Assert each unresolved card's skeleton rows match the
+            row heights of the content that replaces them.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C23</span></p>
+          <p class="doc-law__statement">Unknown is not empty, and both are
+            demonstrable side by side. A region that has not been fetched is a
+            card in its own right, dashed, marked unknown, stating what it
+            believes is inside <em>as</em> a belief and printing no count it
+            cannot vouch for. A card that is loaded and genuinely has nothing is
+            a designed plot with an invitation: it knows there is nothing.
+            “On a partial graph, unloaded regions are drawn as explicitly
+            unknown — distinguishable from &quot;loaded and empty&quot; — with
+            traversal into them allowed and never dead-ending.”</p>
+          <p class="doc-check">In the specimen below, assert an unknown card and
+            an empty card are both present and materially different (dashed rim
+            in <code>--rz-unknown</code> against dashed rim in
+            <code>--rz-empty</code>), that the unknown card carries a real fetch
+            control, that its veins are drawn with
+            <code>data-unknown="true"</code>, and that
+            <code>RZ.go("n-region")</code> succeeds.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C24, C15</span></p>
+          <p class="doc-law__statement">Offline, the last-known world stays
+            navigable, staleness is stated per card in that card's own words,
+            and every mutation is visibly refused or visibly queued. A single
+            global banner would be a lie about the parts that are genuinely
+            current: “Offline, the last-known world is navigable, staleness is
+            honest per node, mutations are explicitly refused or queued, and
+            geography stays put.”</p>
+          <p class="doc-check">Set <code>data-net="offline"</code> from the
+            probe. Every hop, every camera control and keyboard traversal still
+            work. Assert at least two cards carry <code>data-stale</code> values
+            that are <em>not equal</em>. Assert every <code>.rz-stake</code> is
+            either refused — <code>data-refused="true"</code>, cursor
+            <code>not-allowed</code> — or names itself queued in words. Assert
+            nothing was accepted silently and no card moved.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C25, C16</span></p>
+          <p class="doc-law__statement">A failure is a state inside the card
+            that failed, and the camera is undisturbed: “On failure the error is
+            a state inside the node, with retry in place and the camera
+            undisturbed.” It states the fact, the time, and what happened to the
+            user's own data, and it offers a retry in place plus a second,
+            different way through. One card failing while its neighbours are
+            healthy is the expected shape. There is no error dialog in this
+            system.</p>
+          <p class="doc-check">Put a card into <code>data-state="error"</code>:
+            the fact, the time, the fate of the user's data, the retry and the
+            second way through are all inside that card's <code>.rz-n__error</code>,
+            and the camera transform before and after is identical. Assert no
+            other card changed and nothing was unmounted.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 6 · <span class="doc-cite">C22, C23, C24, C25</span></p>
+          <p class="doc-law__statement">A reviewer must be able to walk every
+            state from a probe, without editing markup. The states are document
+            attributes — <code>data-speed</code>, <code>data-net</code>,
+            <code>data-graph</code>, <code>data-motion</code>,
+            <code>data-limit</code> — plus per-card
+            <code>data-state</code>, <code>data-pending</code> and
+            <code>data-stale</code>, all set through one entry point,
+            <code>RZ.setState</code>. The probe panel is chrome: it carries
+            marks, never a stake or a chip, and it holds no traversal.</p>
+          <p class="doc-check">Assert every state named in
+            <code>degradation-spec.json → states</code> is reachable by
+            activating one probe control on this page, with no markup edit and
+            no reload. Assert the probe contains no <code>.rz-stake</code>, no
+            <code>.rz-chip</code>, and no element that calls
+            <code>RZ.go</code>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Walk the states</h2>
+        <p>One garden, six cards, five probe controls. Toggle <em>Slow</em> and
+          watch nothing move: the identification card fills with a skeleton at
+          the real height of the answer it is waiting for, and every other card
+          carries on. Toggle <em>Offline</em> and read the staleness lines — they
+          differ, because the truth differs — then try to water the fig and watch
+          the stake refuse itself rather than fail silently. Toggle
+          <em>Partial</em> and compare the two dashed cards: <em>Balcony</em>,
+          which is unknown and can be travelled into, next to <em>Journal</em>,
+          which is loaded and simply has nothing in it yet.</p>
+        <p>Then travel while all of it is true. Every hop still works in every
+          state, because degradation is ink and the geography is structure.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Your garden with parts of it slow, unknown, empty, stale and failed. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                  <p class="rz-n__stale">Watering counts may be stale — last
+                    checked at 09:12.</p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Everything you keep, in one place. Some of it below is
+                          still arriving and some of it we have not fetched yet;
+                          each card says which it is.</p>
+                        <p><button type="button" class="rz-stake">Water Office Fig</button></p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-ident" data-cell="2,0"
+                         data-pending="true"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Leaf photo, this morning"
+                         data-recap="Identifying · usually 5 to 15 seconds">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Leaf photo, this morning</h3>
+                  <p class="rz-n__recap">Identifying
+                    <span class="rz-n__recap-second">· usually 5 to 15 seconds</span></p>
+                  <p class="rz-n__wait">Still identifying. Your photo is safe
+                    here whatever the answer turns out to be.</p>
+                  <div class="rz-n__skel" aria-hidden="true">
+                    <div class="rz-skel">
+                      <span class="rz-skel__row" data-w="short"></span>
+                      <span class="rz-skel__row"></span>
+                      <span class="rz-skel__row" data-w="mid"></span>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Never fetched — this one needs the
+                    network.</p>
+                </article>
+
+                <article class="rz-n" id="n-guides" data-cell="2,2"
+                         data-kind="Guide" data-kind-key="guide"
+                         data-name="Care guides" data-recap="41 guides · cached">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Guide</p>
+                  <h3 class="rz-n__name">Care guides</h3>
+                  <p class="rz-n__recap">41 guides
+                    <span class="rz-n__recap-second">· all readable offline</span></p>
+                  <p class="rz-n__stale">Cached Jul 20 — guides change rarely, so
+                    this is almost certainly still right.</p>
+                </article>
+
+                <article class="rz-n" id="n-region" data-cell="4,0"
+                         data-state="unknown"
+                         data-kind="Region" data-kind-key="region"
+                         data-name="Balcony" data-recap="Not fetched yet">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Region</p>
+                  <h3 class="rz-n__name">Balcony</h3>
+                  <p class="rz-n__recap">Not fetched yet
+                    <span class="rz-n__recap-second">· we believe there are a
+                      few plants out here</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>We have not opened this part of your garden yet, so we
+                          will not print a count we cannot stand behind. Travel
+                          here and we fetch it; the veins into it are drawn
+                          dashed because that is exactly what they are.</p>
+                        <p><button type="button" class="rz-stake">Fetch the balcony now</button></p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Never fetched.</p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="4,2"
+                         data-state="empty"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Journal" data-recap="Nothing written yet">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Journal</h3>
+                  <p class="rz-n__recap">Nothing written yet
+                    <span class="rz-n__recap-second">· a good place to start</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>This one is loaded, and there is genuinely nothing in
+                          it. Write the first note about a plant and it will sit
+                          here, in this cell, from then on.</p>
+                        <p><button type="button" class="rz-stake">Write the first note</button></p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Fresh at 09:12.</p>
+                </article>
+
+                <article class="rz-n" id="n-scan" data-cell="6,1"
+                         data-state="error"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf scan" data-recap="Did not come back">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf scan</h3>
+                  <p class="rz-n__recap">Did not come back
+                    <span class="rz-n__recap-second">· your photo is kept</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-n__error">
+                        <p>PlantNet answered with a 503 at 09:14. Your photo is
+                          kept. Nothing was lost and nothing moved.</p>
+                        <p><button type="button" class="rz-stake">Try the scan again</button>
+                          <button type="button" class="rz-stake">Identify by hand</button></p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>If the answer matters today, the second way through
+                          does not need the model at all — and if you would
+                          rather read around it, the
+                          <button type="button" class="rz-chip" data-rz-goto="n-guides">Care guides</button>
+                          are cached and readable right now.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Never fetched — this one needs the
+                    network.</p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--probe">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">States</span>
+                  <span>Probe</span>
+                </p>
+                <div class="rz-probe__row">
+                  <span>Speed</span>
+                  <button type="button" class="rz-probe__btn" data-rz-state="speed:slow:normal"
+                          data-rz-says="Slow. Every card is placed; the ones still arriving say so themselves.">Slow</button>
+                </div>
+                <div class="rz-probe__row">
+                  <span>Network</span>
+                  <button type="button" class="rz-probe__btn" data-rz-state="net:offline:online"
+                          data-rz-says="Offline. The world you have is still yours to walk; each card states its own staleness.">Offline</button>
+                </div>
+                <div class="rz-probe__row">
+                  <span>Graph</span>
+                  <button type="button" class="rz-probe__btn" data-rz-state="graph:partial:whole"
+                          data-rz-says="Partial. Balcony is unknown and traversable; Journal is loaded and empty.">Partial</button>
+                </div>
+                <div class="rz-probe__row">
+                  <span>Motion</span>
+                  <button type="button" class="rz-probe__btn" data-rz-state="motion:reduced"
+                          data-rz-says="Reduced motion. The trail is drawn along the real veins and held.">Reduced</button>
+                </div>
+                <div class="rz-probe__row">
+                  <span>AI limit</span>
+                  <button type="button" class="rz-probe__btn" data-rz-state="limit:reached"
+                          data-rz-says="Limit reached. The card that asked says so, with the time it resets.">Reached</button>
+                </div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <div class="rz-chrome rz-chrome--gesture">
+                <p>Drag to pan · Alt and wheel to zoom · arrows follow the veins</p>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Six states at once · nothing moves, nothing blocks</span>
+            <span>C9 · C22 · C23 · C24 · C25</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Nothing on this page draws a state by hand. The probe buttons are
+          wired by the runtime through the one entry point, and the skeleton is
+          the runtime's own show-mode rather than a second implementation
+          written here.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-garden",
+  path: ["n-garden"],
+  edges: [
+    ["n-garden", "n-ident"],
+    ["n-garden", "n-guides"],
+    ["n-garden", "n-journal"],
+    ["n-ident",  "n-region"],
+    ["n-ident",  "n-scan"],
+    ["n-guides", "n-journal"]
+  ]
+});
+
+// one entry point, one state at a time, no markup edit:
+RZ.setState("net", "offline");
+RZ.setState("speed", "slow");
+RZ.setState("graph", "partial");
+
+// the skeleton is a show-mode of the card, not a widget:
+RZ.present(RZ.focus, "n-ident");   // -&gt; that card renders data-show="skel"</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The six states</h2>
+
+        <h3 class="doc-h3">What each one wears</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">State, attribute, material</caption>
+            <thead><tr><th>State</th><th>Attribute</th><th>Material, and what it means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Loading</td>
+                <td><code>data-pending="true"</code></td>
+                <td>The recap is replaced in place by <code>.rz-skel</code> rows
+                  at the real row heights of the content they stand in for, and
+                  the card says what it is waiting for in its own words. Never
+                  the word “loading”, never a spinner.</td>
+              </tr>
+              <tr>
+                <td>Slow</td>
+                <td><code>data-speed="slow"</code></td>
+                <td>Past 10 seconds. Everything structural holds: cells, veins,
+                  degree counts, world view, camera. Stated per card, so you can
+                  see that your garden is still arriving while the guides are
+                  already whole.</td>
+              </tr>
+              <tr>
+                <td>Partial graph</td>
+                <td><code>data-graph="partial"</code>, <code>data-state="unknown"</code></td>
+                <td>Dashed rim in <code>--rz-unknown</code>, no count, a belief
+                  stated as a belief, a real fetch control, and dashed veins that
+                  are traversable — travelling in is what fetches it.</td>
+              </tr>
+              <tr>
+                <td>Offline</td>
+                <td><code>data-net="offline"</code>, <code>data-stale</code></td>
+                <td>The last-known world stays navigable. Each card reveals its
+                  own staleness line, and they differ. Stakes are refused with
+                  <code>not-allowed</code>, or queued and said so in words.</td>
+              </tr>
+              <tr>
+                <td>Failure</td>
+                <td><code>data-state="error"</code></td>
+                <td><code>.rz-n__error</code> inside the card that failed: the
+                  fact, the time, what happened to your data, a retry in place
+                  and a second, different way through. The camera does not move.</td>
+              </tr>
+              <tr>
+                <td>Empty</td>
+                <td><code>data-state="empty"</code></td>
+                <td>A designed plot: dashed rim in <code>--rz-empty</code>, room
+                  around it, an invitation. It states that it <em>knows</em>
+                  there is nothing, which is what tells it from unknown.</td>
+              </tr>
+              <tr>
+                <td>Archived</td>
+                <td><code>data-state="archived"</code></td>
+                <td>PlantPal's deletes are soft, so archived is a state a card
+                  wears — dotted rim, quieter ink — not a removal. There is no
+                  delete confirmation anywhere in this system.</td>
+              </tr>
+              <tr>
+                <td>AI limit reached</td>
+                <td><code>data-limit="reached"</code></td>
+                <td>PlantPal's AI endpoints are rate-limited per user, so this is
+                  a first-class state of the card that asked: what the limit is,
+                  when it resets, and a way through that does not need the model.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What a theme fills</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The degradation palette</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-skeleton</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-skeleton)"></span></td>
+                <td>The resting body of a skeleton row: content-shaped, quiet,
+                  and never animated into a spinner.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-skeleton-lit</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-skeleton-lit)"></span></td>
+                <td>The lit stop of the skeleton's gradient — enough life to read
+                  as “arriving”, not enough to read as a control.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-unknown</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-unknown)"></span></td>
+                <td>The rim of a region we have not fetched, and of the veins
+                  into it. It must be tellable from the empty rim at a glance.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-unknown-fill</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-unknown-fill)"></span></td>
+                <td>The body behind an unknown card: present, but plainly not
+                  the same substance as a card that has content.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-empty</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-empty)"></span></td>
+                <td>The rim of a plot that is loaded and knows it is bare — an
+                  invitation, not a gap.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-error</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-error)"></span></td>
+                <td>The rim of the card that failed, and the rule down the side
+                  of the failure inside it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-error-quiet</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-error-quiet)"></span></td>
+                <td>The body of that failure block: legible, unalarming, and
+                  contained to the one card it belongs to.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-stale</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-stale)"></span></td>
+                <td>A card's own staleness sentence, revealed offline. Quieter
+                  than the recap, because it qualifies it rather than replacing it.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-archived</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-archived)"></span></td>
+                <td>The ink of a soft-deleted card. Still here, still findable,
+                  visibly put away.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-vein-unknown</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-vein-unknown)"></span></td>
+                <td>A vein into an unfetched region: dashed, drawn, and real —
+                  travelling it is what fetches what is on the far end.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What holds in every state</h3>
+        <p>Six things never degrade, and a build that loses any of them has a
+          defect rather than a state: the position of every card; the you-are-here
+          marker in the world view; the drawn veins and their traversability; the
+          ability to look around with the camera; keyboard traversal along the
+          graph; and the difference between a stake and a chip. Under reduced
+          motion the sweep is spent, but the trail is still drawn along the real
+          veins and held and the you-are-here still moves, so direction and
+          distance survive — carried by <a href="traversal.html">traversal</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>A degraded state that only shows is not a state; it has to be said.
+          Each card's accessible name carries its own condition — “Region ·
+          Balcony · not fetched yet · 1 vein out” — so a screen-reader user meets
+          the same distinction between unknown and empty that a sighted user sees
+          in the two dashed rims. A skeleton is marked
+          <code>aria-hidden</code>: it is the shape of an answer, not the answer,
+          and reading three grey bars aloud tells nobody anything. The waiting
+          sentence beside it is what gets read.</p>
+        <p>Entering a state announces itself once, in the polite live region, in
+          the same voice the cards use: going offline says what is still yours to
+          walk, not that something broke. A refused mutation says why it was
+          refused at the moment you try it — silence after a click reads as a
+          dead control, which is worse than a refusal. A queued one says it is
+          queued and when it will run.</p>
+        <p>Nothing here removes a route. Every card is still reachable by keyboard
+          along the graph in every state, including the unknown region, and no
+          state disables the camera, the world view or arrow-key traversal.
+          Colour never carries a state alone: unknown and empty differ by dash
+          pattern, fill and words as well as hue; failure carries its sentence;
+          staleness is a line of text, not a tint. Logical properties throughout,
+          so nothing points the wrong way in RTL. The full keyboard and
+          announcement contract is
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Every mistake in this area is the same mistake wearing a different
+          hat: letting a local truth speak for the whole world. One request is
+          slow, so the screen is covered. One region is unfetched, so the garden
+          is redrawn. One connection is gone, so a banner declares everything
+          stale. Keep the fact where it happened.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw the failure inside the card that failed, with the time, the
+              fate of the user's data, a retry in place and a second way through.
+              The camera stays where it was (Law 5, C25).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Announce it over the world. A layer across the plane breaks the
+              geography and the you-are-here at once, and it tells the user their
+              whole garden is broken when one request is (C25, C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give each card its own staleness sentence offline, in its own
+              words, and let them differ — “Cached Jul 20 — guides change rarely”
+              beside “Never fetched” (Law 4, C24).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put one banner across the top saying the data may be out of date.
+              It is a lie about every card that is genuinely current, and the
+              user learns to disbelieve all of it (C24).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a card that is waiting keep its cell, its rank and its veins,
+              and fill in place as it resolves. The screen at ten seconds and at
+              ten seconds plus one is the same geography with more ink in it
+              (Law 1, C22).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Hold cards back until their contents arrive and lay them out on
+              arrival. Anything that places by arrival order re-lays-out the
+              world on every refresh, and the reader loses the map they had
+              learned (C7, C22).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Mark an unfetched region unknown, with no count, a belief stated
+              as a belief, and a vein you can actually travel to fetch it
+              (Law 3, C23).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Draw it as empty, or leave it off the plane. Empty says we looked
+              and there is nothing; absent says it does not exist. Both are
+              claims we have not earned, and both dead-end the reader (C23).</p>
+          </div>
+        </div>
+
+        <p>Three more, stated as rules. <strong>Never ship a spinner or the word
+          “loading”</strong>, not even as the wrong half of a Do/Don't — an
+          illustration gets copied. <strong>Never let a state change rank</strong>:
+          a card that fails is still exactly as far from the focus as it was, and
+          demoting it would tell the reader the graph changed shape when only its
+          contents did (C9). And <strong>never confuse an aggregate with a
+          gap</strong>: “+N more” is loaded, complete and counted — solid rim, real
+          count — and it is a density decision owned by
+          <a href="../components/aggregate.html">aggregate</a>, not a state of
+          not-knowing.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The card material every state is drawn onto is
+          <a href="../components/node.html">node</a>; the dashed vein into an
+          unfetched region is <a href="../components/edge.html">edge</a>; the
+          plane that keeps its shape through all of it is
+          <a href="../components/world.html">world</a>. The probe panel's
+          register — why it is furniture and never content — is
+          <a href="../components/chrome.html">chrome</a>, and the marker that
+          keeps saying where you are is
+          <a href="../components/minimap.html">minimap</a>. The “+N more” card
+          that is complete rather than partial is
+          <a href="../components/aggregate.html">aggregate</a>; the stakes that
+          are refused or queued offline are
+          <a href="../components/action-rail.html">action rail</a>; the health
+          and confidence instruments a failed identification leaves unfilled are
+          <a href="../components/vitals.html">vitals</a>. Hops into an unknown
+          region, and reduced motion, are carried by
+          <a href="traversal.html">traversal</a>; a state landing while you are
+          elsewhere is <a href="arrivals.html">arrivals</a>; a garden that is
+          empty because it is new rather than because it is unfetched is
+          <a href="day-zero.html">day zero</a>. The rule that a card keeps its
+          cell as the graph fills in is
+          <a href="../foundations/spacing.html">spacing</a>, the state colours sit
+          in <a href="../foundations/colors.html">colors</a>, and the wording of
+          every sentence a state speaks is
+          <a href="../guidelines/voice-and-copy.html">voice and copy</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime, then asks the runtime to put the
+       identification card into its own skeleton show-mode. No state, material
+       or timing is re-implemented here; the probe buttons are wired by
+       RZ.mount through RZ.setState. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-ident"],
+        ["n-garden", "n-guides"],
+        ["n-garden", "n-journal"],
+        ["n-ident",  "n-region"],
+        ["n-ident",  "n-scan"],
+        ["n-guides", "n-journal"]
+      ]
+    });
+    RZ.present(RZ.focus, "n-ident");
+  </script>
+</body>
+</html>

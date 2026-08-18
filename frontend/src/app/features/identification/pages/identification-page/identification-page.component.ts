@@ -12,9 +12,10 @@ import { IdentificationUploadDialogComponent } from '../../components/identifica
 import { PhotoUploadComponent } from '../../components/photo-upload/photo-upload.component';
 
 @Component({
-  selector: 'app-identification-page',
-  templateUrl: './identification-page.component.html',
-  styleUrls: ['./identification-page.component.scss'],
+    selector: 'app-identification-page',
+    templateUrl: './identification-page.component.html',
+    styleUrls: ['./identification-page.component.scss'],
+    standalone: false
 })
 export class IdentificationPageComponent implements OnDestroy {
   @ViewChild(IdentificationListComponent) listComponent?: IdentificationListComponent;

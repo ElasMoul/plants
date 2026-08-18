@@ -1,0 +1,124 @@
+{
+  "name": "Rhizome",
+  "slug": "plantpal-cae942ee",
+  "version": "1.0.0",
+  "regime": "atlas-class",
+  "target": "PlantPal",
+  "summary": "Rhizome is PlantPal's atlas-class design system. The garden is a world on one plane: every plant, species, problem, treatment course and journal entry is a node on a fixed lattice, joined by veins that are drawn before they are travelled. Navigation is a rescale of that plane, never a route. This file is the register: the laws, the numbers and the page scope. Any page in this system that cites a C-number is citing THIS file.",
+
+  "prefix": "rz",
+
+  "sources_of_record": {
+    "invariants": "constitution.json -> invariants[]. A page quotes the statement verbatim and adds its own verification; it never paraphrases it into a second wording.",
+    "parameters": "constitution.json -> parameters. Mirrored into assets/tokens.css as --rz-param-* and into assets/system.js as RZ.PARAMS. RZ.verifyParameters() reads the computed CSS values back and reports disagreement, so the copies cannot silently drift.",
+    "layout": "layout-determinism.json",
+    "traversal": "traversal-map.json",
+    "degradation": "degradation-spec.json"
+  },
+
+  "parameters": {
+    "density": {
+      "threshold": 4,
+      "shown": 2,
+      "aggregate_label": "+N more"
+    },
+    "nav_ms": 300,
+    "lattice": {
+      "pitch_x": 300,
+      "pitch_y": 180,
+      "origin_x": 200,
+      "origin_y": 80,
+      "cols": 12,
+      "rows": 11
+    },
+    "rank_count": 4,
+    "rank_names": ["focus", "near", "far", "fringe"],
+    "zoom": {
+      "min": 0.28,
+      "max": 1.9,
+      "step": 1.12
+    },
+    "slow_threshold_ms": 10000,
+    "card_air_px": 80,
+    "card_reach": 0.96,
+    "shell_transform": "scale(0.42) translateX(-25%)",
+    "particles": {
+      "area_per_mote": 11000,
+      "ceiling": 190,
+      "drift_px_per_frame": 0.14,
+      "link_distance_sq": 15000,
+      "seed": 20260730
+    },
+    "prominence_ladder": [100, 75, 55, 30, 25, 18]
+  },
+
+  "invariants": [
+    { "id": "C1", "statement": "Every navigation follows an edge that was visible before the click.", "applies_to": ["world", "edge", "navigate-to", "traversal"], "how_to_check": "Iterate every control that calls RZ.go(target); assert every consecutive pair of RZ.route(focus, target) is present in the edge list and has a drawn .rz-vein in the DOM at first paint." },
+    { "id": "C2", "statement": "After any hop, the origin is still on screen or exactly one visible hop back -- with no reliance on a history stack or browser back.", "applies_to": ["world", "node", "traversal"], "how_to_check": "After any RZ.go, assert the previous focus still has a rendered element carrying a rank attribute, and that it appears in the Navigate-to list of the new focus or is joined to it by one drawn vein. Assert history.length is unchanged." },
+    { "id": "C3", "statement": "On a focus change the surrounding nodes change to that node's own neighbours, every drawn edge is actually traversable, and the neighbour count tracks real degree.", "applies_to": ["world", "edge", "navigate-to", "focus-panel"], "how_to_check": "For every node assert RZ.adj[id].length equals the number of drawn veins touching it and equals the number printed in the Navigate-to header." },
+    { "id": "C4", "statement": "Nothing is replaced, unmounted, or routed to -- every navigation is a rescale.", "applies_to": ["world", "node", "traversal"], "how_to_check": "Record the node element set before and after ten hops; the sets are the identical objects. Nothing is added to or removed from the plane, and location.href never changes." },
+    { "id": "C5", "statement": "Where the user is, is answerable at every zoom level without hovering or reading -- by a position marker in the persistent world view, not by a breadcrumb alone.", "applies_to": ["minimap", "chrome"], "how_to_check": "At zoom.min and zoom.max assert the world view's you-are-here marker is inside the world-view frame and its coordinates equal the mapped position of the focused node." },
+    { "id": "C6", "statement": "This surface is still the right regime under Sec.4's discriminator -- dense, meaningful, user-traversed cross-relationships, a real graph and not a hierarchy wearing one.", "applies_to": ["world", "edge"], "how_to_check": "Assert the edge list contains cross-branch edges (a journal entry to the plant it is about; two problems sharing one treatment course) so the graph is not a tree, and that edge count >= node count." },
+    { "id": "C7", "statement": "Two consecutive loads of the same graph lay out identically, with positions derived deterministically and persisted -- never from a live simulation or render order.", "applies_to": ["world", "node", "spacing"], "how_to_check": "Load twice and diff the computed left/top of every node element; they are equal. Reverse the DOM order of the node elements and reload: positions are unchanged." },
+    { "id": "C8", "statement": "Inserting a node leaves existing nodes put, and the design states its placement rule, its density strategy, and its growth ceiling.", "applies_to": ["world", "aggregate", "spacing"], "how_to_check": "Append a node at a free cell and reload; every pre-existing node's computed left/top is unchanged. layout-determinism.json states all three rules." },
+    { "id": "C9", "statement": "No non-structural data change (status, count, new attachment) moves anything.", "applies_to": ["node", "vitals", "minimap"], "how_to_check": "Mutate a node's status, recap and count; diff every node's computed left/top before and after. Nothing moves, and the world-view extent is unchanged." },
+    { "id": "C10", "statement": "Every focus change travels -- nothing fades, pops, or teleports.", "applies_to": ["traversal", "motion-and-scale"], "how_to_check": "Sample the camera transform each frame during a hop: more than two distinct positions are sampled and the first equals the pre-hop camera." },
+    { "id": "C11", "statement": "Every transition carries direction, scale, and ownership -- and the camera follows the edge's own path.", "applies_to": ["traversal", "edge", "motion-and-scale"], "how_to_check": "Sample the camera centre each frame and assert every sample lies on the polyline of the route's real edges within one pixel." },
+    { "id": "C12", "statement": "With the text blurred on a frozen frame, the hierarchy is still readable from scale alone, on the 100/75/55/30/18-25 ladder.", "applies_to": ["node", "typography", "motion-and-scale"], "how_to_check": "Apply a 6px blur to the plane and screenshot: the four rank widths remain four distinguishable sizes and the kind graduation on each card head is still separable by length." },
+    { "id": "C13", "statement": "Under prefers-reduced-motion, direction is still shown and the you-are-here still updated -- with no transition replaced by an abrupt swap.", "applies_to": ["traversal", "accessibility", "motion-and-scale"], "how_to_check": "Set data-motion=\"reduced\" and hop: the trail along the real edges is drawn and held, and both the world-view marker and its accessible label have moved." },
+    { "id": "C14", "statement": "A user can tell navigation from mutation before activating it, from form alone.", "applies_to": ["action-rail", "navigate-to", "interaction-and-cursors", "iconography"], "how_to_check": "Screenshot every affordance with its text masked: each is either a filled stake (mutation) or an outlined chip with a caret (traversal), and no third form exists outside the camera cluster." },
+    { "id": "C15", "statement": "No mutating affordance moves the camera, no navigation affordance changes data, and no dialog contains a traversal.", "applies_to": ["action-rail", "navigate-to", "interaction-and-cursors"], "how_to_check": "Activate every stake and assert the camera transform is identical afterwards. Activate every chip and assert no record field changed. Assert no element inside a dialog calls RZ.go." },
+    { "id": "C16", "statement": "There is exactly one focal point, it owns the camera, and the camera never moves without a user-attributable reason.", "applies_to": ["world", "focus-panel"], "how_to_check": "Assert exactly one element carries data-focus=\"true\". Idle the page 60s and assert the camera transform is unchanged." },
+    { "id": "C17", "statement": "Nothing other than the focused node's body scrolls.", "applies_to": ["node", "world", "chrome"], "how_to_check": "For every element in the document assert scrollHeight > clientHeight holds only for the focused node's body, and that document.body has no scrollbar." },
+    { "id": "C18", "statement": "Every edge can be traversed by keyboard, following the graph rather than DOM order -- and a screen reader can announce the focus and its connections.", "applies_to": ["accessibility", "traversal"], "how_to_check": "For each neighbour of the focus assert some arrow direction proposes it and that the choice is computed from neighbour positions, not document order. Assert the live-region text after a hop names origin, crossings and new degree." },
+    { "id": "C19", "statement": "The focused node answers all four questions without further navigation.", "applies_to": ["node", "focus-panel", "vitals"], "how_to_check": "On the focused card locate a block answering each of: what is this, what state is it in, what can I do here, where can I go from here -- all present in the card and its two adjacent chrome panels without a hop." },
+    { "id": "C20", "statement": "Leaving to settings runs the exit choreography -- camera out, app shrinks to a floating card, panel beside it -- rather than a centred modal over a blur.", "applies_to": ["settings-exit"], "how_to_check": "Open settings and assert the shell carries transform scale(0.42) translateX(-25%), the settings panel is a sibling on the same plane at the same depth, and no role=dialog or backdrop-filter overlay exists." },
+    { "id": "C21", "statement": "Search and notification arrivals show the distance being crossed rather than cutting to the destination.", "applies_to": ["arrivals", "chrome"], "how_to_check": "Trigger a search arrival and a notification arrival: both announce the hop count first and both drive the same RZ.travel path as a card click. Instrument RZ.travel to prove one code path." },
+    { "id": "C22", "statement": "At >=10s the geography holds, with per-node loading in place and no repositioning as nodes resolve.", "applies_to": ["degradation"], "how_to_check": "Set data-speed=\"slow\" and diff every node's computed left/top before and after: nothing moves, no global overlay exists, and each unresolved node carries its own skeleton at the real row heights." },
+    { "id": "C23", "statement": "On a partial graph, unloaded regions are drawn as explicitly unknown -- distinguishable from \"loaded and empty\" -- with traversal into them allowed and never dead-ending.", "applies_to": ["degradation", "aggregate"], "how_to_check": "Assert an unknown node and an empty node are both present and materially different, that the unknown node offers a real fetch control, and that RZ.go into it succeeds." },
+    { "id": "C24", "statement": "Offline, the last-known world is navigable, staleness is honest per node, mutations are explicitly refused or queued, and geography stays put.", "applies_to": ["degradation"], "how_to_check": "Set data-net=\"offline\": every hop still works, at least two nodes state DIFFERENT staleness in their own words, every stake is visibly refused or announces itself queued, and no node moved." },
+    { "id": "C25", "statement": "On failure the error is a state inside the node, with retry in place and the camera undisturbed.", "applies_to": ["degradation", "node"], "how_to_check": "Put a node into the error state: the fact, the time, the fate of the user's data, a retry and a second way through are all inside that node's body, and the camera transform is unchanged." },
+    { "id": "C26", "statement": "Day zero reads as a world with room in it, with the first node landing in a place it will keep.", "applies_to": ["day-zero"], "how_to_check": "Render the empty garden: the lattice shows free cells around the single node, and that node's cell equals the cell it still holds after twelve plants are added." }
+  ],
+
+  "laws": [
+    { "id": "L1", "name": "Chrome is a register, not a layer", "invariants": ["C5", "C14", "C16", "C17"], "carried_by": ["chrome", "elevation"] },
+    { "id": "L2", "name": "Mutation and traversal are tellable apart before you click", "invariants": ["C14", "C15"], "carried_by": ["action-rail", "navigate-to", "interaction-and-cursors", "iconography"] },
+    { "id": "L3", "name": "Density, once, parameterised", "invariants": ["C8"], "carried_by": ["aggregate", "spacing"] },
+    { "id": "L4", "name": "Rank is computed, and scale carries it", "invariants": ["C3", "C12"], "carried_by": ["node", "typography"] },
+    { "id": "L5", "name": "Kind is a channel", "invariants": ["C12"], "carried_by": ["node", "colors"] },
+    { "id": "L6", "name": "The node is a contract, not a card", "invariants": ["C4", "C17", "C19"], "carried_by": ["node", "focus-panel"] },
+    { "id": "L7", "name": "The edge list is the single source of truth", "invariants": ["C1", "C3", "C6"], "carried_by": ["edge", "world"] },
+    { "id": "L8", "name": "Travel", "invariants": ["C10", "C11", "C13", "C21"], "carried_by": ["traversal", "arrivals", "motion"] },
+    { "id": "L9", "name": "The board pans, the node reads", "invariants": ["C15", "C16", "C17"], "carried_by": ["interaction-and-cursors", "world"] },
+    { "id": "L10", "name": "Layout is derived and deterministic", "invariants": ["C7", "C8", "C9"], "carried_by": ["spacing", "world"] },
+    { "id": "L11", "name": "The background belongs to the surface it decorates", "invariants": ["C9", "C20"], "carried_by": ["elevation", "world"] },
+    { "id": "L12", "name": "Leaving the app is a choreography, not a modal", "invariants": ["C20"], "carried_by": ["settings-exit"] },
+    { "id": "L13", "name": "Palettes switch live", "invariants": [], "carried_by": ["colors"] },
+    { "id": "L14", "name": "Degradation is material on the board, and the geography never degrades", "invariants": ["C22", "C23", "C24", "C25"], "carried_by": ["degradation"] },
+    { "id": "L15", "name": "A reviewer must be able to walk the states", "invariants": ["C22", "C23", "C24", "C25"], "carried_by": ["degradation", "chrome"] },
+    { "id": "L16", "name": "Arrange is a mode", "invariants": ["C9", "C15", "C16"], "carried_by": ["arrange-mode", "minimap"] },
+    { "id": "L17", "name": "Accessibility is behaviour", "invariants": ["C13", "C18"], "carried_by": ["accessibility"] }
+  ],
+
+  "amendments": {
+    "policy": "A theme round MAY add a token family or a primitive under a named amendment and MUST record it in register[] below. It may not remove or re-key an existing semantic token, and it may not change a parameter above without an owner ruling. A page-writing agent modifies nothing else under assets/.",
+    "entry_shape": { "id": "A<n>", "round": "<round or batch>", "adds": ["--rz-…"], "reason": "<why the existing vocabulary could not carry it>", "files": ["assets/tokens.css"] },
+    "register": [
+      {
+        "id": "A1",
+        "round": "batch 1 — components/world.html",
+        "adds": [".doc-specimen__stage[data-stage=\"world\"] { transform: translate(0) }"],
+        "reason": "Chrome is position: fixed by contract (L1: it sits flush to a VIEWPORT edge and never moves with the camera). A documentation stage is not a viewport, so an assembled specimen — the world with its whole chrome register around it — had no way to hold its own chrome. The existing vocabulary could not carry it: no class in system.css or docs.css established a containing block, and the alternatives were worse (putting chrome inside .rz-plane would make it move with the camera, and data-mode=\"overview\" would run the settings-exit choreography on a docs page). The transform establishes a containing block for fixed descendants and moves nothing.",
+        "files": ["assets/docs.css"]
+      }
+    ]
+  },
+
+  "pages": {
+    "foundations": ["colors", "spacing", "typography", "elevation", "motion", "iconography"],
+    "components": ["world", "node", "edge", "aggregate", "chrome", "focus-panel", "minimap", "navigate-to", "action-rail", "vitals", "treatment-course"],
+    "patterns": ["traversal", "arrivals", "degradation", "arrange-mode", "settings-exit", "day-zero"],
+    "guidelines": ["interaction-and-cursors", "motion-and-scale", "voice-and-copy", "accessibility", "extending-this-system"]
+  }
+}

@@ -7,8 +7,8 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { DashboardService } from '../../services/dashboard.service';
 import { CareType, DashboardResponse, RecentScanDto, ReminderSummaryDto } from '../../models/dashboard.model';
-import { AuthService } from '../../../../core/services/auth.service';
-import { UserService } from '../../../../core/services/user.service';
+import { AuthService } from '@plantpal/shared-core';
+import { UserService } from '@plantpal/shared-core';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
@@ -28,10 +28,11 @@ const CARE_ICONS: Record<CareType, string> = {
 };
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-home',
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class HomeComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

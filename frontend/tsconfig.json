@@ -13,17 +13,43 @@
     "declaration": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
-    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "paths": {
+      "@plantpal/shared-core": [
+        "./projects/shared-core/src/public-api.ts"
+      ],
+      "@plantpal/rhizome-engine": [
+        "./projects/rhizome-engine/src/public-api.ts"
+      ]
+    },
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
     "useDefineForClassFields": false,
-    "lib": ["ES2022", "dom"]
+    "lib": [
+      "ES2022",
+      "dom"
+    ]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "strictTemplates": true
-  }
+  },
+  "references": [
+    {
+      "path": "./projects/atlas/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/atlas/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/shared-core/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/shared-core/tsconfig.spec.json"
+    }
+  ]
 }

@@ -3,8 +3,8 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { UserService } from '../../../core/services/user.service';
-import { ReasoningModelPreference, VisionModelPreference } from '../../../core/models/user.model';
+import { UserService } from '@plantpal/shared-core';
+import { ReasoningModelPreference, VisionModelPreference } from '@plantpal/shared-core';
 
 interface ModelOption<T extends string> {
   value: T;
@@ -33,9 +33,10 @@ const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
 ];
 
 @Component({
-  selector: 'app-model-selector',
-  templateUrl: './model-selector.component.html',
-  styleUrls: ['./model-selector.component.scss'],
+    selector: 'app-model-selector',
+    templateUrl: './model-selector.component.html',
+    styleUrls: ['./model-selector.component.scss'],
+    standalone: false
 })
 export class ModelSelectorComponent implements OnInit, OnDestroy {
   readonly visionOptions = VISION_OPTIONS;

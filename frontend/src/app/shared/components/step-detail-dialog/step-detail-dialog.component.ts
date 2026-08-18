@@ -9,9 +9,10 @@ export interface StepDetailDialogData {
 }
 
 @Component({
-  selector: 'app-step-detail-dialog',
-  templateUrl: './step-detail-dialog.component.html',
-  styleUrls: ['./step-detail-dialog.component.scss'],
+    selector: 'app-step-detail-dialog',
+    templateUrl: './step-detail-dialog.component.html',
+    styleUrls: ['./step-detail-dialog.component.scss'],
+    standalone: false
 })
 export class StepDetailDialogComponent {
   readonly detailList: ParsedDetail | null;

@@ -11,9 +11,10 @@ import { parseDetailAsList, ParsedDetail } from '../../../../shared/utils/detail
 type PageState = 'loading' | 'ready' | 'error';
 
 @Component({
-  selector: 'app-task-step',
-  templateUrl: './task-step.component.html',
-  styleUrls: ['./task-step.component.scss'],
+    selector: 'app-task-step',
+    templateUrl: './task-step.component.html',
+    styleUrls: ['./task-step.component.scss'],
+    standalone: false
 })
 export class TaskStepComponent implements OnInit, OnDestroy {
   state: PageState = 'loading';

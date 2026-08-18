@@ -5,9 +5,10 @@ import { Component, Input } from '@angular/core';
 // block must surface as an EXPLICIT state — never a spinner, never a generic error. Rendered inline
 // in the chat thread (compact) and as the identification detail terminal state (full).
 @Component({
-  selector: 'app-ai-block-notice',
-  templateUrl: './ai-block-notice.component.html',
-  styleUrls: ['./ai-block-notice.component.scss'],
+    selector: 'app-ai-block-notice',
+    templateUrl: './ai-block-notice.component.html',
+    styleUrls: ['./ai-block-notice.component.scss'],
+    standalone: false
 })
 export class AiBlockNoticeComponent {
   // The block reason from the backend when present (e.g. the gateway's BlockedResponse.reason).

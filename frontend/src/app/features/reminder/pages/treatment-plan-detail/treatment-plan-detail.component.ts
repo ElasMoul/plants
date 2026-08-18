@@ -9,9 +9,10 @@ import { TreatmentPlanResponse } from '../../models/treatment-plan.model';
 type PageState = 'loading' | 'ready' | 'error';
 
 @Component({
-  selector: 'app-treatment-plan-detail',
-  templateUrl: './treatment-plan-detail.component.html',
-  styleUrls: ['./treatment-plan-detail.component.scss'],
+    selector: 'app-treatment-plan-detail',
+    templateUrl: './treatment-plan-detail.component.html',
+    styleUrls: ['./treatment-plan-detail.component.scss'],
+    standalone: false
 })
 export class TreatmentPlanDetailComponent implements OnInit, OnDestroy {
   readonly skeletonSteps = [1, 2, 3];

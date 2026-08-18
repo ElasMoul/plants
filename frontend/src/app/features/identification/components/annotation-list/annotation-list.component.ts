@@ -14,9 +14,10 @@ const REGION_LABELS: Record<AnnotationRegionType, string> = {
 };
 
 @Component({
-  selector: 'app-annotation-list',
-  templateUrl: './annotation-list.component.html',
-  styleUrls: ['./annotation-list.component.scss'],
+    selector: 'app-annotation-list',
+    templateUrl: './annotation-list.component.html',
+    styleUrls: ['./annotation-list.component.scss'],
+    standalone: false
 })
 export class AnnotationListComponent {
   @Input() regions: AnnotationRegion[] | null = null;

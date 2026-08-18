@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Day zero · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Patterns</p>
+      <h1 class="doc-title">Day zero</h1>
+      <p class="doc-lede">The garden before there is a garden. This page settles
+        what a brand-new gardener sees on the plane, where their first plant
+        lands, and why that cell is the one it keeps for the life of the
+        record.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Somebody has just installed PlantPal. They own no plants yet, they
+          have written nothing, and nothing has been identified. What they get is
+          not a welcome screen and not a tour: it is their world, on the same
+          plane as everyone else's, with room in it and two or three things
+          already true — the care guides ship with the app, the journal exists
+          and is bare, and the garden itself is a card with a real count of
+          zero.</p>
+        <p>Then they add a plant. It lands in a cell chosen by the insertion
+          rule, and that is the last time anything decides where it goes. Twelve
+          plants later, a species arriving, a problem opening, a photo attaching,
+          a slow afternoon: none of them move it. Day zero is a screen most
+          gardeners see once, and it is the moment their whole spatial memory of
+          this app gets founded — which is why it is worth the care.</p>
+        <p>This page owns first run and first placement. The source it is written
+          from is <a href="../layout-determinism.json">layout-determinism.json</a>
+          — its <code>insertion_rule.day_zero</code> and its free-cell search are
+          the record; where this page and that file could differ, the file wins.</p>
+        <div class="doc-note">
+          <p>What this page does <em>not</em> own: the materials that empty and
+            unknown wear, and the difference between them, belong to
+            <a href="degradation.html">degradation</a>; the placement formula and
+            the lattice geometry to
+            <a href="../foundations/spacing.html">spacing</a>; the bound on how
+            many members of a collection are ever drawn to
+            <a href="../components/aggregate.html">aggregate</a>; the 300ms a hop
+            takes, from any trigger, to <a href="traversal.html">traversal</a>.
+            Day zero adds no exception to any of them — a world of three cards is
+            governed exactly as a world of thirty.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C4, C2</span></p>
+          <p class="doc-law__statement">First run happens inside the world, never
+            on a surface laid over it or routed to. There is no onboarding
+            screen, no wizard, no tour, no dialog: “Nothing is replaced,
+            unmounted, or routed to — every navigation is a rescale.” Anything a
+            new gardener needs to be told is told in the card it applies to, and
+            the first hop they take is an ordinary hop.</p>
+          <p class="doc-check">Load the day-zero board and complete the first
+            add. Assert <code>document.querySelector("[role=dialog]")</code> is
+            <code>null</code>, that <code>location.href</code> and
+            <code>history.length</code> never change, and that the element set on
+            <code>.rz-plane</code> before and after the first hop contains the
+            identical objects.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C26, C7</span></p>
+          <p class="doc-law__statement">The first plant lands in a place it will
+            keep: “Day zero reads as a world with room in it, with the first node
+            landing in a place it will keep.” Its cell is written onto the record
+            the moment it is added, by the free-cell search, and read back on
+            every load. Nothing later re-derives it, re-balances around it, or
+            renumbers it.</p>
+          <p class="doc-check">Add the first plant, note its
+            <code>data-cell</code>, then add twelve more and reload. That cell is
+            unchanged, and so is the computed <code>left</code>/<code>top</code>
+            of every card that was already on the board. Load the day-zero board
+            twice and diff the computed positions: the diff is empty.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C26, C8</span></p>
+          <p class="doc-law__statement">The room is drawn, not implied. A garden
+            with one card in it is still laid out on the whole lattice, with free
+            cells visibly around it and the world view showing the extent the
+            garden will grow into — so the first impression is a place with space
+            in it rather than a failure to have data.</p>
+          <p class="doc-check">With one card placed, assert
+            <code>RZ.extent()</code> spans the full lattice — origin plus
+            <code>cols × pitch_x</code> by <code>rows × pitch_y</code> — and not
+            merely the bounding box of what is drawn, and that
+            <code>RZ.freeCell(2)</code> returns a cell inside it. Zoom to fit:
+            more of the board is empty than occupied.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C23</span></p>
+          <p class="doc-law__statement">A new garden is loaded-and-empty, and it
+            must be dressed as such. Day zero may never borrow the unknown
+            material to look busier or softer: PlantPal has looked, and there is
+            nothing, and that is a different sentence from “we have not fetched
+            this”. Which materials those two are is settled by
+            <a href="degradation.html">degradation</a>; what this law forbids is
+            using the wrong one here.</p>
+          <p class="doc-check">On the day-zero board assert no element carries
+            <code>data-state="unknown"</code> and no vein carries
+            <code>data-unknown="true"</code>, while the bare cards carry
+            <code>data-state="empty"</code>. Assert each empty card states, in
+            words, that it knows there is nothing.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C26, C9</span></p>
+          <p class="doc-law__statement">Nothing stands on the board that the
+            gardener does not own. No sample plants, no greyed-out demo fig, no
+            placeholder species, and no padded count: a card on the plane is a
+            claim that a record exists, and a zero is printed as zero. A first
+            minute spent deleting a plant somebody never bought is worse than an
+            honest bare shelf.</p>
+          <p class="doc-check">For every <code>.rz-n</code> on the day-zero board
+            assert a real record id and that its printed recap count equals the
+            length of the collection it stands for. Assert no card carries a
+            sample, demo or placeholder flag, and that
+            <code>RZ.degree(id)</code> equals the number printed anywhere that
+            names it.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The day-zero board</h2>
+        <p>Three cards, two veins, and a lot of room. <em>My garden</em> is the
+          focus and it says nothing is here yet; <em>Journal</em> is loaded and
+          bare; <em>Care guides</em> ships with the app and is already whole, so
+          even on the first morning there is somewhere real to go. Travel to the
+          guides and back — a one-plant world is small, not flat, and it hops the
+          same way every world does.</p>
+        <p>Be honest about the shape of this: on day zero the graph is a couple
+          of edges and does not yet look like the dense, cross-linked garden the
+          rest of this system is drawn for. That is the one moment it is true,
+          and pretending otherwise by drawing veins to things that do not exist
+          would be the worse mistake.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="A brand-new garden: nothing planted yet, the journal bare, the care guides already whole. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-state="empty"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="No plants yet">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">No plants yet
+                    <span class="rz-n__recap-second">· room for everything you
+                      bring home</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>This is your garden, and it is genuinely empty — we
+                          have looked. Add the first plant and we will put it
+                          somewhere it can stay; you will not have to move it
+                          again, and nothing that arrives later will move it for
+                          you.</p>
+                        <p><button type="button" class="rz-stake">Add your first plant</button></p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>If you would rather read first, the
+                          <button type="button" class="rz-chip" data-rz-goto="n-guides">Care guides</button>
+                          came with the app and are whole already.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Fresh — nothing to be out of date about
+                    yet.</p>
+                </article>
+
+                <article class="rz-n" id="n-guides" data-cell="2,0"
+                         data-kind="Guide" data-kind-key="guide"
+                         data-name="Care guides" data-recap="41 guides · all readable offline">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Guide</p>
+                  <h3 class="rz-n__name">Care guides</h3>
+                  <p class="rz-n__recap">41 guides
+                    <span class="rz-n__recap-second">· all readable offline</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Watering, light, repotting, the common troubles. These
+                          shipped with PlantPal, so they are real on your first
+                          morning and they stay real on a train with no
+                          signal.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Shipped with the app — nothing to
+                    fetch.</p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="2,2"
+                         data-state="empty"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Journal" data-recap="Nothing written yet">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Journal</h3>
+                  <p class="rz-n__recap">Nothing written yet
+                    <span class="rz-n__recap-second">· a good place to start</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Loaded, and there is nothing in it — which is not the
+                          same as us not having looked. Write the first note and
+                          it will sit here, in this spot, from then on.</p>
+                        <p><button type="button" class="rz-stake">Write the first note</button></p>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="rz-n__stale">Fresh at 09:12.</p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Day one</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">World</span>
+                  <span>Room to grow</span>
+                </p>
+                <svg class="rz-map" id="rz-map" width="208" height="104" role="img">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="7"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+
+              <div class="rz-chrome rz-chrome--gesture">
+                <p>Drag to pan · Alt and wheel to zoom · arrows follow the veins</p>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>A garden on its first morning · room drawn, not implied</span>
+            <span>C26 · C23 · C9</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Press <em>Fit</em> in the camera cluster and read the world view: the
+          extent is the whole lattice, not the bounding box of three cards, so
+          the map a gardener learns on their first morning is the map they keep.
+          Looking around is not navigating — the camera changes neither where you
+          are nor what you own.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-garden",
+  path: ["n-garden"],
+  edges: [
+    ["n-garden", "n-guides"],
+    ["n-garden", "n-journal"]
+  ]
+});</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The first plant</h2>
+        <p>Adding a plant changes data, so it is a stake — a filled form that
+          never moves the camera. Ask for as little as PlantPal can start with: a
+          name the gardener calls it by, and a photo if they have one. Everything
+          else can be learned from the plant later, and the plant is theirs
+          immediately either way.</p>
+        <p>The cell comes from the free-cell search, not from a judgement:
+          <code>RZ.freeCell(2)</code> on the board above finds rows 0 and 2 taken
+          and returns <code>[2, 1]</code>. The plant is written down at that cell
+          and read back from it forever after. Say so to the gardener in the
+          domain's own words — “it will stay on this shelf” — and never as a
+          coordinate.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <article class="rz-n" id="sp-fig" data-cell="2,1"
+                     data-kind="Plant" data-kind-key="plant"
+                     data-name="Office Fig"
+                     data-recap="Just added · settling in"
+                     data-rank="near" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Plant</p>
+              <h3 class="rz-n__name">Office Fig</h3>
+              <p class="rz-n__recap">Just added
+                <span class="rz-n__recap-second">· <span class="rz-binomial">Ficus lyrata</span>, we think</span></p>
+            </article>
+            <article class="rz-n" id="sp-fig-fringe" data-cell="4,1"
+                     data-kind="Plant" data-kind-key="plant"
+                     data-name="Office Fig"
+                     data-recap="Just added"
+                     data-rank="fringe" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Plant</p>
+              <h3 class="rz-n__name">Office Fig</h3>
+              <p class="rz-n__recap">Just added
+                <span class="rz-n__recap-second">· settling in</span></p>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The first plant, at near and at fringe · the same record, the same cell</span>
+            <span>C26 · C12</span>
+          </figcaption>
+        </figure>
+
+        <p>The card is the same contract as every other card in the system — the
+          kind graduation on its head carries plant, its rank carries how far it
+          is from wherever the gardener is standing, and both survive the text
+          being unreadable. A first plant is not a special kind of node; it is the
+          first instance of the ordinary one, owned by
+          <a href="../components/node.html">node</a>.</p>
+
+        <h3 class="doc-h3">What day zero commits to</h3>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The board, and what each card is for</caption>
+            <thead><tr><th>Card</th><th>Cell and state</th><th>What it is, and why it is there on the first morning</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>My garden</td>
+                <td><code>0,1</code> · <code>data-state="empty"</code></td>
+                <td>The focus. A real collection with a real count of zero, and
+                  the one stake worth pressing today.</td>
+              </tr>
+              <tr>
+                <td>Care guides</td>
+                <td><code>2,0</code> · loaded</td>
+                <td>Ships with the app, so the world has somewhere true to
+                  travel before the gardener owns anything.</td>
+              </tr>
+              <tr>
+                <td>Journal</td>
+                <td><code>2,2</code> · <code>data-state="empty"</code></td>
+                <td>Loaded and bare. It proves the board can say “I looked and
+                  there is nothing” without borrowing the unknown material.</td>
+              </tr>
+              <tr>
+                <td>The first plant</td>
+                <td><code>2,1</code> · from <code>RZ.freeCell(2)</code></td>
+                <td>Lands in the lowest free row of the column its relationship
+                  assigns, and holds that cell for the life of the record.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">What a theme fills</h3>
+        <p>Day zero declares no token family of its own — that is the point of
+          it. It is the ordinary node contract with two attributes set, and a
+          theme dresses it by dressing those.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Attributes day zero sets</caption>
+            <thead><tr><th>Attribute</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>data-state</code></td>
+                <td><code>empty</code></td>
+                <td>Loaded, and known to hold nothing. Its material is
+                  <code>--rz-empty</code>, settled by
+                  <a href="degradation.html">degradation</a>.</td>
+              </tr>
+              <tr>
+                <td><code>data-cell</code></td>
+                <td><code>col,row</code></td>
+                <td>Written once by the free-cell search at the moment of adding,
+                  and read back on every load. Never spoken to a gardener.</td>
+              </tr>
+              <tr>
+                <td><code>data-kind-key</code></td>
+                <td><code>plant</code></td>
+                <td>The first plant is an ordinary plant from its first second,
+                  so it carries the kind channel like any other.</td>
+              </tr>
+              <tr>
+                <td><code>data-recap</code></td>
+                <td>“No plants yet”</td>
+                <td>The domain's own words for zero. A count of nothing is still
+                  a count, and it is printed rather than hidden.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Day one — the world grows outward</h2>
+        <p>The second card is where day zero pays off. The fig does not move. The
+          species that arrives once a photo is identified takes its own free cell,
+          a vein is drawn between them before anyone travels it, and the degree
+          printed on the fig goes from zero to one because the degree genuinely
+          changed. The gardener's second visit starts from a landmark they already
+          have.</p>
+        <p>If the first identification is unsure, say so — this is the likeliest
+          one to be wrong, and it is the first thing anyone learns about whether
+          this app tells the truth. The plant is in the garden under the name they
+          gave it either way; nothing waits on the model being certain. The
+          instrument that grades it is
+          <a href="../components/vitals.html">vitals</a>.</p>
+        <pre class="doc-code"><code>// the twelfth plant, and the thirteenth, take free cells —
+// nothing already placed is renumbered or re-flowed:
+RZ.freeCell(2);                  // -&gt; [2, 1]  first plant
+RZ.freeCell(2);                  // -&gt; [2, 3]  next free row, same column
+RZ.nodes["n-fig"].col;           // -&gt; 2       unchanged, forever
+RZ.degree("n-fig");              // -&gt; 1       once the species is real</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>An empty world has to be announced as a place with something to do,
+          not as an absence. Each card's accessible name is built by the runtime
+          from its own kind, name, recap and real degree — “Collection · My garden
+          · No plants yet · 2 veins out” — so a screen-reader user meets the same
+          honest zero a sighted user reads, and never a cell, a row or a lattice
+          coordinate. The world view's label is rewritten on every hop in lockstep
+          with the visible you-are-here, and on day zero it says the same short
+          truth.</p>
+        <p>When the first plant lands, announce it in the polite live region and
+          leave focus where it is. The gardener is still in the form they just
+          used; moving them into the world would be a traversal they did not ask
+          for, and this system never travels without a user-attributable reason.
+          Say what happened and where it went in the domain's words: “Office Fig
+          is in your garden, on the shelf beside your journal.”</p>
+        <p>The one card that exists is reachable by keyboard from its first
+          second, and the arrow keys will find its first neighbour the day it has
+          one — a garden of one is still a graph, walked the same way. A direction
+          with no vein is spoken rather than ignored, so silence never has to be
+          interpreted. Colour carries nothing alone here: empty is a dashed rim, a
+          different fill and a sentence. Logical properties throughout, so nothing
+          points the wrong way in RTL. The full keyboard and announcement contract
+          is <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Every day-zero mistake is a flinch away from the truth: the world is
+          bare, that feels thin, and the temptation is to dress it — with demo
+          plants, with a tour, with a soft “not loaded yet” instead of an honest
+          “nothing here”. Each of those costs the gardener the map they were about
+          to learn.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Draw the empty garden as a named place with a real count of zero
+              and one stake worth pressing, laid out on the full lattice with the
+              room around it visible (Law 3, Law 5, C26).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Fill it with sample plants, even greyed out. A card on the plane
+              claims a record exists, and a demo fig the gardener has to delete is
+              a worse first minute than a bare shelf (C26, C9).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Tell the gardener their plant is going somewhere it will stay, and
+              mean it — the cell is written at the moment of adding and read back
+              on every load (Law 2, C7).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Leave the position to a layout that settles later. A garden that
+              re-arranges itself between visits erases the only map the gardener
+              had, and it breaks two loads' worth of determinism (C7, C8).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say plainly that PlantPal looked and found nothing, in the card
+              that looked, and offer the one thing that would change it
+              (Law 4, C23).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Dress a new garden in the unknown material to soften it. Unknown
+              means we have not fetched this; using it here tells the gardener
+              something is missing when nothing is (C23).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the first run be the world at its smallest scale, with anything
+              worth saying said inside the card it applies to (Law 1, C4).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Route them through a tour or a welcome flow first. It is a surface
+              over the world that has to be left, and everything it teaches has to
+              be re-learned in place anyway (C4, C2).</p>
+          </div>
+        </div>
+
+        <p>Two more, stated as rules. <strong>Never make the first plant wait on
+          identification</strong> — it goes into the garden under the name the
+          gardener gave it, and the species arrives beside it later, or not at
+          all. And <strong>never move the camera on an add</strong>: putting a
+          plant down is a mutation, the view stays where the gardener left it, and
+          they travel to their new plant only if they ask to.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The plane that holds a garden of three cards exactly as it holds one of
+          thirty is <a href="../components/world.html">world</a>; the card contract
+          the first plant fills from its first second is
+          <a href="../components/node.html">node</a>; the vein drawn to the first
+          species before anyone travels it is
+          <a href="../components/edge.html">edge</a>. The stake that adds a plant
+          is <a href="../components/action-rail.html">action rail</a>, the panel
+          that lists the two places a new gardener can go is
+          <a href="../components/navigate-to.html">navigate to</a>, and the map
+          showing all that room is
+          <a href="../components/minimap.html">minimap</a>. A garden that is bare
+          because it has not been fetched — never because it is new — is
+          <a href="degradation.html">degradation</a>; the first unprompted
+          watering reminder is <a href="arrivals.html">arrivals</a>; the hop to
+          the care guides and back is <a href="traversal.html">traversal</a>. The
+          placement formula and the free-cell search live in
+          <a href="../foundations/spacing.html">spacing</a>, the kind channel the
+          first plant wears in
+          <a href="../foundations/colors.html">colors</a>, and the wording of
+          every honest zero on this page in
+          <a href="../guidelines/voice-and-copy.html">voice and copy</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the day-zero board from the runtime. Placement, rank, veins,
+       degree counts and the world-view extent are all the runtime's own; this
+       page re-implements none of them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-garden",
+      path: ["n-garden"],
+      edges: [
+        ["n-garden", "n-guides"],
+        ["n-garden", "n-journal"]
+      ]
+    });
+  </script>
+</body>
+</html>

@@ -8,16 +8,17 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { PlantService } from '../../services/plant.service';
 import { PlantResponse } from '../../models/plant.model';
-import { PageResponse } from '../../../../core/models/api-response.model';
+import { PageResponse } from '@plantpal/shared-core';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';
 
 @Component({
-  selector: 'app-plant-list',
-  templateUrl: './plant-list.component.html',
-  styleUrls: ['./plant-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-plant-list',
+    templateUrl: './plant-list.component.html',
+    styleUrls: ['./plant-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class PlantListComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];

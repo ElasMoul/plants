@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Focus panel · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Focus panel</h1>
+      <p class="doc-lede">The focus panel is not a panel you add — it is the
+        focused card's own body together with the two chrome panels beside it.
+        This page settles the four answers that arrangement owes you, where each
+        one lives, and what happens to them when an answer is not available.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>When you travel to your Office Fig, the fig has four things to tell
+          you: what it is, how it is doing, what you can do about it, and where
+          you can go from here. In Rhizome those four answers are not gathered
+          into one box. They are given by three surfaces that are always
+          together — the focused card in the middle of the world, the
+          <em>Navigate to</em> rail on the end edge, and <em>Actions</em> at the
+          bottom start corner. Read together, that is the focus panel.</p>
+        <p>It is worth saying plainly what this page is <em>not</em> introducing:
+          there is no <code>.rz-focus</code> class, no drawer, no detail sheet
+          and no second scrolling region. The focused card is an ordinary
+          <code>.rz-n</code> with <code>data-focus="true"</code>, and the two
+          panels beside it are ordinary <code>.rz-chrome</code>. What this page
+          owns is the <em>arrangement</em>: which answer lives where, and the
+          rule that all four are present at once.</p>
+        <div class="doc-note">
+          <p>The card itself — its contract, its ranks, its graduation — is
+            <a href="node.html">node</a>. The chrome material the two side panels
+            are cut from is <a href="chrome.html">chrome</a>; the rail's own
+            behaviour is <a href="navigate-to.html">navigate to</a> and the
+            stakes are <a href="action-rail.html">action rail</a>. The
+            instruments that answer “how is it doing” are
+            <a href="vitals.html">vitals</a> and
+            <a href="treatment-course.html">treatment course</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C19</span></p>
+          <p class="doc-law__statement">“The focused node answers all four
+            questions without further navigation.” What is this, what state is it
+            in, what can I do here, where can I go from here — all four are
+            answerable from where the camera has landed, with no hop and no
+            hover.</p>
+          <p class="doc-check">With a focus settled, locate on screen a block
+            answering each of the four. Then instrument <code>RZ.go</code> and
+            read all four aloud: the counter is still at zero. If any answer
+            needs a hop to reach, this law is broken, not deferred.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C19, C14</span></p>
+          <p class="doc-law__statement">Each answer has exactly one home. Identity
+            and state are inside the card; what you can do is in Actions; where
+            you can go is in Navigate to. No answer is given twice on the
+            surface, and none is split across two of the three.</p>
+          <p class="doc-check">For each of the four answers, count the elements
+            on the surface that give it: exactly one. Then assert no
+            <code>.rz-stake</code> and no <code>.rz-chip</code> exists inside
+            <code>.rz-chrome</code>, and that the focused card contains no
+            standing list of its own neighbours — the rail is the only place that
+            list appears.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C16</span></p>
+          <p class="doc-law__statement">There is one focus panel because “there is
+            exactly one focal point, it owns the camera, and the camera never
+            moves without a user-attributable reason.” The two side panels are
+            re-addressed to the new focus on every hop; they are never duplicated,
+            stacked or opened for a second node.</p>
+          <p class="doc-check">Assert exactly one element carries
+            <code>data-focus="true"</code>, and that
+            <code>#rz-actions-scope</code> names that node and no other. Hop, and
+            assert both panels re-address in the same frame as the rank change.
+            Idle the page 60 seconds: the camera transform is unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C19, C24</span></p>
+          <p class="doc-law__statement">An answer the system does not have is
+            still given, in its own place, in that node's own words. A missing
+            answer is written as missing — never omitted, never faded, never left
+            for the user to infer from a gap.</p>
+          <p class="doc-check">Set <code>data-net="offline"</code> and hop. All
+            four answers are still present: the state answer now states its own
+            staleness in words, and every stake in Actions is visibly refused or
+            announces itself queued. Count the blocks again — still four, none
+            removed.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+        <p>The assembled thing, running. The Office Fig has the camera; its card
+          gives the first two answers, the rail on the end edge gives the fourth,
+          and Actions at the start corner gives the third. Travel to another card
+          and watch all three re-address together — nothing opens, nothing is
+          added, and the fig stays where it is.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="A focused card with its Navigate to and Actions panels. Click a card to travel; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-office" data-cell="2,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig"
+                         data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__skel">
+                    <div class="rz-skel">
+                      <div class="rz-skel__row" data-w="short"></div>
+                      <div class="rz-skel__row"></div>
+                      <div class="rz-skel__row" data-w="mid"></div>
+                    </div>
+                  </div>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>12 days ago, by you</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Light</span>
+                          <span>Bright, indirect — the north window</span>
+                        </div>
+                        <p class="rz-n__stale">Read before you went offline, about
+                          an hour ago. Have a look at the pot yourself before you
+                          water.</p>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The lower leaves have been dropping since the radiator
+                          came on. We are not certain this is thirst — if you
+                          want, read
+                          <button type="button" class="rz-chip" data-rz-goto="n-rot">Root rot</button>
+                          and compare it with what you are seeing.</p>
+                      </div>
+                      <div class="rz-n__section rz-n__well">
+                        <p class="rz-label">In your care</p>
+                        <p>Two years this spring. Repotted last May, moved away
+                          from the radiator in March, happier since.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-rot" data-cell="4,1"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Root rot" data-recap="Active on 1 plant · step 2 of 4">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Root rot</h3>
+                  <p class="rz-n__recap">Active on 1 plant
+                    <span class="rz-n__recap-second">· treatment at step 2 of 4</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Roots sitting wet too long. It is treatable if you catch
+                          it early, and the Studio Fig is two steps into its
+                          course.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="2,0"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="Repotting, 4 May" data-recap="2 photos · written by you">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">Repotting, 4 May</h3>
+                  <p class="rz-n__recap">2 photos
+                    <span class="rz-n__recap-second">· written by you</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The four answers, given by three surfaces at once</span>
+            <span>C14 · C16 · C19</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Nothing above is re-implemented. The Navigate-to rows and the degree
+          beside them come from the same edge list the veins are drawn from, and
+          the Actions rows come from the actions register keyed by node — which
+          is why the rail can never offer a hop the world cannot draw, and why
+          Actions can never be scoped to a node that is not the focus.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-office", "n-rot"],
+    ["n-office", "n-journal"],
+    ["n-garden", "n-journal"]
+  ],
+  actions: {
+    "n-office": ["Log a watering", "Start a treatment", "Move to another room"],
+    "n-rot":    ["Start a treatment course"],
+    "n-garden": ["Add a plant"]
+  }
+});</code></pre>
+
+        <p>And the state answer on its own, out of the world — the block that
+          carries “how is it doing”. Under an honest reading it says the health
+          and the last watering; under Law 4 it also says what it could not
+          check.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <div class="rz-vitals">
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Health</span>
+                <span class="rz-health" data-health="watch">Wants water</span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">Identification</span>
+                <span class="rz-conf" data-conf="low">
+                  <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                </span>
+              </div>
+              <div class="rz-vital-row">
+                <span class="rz-vital-row__key">We think</span>
+                <span>A fiddle-leaf fig, but the leaves in your photo are cut off.
+                  We are not sure enough to say for certain — a photo of a whole
+                  leaf would settle it.</span>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The state answer, saying what it does not know</span>
+            <span>C19</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The four answers, and where each lives</h2>
+        <p>This is the table to check a surface against. If you cannot fill a
+          row, the panel is incomplete — and the honest fix is to write the
+          missing answer, not to move another one to cover the gap.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The four answers (Law 1, Law 2)</caption>
+            <thead><tr><th>The question</th><th>Where it is answered</th><th>What that looks like</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>What is this?</td>
+                <td>The focused card's head — <code>.rz-n__kind</code>,
+                  <code>.rz-n__name</code>, <code>.rz-n__grad</code></td>
+                <td>The kind in words, the name you gave it at the top rung, and
+                  the binomial in <code>.rz-binomial</code> beneath — never above,
+                  and never the only name shown.</td>
+              </tr>
+              <tr>
+                <td>What state is it in?</td>
+                <td>The card's first <code>.rz-n__section</code> —
+                  <code>.rz-vitals</code>, and <code>.rz-n__stale</code> when a
+                  reading is old</td>
+                <td>Health as a word beside its dot, the facts a user would ask
+                  for, and confidence stated rather than implied. The instruments
+                  are <a href="vitals.html">vitals</a>.</td>
+              </tr>
+              <tr>
+                <td>What can I do here?</td>
+                <td>The Actions panel — <code>.rz-chrome--actions</code>, scoped by
+                  <code>#rz-actions-scope</code></td>
+                <td>One row per mutation, each a <code>.rz-chrome__item</code> with
+                  <code>data-means="mutate"</code>. Scoped to the focus by name, so
+                  it is never ambiguous whose garden is about to change.</td>
+              </tr>
+              <tr>
+                <td>Where can I go from here?</td>
+                <td>The Navigate-to panel — <code>.rz-chrome--rail</code>, with its
+                  degree in <code>#rz-navto-degree</code></td>
+                <td>One row per real neighbour, each with
+                  <code>data-means="travel"</code> and that neighbour's own recap
+                  underneath. Generated from adjacency, so it cannot drift.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What the runtime fills</caption>
+            <thead><tr><th>Hook</th><th>Filled by</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>#rz-navto-body</code></td>
+                <td><code>RZ.redrawChrome()</code></td>
+                <td>One row per entry in <code>RZ.adj[RZ.focus]</code>. You write
+                  the empty container; writing a row by hand is how a rail comes to
+                  offer a hop that does not exist.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-navto-degree</code></td>
+                <td><code>RZ.redrawChrome()</code></td>
+                <td>“3 veins”, from the same adjacency. The same number the card's
+                  own accessible label speaks.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-actions-body</code> ·
+                  <code>#rz-actions-scope</code></td>
+                <td><code>RZ.ACTIONS[RZ.focus]</code></td>
+                <td>The mutations declared for this node, and the node's name
+                  beside the heading. Offline, each row refuses or queues itself in
+                  words.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-here</code></td>
+                <td><code>RZ.redrawChrome()</code></td>
+                <td>The path you took, as the top bar's centre column. It is
+                  <a href="chrome.html">chrome</a>'s, not this panel's — but it is
+                  the fifth thing a reader glances at, so it is listed here for
+                  completeness.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-cam-k</code></td>
+                <td><code>RZ.applyCam()</code></td>
+                <td>The live camera scale, published to CSS. The card's body cap is
+                  written against it, so the panel offers the same amount of
+                  reading at any zoom.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>This page added no class and no token: everything above already
+          existed in <code>system.css</code> and <code>tokens.css</code>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Arriving</h3>
+        <p>The card expands where it stands and the two side panels re-address in
+          the same pass. While the camera is still crossing, the destination shows
+          a skeleton at the real row heights and the rail already lists the
+          neighbours you are arriving among — so by the time the camera lands, the
+          fourth answer has been readable for the whole 300ms. The hop itself is
+          <a href="../patterns/traversal.html">traversal</a>.</p>
+
+        <h3 class="doc-h3">Reading</h3>
+        <p>The card's body is the one scrolling region, under a bare wheel. The
+          two chrome panels do not scroll with it and do not move with the camera:
+          they are welded to their edges. So the answers stay in the same two
+          places on the screen no matter where in the world you have wandered,
+          which is what makes them findable without looking for them.</p>
+
+        <h3 class="doc-h3">Acting</h3>
+        <p>A stake in Actions changes your data and moves the camera not at all; a
+          row in Navigate to travels and changes no data. That separation is
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>' law, and this page's job is only to keep the two on
+          different edges so a hand reaching for one cannot land on the other.</p>
+
+        <h3 class="doc-h3">Changing in place</h3>
+        <p>A watering logged, a health turning, a photo attached, a neighbour
+          arriving: the answer updates where it stands. Nothing re-renders, no
+          answer reflows, and no card moves — a non-structural change is not a
+          structural one. If a genuinely new neighbour appears, the rail gains a
+          row and the degree beside it goes up by one, because both are read from
+          the same list.</p>
+
+        <h3 class="doc-h3">When an answer is missing</h3>
+        <p>Say so, in the answer's own place. A reading you could not refresh
+          states its age in the node's own words; an identification you are unsure
+          of states its confidence; a mutation you cannot perform right now says
+          it is queued. What the panel must never do is quietly show yesterday's
+          number as today's — the user is deciding whether to water a plant on it.
+          The materials for each state are
+          <a href="../patterns/degradation.html">degradation</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>The four answers must be four answers to a screen-reader user too. The
+          focused card is a group whose label the runtime rewrites on every hop —
+          its kind, its name, its recap, how many veins lead out, and “you are
+          here” — so the first and fourth answers arrive on arrival, before the
+          user has walked anything. That label never speaks a cell, a row or a
+          column.</p>
+        <p>The number in the rail's heading and the number in the card's label
+          come from the same adjacency, so a screen-reader user and a sighted user
+          are never told two different degrees. If you find yourself typing a
+          count into the markup, that is the bug.</p>
+        <p>Both side panels are reachable without a pointer, and the arrow keys
+          propose the neighbour that actually lies that way rather than the next
+          one in the document. A direction with no neighbour is spoken, not
+          silently ignored. That behaviour as a whole is owned by
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+        <p>Colour is never the only carrier of an answer. Health is a word beside
+          its dot; confidence is a word as well as a bar; staleness is a sentence
+          rather than a dimming; a refused stake says it is refused rather than
+          only looking quieter. The whole arrangement uses logical properties, so
+          the rail and Actions swap edges in RTL and nothing points the wrong
+          way.</p>
+        <p>One thing to watch for yourself: because the card's body scrolls and
+          nothing else does, an answer parked below the fold with nothing in the
+          tab order leading to it is an answer the user does not have. Read the
+          panel with the keyboard alone before you call it finished.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Nearly every mistake here is the same one: gathering the answers into
+          one box because they feel like they belong together. They do belong
+          together — that is why they are all on screen at once — but the moment
+          the destinations move inside the card, the reader loses the one reliable
+          reading of the surface: the middle is <em>here</em>, the edges are
+          <em>elsewhere and what you can do</em>.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the rail list the neighbours and the card describe the plant.
+              If the fig's own prose wants to point at Root rot, write that as a
+              chip inside the sentence — an in-prose hop, on the same timing as
+              every other (Law 2).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Build a “Related” list inside the card. It duplicates the rail,
+              which means it can disagree with it, and a second list of
+              destinations is a second answer to a question that already has
+              one (C19, C14).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give the state answer the room it needs. “Wants water · last
+              watered 12 days ago, by you” is two facts a person can act on, and
+              they earn their place beside the name.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Fold the state behind a control the user has to open. An answer one
+              activation away is an answer the user has to know to ask for, which
+              is exactly what C19 refuses.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say what you could not check, in the place the answer would have
+              been, in the node's own words — “read before you went offline, about
+              an hour ago” (Law 4).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Drop the block, or grey it out and leave the old number showing.
+              A missing answer that looks like a present one is worse than no
+              panel at all (C24).</p>
+          </div>
+        </div>
+
+        <p>Two smaller habits. Keep the head honest: the binomial goes under the
+          name you gave the plant, always, and if there is no nickname yet, say so
+          plainly rather than promoting the Latin. And resist letting the state
+          block grow into everything you know about the plant — it is a short set
+          of answers to questions a person actually asks, and a dozen rows of it
+          is a dashboard, which is the one thing PlantPal is not.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The card at the centre of it is <a href="node.html">node</a>, standing
+          on <a href="world.html">world</a> and joined by
+          <a href="edge.html">edge</a>. The material both side panels are cut from
+          — and the rule that they take no shadow and never move with the camera —
+          is <a href="chrome.html">chrome</a>. The rail's own rows are
+          <a href="navigate-to.html">navigate to</a>; the stakes are
+          <a href="action-rail.html">action rail</a>; the “+N more” card the rail
+          may point at is <a href="aggregate.html">aggregate</a>; and the marker
+          that says where this focus stands in the whole world is
+          <a href="minimap.html">minimap</a>.</p>
+        <p>The instruments inside the state answer are
+          <a href="vitals.html">vitals</a> and
+          <a href="treatment-course.html">treatment course</a>. The hop that
+          re-addresses all three surfaces is
+          <a href="../patterns/traversal.html">traversal</a>, and an arrival from
+          a search or a notification is
+          <a href="../patterns/arrivals.html">arrivals</a>. The states an answer
+          can wear are <a href="../patterns/degradation.html">degradation</a>; the
+          mode where every card opens at once and this arrangement goes inert is
+          <a href="../patterns/arrange-mode.html">arrange mode</a>; the card the
+          whole application becomes is
+          <a href="../patterns/settings-exit.html">settings exit</a>; and the
+          first focus in an empty garden is
+          <a href="../patterns/day-zero.html">day zero</a>.</p>
+        <p>The rung ladder the four answers are set on is
+          <a href="../foundations/typography.html">typography</a>, the two
+          registers' colours are <a href="../foundations/colors.html">colors</a>,
+          the halo the card carries and chrome's lack of one is
+          <a href="../foundations/elevation.html">elevation</a>, the one navigation
+          timing is <a href="../foundations/motion.html">motion</a>, the lattice
+          the card stands on is
+          <a href="../foundations/spacing.html">spacing</a>, and the drawn grammar
+          of the two forms is
+          <a href="../foundations/iconography.html">iconography</a>. How each
+          answer is worded is
+          <a href="../guidelines/voice-and-copy.html">voice and copy</a>, and how
+          to add to any of it is
+          <a href="../guidelines/extending-this-system.html">extending this
+          system</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the assembled specimen from the runtime. The Navigate-to rows and
+       their degree, the Actions rows and their scope, the ranks and the hop are
+       all RZ's; nothing here re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-office", "n-rot"],
+        ["n-office", "n-journal"],
+        ["n-garden", "n-journal"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Start a treatment", "Move to another room"],
+        "n-rot":    ["Start a treatment course"],
+        "n-garden": ["Add a plant"]
+      }
+    });
+  </script>
+</body>
+</html>

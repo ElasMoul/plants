@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Navigate to · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Navigate to</h1>
+      <p class="doc-lede">The destination rail: every place you can reach from
+        where you are standing, written out in words, generated from the same
+        edge list that drew the veins. This page settles what may appear in it,
+        what each entry says, and how it is proved honest.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>You are standing at Office Fig. In a full garden, veins lead out of
+          it to the collection it belongs to, the species it is, the problems it
+          has and the journal you keep about it. Those veins are drawn on the
+          plane, but a
+          vein at fringe scale is a thin line with no name on it, and reading
+          the board is not the only way you should be able to answer <em>where
+          can I go from here</em>. Navigate to answers it in language: one line
+          per vein, each naming the destination and saying in the garden's own
+          words what you would find there.</p>
+        <p>It is a member of the chrome register, so it takes chrome's material
+          and chrome's voice, and it holds neither a stake nor a chip — inside
+          chrome the two meanings become a leading mark. It is not a menu, not a
+          site map and not a history: it is exactly this node's adjacency,
+          rewritten every time you hop.</p>
+        <div class="doc-note">
+          <p>The material, the position and the register rules this panel obeys
+            are owned by <a href="chrome.html">chrome</a>. The veins it lists
+            and their single source of truth are owned by
+            <a href="edge.html">edge</a>. The journey an entry starts — its one
+            timing, its path along the real veins — is owned by
+            <a href="../patterns/traversal.html">traversal</a> and
+            <a href="../foundations/motion.html">motion</a>. This page states
+            only what the rail itself decides.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C1, C3</span></p>
+          <p class="doc-law__statement">The rail is generated, never authored.
+            Its entries are exactly <code>RZ.adj[RZ.focus]</code>, in that
+            order, and the count in its header is that list's length — so it
+            cannot show a destination the board cannot reach, and it cannot
+            disagree with the drawn veins. “On a focus change the surrounding
+            nodes change to that node's own neighbours, every drawn edge is
+            actually traversable, and the neighbour count tracks real degree.”</p>
+          <p class="doc-check">With the specimen mounted, run
+            <code>document.querySelectorAll("#rz-navto-body .rz-chrome__item").length</code>
+            and assert it equals <code>RZ.degree(RZ.focus)</code>, equals the
+            number in <code>#rz-navto-degree</code>, and equals the number of
+            drawn <code>.rz-vein</code> paths touching the focused card. Hop
+            three times and assert all four still agree.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C14, C15</span></p>
+          <p class="doc-law__statement">Every entry travels and nothing in the
+            rail changes data. Each carries the travel mark —
+            <code>data-means="travel"</code> — and there is no second meaning in
+            this panel: a mutation belongs in Actions, and a camera control
+            belongs in the camera cluster.</p>
+          <p class="doc-check">Assert every <code>.rz-chrome__item</code> inside
+            <code>#rz-navto-body</code> has <code>data-means="travel"</code> and
+            none has <code>data-means="mutate"</code>. Activate each one and
+            assert no record field changed. Assert no <code>.rz-stake</code> and
+            no <code>.rz-chip</code> exists anywhere inside
+            <code>.rz-chrome--rail</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C2</span></p>
+          <p class="doc-law__statement">The rail is how you get back. Because it
+            is the real adjacency, the node you just came from is in it whenever
+            a vein joins the two — so returning is a hop like any other and
+            never a back button. “After any hop, the origin is still on screen
+            or exactly one visible hop back — with no reliance on a history
+            stack or browser back.”</p>
+          <p class="doc-check">Note the focus, hop to a neighbour, and assert
+            the previous focus is named by one of the rail's entries. Assert
+            <code>history.length</code> is unchanged by the hop.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C19</span></p>
+          <p class="doc-law__statement">Every entry says where it goes
+            <em>and</em> what is there. The destination's own recap sits under
+            its name, so the fourth question — where can I go from here — is
+            answered without a hop, and you never travel to find out whether it
+            was worth travelling.</p>
+          <p class="doc-check">For every entry assert it contains a
+            <code>&lt;small&gt;</code> whose text equals
+            <code>RZ.nodes[id].recap</code> for that destination, and that the
+            text is non-empty. Read the rail with the plane hidden: each line
+            still names a place and states its condition.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C23</span></p>
+          <p class="doc-law__statement">A destination that has not been fetched
+            is listed and labelled, not hidden. Its second line reads “not
+            fetched yet” instead of a recap, and travelling into it still
+            succeeds — an unknown place is a place you may go, and a rail that
+            quietly drops it teaches the map to lie.</p>
+          <p class="doc-check">Mark a neighbour unknown and redraw: it is still
+            listed, its second line reads “not fetched yet” rather than a
+            fabricated recap, the degree count still includes it, and
+            <code>RZ.go</code> into it succeeds.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The rail, running</h2>
+        <p>The same garden, at the same cells, as everywhere else in this
+          system. The rail on the right is not written into this page: it is
+          drawn by <code>RZ.redrawChrome()</code> from the edge list below.
+          Click an entry, or click a card, or press an arrow key — all three
+          reach the destination the same way and take the same time.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world. Use Navigate to, or the arrow keys, to follow a vein.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section">
+                        <p>Two veins lead out of this plant here, and the rail
+                          beside the board names both. You can also leave from
+                          inside this text: the lower leaves have been
+                          dropping since the radiator came on, which may belong
+                          with
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>.</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-garden-more" data-cell="2,4"
+                         data-aggregate="true"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="10 more plants" data-recap="Opens the full list">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name"><span class="rz-n__count">+10</span> more plants</h3>
+                  <p class="rz-n__recap">Opens the full list</p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Navigate to, generated from the edge list beside Actions</span>
+            <span>C1 · C2 · C3 · C14 · C19</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Hop once and watch the header: the count changes because the
+          adjacency changed, not because anyone wrote a new number. Nothing in
+          the rail is a route — the click calls the one hop path, and the camera
+          travels the vein you can see.</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-garden", "n-garden-more"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ]
+});</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The shell a page provides</h2>
+        <p>A surface hands the rail three things and nothing else: the panel, a
+          header with a title and a place to print the degree, and an empty
+          body. The entries are the runtime's to write. A page that hand-writes
+          an entry has forked the edge list, and Law 1 stops being checkable.</p>
+
+        <pre class="doc-code"><code>&lt;div class="rz-chrome rz-chrome--rail"&gt;
+  &lt;p class="rz-chrome__head"&gt;
+    &lt;span class="rz-chrome__title"&gt;Navigate to&lt;/span&gt;
+    &lt;span id="rz-navto-degree"&gt;&lt;/span&gt;
+  &lt;/p&gt;
+  &lt;div id="rz-navto-body"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+        <p>And this is the shape the runtime writes into it, one per vein —
+          shown so you can recognise it, not so you can author it:</p>
+
+        <pre class="doc-code"><code>&lt;button type="button" class="rz-chrome__item" data-means="travel"&gt;
+  Problems
+  &lt;small&gt;3 active · all three drawn&lt;/small&gt;
+&lt;/button&gt;</code></pre>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The parts, and who fills them</caption>
+            <thead><tr><th>Part</th><th>Where it comes from</th><th>What it means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-chrome--rail</code></td>
+                <td>The page, once.</td>
+                <td>The panel itself: flush to the end edge, bleeding off it,
+                  below the top bar. Chrome material throughout — no shadow, one
+                  rung, tracked wide.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__title</code></td>
+                <td>The page, once.</td>
+                <td>The words “Navigate to”. It is labelled as what it does,
+                  because a panel named after its shape teaches nothing.</td>
+              </tr>
+              <tr>
+                <td><code>#rz-navto-degree</code></td>
+                <td><code>RZ.adj[RZ.focus].length</code>, on every hop.</td>
+                <td>“4 veins”, or “1 vein”. The real degree, in the domain's own
+                  word — never a badge, never a truncated “+more”.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome__item</code></td>
+                <td><code>RZ.redrawChrome()</code>, one per neighbour.</td>
+                <td>One vein out. A button, not a link: nothing here is a
+                  destination the browser knows about.</td>
+              </tr>
+              <tr>
+                <td><code>data-means="travel"</code></td>
+                <td>Set by the runtime on every entry.</td>
+                <td>The leading arrow mark. Chrome's form of “this travels”, as
+                  a filled square is chrome's form of “this changes data”.</td>
+              </tr>
+              <tr>
+                <td><code>&lt;small&gt;</code></td>
+                <td><code>RZ.nodes[id].recap</code>, or “not fetched yet”.</td>
+                <td>The destination's own second line, set in the body face at
+                  its natural case so it reads as language, not as furniture.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+        <h3 class="doc-h3">On a hop</h3>
+        <p>The rail is emptied and rewritten from the new adjacency at the end
+          of the hop, in one pass, from the single source of truth — never
+          patched by appending the new neighbours and removing the old, which is
+          how a stale entry survives a rebuild. Its own contents do not animate:
+          the travel you can see is the camera's, and a list that slides while
+          the board moves gives you two things to follow.</p>
+
+        <h3 class="doc-h3">Order</h3>
+        <p>Entries are in edge-list order, which is stable across loads, so the
+          rail does not reshuffle under your hand between two visits to the same
+          plant. It is not sorted alphabetically and not sorted by recency —
+          both make the position of an entry a thing you cannot learn.</p>
+
+        <h3 class="doc-h3">Length</h3>
+        <p>The rail lists every vein and never truncates, because the board it
+          mirrors has already been thinned: a collection contributes at most
+          three cards, so a real node's degree stays small by construction. If
+          you find a rail long enough to want a cut, the graph is wrong, not the
+          rail — the fix is an aggregate on the board, and it is owned by
+          <a href="aggregate.html">aggregate</a>. An aggregate appears here like
+          any other destination, because it is one.</p>
+
+        <h3 class="doc-h3">When the world is offline</h3>
+        <p>Every entry still works: the last-known world stays navigable and
+          travel is not a mutation. An entry whose destination is stale keeps
+          its own recap and the destination states its staleness in its own
+          words when you arrive. The rail itself says nothing global about the
+          connection — a banner over the whole panel would be a claim about
+          places that are perfectly current. This behaviour is owned by
+          <a href="../patterns/degradation.html">degradation</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <ul>
+          <li><strong>The rail is not the only way through.</strong> Every entry
+            in it corresponds to an arrow direction on the board, computed from
+            where the neighbours actually lie rather than from document order,
+            so a keyboard user follows the graph and not the markup (C18). A
+            direction with no vein is spoken, not swallowed.</li>
+          <li><strong>Real buttons, in order.</strong> Each entry is a
+            <code>&lt;button type="button"&gt;</code>, so it is reachable by
+            <kbd>Tab</kbd>, activated by <kbd>Enter</kbd> or <kbd>Space</kbd>,
+            and announced as a button. Reading order matches visual order; the
+            rail is never reordered in CSS.</li>
+          <li><strong>The degree is text.</strong> “4 veins” is in the header as
+            words, so it is read out with the panel rather than inferred by
+            counting children.</li>
+          <li><strong>Arrival is announced.</strong> After a hop the live region
+            names where you came from, what you crossed without opening, and how
+            many veins lead out of the new place — the same number the rail now
+            prints, from the same source.</li>
+          <li><strong>The mark is not carried by colour alone.</strong> Travel
+            is an arrow glyph and mutation is a filled square; the two differ in
+            shape first, so the register survives a greyscale screenshot
+            (C14).</li>
+          <li><strong>Direction is logical.</strong> The panel is placed with
+            <code>inset-inline-end</code> and its marks with
+            <code>margin-inline-start</code>, so in a right-to-left reading the
+            rail moves to the other side and the arrow leads correctly.</li>
+        </ul>
+        <p>The system-wide rules for focus, contrast and announcement live on
+          <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let the rail be exactly the adjacency. Declare the vein once in
+              the edge list, and the drawn vein, the rail entry, the arrow key
+              and the degree all follow from it — so “Problems” cannot appear
+              here unless you can also see the line that leads there (C1).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Add a convenience entry — Settings, Help, the top of the garden —
+              because it is handy. It is a destination with no vein, so the
+              board cannot show the distance being crossed, and the degree in
+              the header stops matching the graph (C3).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Give each entry the destination's own recap: “Problems · 3
+              active”, “My garden · 12 plants, 1 overdue today”. You should be
+              able to decide not to travel.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put a mutation in the rail — “Water this”, “Archive” — or dress
+              an entry as a stake. Both meanings then live in one panel and the
+              form no longer tells them apart before you click (C14, C15). Every
+              mutation belongs in <a href="action-rail.html">Actions</a>.</p>
+          </div>
+        </div>
+
+        <h3 class="doc-h3">Writing the entries</h3>
+        <ul>
+          <li>The first line is the destination's name, exactly as its card says
+            it. Never a paraphrase, never “Go to…”.</li>
+          <li>The second line is a condition, not a category: “3 active” tells
+            you something, “Problems collection” tells you what you already
+            read.</li>
+          <li>Say “4 veins”, not “4 links”, “4 edges” or “4 connections” — and
+            never a cell, a row or a slot. The private vocabulary stays
+            private.</li>
+          <li>If a destination has not been fetched, say “not fetched yet”. It
+            is honest, it is short, and it is still an invitation.</li>
+        </ul>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The register this panel belongs to and its material are
+          <a href="chrome.html">chrome</a>; the veins it lists are
+          <a href="edge.html">edge</a>; the board they cross is
+          <a href="world.html">world</a> and the cards on it are
+          <a href="node.html">node</a>. Its sibling panel of mutations is
+          <a href="action-rail.html">action rail</a>, the focused card's own four
+          answers are <a href="focus-panel.html">focus panel</a>, and the picture
+          of where you are is <a href="minimap.html">minimap</a>. The hop an
+          entry starts is <a href="../patterns/traversal.html">traversal</a>,
+          its one timing is <a href="../foundations/motion.html">motion</a>, and
+          an arrival that begins somewhere else is
+          <a href="../patterns/arrivals.html">arrivals</a>. The thinning that
+          keeps a degree small is <a href="aggregate.html">aggregate</a>; the
+          two forms and their marks are
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a> and <a href="../foundations/iconography.html">iconography</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* Mounts the specimen from the runtime. The rail's entries, its degree and
+       every hop it starts come from RZ — nothing here re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-garden", "n-garden-more"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ]
+    });
+  </script>
+</body>
+</html>

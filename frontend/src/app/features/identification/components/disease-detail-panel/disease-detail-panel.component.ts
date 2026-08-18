@@ -21,9 +21,10 @@ interface CureCacheEntry {
 // using this button and the PEST care-card's button separately. CareCardComponent is now the
 // single place a treatment is started from, via the protected TreatmentService path.
 @Component({
-  selector: 'app-disease-detail-panel',
-  templateUrl: './disease-detail-panel.component.html',
-  styleUrls: ['./disease-detail-panel.component.scss'],
+    selector: 'app-disease-detail-panel',
+    templateUrl: './disease-detail-panel.component.html',
+    styleUrls: ['./disease-detail-panel.component.scss'],
+    standalone: false
 })
 export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   @Input() region: AnnotationRegion | null = null;

@@ -1,0 +1,354 @@
+/* ==========================================================================
+   RHIZOME — docs.css                          PlantPal · atlas-class · v1.0.0
+   --------------------------------------------------------------------------
+   Scaffolding for the documentation SITE only. Every class here is prefixed
+   .doc-. Nothing in this file styles a product component: those live in
+   system.css under .rz-. If a page needs a product component, it uses the
+   .rz- class — it never restyles it here.
+
+   The doc site uses the system's own tokens, so it is dressed by the same
+   palette it documents, and a palette switch re-keys the documentation too.
+   ========================================================================== */
+
+/* == shell =============================================================== */
+
+.doc-body {
+  margin: 0;
+  background: var(--rz-void);
+  color: var(--rz-ink);
+  font-family: var(--rz-face-body);
+  font-size: var(--rz-rung-30);
+  line-height: var(--rz-lead-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.doc-shell {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  min-block-size: 100vh;
+}
+@media (max-width: 62rem) {
+  .doc-shell { grid-template-columns: 1fr; }
+  .doc-sidebar { position: static; block-size: auto; }
+}
+
+/* == sidebar ============================================================= */
+
+.doc-sidebar {
+  position: sticky;
+  inset-block-start: 0;
+  block-size: 100vh;
+  overflow-y: auto;
+  padding: var(--rz-gutter-wide);
+  background: var(--rz-chrome-fill);
+  border-inline-end: var(--rz-hair) solid var(--rz-chrome-rule);
+  color: var(--rz-chrome-ink);
+}
+.doc-brand {
+  display: block;
+  font-family: var(--rz-face-name);
+  font-size: var(--rz-rung-55);
+  font-weight: var(--rz-weight-bold);
+  color: var(--rz-chrome-ink-lit);
+  text-decoration: none;
+  letter-spacing: var(--rz-track-name);
+}
+.doc-brand__sub {
+  display: block;
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-chrome-track);
+  text-transform: uppercase;
+  color: var(--rz-chrome-key);
+  margin-block-start: var(--rz-gutter-tight);
+}
+.doc-version {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  color: var(--rz-chrome-ink-faint);
+  margin-block: var(--rz-gutter) var(--rz-gutter-wide);
+  letter-spacing: var(--rz-track-label);
+}
+
+.doc-nav { display: grid; gap: var(--rz-gutter-wide); }
+.doc-nav__group { display: grid; gap: var(--rz-gutter-tight); }
+.doc-nav__title {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-chrome-track);
+  text-transform: uppercase;
+  color: var(--rz-chrome-ink-faint);
+  margin: 0 0 var(--rz-gutter-tight);
+}
+.doc-nav__link {
+  display: block;
+  padding: var(--rz-space-1) var(--rz-space-2);
+  color: var(--rz-chrome-ink-lit);
+  text-decoration: none;
+  border-inline-start: var(--rz-strong) solid transparent;
+  font-size: var(--rz-rung-25);
+}
+.doc-nav__link:hover { background: var(--rz-chrome-hover); }
+.doc-nav__link[aria-current="page"] {
+  border-inline-start-color: var(--rz-chrome-key);
+  color: var(--rz-chrome-ink-lit);
+}
+
+/* == article ============================================================= */
+
+.doc-article {
+  padding: var(--rz-gutter-air) var(--rz-gutter-air) var(--rz-space-10);
+  max-inline-size: 74rem;
+}
+.doc-eyebrow {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  color: var(--rz-ink-muted);
+  margin: 0;
+}
+.doc-title {
+  font-family: var(--rz-face-name);
+  font-size: var(--rz-rung-100);
+  line-height: var(--rz-lead-name);
+  font-weight: var(--rz-weight-bold);
+  margin: var(--rz-gutter-tight) 0 var(--rz-gutter);
+}
+.doc-lede {
+  font-size: var(--rz-rung-55);
+  line-height: var(--rz-lead-snug);
+  color: var(--rz-ink-second);
+  max-inline-size: var(--rz-measure-prose);
+  margin: 0 0 var(--rz-gutter-air);
+}
+.doc-article p, .doc-article li { max-inline-size: var(--rz-measure-prose); }
+
+.doc-section { margin-block-start: var(--rz-space-9); }
+.doc-h2 {
+  font-family: var(--rz-face-name);
+  font-size: var(--rz-rung-75);
+  font-weight: var(--rz-weight-medium);
+  margin: 0 0 var(--rz-gutter);
+  padding-block-end: var(--rz-gutter);
+  border-block-end: var(--rz-hair) solid var(--rz-membrane-rule);
+}
+.doc-h3 {
+  font-family: var(--rz-face-name);
+  font-size: var(--rz-rung-55);
+  font-weight: var(--rz-weight-medium);
+  margin: var(--rz-gutter-wide) 0 var(--rz-gutter-tight);
+}
+
+/* == the law block: every law gets a NUMBER and a VERIFICATION =========== */
+
+.doc-law {
+  border-inline-start: var(--rz-mount) solid var(--rz-vital);
+  background: var(--rz-sheet-quiet);
+  padding: var(--rz-gutter-card);
+  border-radius: var(--rz-corner-inner);
+  margin-block: var(--rz-gutter-wide);
+}
+.doc-law__id {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  color: var(--rz-vital);
+}
+.doc-law__statement { font-size: var(--rz-rung-30); margin: var(--rz-gutter-tight) 0 0; }
+.doc-check {
+  margin-block-start: var(--rz-gutter);
+  padding-block-start: var(--rz-gutter);
+  border-block-start: var(--rz-hair) solid var(--rz-membrane-rule);
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-25);
+  color: var(--rz-ink-second);
+}
+.doc-check::before {
+  content: "VERIFY";
+  display: block;
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  color: var(--rz-ink-muted);
+  margin-block-end: var(--rz-gutter-tight);
+}
+.doc-cite {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  color: var(--rz-ink-muted);
+  letter-spacing: var(--rz-track-label);
+}
+
+/* == specimen: a live demo of a real component =========================== */
+
+.doc-specimen {
+  margin-block: var(--rz-gutter-wide);
+  border: var(--rz-hair) solid var(--rz-membrane);
+  border-radius: var(--rz-corner-card);
+  overflow: hidden;
+  background: var(--rz-void-deep);
+}
+.doc-specimen__stage {
+  position: relative;
+  padding: var(--rz-gutter-air);
+  min-block-size: 12rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rz-gutter-wide);
+}
+.doc-specimen__stage[data-stage="world"] {
+  padding: 0;
+  block-size: 32rem;
+  display: block;
+  /* A1. Chrome is fixed to a viewport edge by contract (L1). A documentation
+     stage is not a viewport, so an ASSEMBLED specimen — world plus its whole
+     chrome register — needs the stage to be that containing block. The
+     transform establishes one; it moves nothing. */
+  transform: translate(0);
+}
+.doc-specimen__caption {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--rz-gutter);
+  padding: var(--rz-gutter) var(--rz-gutter-card);
+  background: var(--rz-chrome-fill);
+  color: var(--rz-chrome-ink);
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-chrome-track);
+  text-transform: uppercase;
+  border-block-start: var(--rz-hair) solid var(--rz-chrome-rule);
+}
+/* a specimen that must be read at rest, with the plane frozen */
+.doc-specimen[data-frozen="true"] .rz-plane { transition: none; }
+
+/* == token / property tables ============================================= */
+
+.doc-table-wrap { overflow-x: auto; margin-block: var(--rz-gutter-wide); }
+.doc-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--rz-rung-25);
+}
+.doc-table th, .doc-table td {
+  text-align: start;
+  padding: var(--rz-gutter);
+  border-block-end: var(--rz-hair) solid var(--rz-membrane-rule);
+  vertical-align: top;
+}
+.doc-table th {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  color: var(--rz-ink-muted);
+  white-space: nowrap;
+}
+.doc-table code { font-family: var(--rz-face-label); color: var(--rz-ink); }
+.doc-swatch {
+  display: inline-block;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--rz-corner-inner);
+  border: var(--rz-hair) solid var(--rz-membrane);
+  vertical-align: middle;
+}
+
+/* == do / don't ========================================================== */
+
+.doc-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--rz-gutter-wide);
+  margin-block: var(--rz-gutter-wide);
+}
+.doc-case {
+  border: var(--rz-hair) solid var(--rz-membrane);
+  border-radius: var(--rz-corner-card);
+  padding: var(--rz-gutter-card);
+  background: var(--rz-sheet-quiet);
+}
+.doc-case[data-case="do"]   { border-block-start: var(--rz-mount) solid var(--rz-thriving); }
+.doc-case[data-case="dont"] { border-block-start: var(--rz-mount) solid var(--rz-ailing); }
+.doc-case__label {
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-18);
+  letter-spacing: var(--rz-track-label);
+  text-transform: uppercase;
+  margin: 0 0 var(--rz-gutter);
+}
+.doc-case[data-case="do"]   .doc-case__label { color: var(--rz-thriving); }
+.doc-case[data-case="dont"] .doc-case__label { color: var(--rz-ailing); }
+
+/* == code ================================================================ */
+
+.doc-code {
+  margin-block: var(--rz-gutter-wide);
+  padding: var(--rz-gutter-card);
+  background: var(--rz-well);
+  border: var(--rz-hair) solid var(--rz-membrane-rule);
+  border-radius: var(--rz-corner-inner);
+  overflow-x: auto;
+  font-family: var(--rz-face-label);
+  font-size: var(--rz-rung-25);
+  line-height: var(--rz-lead-snug);
+  color: var(--rz-ink-second);
+}
+.doc-code code { white-space: pre; }
+.doc-article :not(pre) > code {
+  font-family: var(--rz-face-label);
+  font-size: 0.92em;
+  background: var(--rz-well);
+  padding: 0.1em 0.35em;
+  border-radius: var(--rz-corner-inner);
+}
+
+/* == index cards ========================================================= */
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--rz-gutter);
+  margin-block: var(--rz-gutter-wide);
+}
+.doc-card {
+  display: block;
+  padding: var(--rz-gutter-card);
+  background: var(--rz-sheet);
+  border: var(--rz-hair) solid var(--rz-membrane);
+  border-radius: var(--rz-corner-card);
+  color: var(--rz-ink);
+  text-decoration: none;
+  transition: border-color var(--rz-dur-quick) var(--rz-ease-rest);
+}
+.doc-card:hover { border-color: var(--rz-membrane-lit); }
+.doc-card__name { font-size: var(--rz-rung-30); font-weight: var(--rz-weight-medium); }
+.doc-card__note { display: block; color: var(--rz-ink-muted); font-size: var(--rz-rung-25); margin-block-start: var(--rz-gutter-tight); }
+
+/* == callout ============================================================= */
+
+.doc-note {
+  border-inline-start: var(--rz-strong) solid var(--rz-watch);
+  background: var(--rz-well);
+  padding: var(--rz-gutter);
+  border-radius: var(--rz-corner-inner);
+  margin-block: var(--rz-gutter-wide);
+  color: var(--rz-ink-second);
+}
+
+/* == footer ============================================================== */
+
+.doc-footer {
+  margin-block-start: var(--rz-space-9);
+  padding-block-start: var(--rz-gutter-wide);
+  border-block-start: var(--rz-hair) solid var(--rz-membrane-rule);
+  color: var(--rz-ink-muted);
+  font-size: var(--rz-rung-25);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--rz-gutter);
+}
+.doc-footer a { color: var(--rz-vital); }

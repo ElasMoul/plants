@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elevation · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Foundations</p>
+      <h1 class="doc-title">Elevation</h1>
+      <p class="doc-lede">Depth in your garden settles two questions and no others: chrome's elevation value, which is no shadow at all, ever — and which layers travel with the camera and which stay stuck to the window.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden is one plane of cards seen through a camera. A card floats on that plane and moves when the camera moves. The top bar, the Navigate-to rail, the Actions panel, the world view, the camera cluster — those are furniture, flush to the edges of the window, and they hold still. Elevation is what keeps those two things different <em>materials</em> rather than two heights of the same material.</p>
+        <p>So this page carries two things. First, the elevation value of chrome, which is <strong>none</strong> — no shadow, at any depth, in any theme, in any palette — and the stacking rung chrome sits on, so the world view is never covered by a card. Second, the layer-ownership rule: which layers live inside the transformed subtree and are therefore scaled and translated with the world, and which belong to the window instead. That second rule is short, and it is the one worth reading twice: it is what makes the settings choreography and the drifting field derivable rather than discovered ten rounds late.</p>
+        <p>What this page does <em>not</em> give you is a ladder of shadows to choose from. There are two card depths in the whole system — at rest, and lit — and the lit one belongs to the focused card and to the three things that borrow the card's own material. If you find yourself wanting a third, the thing you actually want is rank, which is spent on size and is settled on <a href="../components/node.html">node</a> and <a href="typography.html">typography</a>.</p>
+        <div class="doc-note">
+          <p>Two families named here are owned elsewhere and are not restated. The chrome register in full — its fill, its type voice, its members, and what may appear inside one — belongs to <a href="../components/chrome.html">chrome</a>. The camera, and what it does to the plane, belongs to <a href="../components/world.html">world</a>. This page owns only their depth.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">L1 · C5</span></p>
+          <p class="doc-law__statement">Chrome's elevation is none. No shadow, no lift, no backdrop blur, at any depth, in any theme and in any palette — the separation between furniture and world is carried by material, never by height.</p>
+          <p class="doc-check">For every element matching <code>.rz-chrome</code>, assert <code>getComputedStyle(el).boxShadow</code> is <code>"none"</code> and <code>getComputedStyle(el).backdropFilter</code> is <code>"none"</code>. Repeat under <code>data-theme="light"</code> and under each of the five palettes, asserting <code>--rz-chrome-lift</code> resolves to <code>none</code> every time. Then blur the running screen by 8px and screenshot: the only bright soft-cornered rectangles on it are cards.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C5 · C17</span></p>
+          <p class="doc-law__statement">The stacking scale is a register order, not an emphasis scale. Six rungs, declared once: the field, the veins, the cards, a panel, chrome above every card always, and the live region above chrome. Nothing on screen carries a stacking value that is not one of them.</p>
+          <p class="doc-check">Walk every element in the document; for each whose computed <code>z-index</code> is not <code>auto</code>, assert its value is one of the six <code>--rz-z-*</code> values — the dragged card's <code>--rz-z-node</code>&nbsp;+&nbsp;1 is the single declared exception, and it lasts only while the pointer is down. Then set the camera to <code>zoom.min</code> and to <code>zoom.max</code> and assert the world view's you-are-here marker is painted and unobscured at both: <code>document.elementFromPoint</code> over the marker returns an element inside the world view, never a card.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C7 · C9</span></p>
+          <p class="doc-law__statement">A background belongs to the surface it decorates. Every layer is declared as either a child of the transformed plane — and so scaled and translated with the world — or a sibling of it, belonging to the window. There is no third arrangement, and no layer changes ownership at runtime except the field, which follows whichever surface it is currently decorating.</p>
+          <p class="doc-check">For each layer in the ownership table below, assert <code>el.closest(".rz-plane")</code> is truthy exactly when the table says “world”. Then pan the board 200px and measure each layer's screen position before and after: every world layer moved by exactly 200px, every window layer by exactly 0. Diff the computed <code>left</code>/<code>top</code> of every card across that same pan — unchanged, because panning is the camera, not the geography.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C16</span></p>
+          <p class="doc-law__statement">Only one thing is lit at a time. There are two card depths — <code>--rz-halo-quiet</code> at rest and <code>--rz-halo-lit</code> — and the lit one is spent on the focused card, the card being dragged in arrange mode, the settings panel, and the shrunken application card. Depth never says “important”, “new” or “unread”.</p>
+          <p class="doc-check">On a resting board, assert exactly one element carries <code>data-focus="true"</code>, and that it is the only <code>.rz-n</code> whose computed <code>box-shadow</code> equals the resolved <code>--rz-halo-lit</code>. Hop ten times and assert the count stays one. Then change a card's status, recap and count and assert no card's <code>box-shadow</code> changed.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <h3 class="doc-h3">Furniture and world, side by side</h3>
+        <p>Two chrome-register controls and one card, at rest, in the same stage. The controls take chrome's corner, chrome's rule and chrome's type voice, and no shadow whatsoever. The card takes the membrane hairline, the soft corner and the quiet halo. Squint: the card is a body sitting on something, the controls are cut into the furniture.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <button type="button" class="rz-cam-btn" aria-label="Zoom in">+</button>
+            <button type="button" class="rz-cam-btn" aria-label="Zoom out">&#8722;</button>
+            <button type="button" class="rz-probe__btn">Recentre</button>
+            <article class="rz-n" data-kind="Plant" data-kind-key="plant"
+                     data-name="Office Fig" data-recap="Watered 3 days ago"
+                     data-rank="near" data-show="recap">
+              <span class="rz-n__grad"></span>
+              <p class="rz-n__kind">Plant</p>
+              <h3 class="rz-n__name">Office Fig</h3>
+              <p class="rz-n__recap">Watered 3 days ago
+                <span class="rz-n__recap-second">1 problem open</span></p>
+            </article>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Chrome takes no shadow; a card takes the quiet halo</span><span>L1 · C5</span>
+          </figcaption>
+        </figure>
+        <p>That card is drawn outside a plane on purpose, so you can read its material at rest. On the real board it would be placed by its cell, like every card in the next specimen.</p>
+
+        <h3 class="doc-h3">What travels with the camera</h3>
+        <p>A small garden, mounted by the system from one edge list. Drag the dark and watch what moves: the veins and the cards go together, because the veins are a child of the same transformed subtree the cards live on. Travel into a card and it lights; the card you left stays on screen, shrinking in place, and its halo goes quiet. Nothing here is drawn by this page — the placement, the veins, the ranks and both halo values come from <code>RZ</code>.</p>
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0" role="application"
+                 aria-label="A small garden. Drag to pan; click a card to travel to it; arrow keys pick a vein.">
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="3,3"
+                         data-kind="PlantPal" data-kind-key="platform"
+                         data-name="Your garden" data-recap="12 plants · 3 need something today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">PlantPal</p>
+                  <h3 class="rz-n__name">Your garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">3 need something today</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Everything you keep, on one plane. Drag anywhere on the dark to pan — the veins come with it, because they belong to the world and not to the window.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-study" data-cell="4,2"
+                         data-kind="Room" data-kind-key="collection"
+                         data-name="The Study" data-recap="Rooms · 5 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Room</p>
+                  <h3 class="rz-n__name">The Study</h3>
+                  <p class="rz-n__recap">5 plants
+                    <span class="rz-n__recap-second">North window, cool in winter</span></p>
+                </article>
+
+                <article class="rz-n" id="n-ficus" data-cell="4,4"
+                         data-kind="Species" data-kind-key="species"
+                         data-name="Fiddle-leaf Fig" data-recap="Species · 12 plants">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Species</p>
+                  <h3 class="rz-n__name">Fiddle-leaf Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">12 plants</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office-fig" data-cell="5,1"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Watered 3 days ago · 1 problem open">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap">Watered 3 days ago
+                    <span class="rz-n__recap-second">1 problem open</span></p>
+                  <div class="rz-n__body">
+                    <div class="rz-n__full">
+                      <p>Lit, because you are standing here. It is the widest card on the board and the only one shown in full — the halo is the least of what tells you so.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-leaf-spot" data-cell="6,0"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Leaf spot" data-recap="Problems · in treatment">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Leaf spot</h3>
+                  <p class="rz-n__recap">In treatment, second week
+                    <span class="rz-n__recap-second">Next step due tomorrow</span></p>
+                </article>
+
+                <article class="rz-n" id="n-journal" data-cell="6,2"
+                         data-kind="Journal" data-kind-key="journal"
+                         data-name="12 June" data-recap="Journal · repotted the Office Fig">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Journal</p>
+                  <h3 class="rz-n__name">12 June</h3>
+                  <p class="rz-n__recap">Repotted the Office Fig
+                    <span class="rz-n__recap-second">New mix, one size up</span></p>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Veins and cards share one transformed subtree</span><span>C7 · C9 · C16</span>
+          </figcaption>
+        </figure>
+        <p>The page declares the edge list and nothing else:</p>
+        <pre class="doc-code"><code>RZ.mount({
+  edges: [
+    ["n-garden", "n-study"],
+    ["n-garden", "n-ficus"],
+    ["n-study", "n-office-fig"],
+    ["n-ficus", "n-office-fig"],
+    ["n-office-fig", "n-leaf-spot"],
+    ["n-office-fig", "n-journal"],
+    ["n-journal", "n-ficus"]
+  ],
+  focus: "n-office-fig"
+});</code></pre>
+        <p>Ownership is a structural fact of that markup, not a convention: <code>&lt;svg class="rz-veins"&gt;</code> is written <em>inside</em> <code>&lt;div class="rz-plane"&gt;</code>, and the field canvas is written <em>outside</em> it. Move either across that boundary and Law 3's pan check fails on the next load.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Tokens and ownership</h2>
+
+        <h3 class="doc-h3">The stacking rungs</h3>
+        <p>Six rungs, in one place. No theme and no palette fills any of them — stacking is geometry, and a palette changes the key, never the geometry.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Stacking rungs</caption>
+            <thead><tr><th>Token</th><th>Rung</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr><td><code>--rz-z-world</code></td><td><code>0</code></td><td>The drifting field. Decoration, beneath everything it decorates.</td></tr>
+              <tr><td><code>--rz-z-vein</code></td><td><code>1</code></td><td>The veins, painting beneath the cards they join.</td></tr>
+              <tr><td><code>--rz-z-node</code></td><td><code>10</code></td><td>Every card. A card being dragged sits one above, and only while your pointer is down.</td></tr>
+              <tr><td><code>--rz-z-panel</code></td><td><code>40</code></td><td>Content that is not on the lattice — the settings panel beside the shrunken application.</td></tr>
+              <tr><td><code>--rz-z-chrome</code></td><td><code>60</code></td><td>The chrome rung. Above every card, always, so the world view can answer where you are at any zoom.</td></tr>
+              <tr><td><code>--rz-z-live</code></td><td><code>80</code></td><td>The live region, above chrome, so an announcement is never buried.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="doc-h3">Depth values</h3>
+        <p>Three tokens carry every depth on screen, and one of them is <code>none</code> on purpose.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Depth</caption>
+            <thead><tr><th>Token</th><th>Value</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-chrome-lift</code></td>
+                <td><code>var(--rz-lift-0)</code> — <code>none</code></td>
+                <td>Chrome's depth, in every theme and every palette. A theme restates it; it never restates it as anything else.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-halo-quiet</code></td>
+                <td>A tight seat shadow</td>
+                <td>Every card at rest, at every rank. It seats the card on the plane. It says nothing about how far away the card is — that is size's job.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-halo-lit</code></td>
+                <td>A hairline ring plus a thrown shadow</td>
+                <td>The focused card, the card under your pointer in arrange mode, the settings panel, and the shrunken application card. Four uses, and no fifth.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The <code>--rz-lift-*</code> steps underneath them are layer-1 raw values. Never write one into a page or a component — write the meaning, so a palette can re-key it. The one that must not be re-keyed is <code>--rz-chrome-lift</code>: a theme is free to restate it, and restating it as anything but <code>var(--rz-lift-0)</code> fails Law 1.</p>
+
+        <h3 class="doc-h3">Layer ownership</h3>
+        <p>Every layer on screen belongs to exactly one of two surfaces. This is the whole rule, and it is why the settings choreography behaves as it does without anyone deciding it separately.</p>
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">World subtree, or window</caption>
+            <thead><tr><th>Layer</th><th>Belongs to</th><th>Therefore</th></tr></thead>
+            <tbody>
+              <tr><td><code>.rz-veins</code>, <code>.rz-vein</code>, <code>.rz-trail</code></td><td>World — a child of <code>.rz-plane</code></td><td>Scales and translates with the camera. A vein stays attached to both its cards at every zoom, and the trail is drawn in world coordinates along the real edges.</td></tr>
+              <tr><td><code>.rz-n</code></td><td>World — a child of <code>.rz-plane</code></td><td>Placed from its cell in world coordinates. The camera moving is not the card moving.</td></tr>
+              <tr><td><code>.rz-motes</code></td><td>The surface it decorates — a sibling of <code>.rz-plane</code></td><td>In the application it fills the window; in overview it fills the shrunken application card and stops at its edge. It never scales with the camera, so the field's texture holds constant as you zoom.</td></tr>
+              <tr><td><code>.rz-chrome</code> and every member</td><td>The window — fixed, a sibling of <code>.rz-plane</code></td><td>Flush to a window edge, bleeding off it, holding still while the world moves underneath.</td></tr>
+              <tr><td><code>.rz-settings</code></td><td>The window, beside the shrunken application card</td><td>It is content, so it takes the card's material — but it is not on the lattice and does not travel with the camera.</td></tr>
+              <tr><td><code>.rz-live</code></td><td>The window</td><td>An announcement is about your position, not a place in the world.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The rule reads forwards, too. When the camera pulls out and the whole application shrinks into a floating card, that card carries the card's own material — its corner, its hairline and <code>--rz-halo-lit</code> — and the field goes with it, covering the card and nothing beyond it, because the field belongs to the surface it decorates. Nobody had to decide that; it falls out of the table above. The choreography itself is settled on <a href="../patterns/settings-exit.html">settings exit</a>.</p>
+        <p>This page added no token and no class. It is written entirely against the vocabulary already in <code>tokens.css</code> and <code>system.css</code>, so there is no amendment to record.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p><strong>Depth is never the only channel, because depth is invisible to a great many readers.</strong> A shadow says nothing to a screen reader, nothing under forced colours, and nothing to a reader at a zoom where soft edges have collapsed. So the focused card is never <em>only</em> lit: it carries <code>data-focus="true"</code>, it is the widest card on the board, it is the only card shown in full, and the hop that put you there is announced in words. Remove every halo and the board still reads correctly — that is the test to run if you are unsure.</p>
+        <p><strong>The focus ring is not a depth and must never be treated as one.</strong> Keyboard focus is drawn with <code>--rz-focus</code> as an outline, deliberately outside the chalk family so it cannot be mistaken for the focused card. The base layer applies it to every focusable element on the page. Never remove an outline to tidy up an elevation, and never substitute a shadow for one: an outline survives forced-colours mode and a shadow does not.</p>
+        <p><strong>Chrome must stay reachable on the chrome rung.</strong> Law 2's second check is an accessibility check as much as a layout one — the world view answers “where am I” for a reader who cannot hold the whole board in their head, and a card painting over it at high zoom takes that answer away. The world view's accessible label is rewritten on every hop in step with the visible you-are-here; that behaviour is settled on <a href="../components/minimap.html">minimap</a> and <a href="../guidelines/accessibility.html">accessibility</a>.</p>
+        <p><strong>Under forced colours, every shadow here is dropped by the browser.</strong> That is correct and it costs nothing: chrome had none to begin with, and a card's identity survives on its hairline, its corner and its width. If you are tempted to add a shadow to recover a boundary that forced colours removed, add the boundary instead — a rule, a rim, or a word.</p>
+        <p><strong>Reduced motion touches nothing on this page.</strong> Elevation does not animate on a hop: a halo changes on the settle timing, not the navigation timing, and under reduced motion that collapses to a swap no reader will notice. No information is carried by the change itself.</p>
+        <p><strong>Stacking must not fight reading order.</strong> The live region is last in the document as well as top of the scale. If you ever need something above chrome, put it last in the document too — never use a rung to move something visually out of the order it is read in.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Do and don't</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let chrome sit flat and let cards be the only lit bodies on screen. If a chrome panel is hard to separate from the world behind it, reach for its fill, its key rule or its tracking — the material it already owns.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Give the Actions panel “just a little” shadow so it reads as floating. You have made furniture into a body, the blur test now finds two kinds of bright rectangle, and Law 1 fails on the first element it walks.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Write a new world layer as a child of <code>.rz-plane</code> if it must stay attached to the geography, and as a sibling if it belongs to the window. Say which, in one sentence, on the page that introduces it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Hang a decorative layer outside the plane and then translate it in script to keep up with the camera. It will drift on the first zoom, and Law 3's pan check exists precisely to catch it.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Spend size on “how far is this from me”, and leave depth alone. Four card widths already carry rank at a scale where no text is legible.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Light a second card to mark it new, urgent or unread. There is one focal point and it owns the camera; a second lit body makes “where am I” ambiguous, which is C16, checked on every board.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <div class="doc-grid">
+          <a class="doc-card" href="../components/chrome.html">
+            <span class="doc-card__name">Chrome</span>
+            <span class="doc-card__note">The register in full — fill, type voice, members, and what may appear inside one.</span>
+          </a>
+          <a class="doc-card" href="../components/world.html">
+            <span class="doc-card__name">World</span>
+            <span class="doc-card__note">The plane, the camera, and the transformed subtree this page assigns layers to.</span>
+          </a>
+          <a class="doc-card" href="../components/node.html">
+            <span class="doc-card__name">Node</span>
+            <span class="doc-card__note">The card contract, and rank spent on size rather than on depth.</span>
+          </a>
+          <a class="doc-card" href="../components/minimap.html">
+            <span class="doc-card__name">Minimap</span>
+            <span class="doc-card__note">The world view that the chrome rung keeps answerable at every zoom.</span>
+          </a>
+          <a class="doc-card" href="../patterns/settings-exit.html">
+            <span class="doc-card__name">Settings exit</span>
+            <span class="doc-card__note">Where layer ownership becomes visible: the application shrinks and its field goes with it.</span>
+          </a>
+          <a class="doc-card" href="../patterns/arrange-mode.html">
+            <span class="doc-card__name">Arrange mode</span>
+            <span class="doc-card__note">The one moment a card that is not the focus is lit, and why it lasts only while you drag.</span>
+          </a>
+          <a class="doc-card" href="colors.html">
+            <span class="doc-card__name">Colors</span>
+            <span class="doc-card__note">The three token layers, and why a palette may restate a depth but never re-key it.</span>
+          </a>
+          <a class="doc-card" href="../guidelines/extending-this-system.html">
+            <span class="doc-card__name">Extending this system</span>
+            <span class="doc-card__note">The amendment path, if a surface genuinely needs a depth these three tokens cannot carry.</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <p class="rz-sr" id="rz-live" role="status" aria-live="polite"></p>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen world, mounted from the system's own primitives. The edge
+       list below is the only declaration this page makes: the placement, the
+       veins, the ranks and both halo values come from RZ. */
+    RZ.mount({
+      edges: [
+        ["n-garden", "n-study"],
+        ["n-garden", "n-ficus"],
+        ["n-study", "n-office-fig"],
+        ["n-ficus", "n-office-fig"],
+        ["n-office-fig", "n-leaf-spot"],
+        ["n-office-fig", "n-journal"],
+        ["n-journal", "n-ficus"]
+      ],
+      focus: "n-office-fig"
+    });
+  </script>
+</body>
+</html>

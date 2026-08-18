@@ -20,9 +20,10 @@ const CARE_ICONS: Record<CareType, string> = {
 };
 
 @Component({
-  selector: 'app-garden-dashboard',
-  templateUrl: './garden-dashboard.component.html',
-  styleUrls: ['./garden-dashboard.component.scss'],
+    selector: 'app-garden-dashboard',
+    templateUrl: './garden-dashboard.component.html',
+    styleUrls: ['./garden-dashboard.component.scss'],
+    standalone: false
 })
 export class GardenDashboardComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

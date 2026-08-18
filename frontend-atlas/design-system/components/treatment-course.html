@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Treatment course · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Treatment course</h1>
+      <p class="doc-lede">The ordered course of care a sick plant is put on —
+        what to do, in what order, and by when — checked off step by step inside
+        the card of the thing being treated. This page settles where a course
+        lives, that every step is a mutation and never a way out, and what
+        checking one off is allowed to change: the step, and nothing else.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>A treatment course is what you do about a problem, once
+          <a href="vitals.html">the vitals</a> have said the plant is ailing.
+          Spider mites on the Office Fig: isolate it, wipe both sides of every
+          leaf, spray, look again in a fortnight. Four steps, in that order,
+          each with a day it is due — a leaflet from the plant clinic, written
+          in your garden's own terms.</p>
+        <p>A course is a node in its own right. It has a kind, a cell on the
+          lattice and veins to the problem it treats and the plant it is being
+          run on, so you can travel to a course the way you travel to anything
+          else. It is also the block you read <em>inside</em> that node once you
+          have arrived: it is the third of the four questions the focused card
+          answers on its own — what is this, what state is it in,
+          <strong>what can I do here</strong>, where can I go from here
+          (<span class="doc-cite">C19</span>).</p>
+        <p>Use a course when the care is a sequence with an end. A single
+          watering is one stake on <a href="action-rail.html">the action
+          rail</a>, not a one-step course, and a plant's ordinary routine is not
+          a course either — a routine never finishes. If you are unsure whether
+          what you have is a course, ask whether it can be completed. If it
+          cannot, it is not one.</p>
+        <p>Be honest about where it came from. A course prescribed off a
+          diagnosis we read from your photo carries that diagnosis's confidence,
+          and when we are not sure, the first step is the one that finds out
+          rather than the one that treats hardest. Confidence itself is settled
+          on <a href="vitals.html">vitals</a>; a course borrows it and does not
+          restate it.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C14, C15</span></p>
+          <p class="doc-law__statement">Every step is a mutation and nothing
+            else. A step is done with a filled stake; no step contains a chip, a
+            link, or any other way off the card. The course treats the plant you
+            are already looking at, so it never carries a destination.</p>
+          <p class="doc-check">Query every <code>.rz-course__step</code> and
+            assert it contains no <code>.rz-chip</code>, no
+            <code>&lt;a&gt;</code>, and nothing that calls <code>RZ.go</code>.
+            Press every stake in a course and assert the camera transform, the
+            focused id and <code>RZ.extent()</code> are unchanged
+            afterwards.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C9</span></p>
+          <p class="doc-law__statement">Checking a step off changes that step
+            and nothing else. The row keeps its place in the order, no step is
+            removed, reordered or renumbered, and no card moves, resizes or
+            re-ranks — a finished treatment stays on the plant as part of its
+            story.</p>
+          <p class="doc-check">Record every <code>.rz-n</code>'s computed
+            <code>left</code>/<code>top</code>, the id order inside
+            <code>.rz-course</code>, and <code>RZ.extent()</code>. Check every
+            step off, then check two back on. Diff all three recordings:
+            identical, with only <code>data-done</code> changed.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C17, C19</span></p>
+          <p class="doc-law__statement">The steps live in the focused card's
+            body. A course you have not travelled to says its progress in one
+            clause of its recap — "Spider mites · 1 of 4 done" — and shows no
+            steps and no stakes at all.</p>
+          <p class="doc-check">For every <code>.rz-course</code> in the
+            document, assert its <code>offsetParent</code> is
+            <code>null</code> unless its enclosing <code>.rz-n</code> carries
+            <code>data-focus="true"</code>. Hop with <code>RZ.go(id)</code> and
+            re-run: at most one course is visible, it belongs to the new focus,
+            and the only element with a scrollbar is that card's
+            <code>.rz-n__body</code>.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C24</span></p>
+          <p class="doc-law__statement">Offline, the course stays readable and
+            stays honest. It never hides itself because it could not refresh: it
+            states its own staleness in its own words, and every step's stake is
+            visibly refused or says it is queued.</p>
+          <p class="doc-check">Call
+            <code>RZ.setState("net", "offline")</code>. Assert the course is
+            still rendered, that its node states when it was last read, that
+            every <code>.rz-stake</code> inside it is refused or announces a
+            queue, and that no node moved. The offline materials themselves are
+            <a href="../patterns/degradation.html">degradation</a>'s.</p>
+        </div>
+
+        <div class="doc-note">
+          <p>A course is not a collection of sibling nodes, so the density rule
+            does not apply to its steps — a six-step course draws six steps. The
+            rule that <em>does</em> bind here is the one that governs many
+            courses hanging off one plant, and it is owned by
+            <a href="aggregate.html">aggregate</a> and
+            <a href="../foundations/spacing.html">spacing</a>. Keep a course
+            itself under about six steps anyway: past that it stops being a
+            leaflet and starts being a manual.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Specimens</h2>
+
+        <p>The world below is live. The mite course is the focus and shows its
+          steps; travel to the fig or the problem — click the card, or press an
+          arrow key with the world focused — and the steps go with the focus
+          while every card stays exactly where it stands. Check a step off first
+          and watch the same thing hold.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="Three cards. The spider-mite treatment course is focused and shows its steps. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-course" data-cell="3,2"
+                         data-kind="Treatment course" data-kind-key="problem"
+                         data-name="Mite treatment"
+                         data-recap="Spider mites · 1 of 4 done">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Treatment course</p>
+                  <h3 class="rz-n__name">Mite treatment</h3>
+                  <p class="rz-n__recap">Spider mites
+                    <span class="rz-n__recap-second">· 1 of 4 done</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Treating</span>
+                          <span>Spider mites on Office Fig,
+                            <span class="rz-binomial">Tetranychus urticae</span></span>
+                          <span class="rz-conf" data-conf="high">
+                            <span class="rz-conf__track"><span class="rz-conf__fill"></span></span>
+                            <span class="rz-label">Confident</span>
+                          </span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Progress</span>
+                          <span class="rz-health" data-health="watch">One step done, one due today</span>
+                        </div>
+                      </div>
+
+                      <div class="rz-n__section">
+                        <p class="rz-label">The course</p>
+                        <ol class="rz-course">
+                          <li class="rz-course__step" data-done="true">
+                            <span class="rz-course__mark">1</span>
+                            <div>
+                              <p class="rz-label">Isolate</p>
+                              <p>Move the fig away from your other plants so the
+                                mites stay put. Done last Tuesday.</p>
+                              <button type="button" class="rz-stake" aria-pressed="true"
+                                      data-step-toggle>Done<span class="rz-sr"> — step 1, isolate</span></button>
+                            </div>
+                          </li>
+                          <li class="rz-course__step" data-due="true">
+                            <span class="rz-course__mark">2</span>
+                            <div>
+                              <p class="rz-label">Wipe the leaves · today</p>
+                              <p>Both sides, with a damp cloth. Undersides
+                                first — that is where they live.</p>
+                              <button type="button" class="rz-stake" aria-pressed="false"
+                                      data-step-toggle>Mark as done<span class="rz-sr"> — step 2, wipe the leaves</span></button>
+                            </div>
+                          </li>
+                          <li class="rz-course__step">
+                            <span class="rz-course__mark">3</span>
+                            <div>
+                              <p class="rz-label">Spray · in 7 days</p>
+                              <p>Insecticidal soap, all over, until it runs
+                                off.</p>
+                              <button type="button" class="rz-stake" aria-pressed="false"
+                                      data-step-toggle>Mark as done<span class="rz-sr"> — step 3, spray</span></button>
+                            </div>
+                          </li>
+                          <li class="rz-course__step">
+                            <span class="rz-course__mark">4</span>
+                            <div>
+                              <p class="rz-label">Check again · in 14 days</p>
+                              <p>Look at the undersides once more. If they are
+                                clear, the course is finished.</p>
+                              <button type="button" class="rz-stake" aria-pressed="false"
+                                      data-step-toggle>Mark as done<span class="rz-sr"> — step 4, check again</span></button>
+                            </div>
+                          </li>
+                        </ol>
+                      </div>
+
+                      <p class="rz-n__stale">Last read before you went offline,
+                        about an hour ago. Steps you check now will be saved
+                        when you are back.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="1,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig"
+                         data-recap="Fiddle-leaf Fig · 1 course running">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· 1 course running</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="ailing">Stippling on the undersides</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Under treatment</span>
+                          <span>Mite treatment, 1 of 4 done</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-mites" data-cell="4,3"
+                         data-kind="Problem" data-kind-key="problem"
+                         data-name="Spider mites" data-recap="Active · 1 plant">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Problem</p>
+                  <h3 class="rz-n__name">Spider mites</h3>
+                  <p class="rz-n__recap">Active
+                    <span class="rz-n__recap-second">· 1 plant</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Seen on</span>
+                          <span>Office Fig, first noticed 9 days ago</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Steps travel with the focus; checking one moves nothing</span>
+            <span>C9 · C17 · C19</span>
+          </figcaption>
+        </figure>
+
+        <h3 class="doc-h3">The three step states</h3>
+        <p>A step is open, due, or done. Due is carried by the step's own left
+          rule and by its title — never by turning the whole row red — and done
+          recedes without leaving the order.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage">
+            <ol class="rz-course">
+              <li class="rz-course__step" data-done="true">
+                <span class="rz-course__mark">1</span>
+                <div>
+                  <p class="rz-label">Done</p>
+                  <p>Recedes in place, keeps its number, keeps its row.</p>
+                </div>
+              </li>
+              <li class="rz-course__step" data-due="true">
+                <span class="rz-course__mark">2</span>
+                <div>
+                  <p class="rz-label">Due · today</p>
+                  <p>The one thing being asked of you right now.</p>
+                </div>
+              </li>
+              <li class="rz-course__step">
+                <span class="rz-course__mark">3</span>
+                <div>
+                  <p class="rz-label">Open · in 7 days</p>
+                  <p>Waiting its turn. Everyday time, never a bare date you have
+                    to count from.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>Done, due, open — three left rules, one order</span>
+            <span>C9</span>
+          </figcaption>
+        </figure>
+
+        <pre class="doc-code"><code>&lt;ol class="rz-course"&gt;
+  &lt;li class="rz-course__step" data-done="true"&gt;
+    &lt;span class="rz-course__mark"&gt;1&lt;/span&gt;
+    &lt;div&gt;
+      &lt;p class="rz-label"&gt;Isolate&lt;/p&gt;
+      &lt;p&gt;Move the fig away from your other plants.&lt;/p&gt;
+      &lt;button type="button" class="rz-stake" aria-pressed="true"&gt;Done&lt;span class="rz-sr"&gt; — step 1, isolate&lt;/span&gt;&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li class="rz-course__step" data-due="true"&gt;
+    &lt;span class="rz-course__mark"&gt;2&lt;/span&gt;
+    &lt;div&gt;
+      &lt;p class="rz-label"&gt;Wipe the leaves · today&lt;/p&gt;
+      &lt;p&gt;Both sides, with a damp cloth.&lt;/p&gt;
+      &lt;button type="button" class="rz-stake" aria-pressed="false"&gt;Mark as done&lt;span class="rz-sr"&gt; — step 2, wipe the leaves&lt;/span&gt;&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Checking a step off</h3>
+        <p>The stake flips its own <code>aria-pressed</code> and its step's
+          <code>data-done</code>, and stops there. It is a two-way switch, so a
+          mis-tap costs nothing: press it again and the step is open. It writes
+          no position, touches no other step, and asks nothing of the camera —
+          which is the whole of Law 1 and Law 2 in one gesture, and is why a
+          step is a stake and not a chip.</p>
+
+        <h3 class="doc-h3">Finishing</h3>
+        <p>When the last step is checked, the course is finished and stays
+          exactly where it is, fully checked, on the plant. It keeps its cell,
+          its veins and its recap — now "Spider mites · finished" — until a new
+          examination prescribes a new course. Clearing a finished course away
+          is the app forgetting something you did.</p>
+
+        <h3 class="doc-h3">Arriving and leaving</h3>
+        <p>Travelling to a course is an ordinary hop on the one timing, along
+          the vein from the plant or the problem — settled once on
+          <a href="../patterns/traversal.html">traversal</a>. On arrival the
+          card expands in place and the steps appear because the card is now
+          shown in full, not because anything mounted. Leaving shrinks it again
+          with its steps still in it.</p>
+
+        <h3 class="doc-h3">Under reduced motion, and while it is still loading</h3>
+        <p>A course owns no motion of its own — checking a step is a state swap
+          with nothing to travel — so it reads identically with reduced motion
+          on. A course still being fetched shows a skeleton at its real row
+          heights inside its own card, and the diagnosis a course is waiting on
+          can genuinely take ten or fifteen seconds; both of those are
+          <a href="../patterns/degradation.html">degradation</a>'s to state, and
+          both leave the geography untouched.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What a theme fills</h2>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Course tokens</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-well</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-well)"></span></td>
+                <td>The step's own ground, so a row reads as an inset in the
+                  card's body rather than a card of its own.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-membrane</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-membrane)"></span></td>
+                <td>The left rule of an open step: present, but saying nothing
+                  is asked of you yet.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-watch</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-watch)"></span></td>
+                <td>The left rule of a due step. The same watch colour the
+                  vitals use, because it means the same thing.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-thriving</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-thriving)"></span></td>
+                <td>The left rule and the number of a done step — the one place
+                  in a course where progress is good news.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-mutate</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-mutate)"></span></td>
+                <td>The stake's fill. Every step's control is this one form,
+                  because every step changes data.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-corner-well</code></td>
+                <td>—</td>
+                <td>The step's corner, inherited from the well it sits in.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">Attributes and classes</caption>
+            <thead><tr><th>Hook</th><th>Values</th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-course</code></td>
+                <td>—</td>
+                <td>The leaflet. An <code>&lt;ol&gt;</code>, because the order is
+                  real. Sits inside <code>.rz-n__body</code>, usually on a
+                  <code>.rz-n__section</code>. Never nest one inside
+                  another.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-course__step</code></td>
+                <td>—</td>
+                <td>One step: its mark, then its title, its instruction and its
+                  stake. An <code>&lt;li&gt;</code>.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-course__mark</code></td>
+                <td>—</td>
+                <td>The step's real position in the treatment, not a decorative
+                  bullet.</td>
+              </tr>
+              <tr>
+                <td><code>data-done</code></td>
+                <td><code>true</code></td>
+                <td>On the step. Recedes it and greens its rule and its mark.
+                  Set by the stake; never authored as a way of hiding a
+                  step.</td>
+              </tr>
+              <tr>
+                <td><code>data-due</code></td>
+                <td><code>true</code></td>
+                <td>On the step. At most one step in a course is due at a
+                  time — the next one you actually have to do.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-stake</code></td>
+                <td><code>aria-pressed</code></td>
+                <td>The only control a step may hold. Its refused state, which
+                  offline uses, is the stake's own.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Every value above is a token reference, so the palette switcher in
+          Settings re-keys a course live along with everything else — see
+          <a href="../foundations/colors.html">colors</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <ul>
+          <li><strong>The order is in the markup.</strong> A course is an
+            <code>&lt;ol&gt;</code> and a step is an <code>&lt;li&gt;</code>, so
+            a screen reader announces "list, 4 items" and numbers the steps
+            itself. <code>.rz-course__mark</code> is the same number drawn; if
+            you find yourself giving it a label, you have made it say the number
+            twice.</li>
+          <li><strong>Each stake says which step it belongs to.</strong> Four
+            buttons all reading "Mark as done" is four identical accessible
+            names. Add the step's own title in an <code>.rz-sr</code> span, so
+            the name reads "Mark as done — step 2, wipe the leaves".</li>
+          <li><strong>Done is announced by the control itself.</strong> The
+            stake carries <code>aria-pressed</code>, and it is the focused
+            element when it flips, so the change is spoken without a live
+            region. Do not also call <code>RZ.say</code> for it — the live
+            region belongs to travel, and a course that announces from both says
+            everything twice.</li>
+          <li><strong>One tab stop per step.</strong> Tab walks the stakes down
+            the course in order. Nothing in a course is reachable by hover
+            alone, and nothing in it takes a tab stop that is not a control —
+            which is also why a step holds no link: it would put a traversal in
+            the middle of the keyboard walk of a mutation list.</li>
+          <li><strong>The colour is never the state.</strong> A due step says
+            "today" in its title and a done step says "Done" on its stake. Read
+            the course in greyscale and every step still states where it
+            stands.</li>
+          <li><strong>Logical properties throughout.</strong> The step's rule is
+            <code>border-inline-start</code> and its columns are laid out
+            inline, so in RTL the mark and the rule move to the reading edge
+            instead of pointing the wrong way.</li>
+          <li><strong>The course does not interrupt the graph walk.</strong>
+            Arrow keys with the world focused still follow the veins to the
+            plant and the problem, and that walk is settled on
+            <a href="../guidelines/accessibility.html">accessibility</a>.</li>
+        </ul>
+        <p class="doc-check">Tab through a focused course and read each stake's
+          accessible name: every one is distinct and names its step. Press each
+          in turn and assert <code>aria-pressed</code> and the step's
+          <code>data-done</code> agree, and that no live-region text was
+          emitted.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Using it</h2>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Keep every step something you do to the plant in front of you,
+              with a stake to check it off. The course is a leaflet you work
+              through without ever leaving the plant you are treating
+              (<span class="doc-cite">C14</span>).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Put a way out inside a step — a chip to the mite guide, a link to
+              the species. The leaflet you were working through takes you
+              somewhere else, and the plant you were treating is behind you. Put
+              the guide on <a href="navigate-to.html">Navigate to</a>, where
+              destinations belong.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Let a checked step turn done where it stands, keeping its number
+              and its place in the order, so you can see what you have already
+              got through (<span class="doc-cite">C9</span>).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Drop a done step out of the list, float the remaining ones up, or
+              renumber the course. You lose your place mid-treatment, and a
+              course that reorders itself as you work stops being something you
+              can trust with a plant.</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Write the due day the way you would say it — "today", "in 7
+              days" — in the step's own title, and let the left rule agree with
+              it.</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Print a bare date and leave the user counting, or mark three
+              steps due at once. A course asks one thing of you at a time; if
+              everything is due, nothing is.</p>
+          </div>
+        </div>
+
+        <p>Two more rules. Write the steps in the order you would say them out
+          loud, and start a low-confidence course with the step that finds out
+          rather than the step that treats hardest — checking the roots before
+          repotting is both better care and a more honest interface. And leave a
+          finished course on the plant: a treatment you completed is part of
+          that plant's story.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <ul>
+          <li><a href="node.html">Node</a> — the card contract a course lives
+            inside, where rank, recap and the show-modes are settled.</li>
+          <li><a href="vitals.html">Vitals</a> — the ailing reading that puts a
+            plant on a course, and where confidence is settled.</li>
+          <li><a href="focus-panel.html">Focus panel</a> — the four questions the
+            focused card answers, of which a course is the third.</li>
+          <li><a href="action-rail.html">Action rail</a> — the stake, and where
+            mutations that are not part of a sequence live.</li>
+          <li><a href="navigate-to.html">Navigate to</a> — where a destination
+            goes, since a step may never hold one.</li>
+          <li><a href="aggregate.html">Aggregate</a> — what happens when one
+            plant carries more courses than the board will draw.</li>
+          <li><a href="../patterns/degradation.html">Degradation</a> — slow,
+            stale, offline and failed courses, stated once for the whole
+            system.</li>
+          <li><a href="../patterns/traversal.html">Traversal</a> — the one hop
+            timing that brings you to a course and takes you away.</li>
+          <li><a href="../guidelines/interaction-and-cursors.html">Interaction
+            and cursors</a> — the two forms, and why a step is a stake.</li>
+          <li><a href="../guidelines/accessibility.html">Accessibility</a> — the
+            graph walk and the live region this page relies on.</li>
+        </ul>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The world specimen runs from the runtime: placement, rank, the veins and
+       every hop are RZ's. Nothing here re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-course",
+      edges: [
+        ["n-course", "n-mites"],
+        ["n-course", "n-office"],
+        ["n-office", "n-mites"]
+      ]
+    });
+
+    /* Checking a step off is this component's own domain mutation, not a
+       system primitive: it flips the step and stops. Law 1 and Law 2 are
+       checkable on the page because of it. */
+    document.querySelectorAll("[data-step-toggle]").forEach(function (stake) {
+      stake.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var step = stake.closest(".rz-course__step");
+        var done = stake.getAttribute("aria-pressed") === "true";
+        stake.setAttribute("aria-pressed", String(!done));
+        if (done) { step.removeAttribute("data-done"); }
+        else { step.setAttribute("data-done", "true"); }
+        stake.firstChild.nodeValue = done ? "Mark as done" : "Done";
+      });
+    });
+  </script>
+</body>
+</html>

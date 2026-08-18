@@ -2,15 +2,16 @@ import { Component, OnInit } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AuthService } from './core/services/auth.service';
+import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
 
 const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent implements OnInit {
   readonly navLinks = [

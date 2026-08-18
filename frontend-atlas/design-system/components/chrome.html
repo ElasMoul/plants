@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-palette="potting-bench">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chrome · Rhizome</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/system.css">
+  <link rel="stylesheet" href="../assets/docs.css">
+</head>
+<body class="doc-body" data-doc-depth="1">
+  <div class="doc-shell">
+    <aside class="doc-sidebar" data-doc-nav></aside>
+    <main class="doc-article">
+
+      <p class="doc-eyebrow">Components</p>
+      <h1 class="doc-title">Chrome</h1>
+      <p class="doc-lede">Chrome is the furniture around your garden: the things
+        that tell you where you are and what you can do, and that must never be
+        mistaken for the garden itself. This page settles what chrome is made of,
+        who its members are, and how the difference is kept material rather than
+        remembered.</p>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">What this is</h2>
+        <p>Your garden stands on the plane. Everything else — the bar across the
+          top that says where you are, the list of places you can go next, the
+          things you can do to the plant you are looking at, the small map in the
+          corner, the camera buttons — is apparatus. It belongs to the frame, not
+          to the garden. You cannot travel to it, it holds still while the world
+          moves under it, and nothing in it is a thing you keep.</p>
+        <p>Chrome is a <strong>register</strong>, not a layer. A layer is a place
+          in the stacking order, and a place in the stacking order is not
+          something a reader can see. A register is a material: one fill, one
+          corner, one rule, one type voice, one ink strength, one tracking, one
+          way of sitting against an edge. It is declared once as the
+          <code>--rz-chrome-*</code> token family and inherited through the single
+          <code>.rz-chrome</code> class, so it cannot drift one panel at a time.
+          Every chrome member on this page — top bar, Navigate to, Actions, world
+          view, camera cluster, gesture line, probe, live region — is that one
+          class plus one modifier saying which edge it owns.</p>
+        <p>The difference is drawn <em>inside</em> PlantPal's own palette, type
+          and density. Chrome is not a second aesthetic bolted on; it is the same
+          key, read quieter, squarer and flatter, so it recedes without ever
+          looking like it came from somewhere else.</p>
+        <div class="doc-note">
+          <p>This page owns the chrome register (<code>L1</code>). The members
+            have their own pages: <a href="navigate-to.html">navigate to</a>,
+            <a href="action-rail.html">action rail</a> and
+            <a href="minimap.html">minimap</a>. What sits <em>inside</em> the
+            frame is <a href="world.html">world</a> and <a href="node.html">node</a>.
+            The no-shadow value and the stacking rungs belong to
+            <a href="../foundations/elevation.html">elevation</a>; the two-form
+            grammar of stakes and chips belongs to
+            <a href="../foundations/iconography.html">iconography</a> and
+            <a href="../guidelines/interaction-and-cursors.html">interaction and
+            cursors</a>.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The laws</h2>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 1 · <span class="doc-cite">C16, C17</span></p>
+          <p class="doc-law__statement">Chrome is one material, declared once in
+            the token layer and inherited through one class. A panel does not
+            choose its own fill, corner, shadow, face or tracking; it chooses an
+            edge, and the register does the rest.</p>
+          <p class="doc-check">For every <code>.rz-chrome</code> element read the
+            computed style: <code>box-shadow</code> is <code>none</code>,
+            <code>border-radius</code> equals <code>--rz-chrome-corner</code>,
+            <code>font-family</code> equals <code>--rz-chrome-face</code>,
+            <code>text-transform</code> is <code>uppercase</code>,
+            <code>letter-spacing</code> equals <code>--rz-chrome-track</code>,
+            and every member reports the same single <code>font-size</code>.
+            Then grep the page: no rule outside <code>assets/system.css</code>
+            sets any of those on a chrome member.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 2 · <span class="doc-cite">C16</span></p>
+          <p class="doc-law__statement">Chrome sits flush to a viewport edge and
+            bleeds off it, is a sibling of the plane, and never moves with the
+            camera. A node floats on the plane and does; chrome does not. Two
+            visible members never share an edge position: the conditional
+            members — the gesture line, which is shown until you have panned or
+            zoomed once, and the probe, which ships only in review builds — each
+            stand in for a permanent member rather than stacking on one.</p>
+          <p class="doc-check">Pan and zoom, then diff every member's bounding
+            box: unchanged to the pixel, while every card's box moved by the same
+            delta. Assert no <code>.rz-chrome</code> element is a descendant of
+            <code>.rz-plane</code>, that each visible member's box touches a
+            frame edge, and that no two visible members' boxes intersect.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 3 · <span class="doc-cite">C14</span></p>
+          <p class="doc-law__statement">Neither of the two forms may appear in
+            chrome. Inside chrome the same two meanings become a leading mark on
+            an otherwise typographic row: a filled square means it changes data,
+            an arrow means it travels. The camera cluster is the third category
+            and is the only other control form chrome admits.</p>
+          <p class="doc-check">Assert no <code>.rz-stake</code> and no
+            <code>.rz-chip</code> is a descendant of <code>.rz-chrome</code>;
+            that every <code>.rz-chrome__item</code> carries
+            <code>data-means="mutate"</code> or <code>data-means="travel"</code>;
+            and that the only remaining control inside chrome is
+            <code>.rz-cam-btn</code>. Click every camera button and assert
+            <code>RZ.focus</code> and every record field are unchanged.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 4 · <span class="doc-cite">C5</span></p>
+          <p class="doc-law__statement">You-are-here is the top bar's centre
+            column, not a second element above it. There is one of it, it lives
+            in the register, and its wording is kept in lockstep with the world
+            view's marker — “Where the user is, is answerable at every zoom level
+            without hovering or reading — by a position marker in the persistent
+            world view, not by a breadcrumb alone.”</p>
+          <p class="doc-check">Assert exactly one <code>.rz-chrome__here</code>
+            exists and that it is a child of <code>.rz-chrome--top</code>, not a
+            sibling panel. Hop, then compare the last name in the trail with the
+            focused node's name and with the world view's
+            <code>aria-label</code>: all three changed together. Zoom to both
+            ends of the clamp and assert the marker is still inside the world
+            view's frame.</p>
+        </div>
+
+        <div class="doc-law">
+          <p class="doc-law__id">Law 5 · <span class="doc-cite">C17</span></p>
+          <p class="doc-law__statement">Chrome does not scroll and does not
+            grow. “Nothing other than the focused node's body scrolls.” A member
+            that has more to say than fits its edge is holding content, and
+            content belongs on the plane.</p>
+          <p class="doc-check">For every <code>.rz-chrome</code> element assert
+            <code>scrollHeight</code> equals <code>clientHeight</code> and that
+            no scrollbar is rendered. Fill Navigate to with a node of degree
+            twelve: the list is still the register's rows and the panel has not
+            become a scrolling column.</p>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">The register, assembled</h2>
+        <p>Chrome cannot be reviewed on its own — its whole job is to be
+          un-mistakable for something else, and that is only visible with the
+          something else present. So the specimen is the surface: cards on the
+          plane, and the register around them. Click a card to travel; drag the
+          bare board to pan and watch the furniture stay exactly where it is.</p>
+
+        <figure class="doc-specimen">
+          <div class="doc-specimen__stage" data-stage="world">
+            <div class="rz-world" id="rz-world" tabindex="0"
+                 aria-label="The garden world, with its chrome register around it. Click a card to travel to it; arrow keys follow the veins.">
+
+              <canvas class="rz-motes" id="rz-motes" aria-hidden="true"></canvas>
+
+              <div class="rz-plane" id="rz-plane">
+                <svg class="rz-veins" id="rz-veins" width="2400" height="1200" aria-hidden="true">
+                  <g id="rz-vein-group"></g>
+                  <g id="rz-vein-dots"></g>
+                  <path class="rz-trail" id="rz-trail"></path>
+                </svg>
+
+                <article class="rz-n" id="n-garden" data-cell="0,1"
+                         data-kind="Collection" data-kind-key="collection"
+                         data-name="My garden" data-recap="12 plants · 1 overdue today">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">My garden</h3>
+                  <p class="rz-n__recap">12 plants
+                    <span class="rz-n__recap-second">· 1 overdue today</span></p>
+                </article>
+
+                <article class="rz-n" id="n-office" data-cell="2,0"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Office Fig" data-recap="Fiddle-leaf Fig · overdue 2 days">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Office Fig</h3>
+                  <p class="rz-n__recap"><span class="rz-binomial">Ficus lyrata</span>
+                    <span class="rz-n__recap-second">· overdue 2 days</span></p>
+                  <div class="rz-n__full">
+                    <div class="rz-n__body">
+                      <div class="rz-n__section rz-vitals">
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Health</span>
+                          <span class="rz-health" data-health="watch">Wants water</span>
+                        </div>
+                        <div class="rz-vital-row">
+                          <span class="rz-vital-row__key">Last watered</span>
+                          <span>12 days ago, by you</span>
+                        </div>
+                      </div>
+                      <div class="rz-n__section">
+                        <p>The two forms live here, in the card, where content
+                          is: a stake to change something, a chip to go
+                          somewhere. Neither of them may appear in the furniture
+                          around this frame.</p>
+                        <p>
+                          <button type="button" class="rz-stake">Log a watering</button>
+                          <button type="button" class="rz-chip" data-rz-goto="n-problems">Problems</button>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="rz-n" id="n-studio" data-cell="2,2"
+                         data-kind="Plant" data-kind-key="plant"
+                         data-name="Studio Fig" data-recap="Under treatment · root rot">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Plant</p>
+                  <h3 class="rz-n__name">Studio Fig</h3>
+                  <p class="rz-n__recap">Under treatment
+                    <span class="rz-n__recap-second">· root rot, step 2 of 4</span></p>
+                </article>
+
+                <article class="rz-n" id="n-problems" data-cell="4,2"
+                         data-kind="Collection" data-kind-key="problem"
+                         data-name="Problems" data-recap="3 active · all three drawn">
+                  <span class="rz-n__grad"></span>
+                  <p class="rz-n__kind">Collection</p>
+                  <h3 class="rz-n__name">Problems</h3>
+                  <p class="rz-n__recap">3 active
+                    <span class="rz-n__recap-second">· all three are drawn</span></p>
+                </article>
+              </div>
+
+              <div class="rz-chrome rz-chrome--top">
+                <p class="rz-chrome__title">PlantPal</p>
+                <p class="rz-chrome__here" id="rz-here"></p>
+                <p>Your garden</p>
+              </div>
+
+              <div class="rz-chrome rz-chrome--rail">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Navigate to</span>
+                  <span id="rz-navto-degree"></span>
+                </p>
+                <div id="rz-navto-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--actions">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">Actions</span>
+                  <span id="rz-actions-scope"></span>
+                </p>
+                <div id="rz-actions-body"></div>
+              </div>
+
+              <div class="rz-chrome rz-chrome--map">
+                <p class="rz-chrome__head">
+                  <span class="rz-chrome__title">World view</span>
+                  <button type="button" class="rz-probe__btn" id="rz-arrange"
+                          aria-pressed="false">Arrange</button>
+                </p>
+                <svg class="rz-map" id="rz-map" width="208" height="104"
+                     viewBox="0 0 208 104" role="img" aria-label="World view">
+                  <g id="rz-map-edges"></g>
+                  <g id="rz-map-dots"></g>
+                  <rect class="rz-map__view" id="rz-map-view" x="0" y="0" width="0" height="0"></rect>
+                  <circle class="rz-map__you-halo" id="rz-map-you-halo" r="6"></circle>
+                  <circle class="rz-map__you" id="rz-map-you" r="3"></circle>
+                </svg>
+              </div>
+
+              <div class="rz-chrome rz-chrome--camera">
+                <button type="button" class="rz-cam-btn" id="rz-zoom-out" aria-label="Zoom out">&#8722;</button>
+                <button type="button" class="rz-cam-btn" id="rz-zoom-in" aria-label="Zoom in">&#43;</button>
+                <button type="button" class="rz-cam-btn" id="rz-fit" aria-label="Fit the whole world">&#9633;</button>
+                <button type="button" class="rz-cam-btn" id="rz-recentre" aria-label="Recentre on where you are">&#8226;</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="doc-specimen__caption">
+            <span>The chrome register around a live world · one class, one material, six edges</span>
+            <span>C5 · C14 · C16 · C17</span>
+          </figcaption>
+        </figure>
+
+        <p class="rz-sr rz-live" id="rz-live" role="status" aria-live="polite"></p>
+
+        <p>Blur the specimen until no word is legible. The cards are the only
+          bright, soft, floating rectangles on it; everything else has gone to a
+          flat dark band welded to an edge. That is the acceptance test for the
+          register, and it is the one worth running first, because it is the test
+          a user runs involuntarily every time the screen enters their peripheral
+          vision.</p>
+
+        <p>Nothing above re-implements anything. The trail in the top bar, the
+          Navigate-to rows and their degree, and the Actions rows are all
+          generated by the runtime from one edge list, which is why an entry can
+          never offer a hop the world cannot draw:</p>
+
+        <pre class="doc-code"><code>RZ.mount({
+  world: "#rz-world",
+  plane: "#rz-plane",
+  focus: "n-office",
+  path: ["n-garden", "n-office"],
+  edges: [
+    ["n-garden", "n-office"],
+    ["n-garden", "n-studio"],
+    ["n-office", "n-problems"],
+    ["n-studio", "n-problems"]
+  ],
+  actions: {
+    "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+  }
+});</code></pre>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Node against chrome</h2>
+        <p>This is the table the system owns. Every row is a channel, and every
+          channel points the same way, so the separation survives losing any one
+          of them — a palette with less contrast, a theme with a flatter halo, a
+          reader who cannot see colour at all.</p>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The two registers (Law 1)</caption>
+            <thead><tr><th>Channel</th><th>Node — the garden</th><th>Chrome — the apparatus</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Fill</td>
+                <td><code>--rz-sheet</code>: lifted off the ground, the lightest
+                  surface on screen.</td>
+                <td><code>--rz-chrome-fill</code>: below the ground, darker than
+                  the plane it sits against.</td>
+              </tr>
+              <tr>
+                <td>Corner</td>
+                <td><code>--rz-corner-card</code>: rounded. A card is an object.</td>
+                <td><code>--rz-chrome-corner</code>: square. Furniture is cut to
+                  the edge it is fixed to.</td>
+              </tr>
+              <tr>
+                <td>Border</td>
+                <td><code>--rz-membrane</code> on all four sides: a hairline
+                  membrane holding the card together.</td>
+                <td><code>--rz-chrome-rule</code> on the one side facing the
+                  world, weighted <code>--rz-strong</code> in
+                  <code>--rz-chrome-key</code>. Chrome has a seam, not an
+                  outline.</td>
+              </tr>
+              <tr>
+                <td>Shadow</td>
+                <td><code>--rz-halo-quiet</code>, and <code>--rz-halo-lit</code> at
+                  focus: a card floats.</td>
+                <td><code>--rz-chrome-lift</code>, which is
+                  <code>--rz-lift-0</code>. No shadow at all, at any rung, ever.
+                  See <a href="../foundations/elevation.html">elevation</a>.</td>
+              </tr>
+              <tr>
+                <td>Type voice</td>
+                <td>The body and name faces, mixed case, across the whole
+                  prominence ladder.</td>
+                <td><code>--rz-chrome-face</code>, monospace, uppercase, and one
+                  rung only — <code>--rz-chrome-size</code>. Chrome has no
+                  hierarchy because chrome has no argument to make.</td>
+              </tr>
+              <tr>
+                <td>Ink strength</td>
+                <td><code>--rz-ink</code> down to <code>--rz-ink-muted</code>:
+                  the strongest ink on screen is a plant's name.</td>
+                <td><code>--rz-chrome-ink</code>, lifting to
+                  <code>--rz-chrome-ink-lit</code> only for a row you can act on.
+                  Always below a card's strength.</td>
+              </tr>
+              <tr>
+                <td>Tracking</td>
+                <td><code>--rz-track-name</code> and
+                  <code>--rz-track-label</code>: set for reading.</td>
+                <td><code>--rz-chrome-track</code>: wider than any node label, so
+                  chrome reads as signage even out of focus.</td>
+              </tr>
+              <tr>
+                <td>Position</td>
+                <td>On the plane, at a cell. It moves with the camera and can be
+                  travelled to.</td>
+                <td>Fixed, flush to a viewport edge, bleeding off it. It never
+                  moves with the camera and can never be travelled to.</td>
+              </tr>
+              <tr>
+                <td>Controls permitted</td>
+                <td>Both forms: the filled stake and the outlined chip, plus
+                  ordinary links in prose.</td>
+                <td>Neither form. Only <code>.rz-chrome__item</code> rows with a
+                  leading mark, and <code>.rz-cam-btn</code> in the camera
+                  cluster.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">What a theme fills</caption>
+            <thead><tr><th>Token</th><th></th><th>Means</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--rz-chrome-fill</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-fill)"></span></td>
+                <td>The furniture's own ground. Darker than the plane at every
+                  palette, so chrome recedes rather than competing.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-key</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-key)"></span></td>
+                <td>The palette's signature inside the register: the seam facing
+                  the world, a panel's title, the you-are-here marker.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-rule</code> · <code>--rz-chrome-rule-lit</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-rule-lit)"></span></td>
+                <td>The hairline inside a panel, and its lit form. Chrome divides
+                  with rules because it may not divide with shadow.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-ink</code> · <code>--rz-chrome-ink-lit</code>
+                  · <code>--rz-chrome-ink-faint</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-ink)"></span></td>
+                <td>Three strengths and no more: a label, a row you can act on, a
+                  thing that is present but not for you yet.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-hover</code></td>
+                <td><span class="doc-swatch" style="background: var(--rz-chrome-hover)"></span></td>
+                <td>The only feedback a chrome row gets. It never lifts, never
+                  scales, never grows a border.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-lift</code></td>
+                <td></td>
+                <td><code>--rz-lift-0</code>. Named as a family member on purpose:
+                  a theme must be able to see that it is deliberately nothing,
+                  and must leave it that way.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-corner</code> · <code>--rz-chrome-pad</code></td>
+                <td></td>
+                <td>Square, and tight. Chrome spends no air; the air in this
+                  system is spent separating cards on the plane.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-chrome-face</code> · <code>--rz-chrome-size</code>
+                  · <code>--rz-chrome-track</code></td>
+                <td></td>
+                <td>The voice: one monospace face, one rung, tracked wider than
+                  any node label. A theme may re-pitch all three; it may not add
+                  a second rung.</td>
+              </tr>
+              <tr>
+                <td><code>--rz-z-chrome</code> · <code>--rz-z-live</code></td>
+                <td></td>
+                <td>The chrome rung on the z-scale, above every card, and the
+                  live region above that. The rungs themselves are owned by
+                  <a href="../foundations/elevation.html">elevation</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-table-wrap">
+          <table class="doc-table">
+            <caption class="doc-eyebrow">The members (Law 2)</caption>
+            <thead><tr><th>Member</th><th>Edge it owns</th><th>What it carries</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>.rz-chrome--top</code></td>
+                <td>Block-start, full width</td>
+                <td>The app's name, and <em>you-are-here as its centre column</em>
+                  — the trail of names you actually walked, each one a travel row
+                  back to where it stands.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--rail</code></td>
+                <td>Inline-end, below the top bar</td>
+                <td>Navigate to: one travel row per vein out of the focus, and
+                  the real degree beside the title. Owned by
+                  <a href="navigate-to.html">navigate to</a>.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--actions</code></td>
+                <td>Inline-start, block-end</td>
+                <td>Actions: what you can do to the node you are on, every row a
+                  mutate mark, none of them moving the camera. Owned by
+                  <a href="action-rail.html">action rail</a>.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--map</code></td>
+                <td>Inline-end, block-end</td>
+                <td>The world view and the door into arrange mode. It answers
+                  C5 and deliberately ignores the camera. Owned by
+                  <a href="minimap.html">minimap</a>.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--camera</code></td>
+                <td>Block-end, centred</td>
+                <td>Zoom out, zoom in, fit, recentre — the third category, which
+                  changes neither data nor focus.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--gesture</code></td>
+                <td>Inline-start, block-end · conditional</td>
+                <td>The gesture line: how to pan and how to zoom, in the faintest
+                  ink, with no fill at all. Shown until you have panned or zoomed
+                  once; it stands in Actions' place rather than on top of it.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--probe</code></td>
+                <td>Inline-end, below the top bar · conditional</td>
+                <td>The reviewer's panel. Review builds only, and it takes
+                  Navigate to's edge, so a build shows one or the other.</td>
+              </tr>
+              <tr>
+                <td><code>.rz-chrome--live</code></td>
+                <td>Block-end, full width, on its own rung</td>
+                <td>The live region: one sentence at a time, spoken and shown.
+                  It is chrome because it is apparatus, and it is above chrome
+                  because it must never be covered.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Behaviour</h2>
+
+        <h3 class="doc-h3">Rows, not buttons</h3>
+        <p>A chrome row is typographic. It fills its panel's width, it is set in
+          the register's own voice, and the only thing that distinguishes what it
+          will do is the mark that leads it: a filled square for a change to your
+          garden, an arrow for a journey. On hover it takes
+          <code>--rz-chrome-hover</code> and nothing else. A row you cannot use
+          right now says so by going faint and refusing the pointer, in place —
+          it does not disappear, because a row that vanishes teaches you that the
+          furniture is not stable.</p>
+
+        <pre class="doc-code"><code>&lt;button type="button" class="rz-chrome__item" data-means="travel"&gt;
+  Studio Fig&lt;small&gt;Under treatment · root rot, step 2 of 4&lt;/small&gt;
+&lt;/button&gt;
+
+&lt;button type="button" class="rz-chrome__item" data-means="mutate"&gt;Log a watering&lt;/button&gt;
+&lt;button type="button" class="rz-chrome__item" data-means="mutate" data-refused="true"&gt;
+  Archive this plant
+&lt;/button&gt;</code></pre>
+
+        <p>The <code>&lt;small&gt;</code> is the one place chrome drops its own
+          voice: a row's second line is the node's own recap, in the body face
+          and mixed case, because it is quoting your garden rather than labelling
+          the apparatus.</p>
+
+        <h3 class="doc-h3">Pointer and camera</h3>
+        <p>Chrome is above the plane on the z-scale, so a press that lands on
+          chrome is never a press on the board: the pan gesture cannot begin
+          under a panel, and no chrome member carries a grab or a move cursor.
+          The camera cluster is the only place in the system where a control
+          changes the view without changing anything else — recentre says so out
+          loud, because moving the camera back is the action most easily mistaken
+          for a hop. The full cursor table is on
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>.</p>
+
+        <h3 class="doc-h3">On a hop</h3>
+        <p>The register is redrawn from the graph on every focus change, in one
+          pass: the trail, the Navigate-to rows, the degree beside them, the
+          Actions scope and the world view all come from the same edge list and
+          the same focus, so they cannot tell different stories. Chrome does not
+          animate during travel — it is the fixed thing the motion is measured
+          against, and furniture that slides while the camera slides makes both
+          unreadable. The timing and path of the hop itself belong to
+          <a href="../patterns/traversal.html">traversal</a>.</p>
+
+        <h3 class="doc-h3">In the other modes</h3>
+        <p>In arrange mode the world view's button is the way in and the way out,
+          and the rest of the register goes quiet while the cards are being
+          placed — see <a href="../patterns/arrange-mode.html">arrange mode</a>.
+          When the app shrinks into a floating card, its chrome shrinks with it
+          as part of the picture, and the bar that appears beside the card is
+          itself chrome, in the same register, at the same depth — see
+          <a href="../patterns/settings-exit.html">settings exit</a>. Under
+          degradation the register never becomes a banner across the world:
+          states are material on the cards that hold them, and the probe is the
+          reviewer's way to walk them, not the user's way to be told about them —
+          see <a href="../patterns/degradation.html">degradation</a>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Accessibility</h2>
+        <p>Chrome is where a screen-reader user is told what a sighted user can
+          see at a glance, so it carries more of the accessibility load than any
+          other part of the system. Every panel is a landmark with its own
+          accessible name matching its visible title — “Navigate to”, “Actions”,
+          “World view” — so the register can be walked directly rather than
+          hunted through. The visible uppercase is <code>text-transform</code>,
+          never uppercase characters in the markup, so nothing is spelled out
+          letter by letter.</p>
+        <p>The live region is a chrome member and sits on its own rung. It is
+          polite, it holds one sentence at a time, and under reduced motion it
+          holds it longer, because a reader who has turned motion off has also
+          lost the movement that would otherwise have carried the news. After a
+          hop it names where you came from, what you crossed without opening, and
+          how many veins lead out from here. The world view's accessible label is
+          rewritten on the same hop, in lockstep with the visible you-are-here,
+          so the two are never out of step.</p>
+        <p>The you-are-here trail is a row of real buttons, each one a hop back to
+          a place you actually stood, and the current one carries
+          <code>aria-current</code>. A camera button is labelled by what it does
+          to the view — “zoom out”, “fit the whole world”, “recentre on where you
+          are” — never by a symbol name, and none of them announces a move,
+          because none of them moves you. A refused row keeps its place in the
+          tab order and states why it is refused rather than going silent.</p>
+        <p>Chrome speaks the garden, never the machinery: a row says “Studio Fig ·
+          under treatment”, never a cell, a row, a column or a lattice
+          coordinate. Colour is never the only signal — the mutate mark is a
+          filled square and the travel mark is an arrow, so the two meanings are
+          separable in monochrome. Every member is positioned with logical
+          properties, so the rail, the seam and the marks all reverse correctly in
+          RTL.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Usage guidance</h2>
+        <p>Almost every way this law gets broken looks like a small kindness at
+          the time: one panel that deserved a bit more presence, one action worth
+          promoting, one message important enough to float. Each of them costs the
+          same thing — the user's ability to tell, without looking, what is their
+          garden and what is the app.</p>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Add a new panel as <code>.rz-chrome</code> plus one modifier
+              naming the edge it owns, and let it inherit fill, corner, seam,
+              voice, ink and tracking untouched. If it needs a channel the family
+              does not have, that is an amendment with a recorded reason, not a
+              local override (Law 1).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Give one panel a lighter fill, a rounded corner or a soft shadow
+              to make it feel important. The blur test fails immediately: there
+              are now two kinds of bright floating rectangle on screen and only
+              one of them is your garden (Law 1, C16).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Put a mutation in Actions as a row with a mutate mark, and a
+              journey in Navigate to as a row with an arrow. Two meanings, two
+              marks, one voice — and the form still tells you which is which
+              before you press it (Law 3, C14).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Drop a filled stake or an outlined chip into a panel because the
+              action matters. The two forms belong to content; repeating them in
+              the furniture makes the furniture look like a card, and makes the
+              card's own stake look ordinary (Law 3, C14).</p>
+          </div>
+        </div>
+
+        <div class="doc-pair">
+          <div class="doc-case" data-case="do">
+            <p class="doc-case__label">Do</p>
+            <p>Say a thing once, in the live region, and let it go. If it needs to
+              persist, it is a state of a node, and it belongs in that node, on
+              the plane, where the user can travel to it (Law 5).</p>
+          </div>
+          <div class="doc-case" data-case="dont">
+            <p class="doc-case__label">Don’t</p>
+            <p>Grow a panel into a scrolling column of notices across the world.
+              A strip that covers the garden to talk about the garden is a lie
+              about every part of it that is fine, and nothing but the focused
+              card's body scrolls (Law 5, C17).</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="doc-section">
+        <h2 class="doc-h2">Where else this appears</h2>
+        <p>The frame chrome sits against is <a href="world.html">world</a>, and
+          what it sits against is <a href="node.html">node</a>. Its members have
+          their own pages: <a href="navigate-to.html">navigate to</a>,
+          <a href="action-rail.html">action rail</a>,
+          <a href="minimap.html">minimap</a>, and the focused card's own answers
+          in <a href="focus-panel.html">focus panel</a>. The no-shadow value and
+          the stacking rungs are owned by
+          <a href="../foundations/elevation.html">elevation</a>; the two-form
+          grammar by <a href="../foundations/iconography.html">iconography</a> and
+          <a href="../guidelines/interaction-and-cursors.html">interaction and
+          cursors</a>; the register's wording by
+          <a href="../guidelines/voice-and-copy.html">voice and copy</a> and its
+          announcements by
+          <a href="../guidelines/accessibility.html">accessibility</a>. Chrome
+          during a hop is <a href="../patterns/traversal.html">traversal</a> and
+          <a href="../patterns/arrivals.html">arrivals</a>; in the other modes,
+          <a href="../patterns/arrange-mode.html">arrange mode</a>,
+          <a href="../patterns/settings-exit.html">settings exit</a> and
+          <a href="../patterns/degradation.html">degradation</a>. Adding to the
+          family is <a href="../guidelines/extending-this-system.html">extending
+          this system</a>.</p>
+      </section>
+
+      <footer class="doc-footer">
+        <span data-doc-version></span>
+        <span>Atlas-class · every C-number cites
+          <a href="../constitution.json">constitution.json</a></span>
+      </footer>
+    </main>
+  </div>
+  <script src="../assets/system.js"></script>
+  <script src="../assets/docs.js"></script>
+  <script>
+    /* The specimen runs from the runtime. The trail, the Navigate-to rows,
+       their degree and the Actions rows are all generated from this one edge
+       list — nothing on this page re-implements them. */
+    RZ.mount({
+      world: "#rz-world",
+      plane: "#rz-plane",
+      focus: "n-office",
+      path: ["n-garden", "n-office"],
+      edges: [
+        ["n-garden", "n-office"],
+        ["n-garden", "n-studio"],
+        ["n-office", "n-problems"],
+        ["n-studio", "n-problems"]
+      ],
+      actions: {
+        "n-office": ["Log a watering", "Move to another room", "Archive this plant"]
+      }
+    });
+  </script>
+</body>
+</html>

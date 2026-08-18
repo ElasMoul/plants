@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { UserService } from '../../../../core/services/user.service';
+import { UserService } from '@plantpal/shared-core';
 import {
   PlantNetConfigService,
   PlantNetProject,
@@ -12,9 +12,10 @@ import {
 } from '../../services/plantnet-config.service';
 
 @Component({
-  selector: 'app-preferences-page',
-  templateUrl: './preferences-page.component.html',
-  styleUrls: ['./preferences-page.component.scss'],
+    selector: 'app-preferences-page',
+    templateUrl: './preferences-page.component.html',
+    styleUrls: ['./preferences-page.component.scss'],
+    standalone: false
 })
 export class PreferencesPageComponent implements OnInit {
   plantnetProjects: PlantNetProject[] = [];
