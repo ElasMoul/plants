@@ -264,6 +264,24 @@ export class WorldStore {
     this.frameFocus();
   }
 
+  /**
+   * Refresh the world with newly-polled data WITHOUT moving the user: the focus
+   * (and path) survive when their nodes still exist; content updates in place —
+   * an arrival never moves the camera (C9).
+   */
+  updateWorld(data: WorldData): void {
+    const focus = this.focusId();
+    this.data.set(data);
+    if (!data.nodes.some(n => n.id === focus)) {
+      this.focusId.set(data.initialFocus);
+      this.path.set([data.initialFocus]);
+    } else {
+      this.path.update(p => p.filter(id => data.nodes.some(n => n.id === id)));
+    }
+    this.rendered.set(this.targets());
+    this.loadState.set('ready');
+  }
+
   /** Neighbours of the current focus with their nodes, for the Navigate-to rail. */
   focusNeighbours(): { id: string; name: string; recap: string }[] {
     const byId = this.nodeById();

@@ -53,9 +53,14 @@ export interface WorldNode {
   failure?: NodeFailure;
   /** Optional longer body shown when this node is the focus (D2 detail). */
   detail?: string[];
+  /** Generated full-body HTML in the prototype material language (live data). */
+  body?: string;
+  /** World-level: an async identification is still in flight (drives polling). */
 }
 
 export interface WorldData {
+  /** True while an identification is PENDING/PROCESSING (client polls). */
+  hasPendingScan?: boolean;
   nodes: WorldNode[];
   edges: Edge[];
   /** The node the camera starts on. */
