@@ -221,3 +221,9 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-08-16_2328_read-only-answer-these-questions-about-p
+
+- State: Atlas second frontend (Rhizome atlas-class, design-studio mission cae942ee) fully integrated on main -- workspace 16->20, rhizome-engine + shared-core libs, atlas app (:4300 dev / :8445 compose, same backend), classic-login Atlas checkbox with cross-origin session handoff, live data spine (plants/species/identifications + polling), all buttons wired (forms/POST/PUT/retry/health), constitution gate 164 tests -- status: done.
+- Next step: run the mission's coverage-gate against the shipped round-1 spine; round 2 = care loop (/care, /reminders, /treatment-plans as one slice per coverage-scope notes).
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none (spec-plantpal delta, if any, goes via demand to platform-vault)
+- Session: 2026-08-17/18 atlas integration (A-H)
