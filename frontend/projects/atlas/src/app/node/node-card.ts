@@ -118,7 +118,7 @@ export class NodeCard {
 
   /** The prototype's verbatim body for this node, if it has one. */
   readonly bodyHtml = computed<SafeHtml | null>(() => {
-    const raw = NODE_BODIES[this.node().id];
+    const raw = this.node().body ?? NODE_BODIES[this.node().id];
     return raw ? this.sanitizer.bypassSecurityTrustHtml(raw) : null;
   });
 

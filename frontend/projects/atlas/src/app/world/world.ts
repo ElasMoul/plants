@@ -319,16 +319,32 @@ export class World {
     this.store.go(id);
   }
 
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private firstLoad = true;
+
   private loadLive(): void {
     if (!this.authed()) return;
-    this.store.markLoading();
+    if (this.firstLoad) this.store.markLoading();
     this.graph
       .load()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: data => this.store.setWorld(data),
+        next: data => {
+          if (this.firstLoad) {
+            this.store.setWorld(data);
+            this.firstLoad = false;
+          } else {
+            this.store.updateWorld(data); // arrivals never move the camera (C9)
+          }
+          // the async identification family: poll while a scan is in flight
+          if (this.pollTimer) clearTimeout(this.pollTimer);
+          if (data.hasPendingScan) {
+            this.pollTimer = setTimeout(() => this.loadLive(), 8000);
+          }
+        },
         error: () => this.store.markError(),
       });
+    this.destroyRef.onDestroy(() => { if (this.pollTimer) clearTimeout(this.pollTimer); });
   }
 
   protected onAct(nodeId: string, way: string): void {
