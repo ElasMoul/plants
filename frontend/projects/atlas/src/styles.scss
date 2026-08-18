@@ -1,1 +1,27 @@
-/* You can add global styles to this file, and also import other style files */
+/* Atlas global styles. Rhizome design tokens are loaded first (tokens.css, via
+   angular.json styles) so every var below resolves. Base surface follows the
+   theme-a prototype: a dark "void" ground, sill-line ink, one plane, no page
+   scroll (the camera moves, not the document). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--vs-void-deep);
+  color: var(--vs-ink);
+  font-family: var(--vs-face-body);
+  font-size: var(--vs-rung-30);
+  line-height: var(--vs-lead-body);
+  /* One plane: the world is panned by the camera, the document never scrolls. */
+  overflow: hidden;
+}
+
+.rz-app-root {
+  padding: var(--vs-gutter-card, 1rem);
+}
