@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../tokens';
 import { ApiResponse } from '../models/api-response.model';
 import {
   ReasoningModelPreference,
@@ -14,9 +14,14 @@ const SESSION_KEY = 'ai_model_preferences';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
-  private readonly baseUrl = `${environment.apiUrl}/users/me`;
+  private readonly baseUrl: string;
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    @Inject(API_BASE_URL) apiBaseUrl: string,
+  ) {
+    this.baseUrl = `${apiBaseUrl}/users/me`;
+  }
 
   getPreferences(): Observable<ApiResponse<UserPreferences>> {
     const cached = sessionStorage.getItem(SESSION_KEY);

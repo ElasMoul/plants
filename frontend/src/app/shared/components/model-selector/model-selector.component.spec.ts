@@ -2,7 +2,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
-import { UserService } from '../../../core/services/user.service';
+import { UserService } from '@plantpal/shared-core';
 import { ModelSelectorComponent } from './model-selector.component';
 
 const mockPreferences = {

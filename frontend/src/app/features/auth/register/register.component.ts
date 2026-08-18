@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService } from '@plantpal/shared-core';
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   const pw      = group.get('password')?.value as string;

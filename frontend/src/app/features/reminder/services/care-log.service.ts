@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ApiResponse, PageResponse } from '../../../core/models/api-response.model';
+import { ApiResponse, PageResponse } from '@plantpal/shared-core';
 import { CareLogResponse } from '../models/care-log.model';
 
 @Injectable()

@@ -13,6 +13,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 
+import { provideSharedCore } from '@plantpal/shared-core';
+
+import { environment } from '../environments/environment';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { CoreModule } from './core/core.module';
@@ -44,5 +47,6 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
             multi: true,
         },
         provideHttpClient(withInterceptorsFromDi()),
+        ...provideSharedCore({ apiBaseUrl: environment.apiUrl }),
     ] })
 export class AppModule {}
