@@ -72,7 +72,7 @@ describe('Rhizome constitution gate (F2)', () => {
       const before = anchorsOf(FIXTURE_WORLD);
       const withNew: WorldData = {
         ...FIXTURE_WORLD,
-        nodes: [...FIXTURE_WORLD.nodes, { id: 'n-new', cell: { col: 12, row: 12 }, kind: 'plant', kindLabel: 'Plant', name: 'New', recap: 'new' }],
+        nodes: [...FIXTURE_WORLD.nodes, { id: 'n-new', glyph: '♠', cell: { col: 12, row: 12 }, kind: 'plant', kindLabel: 'Plant', name: 'New', recap: 'new' }],
       };
       const after = anchorsOf(withNew);
       for (const id of Object.keys(before)) {

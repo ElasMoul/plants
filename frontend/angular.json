@@ -123,6 +123,7 @@
             ],
             "styles": [
               "projects/atlas/src/styles/tokens.css",
+              "projects/atlas/src/styles/rhizome.css",
               "projects/atlas/src/styles.scss"
             ]
           },

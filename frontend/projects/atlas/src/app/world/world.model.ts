@@ -39,6 +39,8 @@ export interface WorldNode {
   kind: NodeKind;
   /** The human label shown above the name (e.g. "Species", "Collection"). */
   kindLabel: string;
+  /** The thumb glyph (Unicode, never an image — nothing external ever loads). */
+  glyph: string;
   name: string;
   recap: string;
   /** A recap's second line (dropped at the fringe). */

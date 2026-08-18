@@ -24,31 +24,31 @@ export function assembleWorld(sources: WorldSources): WorldData {
   const needWater = plants.filter(p => (p.nextWaterDays ?? 99) <= 0).length;
 
   // --- the hub: the user's garden (initial focus) ---
-  add({ id: 'n-garden', kind: 'collection', kindLabel: 'Garden', name: 'My garden',
+  add({ id: 'n-garden', glyph: '♣', kind: 'collection', kindLabel: 'Garden', name: 'My garden',
     recap: `${hs.totalPlants} plants · ${needWater} need water` });
 
   // account + today + reminders + species + problems hang off the garden
-  add({ id: 'n-account', kind: 'platform', kindLabel: 'Account', name: 'Your account',
+  add({ id: 'n-account', glyph: '◉', kind: 'platform', kindLabel: 'Account', name: 'Your account',
     recap: `Signed in · ${hs.totalPlants} plants` });
   link('n-account', 'n-garden');
 
-  add({ id: 'n-today', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
+  add({ id: 'n-today', glyph: '◷', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
     recap: `${dashboard.todayReminders.length} due · ${dashboard.overdueReminders.length} overdue` });
   link('n-garden', 'n-today');
 
   const reminderState = dashboard.todayReminders.length + dashboard.overdueReminders.length === 0 ? 'empty' : 'ready';
-  add({ id: 'n-reminders', kind: 'journal', kindLabel: 'Reminders', name: 'Reminders',
+  add({ id: 'n-reminders', glyph: '◷', kind: 'journal', kindLabel: 'Reminders', name: 'Reminders',
     recap: reminderState === 'empty' ? 'Nothing due' : `${dashboard.overdueReminders.length} overdue`,
     state: reminderState });
   link('n-garden', 'n-reminders');
   link('n-today', 'n-reminders');
 
-  add({ id: 'n-species', kind: 'collection', kindLabel: 'Collection', name: 'Species',
+  add({ id: 'n-species', glyph: '❋', kind: 'collection', kindLabel: 'Collection', name: 'Species',
     recap: `${dashboard.speciesCount} species`, state: dashboard.speciesCount === 0 ? 'empty' : 'ready' });
   link('n-garden', 'n-species');
 
   if (hs.issuesCount > 0) {
-    add({ id: 'n-problems', kind: 'problem', kindLabel: 'Problems', name: 'Problems',
+    add({ id: 'n-problems', glyph: '⚠', kind: 'problem', kindLabel: 'Problems', name: 'Problems',
       recap: `${hs.issuesCount} active` });
     link('n-garden', 'n-problems');
   }
@@ -58,7 +58,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
   emitCollapsed(rankedPlants, 'n-garden', {
     kind: 'plant', kindLabel: 'Plant', idPrefix: 'n-plant-', aggregateId: 'n-garden-more',
     aggregateName: 'more plants',
-    toNode: p => ({ id: `n-plant-${p.id}`, kind: 'plant', kindLabel: 'Plant', name: p.nickname,
+    toNode: p => ({ id: `n-plant-${p.id}`, glyph: '♠', kind: 'plant', kindLabel: 'Plant', name: p.nickname,
       recap: plantRecap(p), recapNote: p.commonName ?? p.species ?? undefined,
       state: p.healthStatus === 'UNKNOWN' ? 'unknown' : 'ready' }),
   }, add, link);
@@ -68,7 +68,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
   emitCollapsed(rankedSpecies, 'n-species', {
     kind: 'species', kindLabel: 'Species', idPrefix: 'n-species-', aggregateId: 'n-species-more',
     aggregateName: 'more species',
-    toNode: s => ({ id: `n-species-${s.id}`, kind: 'species', kindLabel: 'Species',
+    toNode: s => ({ id: `n-species-${s.id}`, glyph: '♣', kind: 'species', kindLabel: 'Species',
       name: s.commonName ?? s.scientificName, recap: s.scientificName, recapNote: s.commonName ? s.scientificName : undefined }),
   }, add, link);
 
@@ -118,7 +118,7 @@ function emitCollapsed<T>(
   }
   if (ranked.length >= DENSITY_CAP) {
     const rest = ranked.length - 2;
-    add({ id: spec.aggregateId, kind: 'collection', kindLabel: 'Collection',
+    add({ id: spec.aggregateId, glyph: '⋯', kind: 'collection', kindLabel: 'Collection',
       name: `${rest} ${spec.aggregateName}`, recap: `+${rest} more` });
     link(parentId, spec.aggregateId);
   }
