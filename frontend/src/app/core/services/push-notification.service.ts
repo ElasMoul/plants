@@ -4,7 +4,7 @@ import { SwPush } from '@angular/service-worker';
 import { Observable, from } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { ApiResponse } from '../models/api-response.model';
+import { ApiResponse } from '@plantpal/shared-core';
 
 interface SubscribeRequest {
   endpoint: string;

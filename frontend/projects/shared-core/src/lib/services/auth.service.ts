@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../tokens';
 import { ApiResponse } from '../models/api-response.model';
 import { User, AuthTokenPayload } from '../models/user.model';
 
@@ -22,14 +22,21 @@ interface AuthResponse {
   user: User;
 }
 
+// Shared across every PlantPal frontend (classic + atlas). The keys are part of
+// the contract: same-origin apps that reuse these keys share one login session.
 const TOKEN_KEY = 'plantpal_token';
 const USER_KEY  = 'plantpal_user';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly baseUrl = `${environment.apiUrl}/auth`;
+  private readonly baseUrl: string;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    @Inject(API_BASE_URL) apiBaseUrl: string,
+  ) {
+    this.baseUrl = `${apiBaseUrl}/auth`;
+  }
 
   login(request: LoginRequest): Observable<ApiResponse<AuthResponse>> {
     return this.http

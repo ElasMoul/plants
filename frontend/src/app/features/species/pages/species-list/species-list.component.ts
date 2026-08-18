@@ -8,7 +8,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { SpeciesService } from '../../services/species.service';
 import { SpeciesSummaryDto } from '../../models/species.model';
-import { PageResponse } from '../../../../core/models/api-response.model';
+import { PageResponse } from '@plantpal/shared-core';
 import { IdentificationService } from '../../../identification/services/identification.service';
 import { AnalyzeEmitPayload } from '../../../identification/models/identification.model';
 import { IdentificationUploadDialogComponent } from '../../../identification/components/identification-upload-dialog/identification-upload-dialog.component';

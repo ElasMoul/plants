@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ApiResponse } from '../../../core/models/api-response.model';
+import { ApiResponse } from '@plantpal/shared-core';
 import { ChatMessageDto, ChatRequest, ChatResponse } from '../models/chat.model';
 
 @Injectable()

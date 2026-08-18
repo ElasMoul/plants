@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { UserService } from '../../../../core/services/user.service';
+import { UserService } from '@plantpal/shared-core';
 import {
   PlantNetConfigService,
   PlantNetProject,
