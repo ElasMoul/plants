@@ -140,7 +140,13 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "projects/atlas/src/environments/environment.ts",
+                  "with": "projects/atlas/src/environments/environment.prod.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
