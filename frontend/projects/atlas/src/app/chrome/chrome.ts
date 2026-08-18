@@ -82,7 +82,7 @@ const MM_H = 104;
       <button class="ch-btn ch-btn--square" type="button" title="Due today"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Identify"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Journal"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
-      <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
+      <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings" (click)="openSettings($event)"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
     </nav>
 
     <aside class="chrome side" id="actions" aria-labelledby="actions-h">
@@ -121,7 +121,7 @@ const MM_H = 104;
           </g>
           <g id="mm-dots">
             @for (d of mmDots(); track d.id) {
-              <rect class="mm-dot" width="4" height="4" rx="1" [attr.x]="d.x - 2" [attr.y]="d.y - 2" [attr.data-rank]="d.near ? 'near' : null" />
+              <rect class="mm-dot" width="4" height="4" rx="1" [attr.x]="d.x - 2" [attr.y]="d.y - 2" [attr.data-rank]="d.near ? 'near' : null" [attr.data-moved]="d.moved ? 'true' : null" />
             }
           </g>
           <rect id="mm-view" rx="2" [attr.x]="mmView().x" [attr.y]="mmView().y" [attr.width]="mmView().w" [attr.height]="mmView().h"></rect>
@@ -133,8 +133,13 @@ const MM_H = 104;
         <button class="ch-btn ch-btn--square" type="button" id="zoom-in" title="Zoom in" (click)="store.zoomBy(1.18)">+</button>
         <button class="ch-btn ch-btn--square" type="button" id="recenter" title="Recentre on where I am" (click)="onRecenter()">◎</button>
         <button class="ch-btn ch-btn--square" type="button" id="zoom-out-small" title="Zoom out" (click)="store.zoomBy(0.85)">−</button>
-        <button class="ch-btn ch-btn--square" type="button" id="drag-mode" aria-pressed="false" title="Arrange mode — reposition the nodes">✥</button>
+        <button class="ch-btn ch-btn--square" type="button" id="drag-mode" [attr.aria-pressed]="store.dragMode()" title="Arrange mode — reposition the nodes" (click)="store.setArrange(!store.dragMode())">✥</button>
       </div>
+    </div>
+
+    <div id="drag-banner" class="chrome" role="status">
+      <span>Arrange mode · drag any card anywhere · nothing else responds until you leave</span>
+      <button class="ch-btn" type="button" id="drag-done" style="width:auto" (click)="store.setArrange(false)">Done arranging</button>
     </div>
 
     <div id="camera" class="chrome">
@@ -206,7 +211,7 @@ export class Chrome {
   protected readonly mmDots = computed(() => {
     const t = this.store.targets();
     return this.store.order().map(id => ({
-      id, ...this.mm(t[id]), near: this.store.rankNameOf(id) === 'near',
+      id, ...this.mm(t[id]), near: this.store.rankNameOf(id) === 'near', moved: this.store.hasOffset(id),
     }));
   });
   protected readonly mmYou = computed(() => this.mm(this.store.targets()[this.store.focusId()] ?? { x: 0, y: 0 }));
@@ -229,6 +234,8 @@ export class Chrome {
   constructor() {
     // Probes are body-level material states — rhizome.css keys off these attrs.
     effect(() => {
+      document.body.dataset['mode'] = this.store.mode();
+      document.body.dataset['drag'] = this.store.dragMode() ? 'on' : '';
       document.body.dataset['speed'] = this.store.probeSlow() ? 'slow' : 'normal';
       document.body.dataset['net'] = this.store.probeOffline() ? 'offline' : 'online';
       if (this.store.probeReduced()) document.body.dataset['motion'] = 'reduced';
@@ -248,6 +255,11 @@ export class Chrome {
     this.store.say(`Found ${hit.name}.`);
     this.store.go(hit.id);
     input.blur();
+  }
+
+  protected openSettings(ev: Event): void {
+    ev.stopPropagation(); // the opening click must not reach #shell's click-to-exit
+    this.store.mode.set('overview');
   }
 
   protected onBell(): void {

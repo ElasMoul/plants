@@ -6,6 +6,7 @@ import {
   buildRoute,
   Camera,
   cameraForPoint,
+  DEFAULT_LATTICE,
   computeTargets,
   easeOutCubic,
   HOP_DURATION_MS,
@@ -84,13 +85,14 @@ export class WorldStore {
     const sizes = this.sizes();
     const nodes: Record<string, { anchor: Point; size: Size }> = {};
     for (const n of this.nodes()) {
-      nodes[n.id] = { anchor: anchorPosition({ cell: n.cell, offset: n.offset }), size: sizes[n.id] };
+      nodes[n.id] = { anchor: anchorPosition({ cell: n.cell, offset: this.offsets()[n.id] ?? n.offset }, this.lattice()), size: sizes[n.id] };
     }
     return computeTargets({
       focusId: this.focusId(),
       order: this.order(),
       nodes,
       adjacency: this.adjacency(),
+      dragMode: this.dragMode(),
     });
   });
 
@@ -121,6 +123,72 @@ export class WorldStore {
   readonly probeSlow = signal(false);
   readonly probeOffline = signal(false);
   readonly probeReduced = signal(false);
+
+  /** App vs overview (settings) view. */
+  readonly mode = signal<'app' | 'overview'>('app');
+
+  /** Arrange mode: anchors only, everything else inert. */
+  readonly dragMode = signal(false);
+  private savedCamera: Camera | null = null;
+
+  /** User drag offsets (Arrange) — the persisted layer of the position formula. */
+  readonly offsets = signal<Record<string, Point>>({});
+
+  /** The live lattice (interface switch re-pitches; cells never change). */
+  readonly lattice = signal(DEFAULT_LATTICE);
+
+  /** Interface + palette (Settings · Appearance). */
+  readonly ui = signal<'sill-line' | 'glasshouse-table'>('sill-line');
+  readonly palette = signal('first-light');
+
+  setArrange(on: boolean): void {
+    if (on === this.dragMode()) return;
+    if (on) {
+      this.savedCamera = this.camera();
+      this.dragMode.set(true);
+      this.say('Arrange mode. Drag any card anywhere; its position is kept.');
+    } else {
+      this.dragMode.set(false);
+      if (this.savedCamera) this.camera.set(this.savedCamera);
+      this.say('Left arrange mode. Positions kept.');
+    }
+    this.layoutEpoch.update(v => v + 1);
+  }
+
+  setOffset(id: string, offset: Point): void {
+    this.offsets.update(o => ({ ...o, [id]: offset }));
+  }
+
+  hasOffset(id: string): boolean {
+    const o = this.offsets()[id];
+    return !!o && (o.x !== 0 || o.y !== 0);
+  }
+
+  setUI(ui: 'sill-line' | 'glasshouse-table'): void {
+    this.ui.set(ui);
+    document.documentElement.setAttribute('data-ui', ui);
+    // choosing an interface brings its default palette with it (coupled reading)
+    const pal = ui === 'sill-line' ? 'first-light' : 'glasshouse-table';
+    this.setPalette(pal);
+    // re-read the pitch the new interface declares; cells never change (C7/C8)
+    const cs = getComputedStyle(document.documentElement);
+    const px = parseFloat(cs.getPropertyValue('--vs-pitch-x')) || DEFAULT_LATTICE.pitchX;
+    const py = parseFloat(cs.getPropertyValue('--vs-pitch-y')) || DEFAULT_LATTICE.pitchY;
+    this.lattice.set({ ...DEFAULT_LATTICE, pitchX: px, pitchY: py });
+    this.layoutEpoch.update(v => v + 1);
+    this.frameFocus();
+  }
+
+  setPalette(palette: string): void {
+    this.palette.set(palette);
+    document.documentElement.setAttribute('data-palette', palette);
+  }
+
+  /** Escape: one step back along the crumb path. */
+  goBack(): void {
+    const p = this.path();
+    if (p.length > 1) this.go(p[p.length - 2]);
+  }
 
   /** The five nodes the slow probe holds "still arriving" (theme-a SLOW_NODES). */
   private static readonly SLOW_NODES = new Set([
