@@ -7,9 +7,13 @@ import {
   ElementRef,
   HostListener,
   inject,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService } from '@plantpal/shared-core';
+import { environment } from '../../environments/environment';
 import { NodeCard } from '../node/node-card';
+import { classicLinkFor, classicLoginLink } from './interop';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
@@ -79,7 +83,15 @@ interface VeinLine {
       <!-- CHROME — flush furniture, never travels with the camera (C14) -->
       <header class="rz-chrome rz-topbar">
         <span class="rz-brand">PlantPal · Botanical Network</span>
-        <span class="rz-here">You are here: {{ focusName() }}</span>
+        <span class="rz-actions">
+          <span class="rz-here">You are here: {{ focusName() }}</span>
+          @if (focusClassicLink()) {
+            <a class="rz-link" [href]="focusClassicLink()" target="_blank" rel="noopener">Open in PlantPal ↗</a>
+          }
+          @if (!authed()) {
+            <a class="rz-link rz-signin" [href]="signInUrl">Sign in</a>
+          }
+        </span>
       </header>
       <div class="rz-chrome rz-camera">
         <button type="button" (click)="store.zoomBy(0.8)" aria-label="Zoom out">−</button>
@@ -146,7 +158,15 @@ interface VeinLine {
         padding: 12px 18px;
         background: linear-gradient(var(--vs-void-deep, #070909), transparent);
       }
+      .rz-actions { display: flex; gap: 16px; align-items: center; }
       .rz-here { color: var(--vs-ink-second); }
+      .rz-link {
+        color: var(--vs-ink-muted);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+      }
+      .rz-link:hover { color: var(--vs-ink); border-bottom-color: var(--vs-membrane-lit, currentColor); }
+      .rz-signin { color: var(--vs-kind-species, var(--vs-ink)); }
       .rz-camera {
         bottom: 18px;
         left: 50%;
@@ -173,11 +193,22 @@ export class World {
   protected readonly store = inject(WorldStore);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly graph = inject(WorldGraphService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly focusName = computed(
-    () => this.store.nodes().find(n => n.id === this.store.focusId())?.name ?? '',
+  /** Shared session: a token in localStorage (set by either app) means signed in. */
+  protected readonly authed = signal(this.auth.isLoggedIn());
+  protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
+
+  protected readonly focusNode = computed(() =>
+    this.store.nodes().find(n => n.id === this.store.focusId()),
   );
+  protected readonly focusName = computed(() => this.focusNode()?.name ?? '');
+  /** "Open in PlantPal" deep-link for the current focus (null if no classic page). */
+  protected readonly focusClassicLink = computed(() => {
+    const f = this.focusNode();
+    return f ? classicLinkFor(f, environment.classicAppUrl) : null;
+  });
 
   /** Vein polylines in world coordinates, live-marked when incident to the focus. */
   protected readonly veins = computed<VeinLine[]>(() => {
@@ -217,6 +248,8 @@ export class World {
    * board never blanks and there is no global error banner (C22-C25).
    */
   private loadLive(): void {
+    // Not signed in → keep the fixture and offer sign-in; don't fetch (no session).
+    if (!this.authed()) return;
     this.store.markLoading();
     this.graph
       .load()
