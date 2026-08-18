@@ -1,14 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { API_BASE_URL, ApiResponse } from '@plantpal/shared-core';
-import { environment } from '../../environments/environment';
-import { classicLinkFor } from './interop';
 import { WorldStore } from './world.store';
 
 /** An open in-world form (design-system material). */
 export type ActiveForm =
   | { kind: 'add-plant' }
-  | { kind: 'add-note'; plantId: number; plantName: string };
+  | { kind: 'add-note'; plantId: number; plantName: string }
+  | { kind: 'identify' };
 
 /**
  * Every stake's real behavior (H6). Round-1 families mutate the backend and
@@ -55,13 +54,13 @@ export class WorldActionsService {
       return;
     }
     if (/identify|scan leaf/.test(l)) {
-      window.open(`${environment.classicAppUrl}/identify`, '_blank', 'noopener');
-      this.store.say('Identification opens in PlantPal — the answer lands back on this board.');
+      this.activeForm.set({ kind: 'identify' });
       return;
     }
     if (/add a species|import a list/.test(l)) {
-      window.open(classicLinkFor({ id: 'n-species' }, environment.classicAppUrl) ?? '#', '_blank', 'noopener');
-      this.store.say('A species is born from an identification — opening the garden in PlantPal.');
+      // a species is born from an identification — the identify flow lives HERE
+      this.store.say('A species is born from an identification — scan the plant.');
+      this.activeForm.set({ kind: 'identify' });
       return;
     }
     if (/fetch this region/.test(l)) {
@@ -98,8 +97,8 @@ export class WorldActionsService {
   retryLatestScan(): void {
     const id = this.store.latestFailedScanId();
     if (id == null) {
-      window.open(`${environment.classicAppUrl}/identify`, '_blank', 'noopener');
-      this.store.say('No failed scan to retry — opening Identify in PlantPal.');
+      this.activeForm.set({ kind: 'identify' });
+      this.store.say('No failed scan to retry — start a new one.');
       return;
     }
     this.http.post<ApiResponse<unknown>>(`${this.base}/identifications/${id}/retry`, {}).subscribe({
@@ -108,6 +107,22 @@ export class WorldActionsService {
         this.reloadRequested.update(v => v + 1);
       },
       error: err => this.store.say(err?.error?.message ?? 'The retry could not start — try again.'),
+    });
+  }
+
+  /** In-atlas identification: multipart analyze → async pipeline → polling. */
+  identify(images: File[], organ: string, userContext?: string): void {
+    const form = new FormData();
+    images.forEach(img => form.append('images', img, img.name));
+    form.append('organs', organ);
+    if (userContext?.trim()) form.append('userContext', userContext.trim());
+    this.http.post<ApiResponse<{ identificationId: number }>>(`${this.base}/identifications/analyze`, form).subscribe({
+      next: () => {
+        this.activeForm.set(null);
+        this.store.say('The scan is running. The answer arrives into the Identification node — nothing moves while it does.');
+        this.reloadRequested.update(v => v + 1);
+      },
+      error: err => this.store.say(err?.error?.message ?? 'The scan could not start. Your photo was not lost — try again.'),
     });
   }
 

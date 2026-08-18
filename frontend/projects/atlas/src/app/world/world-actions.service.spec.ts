@@ -81,6 +81,27 @@ describe('WorldActionsService (H6 — every button works as intended)', () => {
     expect(store.announcement()).toContain('queued');
   });
 
+  it('"Identify a plant" opens the IN-ATLAS identify form (no redirect)', () => {
+    actions.dispatch('n-ident', 'Identify a plant');
+    expect(actions.activeForm()).toEqual({ kind: 'identify' });
+    actions.dispatch('n-species', 'Add a species by hand');
+    expect(actions.activeForm()).toEqual({ kind: 'identify' });
+  });
+
+  it('identify() POSTs multipart images+organs and requests a reload', () => {
+    const file = new File(['x'], 'leaf.jpg', { type: 'image/jpeg' });
+    actions.identify([file], 'leaf', 'brown spots');
+    const req = http.expectOne('/api/v1/identifications/analyze');
+    expect(req.request.method).toBe('POST');
+    const body = req.request.body as FormData;
+    expect((body.get('images') as File).name).toBe('leaf.jpg');
+    expect(body.get('organs')).toBe('leaf');
+    expect(body.get('userContext')).toBe('brown spots');
+    req.flush({ success: true, message: '', timestamp: '', data: { identificationId: 1 } });
+    expect(actions.activeForm()).toBeNull();
+    expect(actions.reloadRequested()).toBe(1);
+  });
+
   it('care-loop actions defer honestly (no fake success)', () => {
     actions.dispatch('n-plant-7', 'Water plant');
     expect(store.announcement()).toContain('care loop');
