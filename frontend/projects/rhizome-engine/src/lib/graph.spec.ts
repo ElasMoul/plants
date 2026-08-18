@@ -1,4 +1,4 @@
-import { buildAdjacency, neighboursOf, rank, rankName, rankNameFor } from './graph';
+import { buildAdjacency, neighboursOf, rank, rankName, rankNameFor, shortestPath } from './graph';
 import { Edge } from './types';
 
 // A small fixture graph:
@@ -66,6 +66,19 @@ describe('graph — rank as distance (B2)', () => {
     });
     it('treats an unreachable node as the fringe', () => {
       expect(rankNameFor('isolated', d)).toBe('fringe');
+    });
+  });
+
+  describe('shortestPath', () => {
+    const adj = buildAdjacency(EDGES, IDS);
+    it('returns a single-node path from a node to itself', () => {
+      expect(shortestPath('focus', 'focus', adj)).toEqual(['focus']);
+    });
+    it('returns the chain inclusive of both ends', () => {
+      expect(shortestPath('focus', 'fringe1', adj)).toEqual(['focus', 'near1', 'far1', 'fringe1']);
+    });
+    it('returns [] when the target is unreachable (nothing faked)', () => {
+      expect(shortestPath('focus', 'isolated', adj)).toEqual([]);
     });
   });
 

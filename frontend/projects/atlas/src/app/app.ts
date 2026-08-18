@@ -1,10 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { World } from './world/world';
 
 @Component({
   selector: 'rz-root',
-  imports: [],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [World],
+  template: '<rz-world />',
 })
 export class App {
   readonly title = signal('atlas');
