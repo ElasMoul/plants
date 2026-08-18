@@ -14,3 +14,10 @@ export * from './lib/models/user.model';
 
 export { AuthService } from './lib/services/auth.service';
 export { UserService } from './lib/services/user.service';
+
+export {
+  buildAtlasHandoffUrl,
+  consumeSessionHandoff,
+  SESSION_TOKEN_KEY,
+  SESSION_USER_KEY,
+} from './lib/session-handoff';

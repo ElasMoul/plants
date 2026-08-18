@@ -1,11 +1,12 @@
 /**
- * Atlas production environment. Both frontends are served same-origin behind one
- * nginx, so the API is a relative path and the classic app is reached by relative
- * path too (empty base → same origin). Same-origin is also what makes the shared
- * JWT session work: localStorage is per-origin.
+ * Atlas production environment. The API is same-origin (this nginx proxies
+ * /api → backend), but the classic app lives on its OWN origin in the compose
+ * deploy (frontend service, 8444:443) — so sign-in and "Open in PlantPal" links
+ * must be absolute. Sessions cross the origin gap via the login handoff
+ * fragment (shared-core session-handoff), not via shared localStorage.
  */
 export const environment = {
   production: true,
   apiUrl: '/api/v1',
-  classicAppUrl: '',
+  classicAppUrl: 'https://localhost:8444',
 };

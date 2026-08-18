@@ -32,6 +32,10 @@
           <mat-error *ngIf="form.get('password')?.hasError('minlength')">At least 8 characters</mat-error>
         </mat-form-field>
 
+        <mat-checkbox formControlName="openAtlas" class="mt-16" data-testid="login-open-atlas">
+          Continue into the Atlas — the botanical network view
+        </mat-checkbox>
+
         <button
           mat-raised-button
           color="primary"
