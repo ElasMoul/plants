@@ -309,6 +309,7 @@ export class World {
    * and .stake markup, so delegation is the single wiring point.
    */
   protected onCardClick(id: string, ev: Event): void {
+    if (this.store.dragMode()) return; // arrange: cards are drag surfaces only
     const t = ev.target as HTMLElement;
     const goto = t.closest<HTMLElement>('[data-goto]');
     if (goto) {

@@ -134,7 +134,7 @@ const MM_H = 104;
         <button class="ch-btn ch-btn--square" type="button" id="zoom-in" title="Zoom in" (click)="store.zoomBy(1.18)">+</button>
         <button class="ch-btn ch-btn--square" type="button" id="recenter" title="Recentre on where I am" (click)="onRecenter()">◎</button>
         <button class="ch-btn ch-btn--square" type="button" id="zoom-out-small" title="Zoom out" (click)="store.zoomBy(0.85)">−</button>
-        <button class="ch-btn ch-btn--square" type="button" id="drag-mode" [attr.aria-pressed]="store.dragMode()" title="Arrange mode — reposition the nodes" (click)="store.setArrange(!store.dragMode())">✥</button>
+        <button class="ch-btn ch-btn--square" type="button" id="drag-mode" [attr.aria-pressed]="store.dragMode()" title="Arrange mode — reposition the nodes" (click)="toggleArrange()">✥</button>
       </div>
     </div>
 
@@ -144,8 +144,8 @@ const MM_H = 104;
     </div>
 
     <div id="camera" class="chrome">
-      <button class="ch-btn" type="button" id="zoom-out" (click)="store.zoomBy(0.7)">⌕− Zoom out</button>
-      <button class="ch-btn" type="button" id="fit" (click)="onFit()">▢ Fit to screen</button>
+      <button class="ch-btn" type="button" id="zoom-out" (click)="onFit()">⌕− Zoom out</button>
+      <button class="ch-btn" type="button" id="fit" (click)="onFitFocus()">▢ Fit to screen</button>
     </div>
 
     <p id="gesture" class="chrome">
@@ -286,6 +286,20 @@ export class Chrome {
   protected onRecenter(): void {
     this.store.frameFocus(1);
     this.store.say(`Recentred on ${this.focusName()}.`);
+  }
+
+  protected toggleArrange(): void {
+    const entering = !this.store.dragMode();
+    this.store.setArrange(entering);
+    if (entering) {
+      // anchors-only layout lands first, then bring EVERY node into view
+      setTimeout(() => this.store.fitAll(window.innerWidth || 1280, window.innerHeight || 720), 350);
+    }
+  }
+
+  protected onFitFocus(): void {
+    this.store.fitFocusScreen(window.innerHeight || 720);
+    this.store.say(`${this.focusName()} fills the screen.`);
   }
 
   protected onFit(): void {
