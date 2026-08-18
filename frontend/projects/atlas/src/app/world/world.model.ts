@@ -61,6 +61,8 @@ export interface WorldNode {
 export interface WorldData {
   /** True while an identification is PENDING/PROCESSING (client polls). */
   hasPendingScan?: boolean;
+  /** The most recent FAILED identification, retryable via POST /retry. */
+  latestFailedScanId?: number;
   nodes: WorldNode[];
   edges: Edge[];
   /** The node the camera starts on. */
