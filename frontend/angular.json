@@ -122,6 +122,7 @@
               }
             ],
             "styles": [
+              "projects/atlas/src/styles/tokens.css",
               "projects/atlas/src/styles.scss"
             ]
           },
