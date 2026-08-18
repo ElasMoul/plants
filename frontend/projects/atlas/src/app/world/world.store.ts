@@ -310,8 +310,17 @@ export class WorldStore {
     return rankNameFor(id, this.ranks());
   }
 
+  /**
+   * Where a card is drawn. Idle, this IS the live targets() — so an arrange-mode
+   * drag (offsets → anchors), a probe, or a size pin moves the card and its
+   * veins in the same frame, exactly like the prototype's place(). The rendered
+   * snapshot is read only while a hop's tween is in flight.
+   */
   positionOf(id: string): Point {
-    return this.rendered()[id] ?? this.targets()[id] ?? { x: 0, y: 0 };
+    if (this.travelling()) {
+      return this.rendered()[id] ?? this.targets()[id] ?? { x: 0, y: 0 };
+    }
+    return this.targets()[id] ?? { x: 0, y: 0 };
   }
 
   kindOf(id: string): NodeKind | undefined {
