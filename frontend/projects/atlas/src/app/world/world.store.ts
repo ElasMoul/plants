@@ -21,6 +21,9 @@ import {
 import { FIXTURE_WORLD } from './world.fixture';
 import { NodeKind, WorldData, WorldNode } from './world.model';
 
+/** Overall load status of the live world. Degradation itself is per-node (C22-C25). */
+export type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
 /** Nominal card size per rank (from the tokens' four card widths). Measured
  *  feedback from the DOM can refine these later; nominal keeps layout deterministic. */
 const RANK_SIZE: Record<RankName, Size> = {
@@ -89,6 +92,30 @@ export class WorldStore {
 
   /** Screen centre of the free box (viewport, minus chrome). Set by the shell. */
   readonly screenCentre = signal<Point>({ x: 640, y: 360 });
+
+  /** Live-load status. The board renders the fixture until (and unless) live data lands. */
+  readonly loadState = signal<LoadState>('idle');
+
+  /**
+   * Replace the world with freshly-assembled live data. The geography is recomputed
+   * from the new nodes; the camera reframes the new initial focus. If a live load
+   * fails the fixture simply stays — the board never blanks (no global banner).
+   */
+  setWorld(data: WorldData): void {
+    this.data.set(data);
+    this.focusId.set(data.initialFocus);
+    this.rendered.set(this.targets());
+    this.loadState.set('ready');
+    this.frameFocus();
+  }
+
+  markLoading(): void {
+    this.loadState.set('loading');
+  }
+
+  markError(): void {
+    this.loadState.set('error');
+  }
 
   /** CSS transform string for the plane. */
   readonly planeTransform = computed(() => {
