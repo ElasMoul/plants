@@ -18,7 +18,28 @@ import { WorldActionsService } from '../world/world-actions.service';
       <div class="rz-form-scrim" (click)="actions.activeForm.set(null)"></div>
       <section class="rz-form" role="dialog" aria-modal="true" [attr.aria-label]="title()" (click)="$event.stopPropagation()">
         <h3 class="sec">{{ title() }}</h3>
-        @if (form.kind === 'add-plant') {
+        @if (form.kind === 'identify') {
+          <label class="rz-field"><span>Photo of the plant</span>
+            <input type="file" accept="image/*" (change)="onFiles($event)" /></label>
+          @if (files().length) {
+            <p class="rz-form__note">{{ files()[0].name }} · {{ (files()[0].size / 1024).toFixed(0) }} KB</p>
+          }
+          <label class="rz-field"><span>What is in the photo</span>
+            <select [(ngModel)]="organ">
+              <option value="leaf">Leaf</option>
+              <option value="flower">Flower</option>
+              <option value="fruit">Fruit</option>
+              <option value="bark">Bark or stem</option>
+              <option value="habit">The whole plant</option>
+            </select></label>
+          <label class="rz-field"><span>Anything you noticed (optional)</span>
+            <textarea rows="2" [(ngModel)]="context" placeholder="Brown spots on the lower leaves…"></textarea></label>
+          <p class="rz-form__note">The scan runs asynchronously — the answer arrives into the Identification node, and a matching species takes a free cell.</p>
+          <div class="btn-row">
+            <button class="stake" type="button" [disabled]="!files().length" (click)="submitIdentify()">Scan it</button>
+            <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
+          </div>
+        } @else if (form.kind === 'add-plant') {
           <label class="rz-field"><span>Nickname</span>
             <input type="text" [(ngModel)]="nickname" placeholder="Office Fig" autofocus /></label>
           <label class="rz-field"><span>Species (optional)</span>
@@ -77,6 +98,7 @@ import { WorldActionsService } from '../world/world-actions.service';
         color: var(--vs-ink-faint);
       }
       .rz-field input,
+      .rz-field select,
       .rz-field textarea {
         font: inherit;
         color: var(--vs-ink);
@@ -86,6 +108,7 @@ import { WorldActionsService } from '../world/world-actions.service';
         padding: 8px 10px;
       }
       .rz-field input:focus,
+      .rz-field select:focus,
       .rz-field textarea:focus {
         outline: none;
         border-color: var(--vs-vital, #8fb26a);
@@ -105,10 +128,25 @@ export class StakeForm {
   readonly species = signal('');
   readonly location = signal('');
   readonly note = signal('');
+  readonly files = signal<File[]>([]);
+  readonly organ = signal('leaf');
+  readonly context = signal('');
 
-  protected readonly title = computed(() =>
-    this.actions.activeForm()?.kind === 'add-plant' ? 'Add a plant' : 'Add a note',
-  );
+  protected readonly title = computed(() => {
+    const kind = this.actions.activeForm()?.kind;
+    if (kind === 'identify') return 'Identify a plant';
+    return kind === 'add-plant' ? 'Add a plant' : 'Add a note';
+  });
+
+  protected onFiles(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    this.files.set(Array.from(input.files ?? []));
+  }
+
+  protected submitIdentify(): void {
+    this.actions.identify(this.files(), this.organ(), this.context().trim() || undefined);
+    this.files.set([]); this.context.set('');
+  }
 
   protected submitPlant(): void {
     this.actions.createPlant({
