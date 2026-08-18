@@ -90,10 +90,13 @@ interface VeinLine {
                 [node]="n"
                 [rank]="store.rankNameOf(n.id)"
                 [focus]="store.isFocus(n.id)"
+                [expanding]="store.expandingId() === n.id"
+                [mode]="store.modeOf(n.id)"
                 [style.left.px]="store.positionOf(n.id).x"
                 [style.top.px]="store.positionOf(n.id).y"
                 (click)="onCardClick(n.id, $event)"
                 (act)="onAct(n.id, $event)"
+                (setMode)="store.setModeFor(n.id, $event)"
               />
             }
           </div>
@@ -164,10 +167,12 @@ export class World {
     effect(() => {
       document.documentElement.style.setProperty('--cam-k', String(this.store.camera().k));
     });
-    // Re-measure and settle after every completed hop (measured clearance, H1).
+    // Re-measure and settle after every completed hop, and whenever a size pin
+    // changes card heights (measured clearance, H1/H2).
     effect(() => {
       const focus = this.store.focusId();
       const travelling = this.store.travelling();
+      this.store.layoutEpoch();
       if (focus && !travelling) {
         requestAnimationFrame(() => this.measureAndSettle());
       }
@@ -271,9 +276,30 @@ export class World {
     this.motes = seedField(canvas.width, canvas.height);
   }
 
+  /**
+   * Card click, with the prototype's delegation rules: [data-goto] hops and
+   * prose doc-links travel to THEIR target; stakes mutate (announce only, the
+   * camera never moves); tools are inert to travel; anything else travels to
+   * the card. The verbatim bodies (world.bodies.ts) carry the real data-goto
+   * and .stake markup, so delegation is the single wiring point.
+   */
   protected onCardClick(id: string, ev: Event): void {
     const t = ev.target as HTMLElement;
-    if (t.closest('.n__modes, .n__grip, [data-goto], .stake, a')) return;
+    const goto = t.closest<HTMLElement>('[data-goto]');
+    if (goto) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      this.store.go(goto.dataset['goto'] as string);
+      return;
+    }
+    const stake = t.closest<HTMLElement>('.stake');
+    if (stake) {
+      ev.stopPropagation();
+      const name = this.store.nodes().find(n => n.id === id)?.name ?? id;
+      this.store.announceStake(stake.textContent?.trim() ?? 'Action', name);
+      return;
+    }
+    if (t.closest('.n__modes, .n__grip, a, button')) return;
     this.store.go(id);
   }
 

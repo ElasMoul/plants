@@ -108,6 +108,29 @@ export class WorldStore {
   /** Screen-reader announcement of the last hop (drawn into a polite live region). */
   readonly announcement = signal('');
 
+  /** The hop destination while its content is still arriving (wears the skeleton). */
+  readonly expandingId = signal<string | null>(null);
+
+  /** Per-card size pins: MIN / AUTO / FULL (survive hops — theme-a rec.mode). */
+  readonly modes = signal<Record<string, 'min' | 'auto' | 'full'>>({});
+
+  /** Bumped whenever card sizes may have changed outside a hop (mode pins). */
+  readonly layoutEpoch = signal(0);
+
+  modeOf(id: string): 'min' | 'auto' | 'full' {
+    return this.modes()[id] ?? 'auto';
+  }
+
+  setModeFor(id: string, mode: 'min' | 'auto' | 'full'): void {
+    this.modes.update(m => ({ ...m, [id]: mode }));
+    this.layoutEpoch.update(v => v + 1); // a card that grew must not land on a neighbour
+  }
+
+  /** A mutation stake was pressed — it changes data, never the camera (theme-a). */
+  announceStake(label: string, nodeName: string): void {
+    this.announcement.set(`“${label}” recorded on ${nodeName}. The camera did not move.`);
+  }
+
   /** The camera over the plane. */
   readonly camera = signal<Camera>({ x: 0, y: 0, k: INITIAL_K });
 
@@ -192,9 +215,14 @@ export class WorldStore {
     const k0 = this.camera().k;
     const k1 = INITIAL_K;
 
+    // The destination wears its skeleton while the hop is in flight (C22 —
+    // layout was already computed against its settled size, never the skeleton).
+    this.expandingId.set(id);
+
     if (this.prefersReducedMotion()) {
       this.rendered.set(targets);
       this.camera.set(cameraForPoint(targets[id], k1, centre));
+      this.expandingId.set(null);
       return;
     }
 
@@ -221,6 +249,7 @@ export class WorldStore {
       } else {
         this.rendered.set(targets);
         this.camera.set(cameraForPoint(targets[id], k1, centre));
+        this.expandingId.set(null); // real content, only now expanded
         this.travelling.set(false);
       }
     };
