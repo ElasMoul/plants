@@ -3,11 +3,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   HostListener,
   inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NodeCard } from '../node/node-card';
+import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
 interface VeinLine {
@@ -68,6 +71,7 @@ interface VeinLine {
             [style.left.px]="store.positionOf(n.id).x"
             [style.top.px]="store.positionOf(n.id).y"
             (click)="store.go(n.id)"
+            (act)="onAct(n.id, $event)"
           />
         }
       </div>
@@ -168,6 +172,8 @@ interface VeinLine {
 export class World {
   protected readonly store = inject(WorldStore);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly graph = inject(WorldGraphService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly focusName = computed(
     () => this.store.nodes().find(n => n.id === this.store.focusId())?.name ?? '',
@@ -195,12 +201,37 @@ export class World {
   });
 
   constructor() {
-    afterNextRender(() => this.syncCentreAndFrame());
+    afterNextRender(() => {
+      this.syncCentreAndFrame();
+      this.loadLive();
+    });
   }
 
   @HostListener('window:resize')
   protected onResize(): void {
     this.syncCentreAndFrame();
+  }
+
+  /**
+   * Overlay live backend data on the fixture. On failure the fixture stays — the
+   * board never blanks and there is no global error banner (C22-C25).
+   */
+  private loadLive(): void {
+    this.store.markLoading();
+    this.graph
+      .load()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: data => this.store.setWorld(data),
+        error: () => this.store.markError(),
+      });
+  }
+
+  /** A failure card's "way forward" was pressed. Retry re-loads; others are stubs. */
+  protected onAct(nodeId: string, way: string): void {
+    if (/retry/i.test(way)) this.loadLive();
+    // other ways forward (e.g. "Pick manually") deep-link into the classic app in a
+    // later pass; for now they are inert affordances.
   }
 
   private syncCentreAndFrame(): void {
