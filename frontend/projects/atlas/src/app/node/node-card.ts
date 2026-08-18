@@ -30,7 +30,7 @@ export type NodeMode = 'min' | 'auto' | 'full';
     '[attr.data-focus]': 'focus()',
     '[attr.data-show]': 'show()',
     '[attr.data-unknown]': 'node().unknown ? true : null',
-    '[attr.data-pending]': 'node().state === "loading" ? true : null',
+    '[attr.data-pending]': 'pending() ? true : null',
     '[attr.aria-current]': 'focus() ? "true" : "false"',
     '[attr.aria-label]': 'ariaLabel()',
   },
@@ -108,6 +108,8 @@ export class NodeCard {
   readonly expanding = input<boolean>(false);
   /** The card's size pin (MIN/AUTO/FULL). */
   readonly mode = input<NodeMode>('auto');
+  /** Data outstanding (slow probe / live loading) — shows the .pending block. */
+  readonly pending = input<boolean>(false);
 
   readonly act = output<string>();
   readonly setMode = output<NodeMode>();
