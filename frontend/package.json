@@ -4,8 +4,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:atlas": "ng serve atlas",
     "build": "ng build",
     "build:prod": "ng build --configuration production",
+    "build:atlas": "ng build atlas",
+    "build:atlas:prod": "ng build atlas --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -37,6 +40,7 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.3.34",
+    "@angular/build": "^20.3.34",
     "@angular/cli": "^20.3.34",
     "@angular/compiler-cli": "^20.3.28",
     "@axe-core/playwright": "^4.9.0",
