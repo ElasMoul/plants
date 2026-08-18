@@ -6,6 +6,29 @@
 
 ---
 
+## Implementation status (2026-08-18)
+
+All phases implemented on `atlas-integration`, each task branched → merged → verified.
+
+| Phase | Status |
+|---|---|
+| A1 Angular 16→20 + toolchain | ✅ merged |
+| A2 scaffold atlas app (:4300) | ✅ merged |
+| A3 `@plantpal/shared-core` library | ✅ merged |
+| A4 vendor Rhizome tokens | ✅ merged |
+| B rhizome-engine (62 tests) | ✅ merged |
+| C world shell renders + travels | ✅ merged |
+| D live data assembly + degradation | ✅ merged |
+| E cross-app auth + interop | ✅ merged |
+| F deploy + constitution QA gate | ✅ merged |
+
+Full test suite green (unit + constitution gate); both apps build (dev + prod);
+`rhizome-engine` type-checks. Deferred (noted in commits): D3 create/edit mutations
+(need a live backend); Playwright visual snapshots (need regen after the Material
+16→20 restyle). Run the app: `cd frontend && npm run start:atlas`.
+
+---
+
 ## 0. Locked decisions (owner-approved)
 
 | # | Decision | Choice |

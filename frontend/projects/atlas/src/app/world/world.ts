@@ -98,6 +98,9 @@ interface VeinLine {
         <button type="button" (click)="store.frameFocus()" aria-label="Recentre">◎</button>
         <button type="button" (click)="store.zoomBy(1.25)" aria-label="Zoom in">+</button>
       </div>
+
+      <!-- Polite live region: travel is announced here, not as a visible banner. -->
+      <p class="rz-sr" aria-live="polite">{{ store.announcement() }}</p>
     </div>
   `,
   styles: [
@@ -186,6 +189,19 @@ interface VeinLine {
         line-height: 1;
       }
       .rz-camera button:hover { border-color: var(--vs-ink-muted); }
+
+      /* visually-hidden but read by screen readers */
+      .rz-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
     `,
   ],
 })
