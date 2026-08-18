@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@a
 import { AuthService } from '@plantpal/shared-core';
 import { environment } from '../../environments/environment';
 import { classicLoginLink } from '../world/interop';
+import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
 
 /** The per-focus mutation-rail entries (theme-a ACTIONS, verbatim). */
@@ -70,18 +71,18 @@ const MM_H = 104;
         Notifications <span class="ch-count">2</span>
       </button>
       @if (authed()) {
-        <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false">{{ accountName() }}</button>
+        <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false" (click)="goIfThere('n-account')">{{ accountName() }}</button>
       } @else {
         <a class="ch-btn" id="account" style="width:auto" [href]="signInUrl">Sign in</a>
       }
     </header>
 
     <nav id="rail" class="chrome" aria-label="Places in PlantPal">
-      <button class="ch-btn ch-btn--square" type="button" aria-current="page" title="Network"><span aria-hidden="true">❋</span><span class="sr">Network</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="My garden"><span aria-hidden="true">♣</span><span class="sr">My garden</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="Due today"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="Identify"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="Journal"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
+      <button class="ch-btn ch-btn--square" type="button" aria-current="page" title="Network" (click)="onRecenter()"><span aria-hidden="true">❋</span><span class="sr">Network</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="My garden" (click)="goIfThere('n-garden')"><span aria-hidden="true">♣</span><span class="sr">My garden</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="Due today" (click)="goIfThere('n-reminders')"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="Identify" (click)="goIfThere('n-ident')"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="Journal" (click)="goIfThere('n-journal')"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
       <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings" (click)="openSettings($event)"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
     </nav>
 
@@ -163,6 +164,7 @@ const MM_H = 104;
 export class Chrome {
   protected readonly store = inject(WorldStore);
   private readonly auth = inject(AuthService);
+  private readonly actions = inject(WorldActionsService);
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');
@@ -262,17 +264,18 @@ export class Chrome {
     this.store.mode.set('overview');
   }
 
+  protected goIfThere(id: string): void {
+    if (this.store.nodes().some(n => n.id === id)) this.store.go(id);
+    else this.store.say('That place is not on this board yet.');
+  }
+
   protected onBell(): void {
     this.store.say('Travelling to Reminders.');
     this.store.go('n-reminders');
   }
 
   protected onAction(a: string): void {
-    if (this.store.probeOffline()) {
-      this.store.say(`Offline: “${a}” is queued. It will run when you are back.`);
-    } else {
-      this.store.say(`“${a}” recorded on ${this.focusName()}. The camera did not move.`);
-    }
+    this.actions.dispatch(this.store.focusId(), a);
   }
 
   protected onShowAll(): void {

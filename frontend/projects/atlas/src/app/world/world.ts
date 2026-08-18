@@ -15,6 +15,8 @@ import { advanceField, cardDrift, driftPhase, Mote, seedField, Size } from '@pla
 import { DomSanitizer } from '@angular/platform-browser';
 import { OVERVIEW_HTML } from '../chrome/overview.html';
 import { environment } from '../../environments/environment';
+import { StakeForm } from '../forms/stake-form';
+import { WorldActionsService } from './world-actions.service';
 import { Chrome } from '../chrome/chrome';
 import { NodeCard } from '../node/node-card';
 import { classicLinkFor, classicLoginLink } from './interop';
@@ -41,7 +43,7 @@ interface VeinLine {
 @Component({
   selector: 'rz-world',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NodeCard, Chrome],
+  imports: [NodeCard, Chrome, StakeForm],
   template: `
     <canvas id="motes" aria-hidden="true"></canvas>
     <div id="motes-wash" aria-hidden="true"></div>
@@ -122,12 +124,15 @@ interface VeinLine {
 
     <!-- Overview/settings overlay — OUTSIDE #shell so it never scales with it. -->
     <div id="overview" [innerHTML]="overviewHtml" (click)="onOverviewClick($event)"></div>
+
+    <rz-stake-form />
   `,
 })
 export class World {
   protected readonly store = inject(WorldStore);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly graph = inject(WorldGraphService);
+  protected readonly actions = inject(WorldActionsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -177,6 +182,10 @@ export class World {
       if (focus && !travelling) {
         requestAnimationFrame(() => this.measureAndSettle());
       }
+    });
+    // A successful mutation re-assembles the world (a new node takes a free cell).
+    effect(() => {
+      if (this.actions.reloadRequested() > 0) this.loadLive();
     });
     afterNextRender(() => {
       this.syncCentre();
@@ -311,8 +320,7 @@ export class World {
     const stake = t.closest<HTMLElement>('.stake');
     if (stake) {
       ev.stopPropagation();
-      const name = this.store.nodes().find(n => n.id === id)?.name ?? id;
-      this.store.announceStake(stake.textContent?.trim() ?? 'Action', name);
+      this.actions.dispatch(id, stake.textContent?.trim() ?? 'Action');
       return;
     }
     if (t.closest('.n__modes, .n__grip, a, button')) return;
@@ -348,7 +356,7 @@ export class World {
   }
 
   protected onAct(nodeId: string, way: string): void {
-    if (/retry/i.test(way)) this.loadLive();
+    this.actions.dispatch(nodeId, way);
   }
 
   // ── H4: overview/settings ────────────────────────────────────────────────

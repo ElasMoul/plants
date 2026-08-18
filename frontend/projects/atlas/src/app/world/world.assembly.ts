@@ -214,6 +214,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
   const needWater = plants.filter(p => (p.nextWaterDays ?? 99) <= 0).length;
   const latestScan = [...identifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const hasPendingScan = latestScan.some(i => i.status === 'PENDING' || i.status === 'PROCESSING');
+  const latestFailedScanId = latestScan.find(i => i.status === 'FAILED')?.id;
 
   // hub
   add({ id: 'n-garden', glyph: '♣', kind: 'collection', kindLabel: 'Garden', name: 'My garden',
@@ -294,7 +295,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
   }
 
   layoutCells(nodes, edges, 'n-garden');
-  return { nodes: nodes as WorldNode[], edges, initialFocus: 'n-garden', hasPendingScan };
+  return { nodes: nodes as WorldNode[], edges, initialFocus: 'n-garden', hasPendingScan, latestFailedScanId };
 }
 
 function plantByOwed(a: PlantDto, b: PlantDto): number {

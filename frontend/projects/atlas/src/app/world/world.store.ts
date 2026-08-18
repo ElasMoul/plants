@@ -42,6 +42,8 @@ export class WorldStore {
   private readonly data = signal<WorldData>(FIXTURE_WORLD);
 
   readonly nodes = computed<WorldNode[]>(() => this.data().nodes);
+  /** From the live assembly (undefined on the fixture). */
+  readonly latestFailedScanId = computed(() => this.data().latestFailedScanId);
   readonly edges = computed(() => this.data().edges);
   readonly order = computed<string[]>(() => this.nodes().map(n => n.id));
   private readonly adjacency = computed<Adjacency>(() => buildAdjacency(this.edges(), this.order()));

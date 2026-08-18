@@ -120,6 +120,34 @@ describe('Rhizome constitution gate (F2)', () => {
     });
   });
 
+  describe('C9 — probes never move the geography (H6)', () => {
+    it('slow/offline probe toggles leave every target identical', () => {
+      const store = TestBed.inject(WorldStore);
+      const before = JSON.stringify(store.targets());
+      store.probeSlow.set(true);
+      store.probeOffline.set(true);
+      expect(JSON.stringify(store.targets())).toBe(before);
+      store.probeSlow.set(false);
+      store.probeOffline.set(false);
+      expect(JSON.stringify(store.targets())).toBe(before);
+    });
+  });
+
+  describe('crumb path (H6) — truncates on backtrack, never loops', () => {
+    it('cuts the path at a revisited node instead of appending', () => {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true, configurable: true,
+        value: () => ({ matches: true, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }),
+      });
+      const store = TestBed.inject(WorldStore);
+      const start = store.focusId();
+      store.go('n-garden');
+      store.go('n-office');
+      store.go('n-garden'); // backtrack
+      expect(store.path()).toEqual([start, 'n-garden']);
+    });
+  });
+
   describe('C10 / C11 / C21 — the camera travels along the vein polyline', () => {
     it('every sampled camera centre lies on the route for representative hops', () => {
       const centre = { x: 640, y: 360 };
