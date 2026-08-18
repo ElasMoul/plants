@@ -12,3 +12,4 @@ export * from './lib/geometry';
 export * from './lib/graph';
 export * from './lib/clearance';
 export * from './lib/camera';
+export * from './lib/field';
