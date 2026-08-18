@@ -68,3 +68,32 @@ export function rankNameFor(id: string, ranks: RankMap): RankName {
 export function neighboursOf(focusId: string, adjacency: Adjacency): string[] {
   return [...(adjacency[focusId] ?? [])];
 }
+
+/**
+ * Breadth-first shortest path from `a` to `b` (inclusive of both ends). The camera
+ * travels ALONG this chain of nodes, so the route states which veins were crossed
+ * (C10/C11). Returns [] when b is unreachable — nothing is faked (theme-a shortest).
+ */
+export function shortestPath(a: string, b: string, adjacency: Adjacency): string[] {
+  if (a === b) return [a];
+  const prev: Record<string, string | null> = { [a]: null };
+  const queue: string[] = [a];
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    if (cur === b) break;
+    for (const n of adjacency[cur] ?? []) {
+      if (prev[n] === undefined) {
+        prev[n] = cur;
+        queue.push(n);
+      }
+    }
+  }
+  if (prev[b] === undefined) return [];
+  const out: string[] = [];
+  let c: string | null = b;
+  while (c !== null) {
+    out.unshift(c);
+    c = prev[c];
+  }
+  return out;
+}

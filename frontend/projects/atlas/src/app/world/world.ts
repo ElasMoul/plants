@@ -205,7 +205,11 @@ export class World {
 
   private syncCentreAndFrame(): void {
     const el = this.host.nativeElement;
-    this.store.setScreenCentre({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
+    // Fall back to the window (then a sane default) when the host hasn't been laid
+    // out yet, so framing never collapses to a (0,0) centre.
+    const w = el.clientWidth || window.innerWidth || 1280;
+    const h = el.clientHeight || window.innerHeight || 720;
+    this.store.setScreenCentre({ x: w / 2, y: h / 2 });
     this.store.frameFocus();
   }
 }

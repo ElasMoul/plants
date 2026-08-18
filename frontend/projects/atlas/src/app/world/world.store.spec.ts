@@ -6,6 +6,22 @@ describe('WorldStore (C4 — engine ↔ Angular wiring)', () => {
   let store: WorldStore;
 
   beforeEach(() => {
+    // jsdom has no matchMedia; report reduced motion so go() settles synchronously
+    // (the animated path is exercised live in the browser + via B4 engine tests).
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    });
     TestBed.configureTestingModule({});
     store = TestBed.inject(WorldStore);
   });

@@ -1,17 +1,22 @@
 import { computed, Injectable, signal } from '@angular/core';
 import {
   Adjacency,
+  anchorPosition,
   buildAdjacency,
+  buildRoute,
   Camera,
   cameraForPoint,
   computeTargets,
+  easeOutCubic,
+  HOP_DURATION_MS,
   Point,
   rank,
   RankName,
   rankNameFor,
+  shortestPath,
   Size,
   TargetMap,
-  anchorPosition,
+  travelCamera,
 } from '@plantpal/rhizome-engine';
 import { FIXTURE_WORLD } from './world.fixture';
 import { NodeKind, WorldData, WorldNode } from './world.model';
@@ -68,6 +73,17 @@ export class WorldStore {
     });
   });
 
+  /**
+   * The positions actually drawn this frame. Idle: equal to targets(). During a
+   * hop: tweened from the pre-hop positions to the new targets, in lockstep with
+   * the camera, so the world never tears in two (C10/C11). Read by positionOf().
+   */
+  private readonly rendered = signal<Record<string, Point>>({});
+
+  /** True while a hop's animation is in flight (a second hop cancels the first). */
+  readonly travelling = signal(false);
+  private rafId = 0;
+
   /** The camera over the plane. */
   readonly camera = signal<Camera>({ x: 0, y: 0, k: INITIAL_K });
 
@@ -85,7 +101,7 @@ export class WorldStore {
   }
 
   positionOf(id: string): Point {
-    return this.targets()[id] ?? { x: 0, y: 0 };
+    return this.rendered()[id] ?? this.targets()[id] ?? { x: 0, y: 0 };
   }
 
   kindOf(id: string): NodeKind | undefined {
@@ -102,11 +118,69 @@ export class WorldStore {
     this.camera.set(cameraForPoint(at, k, this.screenCentre()));
   }
 
-  /** Travel to a node: recompute rank/clearance around it and reframe. */
+  constructor() {
+    // Idle: what we draw is the settled clearance layout.
+    this.rendered.set(this.targets());
+  }
+
+  /**
+   * Travel to a node. Recompute rank/clearance around it, then animate the camera
+   * ALONG the vein polyline (the shortest path) while the cards tween to their new
+   * places — one timing (HOP_DURATION_MS), one code path (C10/C11). Under reduced
+   * motion it settles immediately. A second hop cancels the first.
+   */
   go(id: string): void {
-    if (id === this.focusId() || !this.nodeById()[id]) return;
-    this.focusId.set(id);
-    this.frameFocus();
+    if (id === this.focusId() || this.travelling() || !this.nodeById()[id]) return;
+    const from = this.focusId();
+    const chain = shortestPath(from, id, this.adjacency());
+    if (chain.length < 2) return; // unreachable — nothing is faked
+
+    this.focusId.set(id); // recomputes ranks + targets
+    const targets = this.targets();
+    const centre = this.screenCentre();
+    const k0 = this.camera().k;
+    const k1 = INITIAL_K;
+
+    if (this.prefersReducedMotion()) {
+      this.rendered.set(targets);
+      this.camera.set(cameraForPoint(targets[id], k1, centre));
+      return;
+    }
+
+    const start = { ...this.rendered() };
+    const route = buildRoute(chain.map(cid => targets[cid]));
+    const order = this.order();
+    const t0 = performance.now();
+    cancelAnimationFrame(this.rafId);
+    this.travelling.set(true);
+
+    const step = (now: number): void => {
+      const p = Math.min(1, (now - t0) / HOP_DURATION_MS);
+      const e = easeOutCubic(p);
+      const frame: Record<string, Point> = {};
+      for (const nid of order) {
+        const s = start[nid] ?? targets[nid];
+        const tg = targets[nid];
+        frame[nid] = { x: s.x + (tg.x - s.x) * e, y: s.y + (tg.y - s.y) * e };
+      }
+      this.rendered.set(frame);
+      this.camera.set(travelCamera(route, centre, k0, k1, p));
+      if (p < 1) {
+        this.rafId = requestAnimationFrame(step);
+      } else {
+        this.rendered.set(targets);
+        this.camera.set(cameraForPoint(targets[id], k1, centre));
+        this.travelling.set(false);
+      }
+    };
+    this.rafId = requestAnimationFrame(step);
+  }
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof matchMedia !== 'undefined' &&
+      matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 
   /**
