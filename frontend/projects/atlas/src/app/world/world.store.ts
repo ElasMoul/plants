@@ -87,6 +87,9 @@ export class WorldStore {
   readonly travelling = signal(false);
   private rafId = 0;
 
+  /** Screen-reader announcement of the last hop (drawn into a polite live region). */
+  readonly announcement = signal('');
+
   /** The camera over the plane. */
   readonly camera = signal<Camera>({ x: 0, y: 0, k: INITIAL_K });
 
@@ -163,6 +166,9 @@ export class WorldStore {
     if (chain.length < 2) return; // unreachable — nothing is faked
 
     this.focusId.set(id); // recomputes ranks + targets
+    const dest = this.nodeById()[id];
+    const veins = this.adjacency()[id]?.length ?? 0;
+    this.announcement.set(`Travelled to ${dest.name}. ${veins} veins from here.`);
     const targets = this.targets();
     const centre = this.screenCentre();
     const k0 = this.camera().k;
