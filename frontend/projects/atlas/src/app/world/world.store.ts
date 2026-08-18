@@ -111,6 +111,48 @@ export class WorldStore {
   /** The hop destination while its content is still arriving (wears the skeleton). */
   readonly expandingId = signal<string | null>(null);
 
+  /** The path travelled (crumbs). Truncates on backtrack — never grows a loop. */
+  readonly path = signal<string[]>([FIXTURE_WORLD.initialFocus]);
+
+  /** The vein currently hinted (Navigate-to hover / keyboard cursor). */
+  readonly hintedVein = signal<readonly [string, string] | null>(null);
+
+  /** Degradation probes ("Show this screen") — material on the board, per node. */
+  readonly probeSlow = signal(false);
+  readonly probeOffline = signal(false);
+  readonly probeReduced = signal(false);
+
+  /** The five nodes the slow probe holds "still arriving" (theme-a SLOW_NODES). */
+  private static readonly SLOW_NODES = new Set([
+    'n-garden', 'n-garden-more', 'n-platform', 'n-journal', 'n-species-more',
+  ]);
+
+  isPending(id: string): boolean {
+    if (this.probeSlow() && WorldStore.SLOW_NODES.has(id)) return true;
+    return this.nodeById()[id]?.state === 'loading';
+  }
+
+  /** Chrome-originated announcement (say()). */
+  say(message: string): void {
+    this.announcement.set(message);
+  }
+
+  /** Fit the whole world in view: extent = lattice ∪ live positions, padded. */
+  fitAll(viewportW: number, viewportH: number): void {
+    const t = this.targets();
+    let minX = 0, minY = 0, maxX = 3600, maxY = 1980;
+    for (const id of this.order()) {
+      const p = t[id];
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+    }
+    minX -= 160; minY -= 160; maxX += 160; maxY += 160;
+    const k = Math.max(0.28, Math.min(viewportW / (maxX - minX), viewportH / (maxY - minY), 1));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    this.camera.set(cameraForPoint({ x: cx, y: cy }, k, this.screenCentre()));
+  }
+
   /** Per-card size pins: MIN / AUTO / FULL (survive hops — theme-a rec.mode). */
   readonly modes = signal<Record<string, 'min' | 'auto' | 'full'>>({});
 
@@ -148,9 +190,20 @@ export class WorldStore {
   setWorld(data: WorldData): void {
     this.data.set(data);
     this.focusId.set(data.initialFocus);
+    this.path.set([data.initialFocus]);
     this.rendered.set(this.targets());
     this.loadState.set('ready');
     this.frameFocus();
+  }
+
+  /** Neighbours of the current focus with their nodes, for the Navigate-to rail. */
+  focusNeighbours(): { id: string; name: string; recap: string }[] {
+    const byId = this.nodeById();
+    return (this.adjacency()[this.focusId()] ?? []).map(id => ({
+      id,
+      name: byId[id]?.name ?? id,
+      recap: byId[id]?.unknown ? 'not fetched yet' : byId[id]?.recap ?? '',
+    }));
   }
 
   markLoading(): void {
@@ -207,6 +260,11 @@ export class WorldStore {
     if (chain.length < 2) return; // unreachable — nothing is faked
 
     this.focusId.set(id); // recomputes ranks + targets
+    // crumbs: truncate on backtrack, else extend (never grows a loop)
+    this.path.update(p => {
+      const at = p.indexOf(id);
+      return at >= 0 ? p.slice(0, at + 1) : [...p, id];
+    });
     const dest = this.nodeById()[id];
     const veins = this.adjacency()[id]?.length ?? 0;
     this.announcement.set(`Travelled to ${dest.name}. ${veins} veins from here.`);
@@ -257,6 +315,7 @@ export class WorldStore {
   }
 
   private prefersReducedMotion(): boolean {
+    if (this.probeReduced()) return true;
     return (
       typeof matchMedia !== 'undefined' &&
       matchMedia('(prefers-reduced-motion: reduce)').matches

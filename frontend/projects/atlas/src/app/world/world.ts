@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@plantpal/shared-core';
 import { advanceField, Mote, seedField, Size } from '@plantpal/rhizome-engine';
 import { environment } from '../../environments/environment';
+import { Chrome } from '../chrome/chrome';
 import { NodeCard } from '../node/node-card';
 import { classicLinkFor, classicLoginLink } from './interop';
 import { WorldGraphService } from './world-graph.service';
@@ -26,6 +27,7 @@ interface VeinLine {
   x2: number;
   y2: number;
   live: boolean;
+  hint: boolean;
   unknown: boolean;
 }
 
@@ -37,7 +39,7 @@ interface VeinLine {
 @Component({
   selector: 'rz-world',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NodeCard],
+  imports: [NodeCard, Chrome],
   template: `
     <canvas id="motes" aria-hidden="true"></canvas>
     <div id="motes-wash" aria-hidden="true"></div>
@@ -59,6 +61,7 @@ interface VeinLine {
                   <path
                     class="vein"
                     [attr.data-live]="v.live ? true : null"
+                    [attr.data-hint]="v.hint ? true : null"
                     [attr.data-unknown]="v.unknown ? true : null"
                     [attr.d]="'M ' + v.x1 + ' ' + v.y1 + ' L ' + v.x2 + ' ' + v.y2"
                   />
@@ -92,6 +95,7 @@ interface VeinLine {
                 [focus]="store.isFocus(n.id)"
                 [expanding]="store.expandingId() === n.id"
                 [mode]="store.modeOf(n.id)"
+                [pending]="store.isPending(n.id)"
                 [style.left.px]="store.positionOf(n.id).x"
                 [style.top.px]="store.positionOf(n.id).y"
                 (click)="onCardClick(n.id, $event)"
@@ -103,22 +107,8 @@ interface VeinLine {
         </div>
       </div>
 
-      <!-- CHROME (minimal until H3): the camera bar + live readout -->
-      <div id="camera" class="chrome">
-        <button class="ch-btn" type="button" (click)="store.zoomBy(0.7)">
-          <span aria-hidden="true">⌕−</span> Zoom out
-        </button>
-        <button class="ch-btn" type="button" (click)="store.frameFocus()">
-          <span aria-hidden="true">▢</span> Recentre
-        </button>
-        @if (!authed()) {
-          <a class="ch-btn" [href]="signInUrl" style="width:auto">Sign in</a>
-        } @else if (focusClassicLink()) {
-          <a class="ch-btn" [href]="focusClassicLink()" target="_blank" rel="noopener" style="width:auto">
-            Open in PlantPal
-          </a>
-        }
-      </div>
+      <!-- CHROME: the full furniture ring (H3) -->
+      <rz-chrome />
       <p id="live" role="status" aria-live="polite" [attr.data-on]="store.announcement() ? true : null">
         {{ store.announcement() }}
       </p>
@@ -145,6 +135,7 @@ export class World {
 
   protected readonly veins = computed<VeinLine[]>(() => {
     const focus = this.store.focusId();
+    const hint = this.store.hintedVein();
     const pos = this.store.targets();
     const unknownIds = new Set(this.store.nodes().filter(n => n.unknown).map(n => n.id));
     return this.store.edges().map(([a, b]) => {
@@ -154,6 +145,7 @@ export class World {
         a, b,
         x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y,
         live: a === focus || b === focus,
+        hint: !!hint && ((hint[0] === a && hint[1] === b) || (hint[0] === b && hint[1] === a)),
         unknown: unknownIds.has(a) || unknownIds.has(b),
       };
     });
@@ -217,10 +209,24 @@ export class World {
     this.store.applyMeasuredSizes(sizes, vh);
   }
 
+  /**
+   * freeCentre(), faithfully: the focus lands in the centre of the box left
+   * between the rails and bars, measured live — falling back to the full
+   * viewport when the residue is under 240×200 (small viewports).
+   */
   private syncCentre(): void {
     const w = window.innerWidth || 1280;
     const h = window.innerHeight || 720;
-    this.store.setScreenCentre({ x: w / 2, y: h / 2 });
+    let l = 0, r = w, t = 0, b = h;
+    const box = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
+    const act = box('#actions'); const nav = box('#navto');
+    const top = box('#topbar'); const cam = box('#camera');
+    if (act?.width) l = Math.max(l, act.right);
+    if (nav?.width) r = Math.min(r, nav.left);
+    if (top?.height) t = Math.max(t, top.bottom);
+    if (cam?.height) b = Math.min(b, cam.top);
+    if (r - l < 240 || b - t < 200) { l = 0; r = w; t = 0; b = h; }
+    this.store.setScreenCentre({ x: (l + r) / 2, y: (t + b) / 2 });
   }
 
   /** The deterministic particle field (engine B5) painted onto #motes. */
