@@ -4,6 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { API_BASE_URL } from '../tokens';
 import { ApiResponse } from '../models/api-response.model';
 import { User, AuthTokenPayload } from '../models/user.model';
+import { SESSION_TOKEN_KEY as TOKEN_KEY, SESSION_USER_KEY as USER_KEY } from '../session-handoff';
 
 interface LoginRequest {
   email: string;
@@ -22,10 +23,8 @@ interface AuthResponse {
   user: User;
 }
 
-// Shared across every PlantPal frontend (classic + atlas). The keys are part of
-// the contract: same-origin apps that reuse these keys share one login session.
-const TOKEN_KEY = 'plantpal_token';
-const USER_KEY  = 'plantpal_user';
+// Storage keys live in session-handoff.ts — one contract for every PlantPal
+// frontend (same-origin shares directly; cross-origin via the handoff fragment).
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
