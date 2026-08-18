@@ -1,0 +1,1048 @@
+/* ==========================================================================
+   THEME B — "VASCULAR · SILL LINE"   round 10, variation 2 of 3.
+   All three round-10 propositions are variations INSIDE Theme A (owner
+   direction round 9 § 0) — same lattice, same veins, same travel. This one
+   is the tight instrument reading: a cold sill key with green kept back for
+   health alone, HIGH density, a type ladder pitched a full octave below
+   theme-a's, sharp 5px corners, and the measure tick in place of the kind
+   spine.
+
+   Every colour, size, radius and duration comes from tokens.css. The only
+   raw numbers are structural SVG/lattice arithmetic, which is declared in
+   tokens.css and mirrored in the script.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--vs-void-deep);
+  color: var(--vs-ink);
+  font-family: var(--vs-face-body);
+  font-size: var(--vs-rung-30);
+  line-height: var(--vs-lead-body);
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   THE PARTICLE FIELD — two canvases, one painter.
+
+   ROUND-10 § 3. Outside the settings view the field covers the WHOLE PAGE
+   (#motes, fixed, edge to edge — the round-5 direction, unchanged). While the
+   settings view is open the field must cover ONLY the app, which by then is
+   the scaled #shell — so it is painted into #motes-app instead, a canvas
+   living INSIDE #shell and therefore scaled and translated with it. Exactly
+   one of the two is ever visible, and both are painted by the same code, so
+   the field cannot differ between the two.
+   -------------------------------------------------------------------------- */
+#motes {
+  position: fixed;
+  inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+#motes-app {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  display: none;
+  z-index: 0;
+  pointer-events: none;
+}
+body[data-mode="overview"] #motes    { display: none; }
+body[data-mode="overview"] #motes-app { display: block; }
+
+#motes-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 45%, var(--vs-vital-quiet), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 50%, transparent 40%, var(--vs-void-deep) 100%);
+}
+/* In overview the wash belongs to the app card too, not to the page. */
+body[data-mode="overview"] #motes-wash { opacity: 0.35; }
+
+.skip {
+  position: absolute; inset-inline-start: -999px; top: 0;
+  z-index: var(--vs-z-live);
+  background: var(--vs-vital); color: var(--vs-ink-on-fill);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+}
+.skip:focus { inset-inline-start: var(--vs-gutter); top: var(--vs-gutter); }
+
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; }
+:focus-visible {
+  outline: var(--vs-focus-width) solid var(--vs-focus);
+  outline-offset: var(--vs-focus-offset);
+}
+
+.label {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-ink-muted);
+}
+
+/* ==========================================================================
+   1 — THE APP SHELL
+   ========================================================================== */
+
+#shell {
+  position: fixed;
+  inset: 0;
+  z-index: var(--vs-z-node);
+  transform-origin: 22% 50%;
+  transition: transform var(--vs-dur-nav) var(--vs-ease-travel),
+              border-radius var(--vs-dur-nav) var(--vs-ease-travel),
+              box-shadow var(--vs-dur-nav) var(--vs-ease-travel);
+  border-radius: 0;
+  overflow: hidden;
+}
+body[data-mode="overview"] #shell {
+  /* ROUND-8 § 1: the owner's own hand-tuned transform. Verbatim. */
+  transform: scale(0.42) translateX(-25%);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-lit);
+  border: var(--vs-hair) solid var(--vs-membrane-lit);
+  cursor: zoom-in;
+}
+body[data-mode="overview"] #shell > *:not(#world-wrap):not(#motes-app) { pointer-events: none; }
+body[data-mode="overview"] #world { pointer-events: none; }
+
+/* ==========================================================================
+   2 — THE CHROME REGISTER   (round-10 owner direction § 2)
+
+   Fixed furniture must never be mistaken for a node. The separation is a
+   MATERIAL one, made once here and inherited by every fixed element, and it
+   differentiates INSIDE this theme's own palette and type — no second
+   aesthetic is introduced.
+
+       a node                          the chrome
+       ------                          ----------
+       a lifted sheet                  smoked glass set into the frame
+       filled --vs-sheet               translucent --vs-chrome over the world
+       18px corners                    2px corners
+       1px membrane border + halo      one hairline rule, no shadow at all
+       serif plate name                monospace, uppercase, wide tracking
+       full-strength ink               ink one step quieter
+       floats free in the world        flush to a viewport edge, bleeding off it
+       moves with the camera           never moves
+
+   Blur the screen and the difference still holds: the sheets are the only
+   bright soft-cornered rectangles anywhere, and the chrome is a dark border
+   around the frame.
+   ========================================================================== */
+
+.chrome {
+  position: absolute;
+  z-index: var(--vs-z-chrome);
+  background: var(--vs-chrome);
+  border: 0;
+  border-radius: var(--vs-corner-chrome);
+  box-shadow: none;
+  backdrop-filter: var(--vs-chrome-blur);
+  color: var(--vs-chrome-ink);
+  font-family: var(--vs-chrome-face);
+  font-size: var(--vs-chrome-size);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: var(--vs-chrome-case);
+  font-variant: var(--vs-chrome-variant);
+  line-height: var(--vs-lead-snug);
+}
+/* SILL LINE'S CHROME EXPRESSION: solid, machined, keylined. Where theme-a's
+   chrome is smoked glass with a hairline, this is an opaque band carrying a
+   2px rule in the key colour along the edge it is attached to — the fixed
+   furniture reads as the instrument's own bezel. Same principle, different
+   material: still one register, still inside this theme's own palette, and
+   still nothing a card could be mistaken for. */
+#topbar  { box-shadow: inset 0 calc(-1 * var(--vs-strong)) 0 0 var(--vs-chrome-key); }
+#rail    { box-shadow: inset calc(-1 * var(--vs-strong)) 0 0 0 var(--vs-chrome-key); }
+#actions { box-shadow: inset calc(-1 * var(--vs-strong)) 0 0 0 var(--vs-mutate); }
+#navto   { box-shadow: inset var(--vs-strong) 0 0 0 var(--vs-chrome-key); }
+#atlas   { box-shadow: inset 0 var(--vs-strong) 0 0 var(--vs-chrome-key); }
+#probe   { box-shadow: inset var(--vs-strong) 0 0 0 var(--vs-chrome-rule); }
+#gesture { box-shadow: inset 0 var(--vs-strong) 0 0 var(--vs-chrome-rule); }
+#camera  { box-shadow: inset 0 calc(-1 * var(--vs-strong)) 0 0 var(--vs-chrome-key); }
+
+.chrome__title {
+  display: block;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  color: var(--vs-chrome-ink);
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+.chrome__title b { color: var(--vs-chrome-ink-lit); font-weight: var(--hbm-weight-regular); }
+.chrome__body { padding: var(--vs-chrome-pad); display: grid; gap: 1px; }
+.chrome__foot {
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  color: var(--vs-ink-faint);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Every control that lives in the chrome. Never a stake, never a hop —
+   those two forms belong to the nodes and mean "mutation" and "traversal".
+   A chrome control is a flat tracked label with a rule under it on hover. */
+.ch-btn {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  width: 100%;
+  padding: var(--vs-chrome-pad) var(--vs-gutter-tight);
+  border-radius: var(--vs-corner-chrome);
+  font-family: var(--vs-chrome-face);
+  font-size: var(--vs-chrome-size);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: var(--vs-chrome-case);
+  font-variant: var(--vs-chrome-variant);
+  color: var(--vs-chrome-ink);
+  text-align: start;
+  border-bottom: var(--vs-hair) solid transparent;
+}
+.ch-btn:hover  { background: var(--vs-chrome-hover); color: var(--vs-chrome-ink-lit); border-bottom-color: var(--vs-chrome-rule-lit); }
+.ch-btn[aria-pressed="true"], .ch-btn[aria-current="page"], .ch-btn[aria-current="true"] {
+  color: var(--vs-chrome-key);
+  border-bottom-color: var(--vs-chrome-key);
+}
+.ch-btn small { color: var(--vs-ink-faint); text-transform: none; letter-spacing: 0; margin-inline-start: auto; }
+/* .ch-btn--square is re-declared in the round-9 block at the end of this
+   sheet, at the size the owner gave. */
+
+/* -- top bar: flush to the top edge, full width, one rule beneath. ------- */
+#topbar {
+  top: 0; inset-inline: 0;
+  display: flex; align-items: center; gap: var(--vs-gutter);
+  padding: var(--vs-chrome-pad) var(--vs-gutter-wide);
+  border-radius: 0;
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#topbar .mark {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  color: var(--vs-chrome-ink-lit);
+  letter-spacing: var(--vs-chrome-track);
+}
+#topbar .mark .glyph { color: var(--vs-chrome-key); }
+#topbar .sub { color: var(--vs-ink-faint); }
+#topbar .spacer { flex: 1; }
+
+/* ROUND-8 § 5: you-are-here IS the top bar's centre column, not a second
+   element above it. It is chrome, so it is tracked monospace and squared. */
+#here { display: flex; align-items: center; gap: var(--vs-gutter); }
+#here > .label { color: var(--vs-ink-faint); letter-spacing: var(--vs-chrome-track); }
+#here > .label::before {
+  content: ""; display: inline-block;
+  width: 5px; height: 5px; border-radius: var(--vs-corner-chip);
+  background: var(--vs-chrome-key);
+  margin-inline-end: var(--vs-gutter-tight);
+}
+#crumbs { display: flex; align-items: center; gap: var(--vs-gutter-tight); }
+#crumbs .crumb {
+  font: inherit; letter-spacing: var(--vs-chrome-track); text-transform: uppercase;
+  color: var(--vs-chrome-ink);
+  padding: 2px var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid transparent;
+}
+#crumbs .crumb:hover { color: var(--vs-chrome-ink-lit); border-bottom-color: var(--vs-chrome-rule-lit); }
+#crumbs .crumb[aria-current="true"] { color: var(--vs-chrome-key); border-bottom-color: var(--vs-chrome-key); }
+#crumbs .sep { color: var(--vs-ink-faint); }
+
+.ch-field {
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  min-width: 16rem;
+  padding: var(--vs-chrome-pad) var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid var(--vs-chrome-rule);
+  color: var(--vs-chrome-ink);
+}
+.ch-field:focus-within { border-bottom-color: var(--vs-chrome-key); }
+.ch-field input {
+  flex: 1; background: none; border: 0; outline: none;
+  font-family: var(--vs-face-label); font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-chrome-track); text-transform: uppercase;
+  color: var(--vs-chrome-ink-lit);
+}
+.ch-count {
+  font-size: var(--vs-rung-18);
+  color: var(--vs-chrome-key);
+  border: var(--vs-hair) solid var(--vs-chrome-key);
+  border-radius: var(--vs-corner-chrome);
+  padding: 0 4px;
+}
+
+/* -- far-left destination rail: app-level places, flush to the left edge. */
+#rail {
+  inset-inline-start: 0;
+  top: 3.25rem;
+  display: grid; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: 0;
+}
+
+/* ==========================================================================
+   3 — THE WORLD.  One plane, translated and scaled. Nothing routes.
+   ========================================================================== */
+
+#world-wrap { position: absolute; inset: 0; overflow: hidden; }
+#world {
+  position: absolute; inset: 0;
+  /* ROUND-10 § 1: THE BOARD PANS, so outside a node the cursor is grab. */
+  cursor: grab;
+  touch-action: none;
+}
+#world[data-panning="true"] { cursor: grabbing; }
+
+#plane {
+  position: absolute;
+  top: 0; left: 0;
+  width: 3600px;   /* 12 lattice columns × 300px pitch — see tokens.css */
+  height: 1980px;  /* 11 lattice rows    × 180px pitch                  */
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+#veins { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#veins .vein {
+  fill: none;
+  stroke: var(--vs-vein);
+  stroke-width: var(--vs-vein-width);
+  stroke-linecap: round;
+  transition: stroke var(--vs-dur-settle) var(--vs-ease-settle),
+              stroke-width var(--vs-dur-settle) var(--vs-ease-settle),
+              opacity var(--vs-dur-settle) var(--vs-ease-settle);
+  opacity: 0.75;
+}
+#veins .vein[data-live="true"] {
+  stroke: var(--vs-vein-live);
+  stroke-width: var(--vs-vein-width-live);
+  opacity: 1;
+}
+#veins .vein[data-unknown="true"] { stroke: var(--vs-vein-unknown); stroke-dasharray: 3 9; }
+#veins .vein-node { fill: var(--vs-vein-node); opacity: 0.55; }
+#veins .vein-node[data-live="true"] { opacity: 1; }
+#veins #trail {
+  fill: none;
+  stroke: var(--vs-vital-bright);
+  stroke-width: var(--vs-vein-width-live);
+  stroke-linecap: round;
+  opacity: 0;
+}
+#veins #trail[data-on="true"] { opacity: 1; }
+
+/* ==========================================================================
+   4 — NODES.  Four ranks, four sizes: scale carries rank (C12).
+   ========================================================================== */
+
+.n {
+  position: absolute;
+  /* FIX 6 — the drift rides in the card's own transform, composited,
+     so a breathing card costs no layout and moves nothing the layout
+     is derived from. --jx/--jy are 0 for the focus, always. */
+  transform: translate(calc(-50% + var(--jx, 0px)), calc(-50% + var(--jy, 0px)));
+  width: var(--vs-card-far);
+  background: var(--vs-sheet-quiet);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-quiet);
+  transition: width var(--vs-dur-nav) var(--vs-ease-travel),
+              background-color var(--vs-dur-nav) var(--vs-ease-travel),
+              box-shadow var(--vs-dur-nav) var(--vs-ease-travel),
+              border-color var(--vs-dur-nav) var(--vs-ease-travel),
+              opacity var(--vs-dur-nav) var(--vs-ease-travel);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  /* ROUND-10 § 1: INSIDE A NODE, ORDINARY CURSORS. Never grab. The board's
+     grab cursor stops at the card's edge. */
+  cursor: default;
+}
+/* SILL LINE'S SIGNATURE ELEMENT — the measure tick. A short graduation
+   sits on the card's top edge, in the node's own kind colour, and its
+   LENGTH is the card's rank: a stub at the fringe, half at a near
+   neighbour, long at the focus. Blur the screen and you can still read both
+   what kind of thing a card is and how far it is from where you are.
+   Chrome carries no tick, so a tick also means "this is a node, not
+   furniture". */
+.n::before {
+  content: "";
+  position: absolute;
+  top: 0; inset-inline-start: 0;
+  height: var(--vs-tick-weight);
+  width: var(--vs-tick-fringe);
+  background: var(--kind, var(--vs-membrane));
+  opacity: var(--vs-tick-op);
+  transition: width var(--vs-dur-nav) var(--vs-ease-travel),
+              height var(--vs-dur-nav) var(--vs-ease-travel);
+}
+/* ROUND 8: the four lengths are tokens, because the second interface
+   re-pitches them — a stub / half / long tick at Sill Line's density
+   becomes a hair-thin ruled pencil line at the Table's. Same law either
+   way: with the text blurred, LENGTH is rank and COLOUR is kind. */
+.n[data-rank="far"]::before   { width: var(--vs-tick-far); }
+.n[data-rank="near"]::before  { width: var(--vs-tick-near); }
+.n[data-focus="true"]::before { width: var(--vs-tick-focus); opacity: 1; }
+.n[data-kindkey="collection"] { --kind: var(--vs-kind-collection); }
+.n[data-kindkey="species"]    { --kind: var(--vs-kind-species); }
+.n[data-kindkey="plant"]      { --kind: var(--vs-kind-plant); }
+.n[data-kindkey="guide"]      { --kind: var(--vs-kind-guide); }
+.n[data-kindkey="problem"]    { --kind: var(--vs-kind-problem); }
+.n[data-kindkey="journal"]    { --kind: var(--vs-kind-journal); }
+.n[data-kindkey="platform"]   { --kind: var(--vs-kind-platform); }
+.n[data-kindkey="region"]     { --kind: var(--vs-kind-region); }
+
+.n[data-rank="fringe"] { opacity: 0.62; max-height: var(--vs-cap-fringe); }  /* width: see the round-9 block */
+.n[data-rank="far"]    { width: var(--vs-card-far);    opacity: 0.82; max-height: var(--vs-cap-far); }
+.n[data-rank="near"]   { width: var(--vs-card-near);   opacity: 1;    max-height: var(--vs-cap-near); }
+
+/* ROUND-7 § 3 — the focused card is always shown in full, top edge to
+   bottom edge, at any zoom: its cap is the viewport height less the air
+   kept around it, divided by the live camera scale (--cam-k). */
+.n[data-focus="true"] {
+  width: var(--vs-card-focus);
+  max-height: calc((100vh * var(--vs-card-reach) - var(--vs-card-air)) / var(--cam-k, 1));
+  background: var(--vs-sheet);
+  border-color: var(--vs-membrane-lit);
+  box-shadow: var(--vs-halo-lit);
+  opacity: 1;
+  z-index: 3;
+}
+.n[data-dragging="true"] { z-index: 5; box-shadow: var(--vs-halo-lit); }
+
+/* ROUND-7 § 4: the whole surface of a non-focused card is the target — so
+   it, and only it, takes the pointer cursor. */
+.n:not([data-focus="true"]) { cursor: pointer; }
+.n:not([data-focus="true"]):hover { border-color: var(--vs-membrane-lit); background: var(--vs-hover); }
+
+/* ROUND-10 § 4: A NODE INTERIOR IS AN ORDINARY DOCUMENT. Text takes the
+   default cursor; links and buttons take the pointer; nothing inside a card
+   ever takes grab. */
+.n[data-focus="true"] .n__body,
+.n[data-focus="true"] .n__body p,
+.n[data-focus="true"] .n__body dl { cursor: default; }
+.n a, .n button { cursor: pointer; }
+.n a[aria-disabled="true"], .n button[disabled] { cursor: not-allowed; }
+
+.n[data-passing="true"] { border-color: var(--vs-vital-edge); box-shadow: var(--vs-halo-lit); }
+
+.n__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter-tight) var(--vs-gutter-tight) var(--vs-gutter);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.n__thumb {
+  width: 1.75rem; height: 1.75rem;
+  display: grid; place-items: center;
+  border-radius: var(--vs-corner-well);
+  background: var(--vs-vital-quiet);
+  color: var(--kind, var(--vs-vital));
+  border: var(--vs-hair) solid var(--vs-vital-edge);
+  font-size: var(--vs-rung-25);
+}
+.n[data-focus="true"] .n__thumb { width: 2.5rem; height: 2.5rem; font-size: var(--vs-rung-55); }
+.n__kind {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-ink-faint);
+}
+.n__name {
+  font-family: var(--vs-face-name);
+  font-size: var(--vs-rung-25);
+  line-height: var(--vs-lead-name);
+  margin: 0;
+  color: var(--vs-ink);
+}
+.n[data-rank="near"] .n__name  { font-size: var(--vs-rung-30); }
+.n[data-focus="true"] .n__name { font-size: var(--vs-rung-55); }
+
+.n__tools { display: flex; align-items: center; gap: 2px; }
+.n__modes { display: flex; gap: 1px; padding: 1px; background: var(--vs-well); border-radius: var(--vs-corner-chip); }
+.n__modes button, .n__grip {
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  color: var(--vs-ink-muted);
+  padding: 2px 6px;
+  border-radius: var(--vs-corner-chip);
+  line-height: 1.4;
+}
+.n__modes button[aria-pressed="true"] { background: var(--vs-vital); color: var(--vs-ink-on-fill); }
+.n__grip { padding: 2px 5px; border: var(--vs-hair) solid var(--vs-membrane); }
+/* ROUND-8 § 4 + ROUND-10 § 1: only the focused card carries controls, and
+   the grip is a control, not a hand on the board — pointer, not grab. */
+.n[data-focus="false"] .n__tools { display: none; }
+
+/* Body — the ONLY scroller on this screen is the FOCUSED node's body. */
+.n__body { min-height: 0; overflow: hidden; }
+.n[data-focus="true"] .n__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vs-membrane-lit) transparent;
+}
+.n__recap { padding: var(--vs-gutter); display: grid; gap: var(--vs-gutter-tight); }
+.n__full  { padding: var(--vs-gutter-card); display: none; gap: var(--vs-gutter-wide); }
+.n__skel  { padding: var(--vs-gutter-card); display: none; gap: var(--vs-gutter); }
+.n[data-show="recap"] .n__recap { display: grid; }
+.n[data-show="skel"]  .n__recap { display: none; }
+.n[data-show="skel"]  .n__skel  { display: grid; }
+.n[data-show="full"]  .n__recap { display: none; }
+.n[data-show="full"]  .n__full  { display: grid; }
+
+.n__recap-line {
+  display: flex; align-items: baseline; gap: var(--vs-gutter-tight); flex-wrap: wrap;
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  color: var(--vs-ink-second);
+  margin: 0;
+}
+.n__recap-note { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink-muted); max-width: var(--hbm-measure-note); }
+.n[data-rank="fringe"] .n__recap { padding: var(--vs-gutter-tight) var(--vs-gutter); }
+.n[data-rank="fringe"] .n__recap-note { display: none; }
+
+/* The shaped placeholder shown WHILE a card expands (round-5 § 6). */
+.sk { background: var(--vs-skeleton); border-radius: var(--vs-corner-well); }
+.sk--plate  { height: 8rem; border-radius: var(--vs-corner-inner); }
+.sk--name   { height: var(--vs-rung-100); width: 72%; background: var(--vs-skeleton-lit); }
+.sk--sub    { height: var(--vs-rung-30); width: 42%; }
+.sk--line   { height: var(--vs-rung-25); }
+.sk--line.is-short { width: 58%; }
+.sk--grid   { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+.sk--cell   { height: 2.5rem; }
+.sk--row    { height: 3rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .n[data-show="skel"] .sk { animation: sk-breathe var(--hbm-dur-4) var(--vs-ease-settle) infinite alternate; }
+}
+@keyframes sk-breathe { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* ==========================================================================
+   5 — FOCUSED-CARD MATERIAL
+   ========================================================================== */
+
+.plate { display: grid; grid-template-columns: 9.5rem 1fr; gap: var(--vs-gutter-card); align-items: start; }
+.plate__specimen {
+  aspect-ratio: 3 / 4;
+  border-radius: var(--vs-corner-inner);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  background:
+    radial-gradient(circle at 34% 26%, var(--vs-vital-bright) 0 4%, transparent 32%),
+    linear-gradient(152deg, var(--vs-vital-deep) 0%, var(--vs-void) 78%);
+  position: relative;
+  overflow: hidden;
+}
+/* Drawn from tokens. Nothing external loads, anywhere on this page. */
+.plate__specimen::after {
+  content: "";
+  position: absolute; inset: 18% 14%;
+  border-radius: 60% 8% 60% 8%;
+  background: linear-gradient(140deg, var(--vs-vital) 0%, var(--vs-vital-deep) 100%);
+  box-shadow: inset 0 0 0 var(--vs-hair) var(--vs-membrane-lit);
+}
+.plate__score {
+  position: absolute; inset-block-end: var(--vs-gutter-tight); inset-inline-end: var(--vs-gutter-tight);
+  z-index: 1;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border-radius: var(--vs-corner-chip);
+  background: var(--vs-vital); color: var(--vs-ink-on-fill);
+  font-family: var(--vs-face-label); font-size: var(--vs-rung-18);
+}
+.plate__name {
+  margin: 0;
+  font-family: var(--vs-face-name);
+  font-size: var(--vs-rung-100);
+  line-height: var(--vs-lead-name);
+  letter-spacing: var(--vs-track-name);
+}
+/* The ONE place a serif survives in Sill Line: the italic binomial. */
+.plate__binomial {
+  margin: 0 0 var(--vs-gutter) 0;
+  font-family: var(--vs-face-latin);
+  font-style: italic;
+  font-size: var(--vs-rung-55);
+  color: var(--vs-binomial);
+}
+.plate__meta { display: grid; gap: var(--vs-gutter-tight); }
+
+h3.sec {
+  margin: 0 0 var(--vs-gutter) 0;
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  color: var(--vs-vital);
+  padding-bottom: var(--vs-gutter-tight);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+h4.subsec { margin: 0 0 var(--vs-gutter-tight) 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-30); font-weight: var(--hbm-weight-medium); }
+p { margin: 0 0 var(--vs-gutter) 0; max-width: var(--hbm-measure-prose); }
+p:last-child { margin-bottom: 0; }
+
+.rows { display: grid; gap: var(--vs-gutter-tight); margin: 0; }
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--vs-gutter);
+  align-items: baseline;
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  background: var(--vs-well);
+  border-radius: var(--vs-corner-well);
+  border: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.row dt, .row .k { font-size: var(--vs-rung-25); color: var(--vs-ink-muted); margin: 0; }
+.row dd, .row .v { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink); text-align: end; }
+.row .v.mono { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+
+/* ROUND-10 § 4: an ordinary inline document link inside a node's prose. It
+   is a real anchor, it navigates the graph, and the pan layer never
+   swallows it. */
+.doc-link {
+  color: var(--vs-vital);
+  text-decoration-color: var(--vs-vital-edge);
+  text-underline-offset: 3px;
+}
+.doc-link:hover { text-decoration-color: var(--vs-vital); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: 2px var(--vs-gutter-tight);
+  border-radius: var(--vs-corner-chip);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-track-label);
+  text-transform: uppercase;
+  border: var(--vs-hair) solid currentColor;
+}
+.tag::before { content: ""; width: 5px; height: 5px; border-radius: var(--vs-corner-chip); background: currentColor; }
+.tag--thriving { color: var(--vs-thriving); }
+.tag--watch    { color: var(--vs-watch); }
+.tag--ailing   { color: var(--vs-ailing); }
+.tag--unknown  { color: var(--vs-unknown); }
+.tag--offline  { color: var(--vs-offline); }
+
+.conf {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border: var(--vs-hair) dashed var(--vs-conf-medium);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-vital-quiet);
+}
+.conf__bar { height: 4px; border-radius: var(--vs-corner-chip); background: var(--vs-conf-track); overflow: hidden; }
+.conf__bar i { display: block; height: 100%; background: var(--vs-conf-medium); }
+
+/* Mutation = a filled terracotta stake. Navigation = an outlined vein chip
+   with a directional caret. Tellable apart by form alone, before activation
+   (C14) — and neither form exists anywhere in the chrome. */
+.stake {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+  background: var(--vs-mutate);
+  color: var(--vs-mutate-ink);
+  font-size: var(--vs-rung-25);
+  font-weight: var(--hbm-weight-medium);
+  border-bottom: var(--vs-strong) solid var(--vs-mutate-quiet);
+}
+.stake:hover { filter: brightness(1.08); }
+.stake--quiet { background: none; color: var(--vs-mutate); border: var(--vs-hair) solid var(--vs-mutate); border-bottom-width: var(--vs-strong); }
+.stake[disabled] { opacity: 0.5; }
+
+.hop {
+  display: inline-flex; align-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-vital-edge);
+  border-radius: var(--vs-corner-chip);
+  background: none;
+  color: var(--vs-vital);
+  font-size: var(--vs-rung-25);
+  text-align: start;
+}
+.hop::after { content: "→"; margin-inline-start: auto; color: var(--vs-vital); }
+.hop:hover { background: var(--vs-vital-quiet); }
+.hop--block { display: flex; width: 100%; }
+.hop small { color: var(--vs-ink-muted); font-family: var(--vs-face-label); font-size: var(--vs-rung-18); }
+.hop span { display: grid; }
+
+/* ==========================================================================
+   6 — STATE MATERIALS. Each is a state INSIDE the node that owns it.
+   ========================================================================== */
+
+.state {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-well);
+  border: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+.state__head { display: flex; align-items: center; justify-content: space-between; gap: var(--vs-gutter); flex-wrap: wrap; }
+.state__title { margin: 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-30); font-weight: var(--hbm-weight-medium); }
+.state__id { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); letter-spacing: var(--vs-track-label); color: var(--vs-ink-faint); }
+.state__note { margin: 0; font-size: var(--vs-rung-25); color: var(--vs-ink-second); }
+.state--error  { border-color: var(--vs-error); background: var(--vs-error-quiet); }
+.state--empty  { border-style: dashed; border-color: var(--vs-membrane-lit); }
+.state--unknown{ border-style: dashed; border-color: var(--vs-unknown); background: var(--vs-unknown-fill); }
+.state--loading{ border-color: var(--vs-membrane-lit); }
+
+.feed { display: grid; gap: var(--vs-gutter-tight); }
+.feed__row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: var(--vs-gutter);
+  align-items: baseline;
+  padding: var(--vs-gutter-tight) 0;
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+  font-size: var(--vs-rung-25);
+}
+.feed__row:last-child { border-bottom: 0; }
+.feed__when { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); color: var(--vs-ink-faint); }
+.feed__val  { font-family: var(--vs-face-label); font-size: var(--vs-rung-18); color: var(--vs-vital); }
+
+.empty-plot {
+  display: grid; place-items: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter-wide);
+  border: var(--vs-hair) dashed var(--vs-membrane-lit);
+  border-radius: var(--vs-corner-inner);
+  color: var(--vs-ink-muted);
+  text-align: center;
+}
+.empty-plot .glyph { font-size: var(--vs-rung-75); color: var(--vs-ink-faint); }
+
+.btn-row { display: flex; gap: var(--vs-gutter-tight); flex-wrap: wrap; }
+
+/* ==========================================================================
+   7 — FIXED SIDE FURNITURE. Left = Actions (mutation). Right = Navigate to
+   (traversal). Both are CHROME, and both are flush to their own edge.
+   ========================================================================== */
+
+.side { width: 15rem; overflow: hidden; }
+/* ROUND-8 § 3: Actions clears the world view by referencing its own height,
+   so the two can never come to overlap again. */
+#actions {
+  inset-inline-start: 0;
+  inset-block-end: calc(var(--vs-atlas-h) + var(--vs-gutter-wide));
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#navto {
+  inset-inline-end: 0;
+  inset-block-end: var(--vs-gutter-wide);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+/* Actions and Navigate-to are chrome, so their entries are chrome controls,
+   NOT stakes and hops. The stake/hop forms stay inside the nodes where the
+   data lives; here the same two meanings are carried by a leading mark: a
+   filled square for a mutation, an arrow for a traversal. */
+.ch-btn--mutate::before { content: "▪"; color: var(--vs-mutate); }
+.ch-btn--travel::before { content: "→"; color: var(--vs-chrome-key); }
+
+/* Bottom-left: the persistent world view — chrome, flush to the corner. */
+#atlas {
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  display: flex; align-items: flex-end; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-radius: 0;
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-inline-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+#minimap {
+  position: relative;
+  width: 13rem; height: var(--vs-atlas-h);
+  background: var(--vs-chrome-solid);
+  border: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: var(--vs-corner-chrome);
+  overflow: hidden;
+}
+#minimap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#minimap .mm-edge { stroke: var(--vs-vein); stroke-width: 0.6; fill: none; }
+#minimap .mm-dot  { fill: var(--vs-ink-faint); }
+#minimap .mm-dot[data-rank="near"] { fill: var(--vs-chrome-ink); }
+#minimap .mm-dot[data-moved="true"] { fill: var(--vs-mutate); }
+#minimap .mm-you { fill: none; stroke: var(--vs-vital-bright); stroke-width: 1.6;
+  transition: cx var(--vs-dur-nav) var(--vs-ease-travel), cy var(--vs-dur-nav) var(--vs-ease-travel); }
+#minimap .mm-you-core { fill: var(--vs-vital-bright);
+  transition: cx var(--vs-dur-nav) var(--vs-ease-travel), cy var(--vs-dur-nav) var(--vs-ease-travel); }
+#minimap #mm-view { fill: none; stroke: var(--vs-chrome-rule-lit); stroke-width: 1;
+  transition: all var(--vs-dur-nav) var(--vs-ease-travel); }
+#zoomstack { display: grid; gap: 1px; }
+
+/* ==========================================================================
+   DRAG MODE (round-8 § 2) — an explicit MODE.
+   ========================================================================== */
+body[data-drag="on"] #world { cursor: default; }
+/* The card IS the handle here, so it takes `move` — never `grab`, which
+   round-10 § 1 reserves for the board and forbids inside a node. */
+body[data-drag="on"] .n { cursor: move; }
+body[data-drag="on"] .n[data-dragging="true"] { cursor: move; }
+body[data-drag="on"] .n__tools { display: none; }
+body[data-drag="on"] .n .stake,
+body[data-drag="on"] .n .hop,
+body[data-drag="on"] .n .doc-link,
+body[data-drag="on"] .n__body { pointer-events: none; }
+body[data-drag="on"] .n__body { overflow: hidden; }
+body[data-drag="on"] #topbar,
+body[data-drag="on"] #rail,
+body[data-drag="on"] #actions,
+body[data-drag="on"] #navto,
+body[data-drag="on"] #camera,
+body[data-drag="on"] #probe,
+body[data-drag="on"] #minimap { pointer-events: none; opacity: 0.5; }
+body[data-drag="on"] #zoom-in,
+body[data-drag="on"] #zoom-out-small,
+body[data-drag="on"] #recenter { pointer-events: none; opacity: 0.5; }
+#drag-banner { display: none; }
+body[data-drag="on"] #drag-banner {
+  display: flex; align-items: center; gap: var(--vs-gutter);
+  inset-block-end: var(--vs-gutter-wide);
+  left: 50%; transform: translateX(-50%);
+  padding: var(--vs-chrome-pad) var(--vs-gutter-wide);
+  border: var(--vs-hair) solid var(--vs-mutate);
+}
+body[data-drag="on"] #camera { display: none; }
+
+/* Bottom-centre: camera only. Looking around is not navigating. */
+#camera {
+  inset-block-end: var(--vs-gutter-wide);
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: 1px;
+  padding: var(--vs-chrome-pad);
+}
+#camera .ch-btn { width: auto; padding-inline: var(--vs-gutter); }
+
+#gesture {
+  inset-inline-end: 0;
+  inset-block-end: 0;
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  margin: 0;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  color: var(--vs-ink-faint);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--vs-rung-18);
+  border-top: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-radius: 0;
+}
+
+/* The live region + direction readout: chrome, so it can never be read as a
+   node that appeared. */
+#live {
+  top: 3.25rem;
+  left: 50%; transform: translateX(-50%);
+  z-index: var(--vs-z-live);
+  display: flex; align-items: center; gap: var(--vs-gutter-tight);
+  margin: 0;
+  padding: var(--vs-chrome-pad) var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-chrome-rule-lit);
+  color: var(--vs-chrome-key);
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0;
+  transition: opacity var(--vs-dur-settle) var(--vs-ease-settle);
+  pointer-events: none;
+}
+#live[data-on="true"] { opacity: 1; }
+
+/* Degradation switches — how this static page is put into each R13 state. */
+#probe {
+  top: 3.25rem;
+  inset-inline-end: 0;
+  display: grid; gap: 1px;
+  padding: var(--vs-chrome-pad);
+  border-inline-start: var(--vs-hair) solid var(--vs-chrome-rule);
+  border-block-end: var(--vs-hair) solid var(--vs-chrome-rule);
+}
+
+/* Offline: the world stays put and navigable; mutation is refused. */
+#offline-bar {
+  position: absolute;
+  top: 0; inset-inline: 0;
+  z-index: var(--vs-z-live);
+  display: none;
+  align-items: center; justify-content: center; gap: var(--vs-gutter-tight);
+  padding: var(--vs-chrome-pad);
+  background: var(--vs-chrome-solid);
+  border-bottom: var(--vs-hair) solid var(--vs-offline);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  letter-spacing: var(--vs-chrome-track);
+  text-transform: uppercase;
+  color: var(--vs-offline);
+}
+body[data-net="offline"] #offline-bar { display: flex; }
+body[data-net="offline"] .stake:not(.stake--queue) { opacity: 0.45; cursor: not-allowed; }
+body[data-net="offline"] .n .staleness { display: flex; }
+.staleness {
+  display: none; align-items: center; gap: var(--vs-gutter-tight);
+  font-family: var(--vs-face-label);
+  font-size: var(--vs-rung-18);
+  color: var(--vs-stale);
+  padding: 0 var(--vs-gutter) var(--vs-gutter-tight);
+}
+.n[data-show="recap"] .staleness { padding-top: 0; }
+
+/* Slow (≥10s): the geography holds; each node resolves in place. */
+body[data-speed="slow"] .n[data-pending="true"] .n__recap > *:not(.staleness):not(.pending) { display: none; }
+.pending { display: none; }
+body[data-speed="slow"] .n[data-pending="true"] .pending { display: grid; gap: var(--vs-gutter-tight); }
+
+/* ==========================================================================
+   8 — THE L4 EXIT. The app becomes a card; settings sits BESIDE it.
+   ========================================================================== */
+
+#overview { position: fixed; inset: 0; z-index: var(--vs-z-panel); display: none; pointer-events: none; }
+body[data-mode="overview"] #overview { display: block; }
+
+#app-caption {
+  position: absolute;
+  inset-inline-start: 4%;
+  bottom: 14%;
+  width: 34%;
+  text-align: center;
+  pointer-events: auto;
+  display: grid; gap: var(--vs-gutter-tight);
+}
+#settings {
+  position: absolute;
+  inset-inline-end: 3%;
+  top: 8%; bottom: 8%;
+  width: 46%;
+  pointer-events: auto;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--vs-sheet);
+  border: var(--vs-hair) solid var(--vs-membrane-lit);
+  border-radius: var(--vs-corner-card);
+  box-shadow: var(--vs-halo-lit);
+  overflow: hidden;
+}
+#settings header, #settings footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--vs-gutter);
+  padding: var(--vs-gutter) var(--vs-gutter-card);
+  border-bottom: var(--vs-hair) solid var(--vs-membrane-rule);
+}
+#settings footer { border-bottom: 0; border-top: var(--vs-hair) solid var(--vs-membrane-rule); }
+#settings h2 { margin: 0; font-family: var(--vs-face-name); font-size: var(--vs-rung-55); }
+#settings .cols { display: grid; grid-template-columns: 12rem 1fr; min-height: 0; }
+#settings nav {
+  border-inline-end: var(--vs-hair) solid var(--vs-membrane-rule);
+  padding: var(--vs-gutter-tight);
+  display: grid; gap: 1px; align-content: start;
+  overflow-y: auto;
+}
+#settings nav button {
+  text-align: start;
+  padding: var(--vs-gutter-tight) var(--vs-gutter);
+  border-radius: var(--vs-corner-well);
+  font-size: var(--vs-rung-25);
+  color: var(--vs-ink-second);
+}
+#settings nav button[aria-current="true"] { background: var(--vs-vital-quiet); color: var(--vs-vital-bright); }
+#settings .pane { padding: var(--vs-gutter-card); overflow-y: auto; }
+
+.palettes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vs-gutter); }
+.palette {
+  display: grid; gap: var(--vs-gutter-tight);
+  padding: var(--vs-gutter);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  border-radius: var(--vs-corner-inner);
+  background: var(--vs-well);
+  text-align: start;
+}
+.palette[aria-pressed="true"] { border-color: var(--vs-vital); box-shadow: 0 0 0 var(--vs-hair) var(--vs-vital); }
+.palette__swatches { display: flex; gap: 3px; }
+.palette__swatches i { width: 1.25rem; height: 1.25rem; border-radius: var(--vs-corner-well); border: var(--vs-hair) solid var(--vs-membrane); }
+.palette__name { font-family: var(--vs-face-name); font-size: var(--vs-rung-30); }
+.palette__note { font-size: var(--vs-rung-18); color: var(--vs-ink-muted); font-family: var(--vs-face-label); }
+
+#overview-bar {
+  position: absolute;
+  inset-block-end: var(--vs-gutter);
+  inset-inline-start: 4%;
+  width: 34%;
+  display: flex; justify-content: center; gap: 1px;
+  pointer-events: auto;
+  padding: var(--vs-chrome-pad);
+  background: var(--vs-chrome);
+  border-radius: var(--vs-corner-chrome);
+}
+#overview-bar .ch-btn { width: auto; padding-inline: var(--vs-gutter); }
+
+/* ==========================================================================
+   9 — REDUCED MOTION. Direction is still shown, you-are-here still updates.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; animation: none !important; }
+  .n { transition: none; }
+}
+/* ==========================================================================
+   ROUND 9 — the six fixes the owner named on 2026-08-17.
+   ========================================================================== */
+
+/* FIX 1 — verbatim. */
+.ch-btn--square {
+    width: 1.5rem;
+    height: 1.5rem;
+    justify-content: center;
+    padding: 0;
+}
+
+/* FIX 4 — verbatim. A fringe card is now as wide as its own words, which is
+   precisely why fix 2 had to become a real clearance pass rather than a
+   pitch: card widths at the fringe are no longer a number the layout knows
+   in advance, so it MEASURES them. */
+.n[data-rank="fringe"] {
+    width: auto;
+}
+
+/* FIX 2 — the measuring read. Transitions are suspended for the frame in
+   which the script reads every card's settled size, so it never computes
+   clearance against a width that is still travelling. */
+body[data-measuring] .n,
+body[data-measuring] .n::before,
+body[data-measuring] .n * { transition: none !important; }
+
+/* FIX 3 — the vein is a control. An invisible wide stroke rides the same
+   path as the drawn vein and takes the pointer; the drawn vein stays as
+   thin as it looks. Hovering it says, in the cursor, that this is a
+   TRAVERSAL and not a mutation (C14). */
+#veins { pointer-events: none; }
+#veins .vein-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+#veins .vein[data-hint="true"] {
+  stroke: var(--vs-vein-live);
+  stroke-width: var(--vs-vein-width-live);
+  opacity: 1;
+}
+#veins .vein-hit:hover { stroke: var(--vs-vein-live); stroke-opacity: 0.14; }
+
+/* FIX 5 — reduced motion is now a state the page can SEE, so the probe and
+   the media query have the same effect and the toggle is visible either
+   way. Direction is still stated (the trail still draws, the you-are-here
+   still moves); nothing is swapped abruptly, it simply arrives. */
+body[data-motion="reduced"] *,
+body[data-motion="reduced"] *::before,
+body[data-motion="reduced"] *::after {
+  transition-duration: 1ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}

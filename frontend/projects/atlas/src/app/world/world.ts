@@ -4,13 +4,14 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   HostListener,
   inject,
-  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@plantpal/shared-core';
+import { advanceField, Mote, seedField, Size } from '@plantpal/rhizome-engine';
 import { environment } from '../../environments/environment';
 import { NodeCard } from '../node/node-card';
 import { classicLinkFor, classicLoginLink } from './interop';
@@ -29,181 +30,97 @@ interface VeinLine {
 }
 
 /**
- * The world shell (rz-world). One viewport, one plane. Going somewhere is the
- * camera rescaling + translating the plane — nothing routes, nothing unmounts
- * (C1/C4). Veins are drawn before anyone travels them; each carries an invisible
- * wide hit stroke so the vein itself is clickable (C18). Chrome (zoom, you-are-
- * here) is flush furniture and never moves with the camera (C14).
+ * The world shell — emits the prototype's own frame (#shell > #world-wrap >
+ * #world > #plane > svg#veins + article.n cards) so the extracted rhizome.css
+ * applies verbatim (H1). Chrome beyond the camera bar arrives in H3.
  */
 @Component({
   selector: 'rz-world',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NodeCard],
   template: `
-    <div class="rz-world">
-      <!-- THE PLANE — everything on it moves with the camera -->
-      <div class="rz-plane" [style.transform]="store.planeTransform()">
-        <svg class="rz-veins" aria-hidden="true">
-          @for (v of veins(); track v.a + '::' + v.b) {
-            <line
-              class="vein"
-              [attr.data-live]="v.live ? true : null"
-              [attr.data-unknown]="v.unknown ? true : null"
-              [attr.x1]="v.x1"
-              [attr.y1]="v.y1"
-              [attr.x2]="v.x2"
-              [attr.y2]="v.y2"
-            />
-            <line
-              class="vein-hit"
-              [attr.x1]="v.x1"
-              [attr.y1]="v.y1"
-              [attr.x2]="v.x2"
-              [attr.y2]="v.y2"
-              (click)="store.travelAlongVein(v.a, v.b)"
-            >
-              <title>Travel along this vein</title>
-            </line>
-          }
-        </svg>
+    <canvas id="motes" aria-hidden="true"></canvas>
+    <div id="motes-wash" aria-hidden="true"></div>
 
-        @for (n of store.nodes(); track n.id) {
-          <rz-node
-            [node]="n"
-            [rank]="store.rankNameOf(n.id)"
-            [focus]="store.isFocus(n.id)"
-            [style.left.px]="store.positionOf(n.id).x"
-            [style.top.px]="store.positionOf(n.id).y"
-            (click)="store.go(n.id)"
-            (act)="onAct(n.id, $event)"
-          />
+    <div id="shell">
+      <canvas id="motes-app" aria-hidden="true"></canvas>
+
+      <div id="world-wrap">
+        <div
+          id="world"
+          role="application"
+          tabindex="0"
+          aria-label="PlantPal botanical network. Arrow keys move along the veins to a neighbour, Enter travels to it, Alt plus the scroll wheel zooms."
+        >
+          <div id="plane" [style.transform]="store.planeTransform()">
+            <svg id="veins" viewBox="0 0 3600 1980" aria-hidden="true" preserveAspectRatio="none">
+              <g>
+                @for (v of veins(); track v.a + '::' + v.b) {
+                  <path
+                    class="vein"
+                    [attr.data-live]="v.live ? true : null"
+                    [attr.data-unknown]="v.unknown ? true : null"
+                    [attr.d]="'M ' + v.x1 + ' ' + v.y1 + ' L ' + v.x2 + ' ' + v.y2"
+                  />
+                  <path
+                    class="vein-hit"
+                    [attr.d]="'M ' + v.x1 + ' ' + v.y1 + ' L ' + v.x2 + ' ' + v.y2"
+                    (click)="store.travelAlongVein(v.a, v.b)"
+                  >
+                    <title>Travel along this vein</title>
+                  </path>
+                }
+              </g>
+              <g>
+                @for (v of veins(); track v.a + '::' + v.b) {
+                  <circle
+                    class="vein-node"
+                    r="3.2"
+                    [attr.data-live]="v.live ? true : null"
+                    [attr.cx]="(v.x1 + v.x2) / 2"
+                    [attr.cy]="(v.y1 + v.y2) / 2"
+                  />
+                }
+              </g>
+            </svg>
+
+            @for (n of store.nodes(); track n.id) {
+              <rz-node
+                [id]="n.id"
+                [node]="n"
+                [rank]="store.rankNameOf(n.id)"
+                [focus]="store.isFocus(n.id)"
+                [style.left.px]="store.positionOf(n.id).x"
+                [style.top.px]="store.positionOf(n.id).y"
+                (click)="onCardClick(n.id, $event)"
+                (act)="onAct(n.id, $event)"
+              />
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- CHROME (minimal until H3): the camera bar + live readout -->
+      <div id="camera" class="chrome">
+        <button class="ch-btn" type="button" (click)="store.zoomBy(0.7)">
+          <span aria-hidden="true">⌕−</span> Zoom out
+        </button>
+        <button class="ch-btn" type="button" (click)="store.frameFocus()">
+          <span aria-hidden="true">▢</span> Recentre
+        </button>
+        @if (!authed()) {
+          <a class="ch-btn" [href]="signInUrl" style="width:auto">Sign in</a>
+        } @else if (focusClassicLink()) {
+          <a class="ch-btn" [href]="focusClassicLink()" target="_blank" rel="noopener" style="width:auto">
+            Open in PlantPal
+          </a>
         }
       </div>
-
-      <!-- CHROME — flush furniture, never travels with the camera (C14) -->
-      <header class="rz-chrome rz-topbar">
-        <span class="rz-brand">PlantPal · Botanical Network</span>
-        <span class="rz-actions">
-          <span class="rz-here">You are here: {{ focusName() }}</span>
-          @if (focusClassicLink()) {
-            <a class="rz-link" [href]="focusClassicLink()" target="_blank" rel="noopener">Open in PlantPal ↗</a>
-          }
-          @if (!authed()) {
-            <a class="rz-link rz-signin" [href]="signInUrl">Sign in</a>
-          }
-        </span>
-      </header>
-      <div class="rz-chrome rz-camera">
-        <button type="button" (click)="store.zoomBy(0.8)" aria-label="Zoom out">−</button>
-        <button type="button" (click)="store.frameFocus()" aria-label="Recentre">◎</button>
-        <button type="button" (click)="store.zoomBy(1.25)" aria-label="Zoom in">+</button>
-      </div>
-
-      <!-- Polite live region: travel is announced here, not as a visible banner. -->
-      <p class="rz-sr" aria-live="polite">{{ store.announcement() }}</p>
+      <p id="live" role="status" aria-live="polite" [attr.data-on]="store.announcement() ? true : null">
+        {{ store.announcement() }}
+      </p>
     </div>
   `,
-  styles: [
-    `
-      .rz-world {
-        position: fixed;
-        inset: 0;
-        overflow: hidden;
-        background:
-          radial-gradient(ellipse 90% 70% at 50% 45%, var(--vs-void, #0a0c0c), var(--vs-void-deep, #070909) 100%);
-      }
-      .rz-plane {
-        position: absolute;
-        left: 0;
-        top: 0;
-        transform-origin: 0 0;
-        will-change: transform;
-      }
-      .rz-veins {
-        position: absolute;
-        left: 0;
-        top: 0;
-        overflow: visible;
-        width: 0;
-        height: 0;
-        pointer-events: none;
-      }
-      .vein {
-        stroke: var(--vs-vein, rgba(143, 178, 106, 0.28));
-        stroke-width: 1;
-        fill: none;
-      }
-      .vein[data-live] { stroke: var(--vs-vein-live, rgba(143, 178, 106, 0.7)); stroke-width: 1.5; }
-      .vein[data-unknown] { stroke-dasharray: 4 5; }
-      .vein-hit {
-        stroke: transparent;
-        stroke-width: 20;
-        fill: none;
-        pointer-events: stroke;
-        cursor: pointer;
-      }
-
-      .rz-chrome {
-        position: fixed;
-        z-index: 10;
-        font-family: var(--vs-chrome-face, monospace);
-        color: var(--vs-chrome-ink, var(--vs-ink-muted));
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-size: var(--vs-rung-18, 0.72rem);
-      }
-      .rz-topbar {
-        top: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: space-between;
-        padding: 12px 18px;
-        background: linear-gradient(var(--vs-void-deep, #070909), transparent);
-      }
-      .rz-actions { display: flex; gap: 16px; align-items: center; }
-      .rz-here { color: var(--vs-ink-second); }
-      .rz-link {
-        color: var(--vs-ink-muted);
-        text-decoration: none;
-        border-bottom: 1px solid transparent;
-      }
-      .rz-link:hover { color: var(--vs-ink); border-bottom-color: var(--vs-membrane-lit, currentColor); }
-      .rz-signin { color: var(--vs-kind-species, var(--vs-ink)); }
-      .rz-camera {
-        bottom: 18px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 6px;
-      }
-      .rz-camera button {
-        width: 34px;
-        height: 34px;
-        border: var(--vs-hair, 1px) solid var(--vs-membrane, rgba(255, 255, 255, 0.14));
-        background: var(--vs-void, #0a0c0c);
-        color: var(--vs-ink);
-        border-radius: var(--vs-corner-card, 5px);
-        cursor: pointer;
-        font-size: 1rem;
-        line-height: 1;
-      }
-      .rz-camera button:hover { border-color: var(--vs-ink-muted); }
-
-      /* visually-hidden but read by screen readers */
-      .rz-sr {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        margin: -1px;
-        padding: 0;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
-        white-space: nowrap;
-        border: 0;
-      }
-    `,
-  ],
 })
 export class World {
   protected readonly store = inject(WorldStore);
@@ -212,21 +129,17 @@ export class World {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Shared session: a token in localStorage (set by either app) means signed in. */
-  protected readonly authed = signal(this.auth.isLoggedIn());
+  protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
 
   protected readonly focusNode = computed(() =>
     this.store.nodes().find(n => n.id === this.store.focusId()),
   );
-  protected readonly focusName = computed(() => this.focusNode()?.name ?? '');
-  /** "Open in PlantPal" deep-link for the current focus (null if no classic page). */
   protected readonly focusClassicLink = computed(() => {
     const f = this.focusNode();
     return f ? classicLinkFor(f, environment.classicAppUrl) : null;
   });
 
-  /** Vein polylines in world coordinates, live-marked when incident to the focus. */
   protected readonly veins = computed<VeinLine[]>(() => {
     const focus = this.store.focusId();
     const pos = this.store.targets();
@@ -235,36 +148,136 @@ export class World {
       const pa = pos[a] ?? { x: 0, y: 0 };
       const pb = pos[b] ?? { x: 0, y: 0 };
       return {
-        a,
-        b,
-        x1: pa.x,
-        y1: pa.y,
-        x2: pb.x,
-        y2: pb.y,
+        a, b,
+        x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y,
         live: a === focus || b === focus,
         unknown: unknownIds.has(a) || unknownIds.has(b),
       };
     });
   });
 
+  private motes: Mote[] = [];
+  private moteRaf = 0;
+
   constructor() {
+    // Keep --cam-k on the root in sync — the focus card's max-height divides by it.
+    effect(() => {
+      document.documentElement.style.setProperty('--cam-k', String(this.store.camera().k));
+    });
+    // Re-measure and settle after every completed hop (measured clearance, H1).
+    effect(() => {
+      const focus = this.store.focusId();
+      const travelling = this.store.travelling();
+      if (focus && !travelling) {
+        requestAnimationFrame(() => this.measureAndSettle());
+      }
+    });
     afterNextRender(() => {
-      this.syncCentreAndFrame();
+      this.syncCentre();
+      this.measureAndSettle();
+      this.startMotes();
       this.loadLive();
     });
   }
 
   @HostListener('window:resize')
   protected onResize(): void {
-    this.syncCentreAndFrame();
+    this.syncCentre();
+    this.measureAndSettle();
+    this.sizeMotes();
   }
 
   /**
-   * Overlay live backend data on the fixture. On failure the fixture stays — the
-   * board never blanks and there is no global error banner (C22-C25).
+   * measureBoxes(), faithfully: pin --cam-k to 1 and set body[data-measuring]
+   * (rhizome.css kills transitions) so cards are read at their settled size —
+   * fringe cards are width:auto, so sizes must be measured, never assumed.
    */
+  private measureAndSettle(): void {
+    const root = document.documentElement;
+    const prev = root.style.getPropertyValue('--cam-k');
+    root.style.setProperty('--cam-k', '1');
+    document.body.dataset['measuring'] = '1';
+    void document.body.offsetWidth;
+    const vw = window.innerWidth || 1280;
+    const vh = window.innerHeight || 720;
+    const wcap = Math.max(600, vw * 1.2);
+    const hcap = Math.max(400, vh * 1.2);
+    const sizes: Record<string, Size> = {};
+    for (const el of Array.from(this.host.nativeElement.querySelectorAll('rz-node'))) {
+      const h = el as HTMLElement;
+      sizes[h.id] = { w: Math.min(wcap, h.offsetWidth || 180), h: Math.min(hcap, h.offsetHeight || 110) };
+    }
+    delete document.body.dataset['measuring'];
+    if (prev) root.style.setProperty('--cam-k', prev);
+    this.store.applyMeasuredSizes(sizes, vh);
+  }
+
+  private syncCentre(): void {
+    const w = window.innerWidth || 1280;
+    const h = window.innerHeight || 720;
+    this.store.setScreenCentre({ x: w / 2, y: h / 2 });
+  }
+
+  /** The deterministic particle field (engine B5) painted onto #motes. */
+  private startMotes(): void {
+    this.sizeMotes();
+    const canvas = this.host.nativeElement.querySelector('#motes') as HTMLCanvasElement | null;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const styles = getComputedStyle(document.documentElement);
+    const mote = styles.getPropertyValue('--vs-mote').trim() || 'rgba(143,178,106,.55)';
+    const link = styles.getPropertyValue('--vs-mote-link').trim() || 'rgba(143,178,106,.16)';
+    const frame = (): void => {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const w = canvas.width;
+      const h = canvas.height;
+      advanceField(this.motes, w, h);
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = link;
+      ctx.lineWidth = 0.6;
+      for (let i = 0; i < this.motes.length; i++) {
+        for (let j = i + 1; j < this.motes.length; j++) {
+          const dx = this.motes[i].x - this.motes[j].x;
+          const dy = this.motes[i].y - this.motes[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 15000) {
+            ctx.globalAlpha = 1 - d2 / 15000;
+            ctx.beginPath();
+            ctx.moveTo(this.motes[i].x, this.motes[i].y);
+            ctx.lineTo(this.motes[j].x, this.motes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = mote;
+      for (const m of this.motes) {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      this.moteRaf = requestAnimationFrame(frame);
+    };
+    cancelAnimationFrame(this.moteRaf);
+    this.moteRaf = requestAnimationFrame(frame);
+    this.destroyRef.onDestroy(() => cancelAnimationFrame(this.moteRaf));
+  }
+
+  private sizeMotes(): void {
+    const canvas = this.host.nativeElement.querySelector('#motes') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    this.motes = seedField(canvas.width, canvas.height);
+  }
+
+  protected onCardClick(id: string, ev: Event): void {
+    const t = ev.target as HTMLElement;
+    if (t.closest('.n__modes, .n__grip, [data-goto], .stake, a')) return;
+    this.store.go(id);
+  }
+
   private loadLive(): void {
-    // Not signed in → keep the fixture and offer sign-in; don't fetch (no session).
     if (!this.authed()) return;
     this.store.markLoading();
     this.graph
@@ -276,20 +289,7 @@ export class World {
       });
   }
 
-  /** A failure card's "way forward" was pressed. Retry re-loads; others are stubs. */
   protected onAct(nodeId: string, way: string): void {
     if (/retry/i.test(way)) this.loadLive();
-    // other ways forward (e.g. "Pick manually") deep-link into the classic app in a
-    // later pass; for now they are inert affordances.
-  }
-
-  private syncCentreAndFrame(): void {
-    const el = this.host.nativeElement;
-    // Fall back to the window (then a sane default) when the host hasn't been laid
-    // out yet, so framing never collapses to a (0,0) centre.
-    const w = el.clientWidth || window.innerWidth || 1280;
-    const h = el.clientHeight || window.innerHeight || 720;
-    this.store.setScreenCentre({ x: w / 2, y: h / 2 });
-    this.store.frameFocus();
   }
 }

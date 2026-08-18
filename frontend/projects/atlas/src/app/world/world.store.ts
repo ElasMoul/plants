@@ -53,13 +53,31 @@ export class WorldStore {
   /** Breadth-first rank from the focus, recomputed on every focus change (C3). */
   readonly ranks = computed(() => rank(this.focusId(), this.adjacency()));
 
-  /** Card size per node, nominal by rank. */
+  /** Measured card sizes from the DOM (measureBoxes) — fringe is width:auto. */
+  private readonly measured = signal<Record<string, Size>>({});
+
+  /** Card size per node: measured when available, nominal by rank otherwise. */
   readonly sizes = computed<Record<string, Size>>(() => {
     const ranks = this.ranks();
+    const measured = this.measured();
     const out: Record<string, Size> = {};
-    for (const n of this.nodes()) out[n.id] = RANK_SIZE[rankNameFor(n.id, ranks)];
+    for (const n of this.nodes()) out[n.id] = measured[n.id] ?? RANK_SIZE[rankNameFor(n.id, ranks)];
     return out;
   });
+
+  /**
+   * Feed freshly measured sizes into the clearance pass and settle the board on
+   * the corrected targets, then fit the focus (zoom yields so it never clips —
+   * floor 0.28, mirrors --vs-card-reach/--vs-card-air).
+   */
+  applyMeasuredSizes(sizes: Record<string, Size>, viewportHeight: number): void {
+    this.measured.set(sizes);
+    this.rendered.set(this.targets());
+    const f = sizes[this.focusId()];
+    const room = viewportHeight * 0.96 - 80;
+    const k = f && f.h > room ? Math.max(0.28, room / f.h) : 1;
+    this.frameFocus(k);
+  }
 
   /** Target position per node — the clearance pass over the current focus (C7). */
   readonly targets = computed<TargetMap>(() => {
