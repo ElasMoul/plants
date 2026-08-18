@@ -97,6 +97,27 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
     });
   });
 
+  describe('the tour (H9): scans are nodes, rows navigate', () => {
+    it('draws each identification as a node linked to its plant', () => {
+      const w = assembleWorld(sources({ identifications: [
+        { id: 5, species: 'Ficus lyrata', commonName: 'Fig', healthStatus: null, status: 'COMPLETED', createdAt: '2026-08-01T10:00:00Z', plantId: 1 },
+      ] }));
+      const scan = w.nodes.find(n => n.id === 'n-scan-5')!;
+      expect(scan).toBeDefined();
+      expect(scan.kindLabel).toBe('Scan');
+      expect(w.edges).toEqual(expect.arrayContaining([['n-ident', 'n-scan-5'], ['n-scan-5', 'n-plant-1']]));
+      expect(scan.body).toContain('data-goto="n-plant-1"');
+    });
+    it('garden rows doc-link to drawn plant nodes; page nodes exist', () => {
+      const w = assembleWorld(sources());
+      const garden = w.nodes.find(n => n.id === 'n-garden')!;
+      expect(garden.body).toContain('data-goto="n-plant-1"');
+      for (const id of ['n-ask', 'n-today', 'n-treatments']) {
+        expect(w.nodes.some(n => n.id === id)).toBe(true);
+      }
+    });
+  });
+
   describe('determinism (C7)', () => {
     it('produces identical output for identical input', () => {
       expect(assembleWorld(sources())).toEqual(assembleWorld(sources()));

@@ -64,10 +64,10 @@ function plantBody(p: PlantDto): string {
   );
 }
 
-function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[]): string {
+function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<string>): string {
   const rows = plantsOfSpecies
     .slice(0, 3)
-    .map(p => `<div class="row"><dt>${esc(p.nickname)}</dt><dd>${waterLine(p)}</dd></div>`)
+    .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${waterLine(p)}</dd></div>`)
     .join('');
   return (
     recapWrap(`${plantsOfSpecies.length} of your plants`, esc(s.scientificName)) +
@@ -93,11 +93,11 @@ function scanStatusLine(i: IdentificationDto): string {
   return name;
 }
 
-function identBody(idents: IdentificationDto[]): string {
+function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
   const latest = idents[0];
   const feed = idents
     .slice(0, 4)
-    .map(i => `<div class="feed__row"><span class="feed__when">${esc(i.createdAt.slice(0, 10))}</span><span>${esc(i.commonName ?? i.species ?? '—')}</span><span class="feed__val">${esc(i.status)}</span></div>`)
+    .map(i => `<div class="feed__row"><span class="feed__when">${esc(i.createdAt.slice(0, 10))}</span><span>${linkTo(drawn, `n-scan-${i.id}`, esc(i.commonName ?? i.species ?? 'Scan #' + i.id))}</span><span class="feed__val">${esc(i.status)}</span></div>`)
     .join('');
   const failedPanel =
     latest && latest.status === 'FAILED'
@@ -126,11 +126,39 @@ function identBody(idents: IdentificationDto[]): string {
   );
 }
 
-function gardenBody(plants: PlantDto[]): string {
+/** Wrap a label in a travelling doc-link when the target node is drawn. */
+function linkTo(drawn: Set<string>, id: string, label: string): string {
+  return drawn.has(id) ? `<a class="doc-link" href="#${id}" data-goto="${id}">${label}</a>` : label;
+}
+
+function scanBody(i: IdentificationDto, drawn: Set<string>): string {
+  const name = esc(i.commonName ?? i.species ?? 'Unknown plant');
+  const plantNode = i.plantId != null ? `n-plant-${i.plantId}` : null;
+  const plantRow = plantNode
+    ? `<div class="row"><dt>Plant</dt><dd>${linkTo(drawn, plantNode, 'Open the plant')}</dd></div>`
+    : '<div class="row"><dt>Plant</dt><dd>Not added to the garden yet</dd></div>';
+  return (
+    recapWrap(scanStatusLine(i), esc(i.createdAt.slice(0, 10))) +
+    full(`
+      <section class="state" data-brief-item="action:/api/v1/identifications/**">
+        <div class="state__head"><h4 class="state__title">This scan</h4><span class="state__id">action · /api/v1/identifications/${i.id}</span></div>
+        <dl class="rows">
+          <div class="row"><dt>Answer</dt><dd>${name}</dd></div>
+          ${i.species ? `<div class="row"><dt>Species</dt><dd>${esc(i.species)}</dd></div>` : ''}
+          <div class="row"><dt>Status</dt><dd>${esc(i.status)}</dd></div>
+          <div class="row"><dt>When</dt><dd class="v mono">${esc(i.createdAt.slice(0, 10))}</dd></div>
+          ${plantRow}
+        </dl>
+        ${i.status === 'FAILED' ? '<div class="btn-row"><button class="stake" type="button">Try the scan again</button></div>' : ''}
+      </section>`)
+  );
+}
+
+function gardenBody(plants: PlantDto[], drawn: Set<string>): string {
   const ranked = [...plants].sort(plantByOwed);
   const rows = ranked
     .slice(0, 3)
-    .map(p => `<div class="row"><dt>${esc(p.nickname)}</dt><dd>${waterLine(p)}</dd></div>`)
+    .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${waterLine(p)}</dd></div>`)
     .join('');
   return (
     recapWrap(`${plants.length} plants`) +
@@ -216,9 +244,19 @@ export function assembleWorld(sources: WorldSources): WorldData {
   const hasPendingScan = latestScan.some(i => i.status === 'PENDING' || i.status === 'PROCESSING');
   const latestFailedScanId = latestScan.find(i => i.status === 'FAILED')?.id;
 
+  // what will actually be drawn (density rule) — known up front so every row
+  // in every body can be a travelling doc-link to a real node
+  const rankedPlantsAll = [...plants].sort(plantByOwed);
+  const drawnPlants = rankedPlantsAll.length < DENSITY_CAP ? rankedPlantsAll : rankedPlantsAll.slice(0, 2);
+  const drawnScans = latestScan.length < DENSITY_CAP ? latestScan : latestScan.slice(0, 2);
+  const drawn = new Set<string>([
+    ...drawnPlants.map(p => `n-plant-${p.id}`),
+    ...drawnScans.map(i => `n-scan-${i.id}`),
+  ]);
+
   // hub
   add({ id: 'n-garden', glyph: '♣', kind: 'collection', kindLabel: 'Garden', name: 'My garden',
-    recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants) });
+    recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants, drawn) });
 
   add({ id: 'n-account', glyph: '◉', kind: 'platform', kindLabel: 'Account', name: user ? `${user.firstName}'s account` : 'Your account',
     recap: user ? user.email : 'Signed in', body: accountBody(user) });
@@ -231,7 +269,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
   add({ id: 'n-ident', glyph: '◎', kind: 'platform', kindLabel: 'Identification', name: 'Identification',
     recap: latestScan[0] ? `Last scan · ${latestScan[0].status.toLowerCase()}` : 'No scans yet',
     state: latestScan[0]?.status === 'FAILED' ? 'failed' : undefined,
-    body: identBody(latestScan) });
+    body: identBody(latestScan, drawn) });
   link('n-garden', 'n-ident');
 
   add({ id: 'n-species', glyph: '❋', kind: 'collection', kindLabel: 'Collection', name: 'Species',
@@ -252,10 +290,39 @@ export function assembleWorld(sources: WorldSources): WorldData {
         <section class="state" data-brief-item="action:/api/v1/plants/**">
           <div class="state__head"><h4 class="state__title">Plants needing attention</h4><span class="state__id">data · healthStatus</span></div>
           <dl class="rows">${plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').slice(0, 3)
-            .map(p => `<div class="row"><dt>${esc(p.nickname)}</dt><dd>${healthTag(p.healthStatus)}</dd></div>`).join('')}</dl>
+            .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${healthTag(p.healthStatus)}</dd></div>`).join('')}</dl>
         </section>`) });
     link('n-garden', 'n-problems');
   }
+
+  // each scan is a node of its own (the classic scan-detail modal, as geography)
+  emitCollapsed(drawnScans.length === latestScan.length ? latestScan : latestScan, 'n-ident', {
+    kind: 'platform', kindLabel: 'Scan', aggregateId: 'n-scans-more', aggregateName: 'more scans',
+    toNode: i => ({ id: `n-scan-${i.id}`, glyph: '◎', kind: 'platform', kindLabel: 'Scan',
+      name: i.commonName ?? i.species ?? `Scan #${i.id}`, recap: `${i.status.toLowerCase()} · ${i.createdAt.slice(0, 10)}`,
+      state: i.status === 'FAILED' ? 'failed' : undefined, body: scanBody(i, drawn) }),
+  }, add, link);
+  // a scan with a plant in the garden veins to it (identify → plant path)
+  for (const i of drawnScans) {
+    if (i.plantId != null && drawn.has(`n-plant-${i.plantId}`)) link(`n-scan-${i.id}`, `n-plant-${i.plantId}`);
+  }
+
+  // the remaining classic pages, as nodes (chat + home dashboard + treatments)
+  add({ id: 'n-ask', glyph: '✎', kind: 'guide', kindLabel: 'Companion', name: 'Ask PlantPal',
+    recap: 'Coming soon', state: 'empty',
+    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.') });
+  link('n-garden', 'n-ask');
+
+  add({ id: 'n-today', glyph: '◷', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
+    recap: 'Coming with the care loop', state: 'empty',
+    body: deferredBody("Today's summary", '/api/v1/dashboard/**', 'The dashboard aggregates the care loop — it lands once reminders and treatments do.') });
+  link('n-garden', 'n-today');
+  link('n-today', 'n-reminders');
+
+  add({ id: 'n-treatments', glyph: '◈', kind: 'problem', kindLabel: 'Treatment', name: 'Treatments',
+    recap: 'Coming with the care loop', state: 'empty',
+    body: deferredBody('Treatment plans', '/api/v1/treatment-plans/**', 'Per-disease treatment courses arrive with the care loop.') });
+  link('n-garden', 'n-treatments');
 
   // deferred families — honest panels, still traversable (coverage-scope rounds 2/3)
   add({ id: 'n-reminders', glyph: '◷', kind: 'journal', kindLabel: 'Reminders', name: 'Reminders',
@@ -283,7 +350,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     kind: 'species', kindLabel: 'Species', aggregateId: 'n-species-more', aggregateName: 'more species',
     toNode: s => ({ id: `n-species-${s.id}`, glyph: '♣', kind: 'species', kindLabel: 'Species',
       name: s.commonName ?? s.scientificName, recap: `${bySpecies(s).length} of your plants`,
-      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s)) }),
+      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s), drawn) }),
   }, add, link);
   // vein each drawn species to its drawn plants (cross-entity traversal)
   for (const s of rankedSpecies.slice(0, DENSITY_CAP - 1 < rankedSpecies.length ? 2 : rankedSpecies.length)) {

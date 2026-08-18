@@ -186,6 +186,17 @@ export class WorldStore {
     document.documentElement.setAttribute('data-palette', palette);
   }
 
+  /**
+   * ▢ Fit to screen: the focused node fills the viewport top-to-bottom. A node
+   * smaller than the screen is NOT forced larger — k never exceeds 1.
+   */
+  fitFocusScreen(viewportHeight: number): void {
+    const h = this.sizes()[this.focusId()]?.h ?? 0;
+    const room = viewportHeight * 0.96 - 80;
+    const k = h > room ? Math.max(0.28, room / h) : 1;
+    this.frameFocus(k);
+  }
+
   /** Escape: one step back along the crumb path. */
   goBack(): void {
     const p = this.path();
@@ -351,6 +362,7 @@ export class WorldStore {
    * motion it settles immediately. A second hop cancels the first.
    */
   go(id: string): void {
+    if (this.dragMode()) return; // arrange mode: nothing travels
     if (id === this.focusId() || this.travelling() || !this.nodeById()[id]) return;
     const from = this.focusId();
     const chain = shortestPath(from, id, this.adjacency());
