@@ -18,6 +18,9 @@
     "paths": {
       "@plantpal/shared-core": [
         "./projects/shared-core/src/public-api.ts"
+      ],
+      "@plantpal/rhizome-engine": [
+        "./projects/rhizome-engine/src/public-api.ts"
       ]
     },
     "importHelpers": true,
