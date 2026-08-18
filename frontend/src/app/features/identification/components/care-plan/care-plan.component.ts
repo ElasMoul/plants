@@ -3,9 +3,10 @@ import { CarePlanDto, CareCardDto } from '../../models/identification.model';
 import { CareType } from '../../../reminder/models/reminder.model';
 
 @Component({
-  selector: 'app-care-plan',
-  templateUrl: './care-plan.component.html',
-  styleUrls: ['./care-plan.component.scss'],
+    selector: 'app-care-plan',
+    templateUrl: './care-plan.component.html',
+    styleUrls: ['./care-plan.component.scss'],
+    standalone: false
 })
 export class CarePlanComponent {
   @Input() carePlan: CarePlanDto | null = null;

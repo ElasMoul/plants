@@ -7,9 +7,10 @@ import { IdentificationResponse, PlantSummaryDto } from '../../models/identifica
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 @Component({
-  selector: 'app-plant-select-step',
-  templateUrl: './plant-select-step.component.html',
-  styleUrls: ['./plant-select-step.component.scss'],
+    selector: 'app-plant-select-step',
+    templateUrl: './plant-select-step.component.html',
+    styleUrls: ['./plant-select-step.component.scss'],
+    standalone: false
 })
 export class PlantSelectStepComponent implements OnInit, OnDestroy {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

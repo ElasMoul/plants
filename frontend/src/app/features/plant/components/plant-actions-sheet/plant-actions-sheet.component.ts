@@ -8,9 +8,10 @@ export interface PlantActionsSheetData {
 }
 
 @Component({
-  selector: 'app-plant-actions-sheet',
-  templateUrl: './plant-actions-sheet.component.html',
-  styleUrls: ['./plant-actions-sheet.component.scss'],
+    selector: 'app-plant-actions-sheet',
+    templateUrl: './plant-actions-sheet.component.html',
+    styleUrls: ['./plant-actions-sheet.component.scss'],
+    standalone: false
 })
 export class PlantActionsSheetComponent {
   constructor(

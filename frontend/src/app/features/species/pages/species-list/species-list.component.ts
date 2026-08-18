@@ -16,10 +16,11 @@ import { IdentificationUploadDialogComponent } from '../../../identification/com
 type SpeciesFilter = 'all' | 'issues' | 'recent';
 
 @Component({
-  selector: 'app-species-list',
-  templateUrl: './species-list.component.html',
-  styleUrls: ['./species-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-species-list',
+    templateUrl: './species-list.component.html',
+    styleUrls: ['./species-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SpeciesListComponent implements OnInit, OnDestroy {
   species: SpeciesSummaryDto[] = [];

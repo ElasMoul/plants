@@ -18,10 +18,11 @@ const PAGE_SIZE = 10;
 const POLL_INTERVAL_MS = 3000;
 
 @Component({
-  selector: 'app-identification-list',
-  templateUrl: './identification-list.component.html',
-  styleUrls: ['./identification-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-identification-list',
+    templateUrl: './identification-list.component.html',
+    styleUrls: ['./identification-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class IdentificationListComponent implements OnInit, OnDestroy {
   @Output() readonly hasItemsChange = new EventEmitter<boolean>();

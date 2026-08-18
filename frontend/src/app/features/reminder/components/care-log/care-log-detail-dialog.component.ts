@@ -4,9 +4,10 @@ import { CareLogResponse } from '../../models/care-log.model';
 import { careIcon } from '../../models/care-icon.util';
 
 @Component({
-  selector: 'app-care-log-detail-dialog',
-  templateUrl: './care-log-detail-dialog.component.html',
-  styleUrls: ['./care-log-detail-dialog.component.scss'],
+    selector: 'app-care-log-detail-dialog',
+    templateUrl: './care-log-detail-dialog.component.html',
+    styleUrls: ['./care-log-detail-dialog.component.scss'],
+    standalone: false
 })
 export class CareLogDetailDialogComponent {
   constructor(

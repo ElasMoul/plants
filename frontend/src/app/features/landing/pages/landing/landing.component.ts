@@ -67,9 +67,10 @@ const FEATURES: FeatureCard[] = [
 ];
 
 @Component({
-  selector: 'app-landing',
-  templateUrl: './landing.component.html',
-  styleUrls: ['./landing.component.scss'],
+    selector: 'app-landing',
+    templateUrl: './landing.component.html',
+    styleUrls: ['./landing.component.scss'],
+    standalone: false
 })
 export class LandingComponent implements OnInit {
   readonly howItWorks = HOW_IT_WORKS;

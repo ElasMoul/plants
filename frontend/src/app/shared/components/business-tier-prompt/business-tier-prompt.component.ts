@@ -11,9 +11,10 @@ const PLANT_THRESHOLD = 10;
 // just this session) so it doesn't nag on every visit — re-showing every session was considered
 // and rejected as too naggy for a purely optional, no-enforcement prompt.
 @Component({
-  selector: 'app-business-tier-prompt',
-  templateUrl: './business-tier-prompt.component.html',
-  styleUrls: ['./business-tier-prompt.component.scss'],
+    selector: 'app-business-tier-prompt',
+    templateUrl: './business-tier-prompt.component.html',
+    styleUrls: ['./business-tier-prompt.component.scss'],
+    standalone: false
 })
 export class BusinessTierPromptComponent implements OnInit {
   @Input() totalPlants = 0;

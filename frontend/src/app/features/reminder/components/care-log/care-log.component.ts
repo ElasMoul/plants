@@ -9,9 +9,10 @@ import { careIcon as getCareIcon } from '../../models/care-icon.util';
 import { CareLogDetailDialogComponent } from './care-log-detail-dialog.component';
 
 @Component({
-  selector: 'app-care-log',
-  templateUrl: './care-log.component.html',
-  styleUrls: ['./care-log.component.scss'],
+    selector: 'app-care-log',
+    templateUrl: './care-log.component.html',
+    styleUrls: ['./care-log.component.scss'],
+    standalone: false
 })
 export class CareLogComponent implements OnInit, OnDestroy {
   @Input() plantId!: number;

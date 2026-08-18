@@ -26,9 +26,10 @@ export interface DaySelection {
 const DAYS_IN_WEEK = 7;
 
 @Component({
-  selector: 'app-care-calendar',
-  templateUrl: './care-calendar.component.html',
-  styleUrls: ['./care-calendar.component.scss'],
+    selector: 'app-care-calendar',
+    templateUrl: './care-calendar.component.html',
+    styleUrls: ['./care-calendar.component.scss'],
+    standalone: false
 })
 export class CareCalendarComponent implements OnChanges {
   @Input() reminders: ReminderResponse[] = [];

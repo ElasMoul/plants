@@ -27,9 +27,10 @@ const CARD_COLORS: Record<CareCardType, string> = {
 };
 
 @Component({
-  selector: 'app-care-card',
-  templateUrl: './care-card.component.html',
-  styleUrls: ['./care-card.component.scss'],
+    selector: 'app-care-card',
+    templateUrl: './care-card.component.html',
+    styleUrls: ['./care-card.component.scss'],
+    standalone: false
 })
 export class CareCardComponent implements OnChanges, OnDestroy {
   @Input() card!: CareCardDto;

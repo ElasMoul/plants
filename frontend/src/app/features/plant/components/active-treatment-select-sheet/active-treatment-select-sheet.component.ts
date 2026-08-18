@@ -14,9 +14,10 @@ interface TreatmentRow {
 }
 
 @Component({
-  selector: 'app-active-treatment-select-sheet',
-  templateUrl: './active-treatment-select-sheet.component.html',
-  styleUrls: ['./active-treatment-select-sheet.component.scss'],
+    selector: 'app-active-treatment-select-sheet',
+    templateUrl: './active-treatment-select-sheet.component.html',
+    styleUrls: ['./active-treatment-select-sheet.component.scss'],
+    standalone: false
 })
 export class ActiveTreatmentSelectSheetComponent implements OnInit {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

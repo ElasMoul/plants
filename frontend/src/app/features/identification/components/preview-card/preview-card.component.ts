@@ -13,9 +13,10 @@ import {
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 
 @Component({
-  selector: 'app-preview-card',
-  templateUrl: './preview-card.component.html',
-  styleUrls: ['./preview-card.component.scss'],
+    selector: 'app-preview-card',
+    templateUrl: './preview-card.component.html',
+    styleUrls: ['./preview-card.component.scss'],
+    standalone: false
 })
 export class PreviewCardComponent implements OnInit {
   readonly placeholderImage = PLACEHOLDER_IMAGE;

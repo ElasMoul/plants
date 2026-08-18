@@ -12,9 +12,10 @@ import {
 } from '../../services/plantnet-config.service';
 
 @Component({
-  selector: 'app-preferences-page',
-  templateUrl: './preferences-page.component.html',
-  styleUrls: ['./preferences-page.component.scss'],
+    selector: 'app-preferences-page',
+    templateUrl: './preferences-page.component.html',
+    styleUrls: ['./preferences-page.component.scss'],
+    standalone: false
 })
 export class PreferencesPageComponent implements OnInit {
   plantnetProjects: PlantNetProject[] = [];

@@ -8,9 +8,10 @@ export interface SetReminderDialogData {
 }
 
 @Component({
-  selector: 'app-set-reminder-dialog',
-  templateUrl: './set-reminder-dialog.component.html',
-  styleUrls: ['./set-reminder-dialog.component.scss'],
+    selector: 'app-set-reminder-dialog',
+    templateUrl: './set-reminder-dialog.component.html',
+    styleUrls: ['./set-reminder-dialog.component.scss'],
+    standalone: false
 })
 export class SetReminderDialogComponent {
   readonly form: FormGroup;

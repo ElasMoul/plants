@@ -9,10 +9,11 @@ import { ReminderService } from '../../../features/reminder/services/reminder.se
 // (treatment/pages/treatment-detail) — extracted in T6.12 since both pages render
 // the same diagram/step-list/mark-done/step-detail UI for a TreatmentPlan's steps.
 @Component({
-  selector: 'app-treatment-step-list',
-  templateUrl: './treatment-step-list.component.html',
-  styleUrls: ['./treatment-step-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'app-treatment-step-list',
+    templateUrl: './treatment-step-list.component.html',
+    styleUrls: ['./treatment-step-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class TreatmentStepListComponent {
   @Input() steps: ReminderResponse[] = [];

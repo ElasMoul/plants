@@ -18,9 +18,10 @@ const DESCRIPTION_POLL_INTERVAL_MS = 3000;
 const DESCRIPTION_POLL_TIMEOUT_MS = 32000;
 
 @Component({
-  selector: 'app-species-detail',
-  templateUrl: './species-detail.component.html',
-  styleUrls: ['./species-detail.component.scss'],
+    selector: 'app-species-detail',
+    templateUrl: './species-detail.component.html',
+    styleUrls: ['./species-detail.component.scss'],
+    standalone: false
 })
 export class SpeciesDetailComponent implements OnInit, OnDestroy {
   species: SpeciesResponse | null = null;

@@ -33,9 +33,10 @@ const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
 ];
 
 @Component({
-  selector: 'app-model-selector',
-  templateUrl: './model-selector.component.html',
-  styleUrls: ['./model-selector.component.scss'],
+    selector: 'app-model-selector',
+    templateUrl: './model-selector.component.html',
+    styleUrls: ['./model-selector.component.scss'],
+    standalone: false
 })
 export class ModelSelectorComponent implements OnInit, OnDestroy {
   readonly visionOptions = VISION_OPTIONS;
