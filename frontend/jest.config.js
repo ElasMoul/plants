@@ -6,6 +6,7 @@ module.exports = {
   // tsconfig `paths` aliases are not read by jest — map workspace libraries to source.
   moduleNameMapper: {
     '^@plantpal/shared-core$': '<rootDir>/projects/shared-core/src/public-api.ts',
+    '^@plantpal/rhizome-engine$': '<rootDir>/projects/rhizome-engine/src/public-api.ts',
   },
   collectCoverageFrom: [
     'src/app/**/*.ts',
