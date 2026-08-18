@@ -1,11 +1,20 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-07-15 (T-DEPLOY.5 code-prep merged, PR #126: in-process transport — v1.0.0 ships without Kafka — + Railway/Vercel plumbing; next = account-side runbook in DEPLOYMENT.md)
+> Last updated: 2026-08-18 (Atlas frontend integrated + fidelity plan H1-H6 complete on main; second frontend :4300 dev / :8445 compose, same backend, shared JWT session)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
 
 ## Current State
+
+**Atlas (second frontend, 2026-08-18):** the Rhizome atlas-class UI is integrated and
+live — Angular workspace upgraded 16→20; three new projects (projects/atlas,
+projects/rhizome-engine, projects/shared-core); classic login (:8444) gained a
+"Continue into the Atlas" checkbox with a cross-origin session handoff; the world
+assembles from live /plants + /species/mine + /identifications with async scan
+polling; every stake/action is wired (forms → POST/PUT, retry, timed health,
+honest deferrals); constitution QA gate in jest (164 tests). Plans:
+frontend-atlas/INTEGRATION_PLAN.md + FIDELITY_PLAN.md. All merged to main.
 
 | Branch | Status |
 |---|---|
