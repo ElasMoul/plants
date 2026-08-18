@@ -9,3 +9,4 @@
  */
 export * from './lib/types';
 export * from './lib/geometry';
+export * from './lib/graph';
