@@ -7,3 +7,5 @@
 /target/
 /.angular/
 /.cache/
+.vercel
+.env*
