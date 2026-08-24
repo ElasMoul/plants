@@ -183,10 +183,12 @@ jobs:
           cat > frontend/dist/plantpal/vercel.json <<EOF
           {
             "version": 2,
-            "rewrites": [
-              { "source": "/api/(.*)", "destination": "${BACKEND_PUBLIC_URL}/api/\$1" },
-              { "source": "/photos/(.*)", "destination": "${BACKEND_PUBLIC_URL}/photos/\$1" },
-              { "source": "/((?!api/|photos/).*)", "destination": "/index.html" }
+            "builds": [{ "src": "**/*", "use": "@vercel/static" }],
+            "routes": [
+              { "src": "/api/(.*)", "dest": "${BACKEND_PUBLIC_URL}/api/\$1" },
+              { "src": "/photos/(.*)", "dest": "${BACKEND_PUBLIC_URL}/photos/\$1" },
+              { "handle": "filesystem" },
+              { "src": "/(.*)", "dest": "/index.html" }
             ]
           }
           EOF
@@ -231,10 +233,12 @@ jobs:
           cat > atlas-dist/vercel.json <<EOF
           {
             "version": 2,
-            "rewrites": [
-              { "source": "/api/(.*)", "destination": "${BACKEND_PUBLIC_URL}/api/\$1" },
-              { "source": "/photos/(.*)", "destination": "${BACKEND_PUBLIC_URL}/photos/\$1" },
-              { "source": "/((?!api/|photos/).*)", "destination": "/index.html" }
+            "builds": [{ "src": "**/*", "use": "@vercel/static" }],
+            "routes": [
+              { "src": "/api/(.*)", "dest": "${BACKEND_PUBLIC_URL}/api/\$1" },
+              { "src": "/photos/(.*)", "dest": "${BACKEND_PUBLIC_URL}/photos/\$1" },
+              { "handle": "filesystem" },
+              { "src": "/(.*)", "dest": "/index.html" }
             ]
           }
           EOF
