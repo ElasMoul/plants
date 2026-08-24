@@ -24,6 +24,7 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <jjwt.version>0.12.5</jjwt.version>
         <web-push.version>5.1.1</web-push.version>
+        <cloudinary.version>2.3.0</cloudinary.version>
         <bucket4j.version>8.7.0</bucket4j.version>
         <springdoc.version>2.5.0</springdoc.version>
         <spotless.version>2.43.0</spotless.version>
@@ -145,6 +146,13 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
             <version>1.78.1</version>
+        </dependency>
+
+        <!-- ── Cloudinary (production photo storage, app.storage.type=cloudinary) ── -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http5</artifactId>
+            <version>${cloudinary.version}</version>
         </dependency>
 
         <!-- ── API Documentation ──────────────────────────────────────────── -->

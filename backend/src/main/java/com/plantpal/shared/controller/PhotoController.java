@@ -30,7 +30,11 @@ public class PhotoController {
         responseCode = "404",
         description = "Photo not found")
   })
-  @GetMapping("/api/v1/photos/{filename}")
+  // /photos/{filename} (the URL shape persisted on every Identification row) is ALSO mapped
+  // here: controllers win over StorageConfig's disk-only resource handler, so every photo
+  // read goes through the storage service (Redis cache → local disk or Cloudinary) instead
+  // of 404ing when the ephemeral container disk was wiped by a redeploy.
+  @GetMapping({"/api/v1/photos/{filename}", "/photos/{filename}"})
   public ResponseEntity<byte[]> getPhoto(
       @Parameter(description = "Stored photo filename") @PathVariable String filename) {
     byte[] bytes = fileStorageService.loadPhotoBytes("/photos/" + filename);

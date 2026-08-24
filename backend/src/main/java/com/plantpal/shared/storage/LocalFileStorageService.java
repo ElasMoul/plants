@@ -12,17 +12,20 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-// The ONLY FileStorageService implementation — must exist in every profile, or the
-// context cannot start (prod booted bean-less until 2026-08-24). In prod the
-// container filesystem is ephemeral: photos survive restarts only if the deploy
-// mounts a volume at app.storage.local-path (e.g. a Railway volume at
-// /tmp/plantpal/photos). An S3/Cloudinary impl can re-introduce profile splits.
+// Default FileStorageService — exactly one impl must be active in every profile, or the
+// context cannot start (prod booted bean-less until 2026-08-24, when this class was
+// wrongly @Profile("!prod")). Selection is by app.storage.type: this bean when 'local'
+// (or unset), CloudinaryFileStorageService when 'cloudinary'. The local disk is ephemeral
+// on Railway — photos survive redeploys only via the 30-day Redis cache or a mounted
+// volume at app.storage.local-path; use cloudinary in prod for real durability.
 @Service
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorageService implements FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(LocalFileStorageService.class);

@@ -50,6 +50,15 @@ deploy, on its own cadence; the platform observes via `app.health`).
    backend's `CORS_ALLOWED_ORIGINS` (comma-separated): Vercel's rewrite proxy
    forwards the browser's Origin header, so Spring sees each frontend's own
    domain.
+3c. **Photo storage (Cloudinary — recommended in prod)** — the Railway container
+   disk is wiped on every redeploy, so `STORAGE_TYPE=local` keeps photos only in
+   the 30-day Redis cache. For durable storage: create a free Cloudinary account
+   (no card needed), copy the **API Environment variable** from its dashboard
+   (`cloudinary://api_key:api_secret@cloud_name`), and set two Railway service
+   variables: `STORAGE_TYPE=cloudinary` and `CLOUDINARY_URL=<that value>`.
+   Same `/photos/{uuid}.{ext}` URL contract and Redis cache as local mode — no
+   frontend or DB impact; photos uploaded before the switch stay readable only
+   while their Redis cache entry lives.
 4. **Deploy** — push to `main`; `.github/workflows/deploy.yml` builds and
    deploys both sides.
 5. **Verify** — `GET <railway>/actuator/health` = UP; register/login on the
