@@ -1,0 +1,19 @@
+# Upload filter for `railway up`. When this file exists Railway uses it INSTEAD
+# of .gitignore — which is the point: .gitignore excludes /target/, but the
+# Railway image (Dockerfile.railway) is runtime-only and NEEDS the CI-built JAR
+# from target/. Everything else stays out of the snapshot.
+.idea/
+.vscode/
+node_modules/
+logs/
+*.log
+.env
+src/test/
+# target/ itself is allowed — but only the JAR matters; keep the rest out
+target/classes/
+target/generated-sources/
+target/generated-test-sources/
+target/maven-archiver/
+target/maven-status/
+target/surefire-reports/
+target/test-classes/
