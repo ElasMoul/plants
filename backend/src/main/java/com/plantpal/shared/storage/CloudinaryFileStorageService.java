@@ -11,11 +11,8 @@ import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,12 +21,15 @@ import org.springframework.web.multipart.MultipartFile;
  * filesystem on Railway is wiped every deploy, so photos live in Cloudinary instead. The URL
  * contract is IDENTICAL to {@link LocalFileStorageService} ({@code /photos/{uuid}.{ext}}), and the
  * same Redis byte-cache/dedup keys are used, so nothing downstream (DB rows, frontend, the
- * identification pipeline's {@code loadPhotoBytes}) can tell the difference. Requires
- * CLOUDINARY_URL ({@code cloudinary://api_key:api_secret@cloud_name}); the bean fails fast at
- * startup when it's missing rather than 500ing on the first upload.
+ * identification pipeline's {@code loadPhotoBytes}) can tell the difference.
+ *
+ * <p>Deliberately NOT annotated {@code @Service}: the single constructor takes pre-built
+ * collaborators so unit tests can mock the SDK, and the Spring bean (conditional on
+ * app.storage.type=cloudinary, fail-fast when CLOUDINARY_URL is missing) is assembled by {@link
+ * com.plantpal.shared.config.StorageConfig}. A second {@code @Value} constructor here previously
+ * left Spring unable to pick one ("No default constructor found") — prod could not boot with
+ * cloudinary enabled until 2026-08-25.
  */
-@Service
-@ConditionalOnProperty(name = "app.storage.type", havingValue = "cloudinary")
 public class CloudinaryFileStorageService implements FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(CloudinaryFileStorageService.class);
@@ -44,28 +44,6 @@ public class CloudinaryFileStorageService implements FileStorageService {
   private final RedisTemplate<String, byte[]> byteRedisTemplate;
   private final StringRedisTemplate stringRedisTemplate;
 
-  public CloudinaryFileStorageService(
-      @Value("${app.storage.cloudinary-url:${CLOUDINARY_URL:}}") String cloudinaryUrl,
-      RedisTemplate<String, byte[]> byteRedisTemplate,
-      StringRedisTemplate stringRedisTemplate) {
-    if (cloudinaryUrl == null || cloudinaryUrl.isBlank()) {
-      throw new IllegalStateException(
-          "app.storage.type=cloudinary but CLOUDINARY_URL is not set "
-              + "(expected cloudinary://api_key:api_secret@cloud_name)");
-    }
-    this.cloudinary = new Cloudinary(cloudinaryUrl);
-    this.deliveryClient =
-        RestClient.builder()
-            .baseUrl("https://res.cloudinary.com/" + cloudinary.config.cloudName + "/image/upload/")
-            .build();
-    this.byteRedisTemplate = byteRedisTemplate;
-    this.stringRedisTemplate = stringRedisTemplate;
-  }
-
-  /**
-   * Test seam — lets unit tests (in the shared.unit package, hence public) inject a mocked SDK
-   * client and delivery client. Never wired by Spring: only the @Value constructor above is.
-   */
   public CloudinaryFileStorageService(
       Cloudinary cloudinary,
       RestClient deliveryClient,
