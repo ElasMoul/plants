@@ -107,4 +107,7 @@
     <include file="db/changelog/migrations/032_add_perf_indexes.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/033_switch_default_ai_models_to_claude.sql"
+             relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

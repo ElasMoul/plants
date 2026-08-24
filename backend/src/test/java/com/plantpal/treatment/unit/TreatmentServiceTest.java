@@ -89,6 +89,18 @@ class TreatmentServiceTest {
             Runnable::run,
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+    // Fallback moved to ANTHROPIC_CLAUDE (GitHub Models retirement) — the DeepSeek-shaped
+    // expectations below need the test user to carry DEEPSEEK_R1 explicitly. lenient: tests
+    // that stub their own row (or never load one) override/skip this.
+    org.mockito.Mockito.lenient()
+        .when(userRepository.findById(USER_ID))
+        .thenReturn(
+            java.util.Optional.of(
+                com.plantpal.user.entity.User.builder()
+                    .id(USER_ID)
+                    .reasoningModelPreference(
+                        com.plantpal.user.entity.ReasoningModelPreference.DEEPSEEK_R1)
+                    .build()));
   }
 
   /** Flips the gateway flag on for a single test. */

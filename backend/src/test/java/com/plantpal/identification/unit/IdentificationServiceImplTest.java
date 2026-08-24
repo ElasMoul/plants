@@ -143,6 +143,20 @@ class IdentificationServiceImplTest {
     // DEEPSEEK_RATE_LIMIT constant carried, matching application.yml's default.
     org.springframework.test.util.ReflectionTestUtils.setField(
         identificationService, "aiCallsPerHour", 20);
+    // The service-level fallbacks moved to ANTHROPIC_CLAUDE (GitHub Models retirement), so the
+    // GitHub/DeepSeek-shaped expectations below need the test user to carry those preferences
+    // explicitly. lenient: tests that stub their own row (or never load one) override/skip this.
+    org.mockito.Mockito.lenient()
+        .when(userRepository.findById(USER_ID))
+        .thenReturn(
+            Optional.of(
+                com.plantpal.user.entity.User.builder()
+                    .id(USER_ID)
+                    .visionModelPreference(
+                        com.plantpal.user.entity.VisionModelPreference.GITHUB_GPT4O)
+                    .reasoningModelPreference(
+                        com.plantpal.user.entity.ReasoningModelPreference.DEEPSEEK_R1)
+                    .build()));
   }
 
   /** Flips the gateway flag on for a single test — mirrors the plantNetAlwaysOn flip below. */
@@ -1219,7 +1233,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1365,7 +1379,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1409,7 +1423,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1449,7 +1463,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1486,7 +1500,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1518,7 +1532,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1558,7 +1572,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 
@@ -1595,7 +1609,7 @@ class IdentificationServiceImplTest {
               .identificationId(1L)
               .userId(USER_ID)
               .photoUrl("/photos/uuid.jpg")
-              .aiModelPreference("DEEPSEEK")
+              .aiModelPreference("GITHUB_GPT4O")
               .requestedAt(Instant.now())
               .build();
 

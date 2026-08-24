@@ -3,6 +3,7 @@ package com.plantpal.species.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.CareCardDto;
@@ -38,6 +39,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   private final SpeciesRepository speciesRepository;
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
+  private final AnthropicClient anthropicClient;
   private final ObjectMapper objectMapper;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
@@ -46,12 +48,14 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       SpeciesRepository speciesRepository,
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
+      AnthropicClient anthropicClient,
       ObjectMapper objectMapper,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties) {
     this.speciesRepository = speciesRepository;
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
+    this.anthropicClient = anthropicClient;
     this.objectMapper = objectMapper;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
@@ -73,8 +77,11 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
     }
 
     boolean useOllama = preference == AiModelPreference.OLLAMA_LLAVA;
+    // GitHub Models (DeepSeek-R1's transport) was retired upstream — when Claude is keyed it
+    // takes over the non-Ollama branch; DeepSeek remains only as the un-keyed fallback.
+    boolean useAnthropic = !useOllama && anthropicClient.isAvailable();
     try {
-      String raw = generateEnrichment(species, useOllama);
+      String raw = generateEnrichment(species, useOllama, useAnthropic);
       SpeciesEnrichmentJson parsed = objectMapper.readValue(raw, SpeciesEnrichmentJson.class);
 
       species.setDescription(parsed.getDescription());
@@ -88,7 +95,11 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
         species.setExternalDataSource(AI_SOURCE);
       }
       species.setEnrichmentModel(
-          (useOllama ? ReasoningModelPreference.OLLAMA_LLAVA : ReasoningModelPreference.DEEPSEEK_R1)
+          (useOllama
+                  ? ReasoningModelPreference.OLLAMA_LLAVA
+                  : useAnthropic
+                      ? ReasoningModelPreference.ANTHROPIC_CLAUDE
+                      : ReasoningModelPreference.DEEPSEEK_R1)
               .name());
       species.setExternalDataFetchedAt(Instant.now());
       species.setDescriptionStatus(GenerationStatus.READY);
@@ -108,7 +119,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
    * ownership — see CLAUDE.md), so {@code userId="system"} is used for the required contracts field
    * rather than threading a user id through {@link #enrich}.
    */
-  private String generateEnrichment(Species species, boolean useOllama) {
+  private String generateEnrichment(Species species, boolean useOllama, boolean useAnthropic) {
     if (gatewayProperties.enabled()) {
       String userMessage =
           "Scientific name: "
@@ -116,7 +127,10 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
               + (species.getCommonName() != null
                   ? "\nCommon name: " + species.getCommonName()
                   : "");
-      String modelHint = useOllama ? ollamaClient.getModel() : deepSeekClient.getModel();
+      String modelHint =
+          useOllama
+              ? ollamaClient.getModel()
+              : useAnthropic ? anthropicClient.getDefaultModel() : deepSeekClient.getModel();
       AiRequest request =
           new AiRequest()
               .prompt(userMessage)
@@ -126,11 +140,16 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
               .putContextItem("systemPrompt", DeepSeekClient.SPECIES_ENRICHMENT_SYSTEM_PROMPT);
       return gatewayClient.request(request).getResult();
     }
-    return useOllama
-        ? ollamaClient.generateSpeciesEnrichment(
-            species.getScientificName(), species.getCommonName())
-        : deepSeekClient.generateSpeciesEnrichment(
-            species.getScientificName(), species.getCommonName());
+    if (useOllama) {
+      return ollamaClient.generateSpeciesEnrichment(
+          species.getScientificName(), species.getCommonName());
+    }
+    if (useAnthropic) {
+      return anthropicClient.generateSpeciesEnrichment(
+          species.getScientificName(), species.getCommonName());
+    }
+    return deepSeekClient.generateSpeciesEnrichment(
+        species.getScientificName(), species.getCommonName());
   }
 
   /**

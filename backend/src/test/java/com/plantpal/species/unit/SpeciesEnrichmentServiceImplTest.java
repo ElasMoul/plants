@@ -37,6 +37,7 @@ class SpeciesEnrichmentServiceImplTest {
   @Mock private SpeciesRepository speciesRepository;
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private OllamaClient ollamaClient;
+  @Mock private com.plantpal.identification.client.AnthropicClient anthropicClient;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
   @Mock private com.plantpal.gateway.GatewayClient gatewayClient;
 
@@ -58,6 +59,7 @@ class SpeciesEnrichmentServiceImplTest {
             speciesRepository,
             deepSeekClient,
             ollamaClient,
+            anthropicClient,
             objectMapper,
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
