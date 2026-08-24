@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 # Belt-and-suspenders guard — only runs on main
 # (the `on.push.branches` filter above is the primary control;
