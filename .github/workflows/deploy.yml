@@ -148,7 +148,7 @@ jobs:
       - name: Deploy to Railway
         # Requires: RAILWAY_TOKEN set in GitHub repository secrets
         working-directory: backend
-        run: railway up --detach
+        run: railway up --detach --service plants
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
@@ -197,8 +197,7 @@ jobs:
         run: |
           vercel deploy frontend/dist/plantpal/ \
             --prod \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=${{ secrets.VERCEL_ORG_ID }}
+            --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -245,8 +244,7 @@ jobs:
         run: |
           vercel deploy atlas-dist/ \
             --prod \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=${{ secrets.VERCEL_ORG_ID }}
+            --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ATLAS }}
