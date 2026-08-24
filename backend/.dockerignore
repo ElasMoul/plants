@@ -1,6 +1,9 @@
 # ── Build output ──────────────────────────────────────────────────────────────
-# Rebuilt inside the Docker build stage — never copy host artifacts in
+# Rebuilt inside the Docker build stage — never copy host artifacts in.
+# EXCEPTION: the Railway image (Dockerfile.railway) is runtime-only and COPIES
+# the CI-built JAR from target/ — the ! rule below re-includes exactly that.
 target/
+!target/plantpal-backend-*.jar
 
 # ── Secrets ───────────────────────────────────────────────────────────────────
 # CRITICAL: never bake secrets into the image
