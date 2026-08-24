@@ -42,6 +42,14 @@ deploy, on its own cadence; the platform observes via `app.health`).
    into the frontend build); repo **variable** `BACKEND_PUBLIC_URL` = the
    Railway service's public URL (deploy.yml writes the Vercel `/api/*` rewrite
    from it and fails fast if unset).
+3b. **Atlas frontend (optional second Vercel project)** — create a second Vercel
+   project for the atlas; add secret `VERCEL_PROJECT_ID_ATLAS` and repo variables
+   `DEPLOY_ATLAS=true`, `ATLAS_PUBLIC_URL` (the atlas Vercel domain) and
+   `CLASSIC_PUBLIC_URL` (the classic Vercel domain) — deploy.yml bakes the
+   cross-app login-handoff links from them. Add BOTH Vercel domains to the
+   backend's `CORS_ALLOWED_ORIGINS` (comma-separated): Vercel's rewrite proxy
+   forwards the browser's Origin header, so Spring sees each frontend's own
+   domain.
 4. **Deploy** — push to `main`; `.github/workflows/deploy.yml` builds and
    deploys both sides.
 5. **Verify** — `GET <railway>/actuator/health` = UP; register/login on the
@@ -57,7 +65,7 @@ Zookeeper, Kafka, backend, frontend (Nginx).
 ### Prerequisites
 
 - Java 21, Maven (backend)
-- Node 18 (frontend)
+- Node 20 (frontend — Angular 20)
 - Docker + Docker Compose (full local stack)
 - `contracts` checked out and `mvn install`-ed locally at the version pinned in
   `backend/pom.xml` (authoritative source — currently `0.17.0`; do not trust the
