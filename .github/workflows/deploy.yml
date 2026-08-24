@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: backend-jar
-          path: backend/plantpal-backend-*.jar
+          path: backend/target/plantpal-backend-*.jar
           retention-days: 1
 
   build-frontend:
@@ -136,11 +136,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # The JAR lands at backend/ ROOT — target/ is .gitignored and `railway up`
+      # filters its snapshot by .gitignore, so a root-level JAR is the only
+      # placement that reliably reaches Railway. Dockerfile.railway copies it
+      # from the context root.
       - name: Download JAR
         uses: actions/download-artifact@v8
         with:
           name: backend-jar
-          path: backend/target/
+          path: backend/
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
