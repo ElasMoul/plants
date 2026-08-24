@@ -3,14 +3,16 @@
 # The regular backend/Dockerfile builds from source and needs the "contracts-m2"
 # host build-context (private contracts repo, D031) — Railway can't provide that.
 # CI (.github/workflows/deploy.yml) builds the JAR with contracts installed from
-# the pinned tag, downloads it into backend/target/, and `railway up` ships this
+# the pinned tag, downloads it to backend/ ROOT (target/ is .gitignored and
+# railway up filters by .gitignore — a root-level JAR sails through), and
+# `railway up` ships this
 # image, which only has to run it.
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# deploy.yml guarantees exactly one JAR in target/ (fresh download-artifact dir)
-COPY target/plantpal-backend-*.jar app.jar
+# deploy.yml guarantees exactly one JAR at the context root
+COPY plantpal-backend-*.jar app.jar
 
 # Railway injects PORT; Spring reads it via SERVER_PORT below.
 ENV SERVER_PORT=8080
