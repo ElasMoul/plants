@@ -102,9 +102,13 @@ app:
     secret: ${JWT_SECRET}
     expiration-ms: 86400000            # 24 hours
 
+  # STORAGE_TYPE=cloudinary + CLOUDINARY_URL (cloudinary://api_key:api_secret@cloud_name)
+  # is the durable production setup — 'local' writes to the container disk, which Railway
+  # wipes on every redeploy (only the 30-day Redis byte-cache survives).
   storage:
     type: ${STORAGE_TYPE:local}
     local-path: ${STORAGE_LOCAL_PATH:/tmp/plantpal/photos}
+    cloudinary-url: ${CLOUDINARY_URL:}
 
   web-push:
     public-key: ${VAPID_PUBLIC_KEY}
