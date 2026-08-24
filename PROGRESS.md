@@ -227,3 +227,9 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none (spec-plantpal delta, if any, goes via demand to platform-vault)
 - Session: 2026-08-17/18 atlas integration (A-H)
+
+- State: PlantPal IS LIVE IN PRODUCTION (2026-08-24) -- backend https://plants-production-e331.up.railway.app (health UP), frontend https://plants.moulworks.com (Vercel, /api + /photos proxied). First-ever prod boot took 6 layered fixes: deploy.yml Node 18->20 + /photos rewrite; .dockerignore JAR exception; .railwayignore + JAR at snapshot root (railway up filters by .gitignore); Railway service Root Directory cleared; DATABASE_URL rewritten to jdbc form via Railway references (user had concatenated old+new -- fixed in dashboard); LocalFileStorageService @Profile("!prod") removed (prod had NO storage bean, never booted before). BACKEND_PUBLIC_URL repo variable needed https:// scheme (fixed via gh). Vercel config: legacy builds+routes (@vercel/static) -- immune to framework autodetect -- status: done.
+- Next step: user-side cleanups -- disconnect Railway service git source (doomed git builds still fire on pushes); Vercel Ignored Build Step = exit 0; optional Railway volume at /tmp/plantpal/photos (photos ephemeral + 30d Redis cache); optional atlas second Vercel project (DEPLOY_ATLAS=true + VERCEL_PROJECT_ID_ATLAS + ATLAS_PUBLIC_URL/CLASSIC_PUBLIC_URL); VAPID_PUBLIC_KEY secret if push wanted. Then: register beta account, run one full identification E2E.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-08-24 vercel-railway production deploy (H10-H17)
