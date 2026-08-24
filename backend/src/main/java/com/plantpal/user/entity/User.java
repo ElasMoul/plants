@@ -56,15 +56,18 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "ai_model_preference", nullable = false, length = 50)
   private AiModelPreference aiModelPreference = AiModelPreference.DEEPSEEK;
 
+  // Defaults switched from GITHUB_GPT4O / DEEPSEEK_R1 after GitHub Models' upstream
+  // retirement (2026-08, migration 033) — those routes no longer resolve.
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(name = "vision_model_preference", nullable = false, length = 30)
-  private VisionModelPreference visionModelPreference = VisionModelPreference.GITHUB_GPT4O;
+  private VisionModelPreference visionModelPreference = VisionModelPreference.ANTHROPIC_CLAUDE;
 
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(name = "reasoning_model_preference", nullable = false, length = 30)
-  private ReasoningModelPreference reasoningModelPreference = ReasoningModelPreference.DEEPSEEK_R1;
+  private ReasoningModelPreference reasoningModelPreference =
+      ReasoningModelPreference.ANTHROPIC_CLAUDE;
 
   @Builder.Default
   @Column(name = "plantnet_project", length = 50)

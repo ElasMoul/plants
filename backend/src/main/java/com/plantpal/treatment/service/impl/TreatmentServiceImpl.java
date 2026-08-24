@@ -444,7 +444,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     return userRepository
         .findById(userId)
         .map(user -> user.getReasoningModelPreference())
-        .orElse(ReasoningModelPreference.DEEPSEEK_R1);
+        .orElse(ReasoningModelPreference.ANTHROPIC_CLAUDE);
   }
 
   private String generateCureAdvice(

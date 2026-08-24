@@ -1370,14 +1370,14 @@ public class IdentificationServiceImpl implements IdentificationService {
     return userRepository
         .findById(userId)
         .map(user -> user.getVisionModelPreference())
-        .orElse(VisionModelPreference.GITHUB_GPT4O);
+        .orElse(VisionModelPreference.ANTHROPIC_CLAUDE);
   }
 
   private ReasoningModelPreference loadReasoningPreference(Long userId) {
     return userRepository
         .findById(userId)
         .map(user -> user.getReasoningModelPreference())
-        .orElse(ReasoningModelPreference.DEEPSEEK_R1);
+        .orElse(ReasoningModelPreference.ANTHROPIC_CLAUDE);
   }
 
   /**
@@ -1468,7 +1468,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     try {
       return VisionModelPreference.valueOf(raw);
     } catch (IllegalArgumentException | NullPointerException e) {
-      return VisionModelPreference.GITHUB_GPT4O;
+      return VisionModelPreference.ANTHROPIC_CLAUDE;
     }
   }
 

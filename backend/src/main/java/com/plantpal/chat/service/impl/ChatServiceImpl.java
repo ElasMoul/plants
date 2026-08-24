@@ -7,6 +7,7 @@ import com.plantpal.chat.service.ChatService;
 import com.plantpal.chat.service.GardenContextService;
 import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
+import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
@@ -55,6 +56,7 @@ public class ChatServiceImpl implements ChatService {
       """;
 
   private final OllamaClient ollamaClient;
+  private final AnthropicClient anthropicClient;
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
   private final TreatmentRepository treatmentRepository;
@@ -67,6 +69,7 @@ public class ChatServiceImpl implements ChatService {
 
   public ChatServiceImpl(
       OllamaClient ollamaClient,
+      AnthropicClient anthropicClient,
       PlantRepository plantRepository,
       IdentificationRepository identificationRepository,
       TreatmentRepository treatmentRepository,
@@ -75,6 +78,7 @@ public class ChatServiceImpl implements ChatService {
       GatewayProperties gatewayProperties,
       @Value("${app.rate-limit.chat-messages-per-hour:10}") int chatMessagesPerHour) {
     this.ollamaClient = ollamaClient;
+    this.anthropicClient = anthropicClient;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.treatmentRepository = treatmentRepository;
@@ -93,6 +97,9 @@ public class ChatServiceImpl implements ChatService {
     log.info("Chat request: userId={}", userId);
     if (gatewayProperties.enabled()) {
       return ChatResponse.builder().reply(gatewayChat(request, userId)).build();
+    }
+    if (anthropicClient.isAvailable()) {
+      return ChatResponse.builder().reply(anthropicChat(request, userId)).build();
     }
     String prompt = buildPrompt(request, userId);
     String reply = ollamaClient.chat(prompt);
@@ -113,8 +120,22 @@ public class ChatServiceImpl implements ChatService {
       onToken.accept(gatewayChat(request, userId));
       return;
     }
+    if (anthropicClient.isAvailable()) {
+      // Buffered like the gateway path — AnthropicClient has no SSE support yet.
+      onToken.accept(anthropicChat(request, userId));
+      return;
+    }
     String prompt = buildPrompt(request, userId);
     ollamaClient.chatStream(prompt, onToken);
+  }
+
+  /**
+   * Direct Claude path — took over from Ollama-only chat after GitHub Models' upstream retirement
+   * made Claude the primary hosted provider; Ollama remains the un-keyed local fallback.
+   */
+  private String anthropicChat(ChatRequest request, Long userId) {
+    return anthropicClient.chat(
+        buildSystemPromptBlock(request, userId), PromptSanitizer.delimit(request.getMessage()));
   }
 
   /** Gateway routing (D022, Chunk 3) — same system prompt + user message as the direct path. */

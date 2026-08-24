@@ -38,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ChatServiceImplTest {
 
   @Mock private OllamaClient ollamaClient;
+  @Mock private com.plantpal.identification.client.AnthropicClient anthropicClient;
   @Mock private PlantRepository plantRepository;
   @Mock private IdentificationRepository identificationRepository;
   @Mock private TreatmentRepository treatmentRepository;
@@ -55,6 +56,7 @@ class ChatServiceImplTest {
     chatService =
         new ChatServiceImpl(
             ollamaClient,
+            anthropicClient,
             plantRepository,
             identificationRepository,
             treatmentRepository,
@@ -156,6 +158,7 @@ class ChatServiceImplTest {
       ChatServiceImpl customLimitedChatService =
           new ChatServiceImpl(
               ollamaClient,
+              anthropicClient,
               plantRepository,
               identificationRepository,
               treatmentRepository,
@@ -182,6 +185,7 @@ class ChatServiceImplTest {
       ChatServiceImpl customLimitedChatService =
           new ChatServiceImpl(
               ollamaClient,
+              anthropicClient,
               plantRepository,
               identificationRepository,
               treatmentRepository,

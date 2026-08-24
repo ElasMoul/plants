@@ -143,6 +143,24 @@ public class AnthropicClient {
         "Disease description");
   }
 
+  /** Buffered chat turn — systemPrompt carries garden context + history, same as gatewayChat. */
+  public String chat(String systemPrompt, String userMessage) {
+    return call(
+        defaultModel, systemPrompt, List.of(Map.of("type", "text", "text", userMessage)), "Chat");
+  }
+
+  public String generateSpeciesEnrichment(String scientificName, String commonName) {
+    String userMessage =
+        "Scientific name: "
+            + scientificName
+            + (commonName != null ? "\nCommon name: " + commonName : "");
+    return call(
+        defaultModel,
+        DeepSeekClient.SPECIES_ENRICHMENT_SYSTEM_PROMPT,
+        List.of(Map.of("type", "text", "text", userMessage)),
+        "Species enrichment");
+  }
+
   private Map<String, Object> imageBlock(byte[] imageBytes, String mediaType) {
     return Map.of(
         "type",
