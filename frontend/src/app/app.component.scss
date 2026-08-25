@@ -58,6 +58,63 @@
   flex: 1 1 auto;
 }
 
+// ── Top navigation (desktop) — complements the mobile-only bottom nav ──
+.top-nav {
+  display: none;
+
+  @media (min-width: 769px) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 28px;
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+.top-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-chip);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+  transition: background 0.18s ease, color 0.18s ease;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-primary);
+  }
+
+  &--active {
+    background: var(--color-success);
+    color: var(--color-primary);
+
+    mat-icon {
+      color: var(--color-primary);
+    }
+  }
+}
+
+// Between the breakpoint and comfortable desktop width, labels would overflow
+// the toolbar — icons alone keep all five destinations reachable.
+@media (max-width: 1024px) {
+  .top-nav-label {
+    display: none;
+  }
+}
+
 // ── App content ────────────────────────────────────────────────
 .app-content {
   &.with-toolbar {
