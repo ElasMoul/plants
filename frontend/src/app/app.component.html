@@ -4,6 +4,19 @@
     <span class="brand-name">PlantPal</span>
   </a>
 
+  <!-- Desktop nav — the bottom nav is mobile-only, so these are the ONLY way to
+       reach other pages above 768px -->
+  <nav class="top-nav" *ngIf="authService.isLoggedIn()">
+    <a
+      *ngFor="let link of navLinks"
+      class="top-nav-item"
+      [routerLink]="link.route"
+      routerLinkActive="top-nav-item--active"
+    >
+      {{ link.label }}
+    </a>
+  </nav>
+
   <span class="spacer"></span>
 
   <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">

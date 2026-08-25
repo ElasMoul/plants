@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "start:atlas"],
       "port": 4300
+    },
+    {
+      "name": "classic",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "start"],
+      "port": 4200
     }
   ]
 }
