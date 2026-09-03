@@ -85,7 +85,7 @@ describe('Rhizome constitution gate (F2)', () => {
     it('produces identical geography whatever every node’s state is', () => {
       const base = geography(FIXTURE_WORLD, 'n-fig');
       const states: WorldNode['state'][] = ['loading', 'failed', 'empty', 'unknown', 'ready'];
-      states.forEach((s, i) => {
+      states.forEach((s, _i) => {
         const degraded: WorldData = {
           ...FIXTURE_WORLD,
           nodes: FIXTURE_WORLD.nodes.map(n => ({ ...n, state: s })),

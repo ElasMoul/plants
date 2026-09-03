@@ -15,7 +15,9 @@
     "test:coverage": "jest --coverage",
     "typecheck:engine": "tsc -p projects/rhizome-engine/tsconfig.json --noEmit",
     "lint": "ng lint",
+    "lint:atlas": "ng lint atlas",
     "e2e": "playwright test",
+    "e2e:atlas": "playwright test --project=atlas",
     "e2e:ui": "playwright test --ui",
     "e2e:visual": "playwright test e2e/journeys/visual.spec.ts --update-snapshots",
     "e2e:a11y": "playwright test e2e/journeys/accessibility.spec.ts"

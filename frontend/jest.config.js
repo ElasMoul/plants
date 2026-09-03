@@ -17,6 +17,11 @@ module.exports = {
     '!src/main.ts',
     '!src/app/app.component.ts',
     '!src/environments/**',
+    'projects/atlas/src/app/**/*.ts',
+    '!projects/atlas/src/app/**/*.spec.ts',
+    // Verbatim extracts of the pinned prototype — pins, not code under test.
+    '!projects/atlas/src/app/world/world.bodies.ts',
+    '!projects/atlas/src/app/chrome/overview.html.ts',
   ],
   coverageThreshold: {
     global: { lines: 30 },
