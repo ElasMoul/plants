@@ -85,13 +85,13 @@ export function badRequest(message: string): MockHttpError {
  * treatment, and clears the plant's active-treatment pointer.
  */
 export function applyCompletion(seed: MockSeed, reminder: MockReminder, performedAt: string): void {
+  if (!reminder.enabled) {
+    throw badRequest('This reminder has already been completed');
+  }
   if (reminder.recurring) {
     reminder.nextDueAt = new Date(Date.parse(performedAt) + reminder.frequencyDays * DAY).toISOString();
     reminder.updatedAt = performedAt;
     return;
-  }
-  if (!reminder.enabled) {
-    throw badRequest('This reminder has already been completed');
   }
   reminder.enabled = false;
   reminder.updatedAt = performedAt;
@@ -162,7 +162,7 @@ export class MockBackend {
 
     for (const f of this.seed.failing) {
       if (f.method === verb && f.re.test(path)) {
-        return { status: 503, body: errorBody('Service unavailable', 503) };
+        return { status: 503, body: errorBody('The service behind PlantPal did not answer (503). The board keeps what it already knows.', 503) };
       }
     }
     if (verb !== 'GET' && this.failNext) {
@@ -198,6 +198,12 @@ export class MockBackend {
     return Number.isFinite(raw) && raw > 0 ? raw : 20;
   }
 
+  /** Zero-based page index from the query, as Spring reads it. */
+  private pageIdx(query: URLSearchParams): number {
+    const raw = Number(query.get('page'));
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  }
+
   private plant(id: number) {
     const p = this.seed.plants.find(x => x.id === id && x.status === 'ACTIVE');
     if (!p) throw notFound('Plant not found');
@@ -225,8 +231,12 @@ export class MockBackend {
     const left = this.ticks[key];
     if (left === undefined) return false;
     const next = left - 1;
+    if (next <= 0) {
+      delete this.ticks[key];
+      return true;
+    }
     this.ticks[key] = next;
-    return next <= 0;
+    return false;
   }
 
   private dashboard(): unknown {
@@ -299,7 +309,7 @@ export class MockBackend {
       {
         method: 'GET', re: /^\/plants$/, run: (_m, _b, q) => ({
           status: 200,
-          body: envelope(page(this.seed.plants.filter(p => p.status === 'ACTIVE').map(p => derivePlant(this.seed, p, Date.now())), this.size(q))),
+          body: envelope(page(this.seed.plants.filter(p => p.status === 'ACTIVE').map(p => derivePlant(this.seed, p, Date.now())), this.size(q), this.pageIdx(q))),
         }),
       },
       { method: 'GET', re: /^\/plants\/(\d+)$/, run: m => ({ status: 200, body: envelope(derivePlant(this.seed, this.plant(num(m, 1)), Date.now())) }) },
@@ -309,7 +319,7 @@ export class MockBackend {
           if (!req['nickname']) throw badRequest('Nickname is required');
           const id = this.seed.nextId.plant++;
           this.seed.plants.push({
-            id, nickname: req['nickname'], species: req['species'], commonName: req['species'],
+            id, nickname: req['nickname'], species: req['species'],
             location: req['location'], notes: req['notes'], status: 'ACTIVE',
           });
           return { status: 201, body: envelope(derivePlant(this.seed, this.plant(id), Date.now()), 'Plant created successfully') };
@@ -333,7 +343,7 @@ export class MockBackend {
       },
 
       // --- species ---
-      { method: 'GET', re: /^\/species\/mine$/, run: (_m, _b, q) => ({ status: 200, body: envelope(page(this.seed.species, this.size(q))) }) },
+      { method: 'GET', re: /^\/species\/mine$/, run: (_m, _b, q) => ({ status: 200, body: envelope(page(this.seed.species, this.size(q), this.pageIdx(q))) }) },
 
       // --- identifications ---
       {
@@ -349,7 +359,7 @@ export class MockBackend {
             }
           }
           const list = [...this.seed.identifications].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-          return { status: 200, body: envelope(page(list, this.size(q))) };
+          return { status: 200, body: envelope(page(list, this.size(q), this.pageIdx(q))) };
         },
       },
       {
@@ -411,7 +421,8 @@ export class MockBackend {
       },
       {
         method: 'DELETE', re: /^\/reminders\/(\d+)$/, run: m => {
-          this.reminder(num(m, 1)).enabled = false;
+          const r = this.reminder(num(m, 1));
+          this.seed.reminders.splice(this.seed.reminders.indexOf(r), 1);
           return { status: 204, body: null };
         },
       },
@@ -441,7 +452,7 @@ export class MockBackend {
           const list = this.seed.careLogs
             .filter(l => l.plantId === p.id)
             .sort((a, b) => Date.parse(b.performedAt) - Date.parse(a.performedAt));
-          return { status: 200, body: envelope(page(list, this.size(q))) };
+          return { status: 200, body: envelope(page(list, this.size(q), this.pageIdx(q))) };
         },
       },
 

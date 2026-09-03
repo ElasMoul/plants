@@ -7,7 +7,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { AuthService, provideSharedCore } from '@plantpal/shared-core';
 import { environment } from '../environments/environment';
 import { atlasAuthInterceptor } from './core/atlas-auth.interceptor';
-import { MOCK_MODE, MockMode, resolveMockMode } from './core/mock-mode';
+import { MOCK_MODE, MockMode } from './core/mock-mode';
 import { mockApiInterceptor } from './mock/mock-api.interceptor';
 import { MockAuthService } from './mock/mock-auth.service';
 
@@ -31,5 +31,3 @@ export function appConfigFor(mode: MockMode): ApplicationConfig {
     ],
   };
 }
-
-export const appConfig: ApplicationConfig = appConfigFor(resolveMockMode(window, environment));

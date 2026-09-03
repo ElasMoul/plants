@@ -68,6 +68,14 @@ describe('resolveMockMode (S1 — activation)', () => {
     expect(resolveMockMode(win, { mockByDefault: false }).enabled).toBe(false);
   });
 
+  it('stays on when resolved twice with storage unavailable', () => {
+    // The URL param is scrubbed by the first call and the write is swallowed, so
+    // a second resolution must still report the garden the user asked for.
+    const { win } = fakeWin('http://localhost:4300/?mock=garden', {}, true);
+    expect(resolveMockMode(win, { mockByDefault: false }).enabled).toBe(true);
+    expect(resolveMockMode(win, { mockByDefault: false }).enabled).toBe(true);
+  });
+
   it('never throws when localStorage throws', () => {
     expect(() => resolveMockMode(fakeWin('http://localhost:4300/?mock=garden', {}, true).win, { mockByDefault: false })).not.toThrow();
     expect(resolveMockMode(fakeWin('http://localhost:4300/?mock=garden', {}, true).win, { mockByDefault: false }).enabled).toBe(true);

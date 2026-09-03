@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { API_BASE_URL } from '@plantpal/shared-core';
-import { delay, of, throwError } from 'rxjs';
+import { defer, delay, of, throwError } from 'rxjs';
 import { MOCK_MODE } from '../core/mock-mode';
 import { MockBackend } from './mock-backend';
 
@@ -16,10 +16,13 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   if (!mode?.enabled || !req.url.startsWith(base)) return next(req);
 
   const backend = inject(MockBackend);
-  const { status, body } = backend.handle(req.method, req.urlWithParams.slice(base.length), req.body);
-  const out$ =
-    status >= 400
+  // Deferred so a re-subscribe (retry/repeat) re-runs the request against the
+  // in-memory backend, exactly as a real one would.
+  const out$ = defer(() => {
+    const { status, body } = backend.handle(req.method, req.urlWithParams.slice(base.length), req.body);
+    return status >= 400
       ? throwError(() => new HttpErrorResponse({ status, statusText: 'Mock', url: req.url, error: body }))
       : of(new HttpResponse({ status, body: body ?? null, url: req.url }));
+  });
   return mode.latencyMs ? out$.pipe(delay(mode.latencyMs)) : out$;
 };

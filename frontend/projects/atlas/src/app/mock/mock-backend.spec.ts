@@ -143,7 +143,10 @@ describe('MockBackend (S1 — the in-memory PlantPal)', () => {
     expect(list(b.handle('GET', '/plants/4/active-treatments', null))).toEqual([]);
   });
 
-  it('GET /dashboard buckets today and overdue, with five species and three recent scans', () => {
+  // Two reminders land in today's bucket, not one: the server buckets plan STEP
+  // reminders alongside routine ones, and seed step 702 is due today. The plan's
+  // written acceptance ('one due today') counted only the routine reminder.
+  it('GET /dashboard buckets today (incl. plan steps) and overdue, with five species and three recent scans', () => {
     const d = data(b.handle('GET', '/dashboard', null));
     expect((d['overdueReminders'] as { id: number }[]).map(r => r.id).sort()).toEqual([601, 606]);
     expect((d['todayReminders'] as { id: number }[]).map(r => r.id).sort()).toEqual([602, 702]);
@@ -170,7 +173,7 @@ describe('MockBackend (S1 — the in-memory PlantPal)', () => {
     for (const path of ['/reminders', '/dashboard', '/treatment-plans/201']) {
       const reply = b.handle('GET', path, null);
       expect(reply.status).toBe(503);
-      expect(message(reply)).toBe('Service unavailable');
+      expect(message(reply)).toBe('The service behind PlantPal did not answer (503). The board keeps what it already knows.');
     }
     expect(b.handle('GET', '/plants?size=50', null).status).toBe(200);
   });

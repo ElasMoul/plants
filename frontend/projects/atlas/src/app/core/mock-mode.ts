@@ -42,7 +42,16 @@ function readSettings(win: WinLike): Record<string, unknown> {
   }
 }
 
+/**
+ * Per-window fallback for browsers where storage is blocked or throws (private
+ * windows, blocked site data). `?mock=` is scrubbed from the URL as soon as it
+ * is read, so without this a second resolution on the same window would lose
+ * the garden the user explicitly asked for.
+ */
+const memoryData = new WeakMap<object, StoredData>();
+
 function writeData(win: WinLike, patch: StoredData): void {
+  memoryData.set(win, { ...(memoryData.get(win) ?? {}), ...patch });
   try {
     const all = readSettings(win);
     const prev = (all['data'] ?? {}) as StoredData;
@@ -84,7 +93,10 @@ function scrubMockParam(win: WinLike): void {
  * environment.mockByDefault. Never throws.
  */
 export function resolveMockMode(win: WinLike, env: { mockByDefault: boolean }): MockMode {
-  const data = (readSettings(win)['data'] ?? {}) as StoredData;
+  const data = {
+    ...(memoryData.get(win) ?? {}),
+    ...((readSettings(win)['data'] ?? {}) as StoredData),
+  } as StoredData;
   const latencyMs = typeof data.mockLatencyMs === 'number' ? data.mockLatencyMs : 0;
 
   let param: string | null = null;
