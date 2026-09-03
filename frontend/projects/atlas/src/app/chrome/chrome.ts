@@ -4,6 +4,7 @@ import { environment } from '../../environments/environment';
 import { classicLoginLink } from '../world/interop';
 import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
+import { MOCK_MODE } from '../core/mock-mode';
 
 /** The per-focus mutation-rail entries (theme-a ACTIONS, verbatim). */
 const ACTIONS: Record<string, string[]> = {
@@ -51,7 +52,7 @@ const MM_H = 104;
 
     <header id="topbar" class="chrome">
       <span class="mark"><span class="glyph" aria-hidden="true">❧</span> PlantPal</span>
-      <span class="sub">Botanical Network</span>
+      <span class="sub">{{ mock?.enabled ? 'Botanical Network · mock garden' : 'Botanical Network' }}</span>
       <span class="spacer"></span>
       <div id="here">
         <span class="label">You are here</span>
@@ -165,6 +166,8 @@ export class Chrome {
   protected readonly store = inject(WorldStore);
   private readonly auth = inject(AuthService);
   private readonly actions = inject(WorldActionsService);
+  /** Named in the topbar so a mock garden is never mistaken for a real one. */
+  protected readonly mock = inject(MOCK_MODE, { optional: true });
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');

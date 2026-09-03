@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideSharedCore } from '@plantpal/shared-core';
+import { provideMockModeOff } from '../core/mock-mode';
 import { WorldActionsService } from './world-actions.service';
 import { WorldStore } from './world.store';
 
@@ -12,7 +13,7 @@ describe('WorldActionsService (H6 — every button works as intended)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), ...provideSharedCore({ apiBaseUrl: '/api/v1' })],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideMockModeOff(), ...provideSharedCore({ apiBaseUrl: '/api/v1' })],
     });
     actions = TestBed.inject(WorldActionsService);
     store = TestBed.inject(WorldStore);

@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthService, provideSharedCore } from '@plantpal/shared-core';
+import { provideMockModeOff } from '../core/mock-mode';
 import { WorldGraphService } from './world-graph.service';
 import { WorldData } from './world.model';
 
@@ -20,6 +21,7 @@ describe('WorldGraphService (H5 — round-1 spine fetch + assemble)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
+        provideMockModeOff(),
         provideHttpClientTesting(),
         ...provideSharedCore({ apiBaseUrl: '/api/v1' }),
         { provide: AuthService, useValue: { getCurrentUser: () => ({ firstName: 'Mo', lastName: 'El', email: 'mo@x.dev', id: 1, status: 'ACTIVE' }) } },

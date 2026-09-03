@@ -1,6 +1,8 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { consumeSessionHandoff } from '@plantpal/shared-core';
-import { appConfig } from './app/app.config';
+import { appConfigFor } from './app/app.config';
+import { resolveMockMode } from './app/core/mock-mode';
+import { environment } from './environments/environment';
 import { App } from './app/app';
 
 // A login on the classic app can arrive here carrying its session in the URL
@@ -9,5 +11,9 @@ import { App } from './app/app';
 // scrubbed before anything renders.
 consumeSessionHandoff();
 
-bootstrapApplication(App, appConfig)
+// Resolved HERE, in main's body — a module-level constant would run before the
+// handoff above.
+const mode = resolveMockMode(window, environment);
+
+bootstrapApplication(App, appConfigFor(mode))
   .catch((err) => console.error(err));
