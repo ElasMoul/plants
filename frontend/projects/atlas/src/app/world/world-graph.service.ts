@@ -5,6 +5,7 @@ import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { MOCK_MODE } from '../core/mock-mode';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
+import { WorldActionsService } from './world-actions.service';
 import { assembleWorld, drawnPlantsOf } from './world.assembly';
 import {
   CareLogDto,
@@ -45,6 +46,8 @@ export class WorldGraphService {
   private readonly settings = inject(SettingsStore);
   private readonly device = inject(DeviceStore);
   private readonly store = inject(WorldStore);
+  /** AI limits are learned by the action that hit one; the node says so on reload. */
+  private readonly actions = inject(WorldActionsService);
   private readonly mock = inject(MOCK_MODE, { optional: true });
 
   /** The last sources assembled — read by the account node's export. */
@@ -263,6 +266,7 @@ export class WorldGraphService {
                   paused: local.pausedPlanIds,
                   snoozed: local.snoozed,
                   stoppedReminders: [...this.stoppedReminders.values()],
+                  rateLimited: this.actions.rateLimited(),
                   push: 'off', // the real push state arrives with PushService
                 });
                 this.lastSources.set(sources);

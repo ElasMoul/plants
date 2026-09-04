@@ -82,6 +82,8 @@ export interface AtlasSettings {
     followSystemMotion: boolean;
     cardDrift: boolean;
   };
+  /** Device-side AI choices; the server-backed ai.* keys live in serverPrefs. */
+  ai: { craftPlanOnStart: boolean };
   privacy: { rememberLayout: boolean; rememberLastFocus: boolean };
   integrations: { classicAppUrl: string; openInClassic: 'hide' | 'show'; showApiIds: boolean };
   advanced: { probes: 'show' | 'hide'; slowNodes: 'hubs' | 'fixture' };
@@ -123,6 +125,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     seenAt: null,
   },
   appearance: { ui: 'sill-line', palette: 'first-light', followSystemMotion: true, cardDrift: true },
+  ai: { craftPlanOnStart: false },
   privacy: { rememberLayout: true, rememberLastFocus: false },
   integrations: {
     classicAppUrl: environment.classicAppUrl,
@@ -191,6 +194,7 @@ export const ALLOWED: Record<string, Record<string, Rule>> = {
     followSystemMotion: 'boolean',
     cardDrift: 'boolean',
   },
+  ai: { craftPlanOnStart: 'boolean' },
   privacy: { rememberLayout: 'boolean', rememberLastFocus: 'boolean' },
   integrations: {
     classicAppUrl: 'url',

@@ -180,7 +180,9 @@ function courseRecap(ctx: Ctx, t: TreatmentDto): string {
 /** Rank: what is due first, then what is running, then what is waiting, then what is over. */
 function treatmentRank(ctx: Ctx, t: TreatmentDto): number {
   if (t.status === 'COMPLETED' || t.status === 'DISMISSED') return 4;
-  if (isPaused(ctx, t)) return 3;
+  // A device-local pause deliberately does NOT re-rank: pausing the course you are
+  // reading must change that node's own words, never the board's membership — a
+  // demoted course would drop out of the drawn two and vanish under the reader (C9).
   if (t.status === 'DRAFT') return 2;
   const open = stepsOf(ctx, t).filter(s => s.enabled);
   return open.some(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow)) ? 0 : 1;

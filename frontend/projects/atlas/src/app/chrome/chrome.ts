@@ -6,32 +6,7 @@ import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
 import { MOCK_MODE } from '../core/mock-mode';
 import { SettingsStore } from '../settings/settings.store';
-
-/** The per-focus mutation-rail entries (theme-a ACTIONS, verbatim). */
-const ACTIONS: Record<string, string[]> = {
-  'n-fig': ['Water plant', 'Fertilize', 'Add note', 'Log photo', 'Scan leaf (AI)'],
-  'n-garden': ['Add new plant', 'Water all', 'Fertilize schedule', 'Add note'],
-  'n-species': ['Add a species by hand', 'Import a list'],
-  'n-species-more': ['Add a species by hand'],
-  'n-monstera': ['Water plant', 'Add note'],
-  'n-problems': ['Log a symptom', 'Start a treatment plan'],
-  'n-underwater': ['Start a treatment plan', 'Dismiss this problem'],
-  'n-overwater': ['Mark as resolved', 'Add note'],
-  'n-rootrot': ['Start a treatment plan', 'Add note'],
-  'n-treatment': ['Mark step done', 'Reschedule', 'Abandon plan'],
-  'n-journal': ['Add note', 'Log photo'],
-  'n-j1': ['Add note'],
-  'n-j2': ['Add note'],
-  'n-journal-more': ['Add note'],
-  'n-reminders': ['Add a reminder', 'Snooze all'],
-  'n-ident': ['Try the scan again', 'Identify by hand'],
-  'n-care': ['Save to my notes'],
-  'n-platform': ['Check health again'],
-  'n-garden-more': ['Add new plant'],
-  'n-unknown': ['Fetch this region'],
-  'n-office': ['Water plant', 'Add note'],
-  'n-studio': ['Water plant', 'Add note'],
-};
+import { actionsFor } from './actions-for';
 
 const MM_W = 208;
 const MM_H = 104;
@@ -84,7 +59,7 @@ const MM_H = 104;
       <button class="ch-btn ch-btn--square" type="button" title="My garden" (click)="goIfThere('n-garden')"><span aria-hidden="true">♣</span><span class="sr">My garden</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Due today" (click)="goIfThere('n-reminders')"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Identify" (click)="goIfThere('n-ident')"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="Journal" (click)="goIfThere('n-journal')"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="Journal" (click)="goJournal()"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
       <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings" (click)="openSettings($event)"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
     </nav>
 
@@ -180,7 +155,9 @@ export class Chrome {
   protected readonly focusName = computed(
     () => this.store.nodes().find(n => n.id === this.store.focusId())?.name ?? '',
   );
-  protected readonly focusActions = computed(() => ACTIONS[this.store.focusId()] ?? []);
+  protected readonly focusActions = computed(() =>
+    actionsFor(this.store.focusId(), this.store.meta(), this.settings.settings()),
+  );
   protected readonly neighbours = computed(() => {
     this.store.focusId();
     return this.store.focusNeighbours();
@@ -274,6 +251,12 @@ export class Chrome {
   protected goIfThere(id: string): void {
     if (this.store.nodes().some(n => n.id === id)) this.store.go(id);
     else this.store.say('That place is not on this board yet.');
+  }
+
+  /** The journal is a live hub; the fixture board reaches the care guide instead. */
+  protected goJournal(): void {
+    const has = (id: string) => this.store.nodes().some(n => n.id === id);
+    this.goIfThere(has('n-journal') ? 'n-journal' : 'n-care');
   }
 
   protected onBell(): void {
