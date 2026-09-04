@@ -1,6 +1,7 @@
 # PlantPal — Shared Project State
 > Updated after each session. All agents read this first.
-> Last updated: 2026-08-18 (Atlas frontend integrated + fidelity plan H1-H6 complete on main; second frontend :4300 dev / :8445 compose, same backend, shared JWT session)
+> Last updated: 2026-09-04 (Atlas rounds 2 & 3 complete on `atlas/R2-care-loop` — care loop, dashboard/notifications/users, zero-backend mock garden, nine settings panes; FIDELITY_PLAN Phase I. Not yet merged to dev.)
+> Previously: 2026-08-18 (Atlas frontend integrated + fidelity plan H1-H6 complete on main; second frontend :4300 dev / :8445 compose, same backend, shared JWT session)
 > Full session diary: Archive/STATE_2.md and Archive/STATE_1.md | git log for code history
 
 ---
@@ -261,3 +262,52 @@ Owner decisions: Kafka = in-process transport for v1.0.0; GITHUB_TOKEN rotation 
   Residual risk: a real prod boot without KAFKA_BOOTSTRAP_SERVERS was annotation-tested but not
   executed — the first Railway staging boot is the definitive smoke test (watch for absence of
   Kafka connection-retry noise).
+
+---
+
+## Session — 2026-09-04 · Atlas rounds 2 & 3 (`atlas/R2-care-loop`, slices S0–S8)
+
+**What shipped.** The atlas grew the care loop, the dashboard/notifications/users
+round, a zero-backend mock garden and a nine-pane settings overlay, in nine
+independently-green slices on `atlas/R2-care-loop`. Full checklist and the
+eleven standing decisions: `frontend-atlas/FIDELITY_PLAN.md`, Phase I.
+
+| Slice | What landed |
+|---|---|
+| S0 | atlas lint target (`rz` prefix) + CI on `dev`; spec types; coverage scope |
+| S1 | mock garden — dataset, in-memory backend, HTTP interceptor, MockAuthService |
+| S2 | `SettingsStore` + `DeviceStore`, every round-2/3 DTO, Playwright atlas harness |
+| S3 | loader for every family with per-family tolerance; insertion-stable `layoutCells(prior)`; `dates.ts` |
+| S4 | round-2 bodies — reminders, care journal, treatment courses, plant vitals |
+| S5 | round-2 actions — stakes, sheets, a rail keyed by live node ids |
+| S6 | round 3 — Today from `/dashboard`, notifications + real push, account, the bell as an arrival |
+| S7 | nine settings panes, live apply with Save/Cancel/Reset, boot restore, layout persistence |
+| S8 | the gate — constitution over the assembled world, degradation + determinism walks, CI e2e, docs |
+
+**How to see it with no backend and no login:**
+`cd frontend && npm run start:atlas` then `http://localhost:4300/?mock=garden`
+(also `?mock=day-zero`, `?mock=outage`, `?mock=off`). The topbar reads
+"Botanical Network · mock garden" whenever mock mode is on — a real empty garden
+is never dressed with sample records.
+
+**Gate (all green locally, and in `frontend-ci`):** `npm test` (35 suites,
+424 tests), `npm run lint` (classic **and** atlas), `npm run typecheck:engine`,
+`npm run build:prod`, `npm run build:atlas:prod`, `npm run e2e:atlas`
+(36 Playwright tests on :4300, no backend). CI now installs chromium, runs the
+atlas e2e and uploads `playwright-screenshots`.
+
+**Constitution coverage.** `world/constitution.spec.ts` still pins the laws
+against FIXTURE_WORLD; the new `world/constitution-live.spec.ts` pins them
+against the board the atlas actually assembles — C4, C7, C8, C9, C15, C16,
+C17/C19, C22–C26, the density rule for all five node families and the voice
+bans. Its C15/C16 sweep enumerates every stake in every node body plus every
+rail action, dispatches each against the mock backend, and asserts focus, camera
+and the node id set are byte-identical afterwards.
+
+**Open items for the owner.**
+- The stake sheet still carries `role="dialog"` (round-1 consistency), while
+  `action-rail.html` says a value form should open inside the focused card's
+  body. Flagged in FIDELITY_PLAN decision 11 rather than resolved unilaterally.
+- The atlas production bundle is 536 kB against a 500 kB budget (a warning, not
+  an error) — worth a budget review or a trim before the atlas ships publicly.
+- Not yet merged: `atlas/R2-care-loop` → `dev`.
