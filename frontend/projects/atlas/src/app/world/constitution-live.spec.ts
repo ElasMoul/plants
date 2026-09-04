@@ -12,12 +12,15 @@ import { TestBed } from '@angular/core/testing';
 import {
   anchorPosition,
   buildAdjacency,
+  buildRoute,
   computeTargets,
   Point,
   rank,
   rankNameFor,
+  shortestPath,
   Size,
   TargetMap,
+  travelCamera,
 } from '@plantpal/rhizome-engine';
 import { provideSharedCore } from '@plantpal/shared-core';
 import { MOCK_MODE, type MockMode } from '../core/mock-mode';
@@ -77,6 +80,21 @@ function cellsOf(world: WorldData): Record<string, string> {
   return Object.fromEntries(world.nodes.map(n => [n.id, `${n.cell.col},${n.cell.row}`]));
 }
 
+/** Distance from a point to a polyline — the camera route, sampled. */
+function distToPolyline(p: Point, pts: Point[]): number {
+  let min = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+    min = Math.min(min, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return min;
+}
+
 function bodyOf(world: WorldData, id: string): string {
   return world.nodes.find(n => n.id === id)?.body ?? '';
 }
@@ -98,15 +116,15 @@ function stripTags(html: string): string {
 }
 
 /** Every `.stake` in a body, as [label, data-arg]. Bodies are HTML strings. */
-function stakesIn(html: string): { label: string; arg?: string }[] {
-  const out: { label: string; arg?: string }[] = [];
+function stakesIn(html: string): { label: string; arg?: string; at: number }[] {
+  const out: { label: string; arg?: string; at: number }[] = [];
   const re = /<button[^>]*class="[^"]*\bstake\b[^"]*"[^>]*>([\s\S]*?)<\/button>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
     const tag = m[0].slice(0, m[0].indexOf('>'));
     const arg = /data-arg="([^"]*)"/.exec(tag)?.[1];
     const label = m[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim();
-    if (label) out.push({ label, arg });
+    if (label) out.push({ label, arg, at: m.index });
   }
   return out;
 }
@@ -210,6 +228,35 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
       expect(store.nodes().map(n => n.id).sort()).toEqual(before);
     });
 
+    it('C21 — every sampled camera centre lies on the assembled vein polyline', () => {
+      // the fixture board pins this too, but its edge set is not this one's: the
+      // camera must travel the veins the ASSEMBLED world actually draws.
+      const centre = { x: 640, y: 360 };
+      const order = WORLD.nodes.map(n => n.id);
+      const adjacency = buildAdjacency(WORLD.edges, order);
+      const hops: Array<[string, string]> = [
+        ['n-garden', 'n-reminders'],
+        ['n-garden', 'n-today'],
+        ['n-reminders', 'n-journal'],
+      ];
+      for (const [from, to] of hops) {
+        const target = geography(WORLD, to);
+        const chain = shortestPath(from, to, adjacency);
+        expect({ hop: `${from}→${to}`, reachable: chain.length >= 2 }).toEqual({ hop: `${from}→${to}`, reachable: true });
+        const routePts = chain.map(id => target[id]);
+        const route = buildRoute(routePts);
+        for (let p = 0; p <= 1.0001; p += 0.05) {
+          const cam = travelCamera(route, centre, 0.6, 1, p);
+          const at = { x: (centre.x - cam.x) / cam.k, y: (centre.y - cam.y) / cam.k };
+          expect({ law: 'C21 — the camera travels the vein', hop: `${from}→${to}`, off: distToPolyline(at, routePts) < 1e-6 }).toEqual({
+            law: 'C21 — the camera travels the vein',
+            hop: `${from}→${to}`,
+            off: true,
+          });
+        }
+      }
+    });
+
     it('keeps the id set and every cell across a reload of the same garden', () => {
       const again = assembleWorld({
         ...gardenSources(),
@@ -239,18 +286,27 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
   });
 
   describe('the density rule — 4 or more collapse to 2 plus one aggregate', () => {
-    const families: [string, RegExp, string][] = [
-      ['plants', /^n-plant-\d+$/, 'n-garden-more'],
-      ['species', /^n-species-\d+$/, 'n-species-more'],
-      ['scans', /^n-scan-\d+$/, 'n-scans-more'],
-      ['journal', /^n-log-\d+$/, 'n-journal-more'],
-      ['treatments', /^n-treatment-\d+$/, 'n-treatments-more'],
+    // [family, member id shape, aggregate id, how many the SEED holds] — the seed
+    // count pins the rule from the other side: a family that stopped being
+    // assembled at all would otherwise satisfy an upper bound of two.
+    const families: [string, RegExp, string, number][] = [
+      ['plants', /^n-plant-\d+$/, 'n-garden-more', SOURCES.plants.length],
+      ['species', /^n-species-\d+$/, 'n-species-more', SOURCES.species.length],
+      ['scans', /^n-scan-\d+$/, 'n-scans-more', SOURCES.identifications.length],
+      [
+        'journal',
+        /^n-log-\d+$/,
+        'n-journal-more',
+        Object.values(SOURCES.careLogsByPlant).reduce((n, l) => n + l.length, 0),
+      ],
+      ['treatments', /^n-treatment-\d+$/, 'n-treatments-more', SOURCES.treatments.length],
     ];
 
-    for (const [name, member, aggregate] of families) {
+    for (const [name, member, aggregate, seeded] of families) {
       it(`collapses ${name} to two plus one aggregate that has a vein`, () => {
+        expect({ family: name, seeded: seeded >= 4 }).toEqual({ family: name, seeded: true });
         const drawn = WORLD.nodes.filter(n => member.test(n.id));
-        expect(drawn.length).toBeLessThanOrEqual(2);
+        expect(drawn.length).toBe(2);
         const more = WORLD.nodes.find(n => n.id === aggregate);
         expect(more).toBeDefined();
         expect(more?.recap ?? '').toMatch(/\+\d+ more/);
@@ -268,7 +324,8 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
       const full = html.indexOf('n__full');
       expect(full).toBeGreaterThan(-1);
       expect(html.indexOf('data-course')).toBeGreaterThan(full);
-      for (const s of stakesIn(html)) expect(html.indexOf(s.label)).toBeGreaterThan(full);
+      // compared at the stake's OWN offset, never a re-search for its label text
+      for (const s of stakesIn(html)) expect({ label: s.label, after: s.at > full }).toEqual({ label: s.label, after: true });
       // a non-focused card's one-clause recap carries no control
       expect(course?.recap ?? '').not.toContain('<button');
     });
@@ -306,6 +363,9 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
       expect(text).not.toMatch(/please wait/i);
       expect(text).not.toMatch(/something went wrong/i);
       expect(text).not.toMatch(/spinner/i);
+      // and no visible line promises a family that has already shipped
+      expect(text).not.toMatch(/coming with the care loop/i);
+      expect(text).not.toMatch(/care loop/i);
       // no bare ellipsis as a wait: no "…" that is not part of a quoted sentence
       expect(text.replace(/&hellip;/g, '…')).not.toMatch(/[a-z]…/);
     });
@@ -438,6 +498,8 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
         const set = store.nodes().map(n => n.id).sort();
 
         actions.dispatch(p.node, p.label, p.arg);
+        // read before the timers run: say() clears its own announcement
+        const said = store.announcement();
         jest.advanceTimersByTime(5000);
 
         expect({ law: 'C16 — a mutation never moves the focus', press: `${p.node} · ${p.label}`, focus: store.focusId() }).toEqual({
@@ -451,6 +513,12 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
           camera,
         });
         expect(store.nodes().map(n => n.id).sort()).toEqual(set);
+        // and the press was actually understood: a renamed label would fall to the
+        // dispatcher's refusal branch and this sweep would otherwise stay green
+        expect({ press: `${p.node} · ${p.label}`, refused: /is not something PlantPal can do/.test(said) }).toEqual({
+          press: `${p.node} · ${p.label}`,
+          refused: false,
+        });
         actions.activeForm.set(null);
       }
     });

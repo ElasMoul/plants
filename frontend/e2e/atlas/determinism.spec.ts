@@ -68,6 +68,7 @@ test.describe('the board is a formula, not a memory', () => {
     const atlas = new AtlasPage(page);
     await atlas.goto('garden');
     const before = await atlas.geography();
+    const px = await atlas.positions();
     const camera = await atlas.camera();
 
     await atlas.railAction('Add new plant').click();
@@ -79,9 +80,23 @@ test.describe('the board is a formula, not a memory', () => {
     await expect(atlas.live()).toContainText('nothing else moves');
 
     const after = await atlas.geography();
-    for (const [id, cell] of Object.entries(before)) {
-      if (after[id] !== undefined) expect({ id, cell: after[id] }).toEqual({ id, cell });
-    }
+
+    // the delta is stated, not skipped: the density rule draws two plants plus one
+    // aggregate, so an insertion may swap WHICH plants are drawn — and nothing else
+    const beforeIds = new Set(Object.keys(before));
+    const afterIds = new Set(Object.keys(after));
+    const added = [...afterIds].filter(id => !beforeIds.has(id)).sort();
+    const removed = [...beforeIds].filter(id => !afterIds.has(id)).sort();
+    const isPlant = (id: string) => /^n-plant-\d+$/.test(id);
+    expect(added.every(isPlant)).toBe(true);
+    expect(removed.every(isPlant)).toBe(true);
+    expect(added.length).toBe(removed.length);
+
+    // every node that survived kept BOTH halves of its place — cell and pixel
+    const survivors = Object.keys(before).filter(id => !removed.includes(id));
+    for (const id of survivors) expect({ id, cell: after[id] }).toEqual({ id, cell: before[id] });
+    const at = (m: Record<string, string>) => survivors.map(id => `${id}=${m[id]}`).join(';');
+    await expect.poll(async () => at(await atlas.positions())).toBe(at(px));
     expect(await atlas.camera()).toBe(camera);
     expect(await atlas.focusId()).toBe('n-garden');
   });

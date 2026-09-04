@@ -1097,7 +1097,7 @@ function platformBody(settings: AssemblySettings): string {
  *  companion). It names what is missing rather than drawing an empty card. */
 function deferredBody(title: string, id: string, note: string, settings: AssemblySettings): string {
   return (
-    recapWrap('Coming with the care loop') +
+    recapWrap('Not on this board yet') +
     full(`
       <section class="state state--empty" data-brief-item="action:${id}">
         <div class="state__head"><h4 class="state__title">${title}</h4>${stateId(`action · ${id}`, settings)}</div>

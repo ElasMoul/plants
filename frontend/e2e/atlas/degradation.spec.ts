@@ -12,12 +12,17 @@ async function place(atlas: AtlasPage): Promise<{ cells: Record<string, string>;
   return { cells: await atlas.geography(), px: await atlas.positions() };
 }
 
-function samePlace(
+/**
+ * The geometry comparison RETRIES: a probe toggle re-measures clearance, so a
+ * one-shot read can sample the board mid-settle. The assertion is unchanged in
+ * strength — only the sampling is allowed a second look.
+ */
+async function samePlace(
+  atlas: AtlasPage,
   before: { cells: Record<string, string>; px: Record<string, string> },
-  after: { cells: Record<string, string>; px: Record<string, string> },
-): void {
-  expect(after.cells).toEqual(before.cells);
-  expect(after.px).toEqual(before.px);
+): Promise<void> {
+  await expect.poll(() => atlas.geography()).toEqual(before.cells);
+  await expect.poll(() => atlas.positions()).toEqual(before.px);
 }
 
 /** Write a settings key before the app boots (settings are read at bootstrap). */
@@ -55,12 +60,12 @@ test.describe('degradation is material, never geometry', () => {
     // the cell a node was given is the geography, and it is untouched; the pixel
     // it settles at follows the card's measured height, which the waiting material
     // legitimately changes (clearance is measured, never guessed)
-    expect((await place(atlas)).cells).toEqual(before.cells);
+    await expect.poll(() => atlas.geography()).toEqual(before.cells);
     expect(await atlas.camera()).toBe(camera);
 
     await atlas.probe('slow').click();
     await expect(page.locator('body')).toHaveAttribute('data-speed', 'normal');
-    samePlace(before, await place(atlas));
+    await samePlace(atlas, before);
   });
 
   test('the offline probe stales every node in its own words and writes nothing', async ({ page }) => {
@@ -81,17 +86,25 @@ test.describe('degradation is material, never geometry', () => {
     expect(lines.length).toBeGreaterThanOrEqual(2);
     expect(new Set(lines.map(l => l.trim())).size).toBeGreaterThanOrEqual(2);
 
+    // the stakes themselves are dimmed while offline — the visual half of the
+    // contract, applied per node by the stylesheet rather than by a global veil
+    const stake = atlas.stake('n-plant-1', 'Water plant');
+    const dimmed = await stake.evaluate(el => getComputedStyle(el).opacity);
+    expect(Number(dimmed)).toBeLessThan(1);
+
     // a press while offline is queued in words, and the backend is untouched
     await atlas.stake('n-plant-1', 'Water plant').click();
     await expect(atlas.live()).toContainText('queued');
     expect(await atlas.mockState()).toBe(state);
 
-    samePlace(before, await place(atlas));
+    await samePlace(atlas, before);
     expect(await atlas.camera()).toBe(camera);
 
     await atlas.probe('offline').click();
     await expect(page.locator('#offline-bar')).toBeHidden();
-    samePlace(before, await place(atlas));
+    // and the dimming is lifted with it
+    await expect.poll(() => stake.evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+    await samePlace(atlas, before);
   });
 
   test('a hop under reduced motion lands, and moves no cell', async ({ page }) => {
@@ -101,13 +114,13 @@ test.describe('degradation is material, never geometry', () => {
 
     await atlas.probe('reduced').click();
     await expect(page.locator('body')).toHaveAttribute('data-motion', 'reduced');
-    samePlace(before, await place(atlas));
+    await samePlace(atlas, before);
 
     await atlas.navTo('Due today').click();
     await expect(atlas.node('n-reminders')).toHaveAttribute('data-focus', 'true');
     await expect(atlas.node('n-reminders')).toHaveAttribute('data-show', 'full');
     // travelling changes rank and size, never the cell a node was given
-    expect((await place(atlas)).cells).toEqual(before.cells);
+    await expect.poll(() => atlas.geography()).toEqual(before.cells);
   });
 
   test('an outage fails only the families that failed, in the same cells', async ({ page }) => {
