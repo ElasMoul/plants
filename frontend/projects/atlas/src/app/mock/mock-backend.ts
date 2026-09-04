@@ -598,7 +598,7 @@ export class MockBackend {
     }
     if (this.asks >= MOCK_CHAT_LIMIT) throw tooManyAsks();
     this.asks++;
-    return chatReply(this.seed, message, plantId);
+    return chatReply(this.seed, message, Date.now(), plantId);
   }
 
   private activeTreatments(plantId: number): MockTreatment[] {

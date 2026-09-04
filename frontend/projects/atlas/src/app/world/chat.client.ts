@@ -52,12 +52,21 @@ export class ChatClient {
   ask(input: AskInput): Observable<ChatEvent> {
     const body: ChatRequestDto = {
       message: input.question.slice(0, MAX_MESSAGE_CHARS),
-      plantId: input.plantId,
+      plantId: this.plantContext(input.plantId),
       history: this.history(input.history ?? []),
     };
     return this.settings.get('ai.chatTransport') === 'buffered'
       ? this.buffered(body)
       : this.streamed(body);
+  }
+
+  /**
+   * Which plant the question is about, as the reader chose it. On 'never' no
+   * plant travels at all, so the server answers over the garden alone; on
+   * 'focused' and 'ask' the caller's plant stands (C2 decides how 'ask' picks it).
+   */
+  plantContext(plantId?: number): number | undefined {
+    return this.settings.get('ai.chatPlantContext') === 'never' ? undefined : plantId;
   }
 
   /** The tail of the thread, flattened oldest-first into user/assistant pairs. */
@@ -74,9 +83,13 @@ export class ChatClient {
 
   private buffered(body: ChatRequestDto): Observable<ChatEvent> {
     return this.http.post<ApiResponse<ChatResponseDto>>(`${this.base}/chat`, body).pipe(
-      switchMap(res =>
-        from<ChatEvent[]>([{ kind: 'token', text: res.data?.reply ?? '' }, { kind: 'done' }]),
-      ),
+      switchMap(res => {
+        // A 200 carrying no reply is not an answer: emit no token, so the caller
+        // sees a token-less done and never stores an empty answered turn.
+        const reply = res.data?.reply ?? '';
+        const events: ChatEvent[] = reply.trim() ? [{ kind: 'token', text: reply }] : [];
+        return from<ChatEvent[]>([...events, { kind: 'done' }]);
+      }),
       catchError((err: unknown) => of<ChatEvent>({ kind: 'failed', failure: classify(err) })),
     );
   }
@@ -143,6 +156,8 @@ export function classify(err: unknown): ChatFailure {
       return { kind: 'rate-limited', retryAfterSeconds };
     case 503:
       return { kind: 'unavailable', retryAfterSeconds: null };
+    // A deliberate split from 503: status 0 is no connection at all, which the
+    // companion should name as offline rather than as the service being down.
     case 0:
       return { kind: 'offline', retryAfterSeconds: null };
     case 400:

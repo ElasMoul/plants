@@ -30,6 +30,12 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     if (reply.status < 400 && req.reportProgress && req.url.endsWith('/chat/stream')) {
       return streamed(reply, req.url, mode.latencyMs);
     }
+    // A stream read without progress reporting still gets what a real server
+    // sends: the whole text/event-stream body, never the internal carrier.
+    if (reply.status < 400 && isChatStream(reply.body)) {
+      const text = reply.body.stream.map(frameToken).join('');
+      return of(new HttpResponse({ status: reply.status, body: text, url: req.url }));
+    }
     return reply.status >= 400
       ? throwError(() => new HttpErrorResponse({ status: reply.status, statusText: 'Mock', url: req.url, error: reply.body }))
       : of(new HttpResponse({ status: reply.status, body: reply.body ?? null, url: req.url }));

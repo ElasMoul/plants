@@ -15,8 +15,17 @@ function walk(chunks: string[]): { tokens: string[]; parser: SseParser } {
 describe('SseParser', () => {
   it('reads one token per event and asks for no sentinel', () => {
     const { tokens, parser } = walk(['data:Hi\n\n', 'data: there\n\n']);
-    expect(tokens).toEqual(['Hi', 'there']);
+    expect(tokens).toEqual(['Hi', ' there']);
     expect(parser.end()).toEqual([]);
+  });
+
+  it('keeps a leading space, which Spring never adds and never strips', () => {
+    // The Ollama per-token path emits word tokens carrying their leading space;
+    // stripping it would concatenate 'Draught,' and 'most likely.'.
+    for (const token of [' most likely.', 'Draught,', '  two spaces']) {
+      const { tokens } = walk([frameToken(token)]);
+      expect(tokens).toEqual([token]);
+    }
   });
 
   it('keeps the newline of a token Spring split across data lines', () => {

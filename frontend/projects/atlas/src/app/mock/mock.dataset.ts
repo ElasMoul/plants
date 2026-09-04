@@ -635,10 +635,19 @@ export function chatBucket(question: string): Bucket {
  * The mock companion's whole answer, in the voice: warm, concrete about what it
  * can actually see, and honest the moment it cannot.
  */
-export function chatReply(seed: MockSeed, question: string, plantId?: number): string {
+export function chatReply(
+  seed: MockSeed,
+  question: string,
+  now: number,
+  plantId?: number,
+): string {
   const plant = plantOf(seed, plantId);
   const active = seed.plants.filter(p => p.status === 'ACTIVE');
   const steps = seed.reminders.filter(r => r.enabled).length;
+  // The honest due picture, computed exactly as the dashboard computes it.
+  const board = seedDashboard(seed, now);
+  const dueToday = board.todayReminders.length;
+  const overdue = board.overdueReminders.length;
   const bucket = chatBucket(question);
 
   if (active.length === 0) {
@@ -693,7 +702,7 @@ I can talk you through any step, but I do not tick them off. ${PRESS_NOTE}`;
 If a scan turns something up, a course is offered there rather than here. ${PRESS_NOTE}`;
     }
     case 'due':
-      return `There are ${steps} care steps on the list across ${active.length} plants — ${nameList(seed)} among them.
+      return `${dueCount(dueToday)} today${overdue > 0 ? `, and ${overdueCount(overdue)} still standing from before` : ', and nothing standing from before'} — out of ${steps} care steps across ${active.length} plants.
 
 Today's are gathered on the reminders board. ${PRESS_NOTE}`;
     default:
@@ -701,6 +710,16 @@ Today's are gathered on the reminders board. ${PRESS_NOTE}`;
 
 What I can see is ${active.length} plants — ${nameList(seed)} — and ${steps} care steps on the list. Ask me about watering, light, leaves, pests or a course and I will be on firmer ground.`;
   }
+}
+
+/** "Nothing is due" / "One step is due" / "Three steps are due", never a bare number. */
+function dueCount(n: number): string {
+  if (n === 0) return 'Nothing is due';
+  return n === 1 ? 'One step is due' : `${n} steps are due`;
+}
+
+function overdueCount(n: number): string {
+  return n === 1 ? 'one step is' : `${n} steps are`;
 }
 
 /** The reply cut into tokens, whitespace kept, so the stream reads as writing. */

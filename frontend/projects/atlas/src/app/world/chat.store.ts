@@ -49,6 +49,9 @@ export class ChatStore {
   load(source: DataSource): void {
     this.loadedFor = source;
     if (this.settings.get('ai.chatThreads') !== 'device') {
+      // The reader asked for threads not to outlive the page, so what a previous
+      // 'device' run wrote is removed rather than left to resurface on a switch back.
+      this.forgetDevice(source);
       this.threadsByKey.set({});
       return;
     }
@@ -137,8 +140,18 @@ export class ChatStore {
     const trimmed: Record<string, ChatThreadDto> = {};
     for (const thread of ordered.slice(0, Math.max(0, kept))) trimmed[thread.key] = thread;
     this.threadsByKey.set(trimmed);
-    if (this.settings.get('ai.chatThreads') !== 'device') return;
     const source = this.loadedFor ?? (this.settings.get('data.source') as DataSource);
+    if (this.settings.get('ai.chatThreads') !== 'device') {
+      // On 'session' anything a previous 'device' run left is dropped, so the
+      // reader's choice actually removes it — but nothing is written if nothing stands.
+      this.forgetDevice(source);
+      return;
+    }
     this.device.setChat(source, Object.values(trimmed));
+  }
+
+  /** Empties the stored slice for a source, writing only when something is there. */
+  private forgetDevice(source: DataSource): void {
+    if (this.device.chat(source).length > 0) this.device.setChat(source, []);
   }
 }

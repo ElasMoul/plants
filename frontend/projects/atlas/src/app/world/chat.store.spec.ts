@@ -73,6 +73,36 @@ describe('ChatStore', () => {
     expect(make().chat.turns('garden')).toEqual([]);
   });
 
+  it('drops what the device already holds when threads turn session-only', () => {
+    const first = make();
+    first.chat.load('live');
+    first.chat.append(turn(1));
+    expect(localStorage.getItem(DEVICE_KEY)).not.toBeNull();
+
+    const second = make();
+    second.settings.set('ai.chatThreads', 'session');
+    second.chat.load('live');
+    expect(second.chat.threads()).toEqual([]);
+
+    // Switching back to 'device' finds nothing, because the choice removed it.
+    const third = make();
+    third.settings.set('ai.chatThreads', 'device');
+    third.chat.load('live');
+    expect(third.chat.threads()).toEqual([]);
+  });
+
+  it('persists into the source it was loaded for, not the settings default', () => {
+    const { chat, settings } = make();
+    settings.set('data.source', 'live');
+    chat.load('mock');
+    chat.append(turn(1));
+    const back = make();
+    back.chat.load('mock');
+    expect(back.chat.turns('garden')).toHaveLength(1);
+    back.chat.load('live');
+    expect(back.chat.turns('garden')).toEqual([]);
+  });
+
   it('degrades a garbled stored thread to nothing at all', () => {
     localStorage.setItem(
       DEVICE_KEY,

@@ -80,7 +80,7 @@ describe('ChatClient', () => {
 
     expect(seen).toEqual([
       { kind: 'token', text: 'Draught,' },
-      { kind: 'token', text: 'most likely.' },
+      { kind: 'token', text: ' most likely.' },
       { kind: 'done' },
     ]);
     http.verify();
@@ -103,6 +103,27 @@ describe('ChatClient', () => {
     expect(client.history(turns)).toEqual([]);
     settings.set('ai.chatHistoryTurns', 5);
     expect(client.history(turns)).toHaveLength(10);
+  });
+
+  it('sends no plant when the reader asked for no plant context', () => {
+    const { client, http, settings } = setup();
+    settings.set('ai.chatPlantContext', 'never');
+    client.ask({ question: 'why?', plantId: 2 }).subscribe();
+    expect((http.expectOne('/api/v1/chat/stream').request.body as ChatRequestDto).plantId)
+      .toBeUndefined();
+    settings.set('ai.chatPlantContext', 'focused');
+    client.ask({ question: 'why?', plantId: 2 }).subscribe();
+    expect((http.expectOne('/api/v1/chat/stream').request.body as ChatRequestDto).plantId).toBe(2);
+  });
+
+  it('stores no empty answer: a reply-less 200 is a token-less done', () => {
+    const { client, http, settings } = setup();
+    settings.set('ai.chatTransport', 'buffered');
+    const seen: ChatEvent[] = [];
+    client.ask({ question: 'why?' }).subscribe(e => seen.push(e));
+    http.expectOne('/api/v1/chat').flush({ success: true, data: null });
+    expect(seen).toEqual([{ kind: 'done' }]);
+    http.verify();
   });
 
   it('caps the message at the server’s own 2000 characters', () => {

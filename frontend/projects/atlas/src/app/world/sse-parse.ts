@@ -8,6 +8,10 @@
  *  - a token containing a newline is emitted by Spring as consecutive `data:`
  *    lines inside ONE event; this parser rejoins them WITH the newline, where
  *    the classic one silently drops it,
+ *  - no optional-space stripping after `data:`. Spring's SseEmitter writes
+ *    `data:` immediately followed by the payload, so a token that legitimately
+ *    begins with a space (the Ollama per-token path emits ' most likely.')
+ *    would lose it. The round trip through `frameToken` is byte-exact,
  *  - no terminal sentinel is expected. The server sends no `[DONE]` and no
  *    completion event: the end of the stream is the HTTP response ending, which
  *    only the caller can see. `end()` flushes whatever stands unterminated.
@@ -38,7 +42,7 @@ export class SseParser {
         if (event !== null) out.push(event);
         continue;
       }
-      if (line.startsWith('data:')) this.lines.push(line.slice(5).replace(/^ /, ''));
+      if (line.startsWith('data:')) this.lines.push(line.slice(5));
       // Any other field (event:, id:, retry:, a comment) is not part of the data.
     }
     return out;
@@ -51,7 +55,7 @@ export class SseParser {
   end(): string[] {
     const tail = this.buffer;
     this.buffer = '';
-    if (tail.startsWith('data:')) this.lines.push(tail.slice(5).replace(/^ /, ''));
+    if (tail.startsWith('data:')) this.lines.push(tail.slice(5));
     const event = this.flush();
     return event === null ? [] : [event];
   }
