@@ -1,4 +1,18 @@
-import { PlantDto, SpeciesDto, IdentificationDto, WorldSources, WorldUser } from '../world/world.dto';
+import {
+  CareLogDto,
+  DashboardDto,
+  DEFAULT_ASSEMBLY_SETTINGS,
+  IdentificationDto,
+  PlantDto,
+  ReminderDto,
+  ReminderSummaryDto,
+  SpeciesDto,
+  TreatmentDto,
+  TreatmentPlanDto,
+  UserPreferencesDto,
+  WorldSources,
+  WorldUser,
+} from '../world/world.dto';
 
 /**
  * The mock garden's seed data. One dataset per scenario, every date an offset
@@ -391,7 +405,7 @@ export function derivePlant(seed: MockSeed, p: MockPlant, now: number): PlantDto
 /**
  * The seed as WorldSources — the assembly's own input, so specs (and S8's
  * constitution suite) can assemble a mock board without any HTTP at all.
- * Round-1 subset today; grows with WorldSources in S2.
+ * Rounds 1-3: every family the assembly reads.
  */
 export function seedToSources(seed: MockSeed, now: string): WorldSources {
   const t = Date.parse(now);
@@ -412,10 +426,143 @@ export function seedToSources(seed: MockSeed, now: string): WorldSources {
     createdAt: i.createdAt,
     plantId: i.plantId,
   }));
+
+  const careLogsByPlant: Record<number, CareLogDto[]> = {};
+  for (const log of [...seed.careLogs].sort((a, b) => Date.parse(b.performedAt) - Date.parse(a.performedAt))) {
+    (careLogsByPlant[log.plantId] ??= []).push(reminderlessLog(log));
+  }
+
+  const plansById: Record<number, TreatmentPlanDto> = {};
+  for (const plan of seed.treatmentPlans) plansById[plan.id] = planOut(seed, plan);
+
   return {
+    now,
     plants: seed.plants.filter(p => p.status === 'ACTIVE').map(p => derivePlant(seed, p, t)),
     species,
     identifications,
     user,
+    reminders: seed.reminders.filter(r => r.enabled).map(reminderOut).sort((a, b) => Date.parse(a.nextDueAt) - Date.parse(b.nextDueAt)),
+    careLogsByPlant,
+    treatments: seed.treatments.map(treatmentOut),
+    plansById,
+    dashboard: seedDashboard(seed, t),
+    preferences: seed.preferences as UserPreferencesDto,
+    failures: [],
+    settings: { ...DEFAULT_ASSEMBLY_SETTINGS },
+    paused: [...seed.pausedPlanIds],
+    snoozed: {},
+    stoppedReminders: [],
+    rateLimited: {},
+    push: 'off',
+  };
+}
+
+function reminderlessLog(l: MockCareLog): CareLogDto {
+  return { id: l.id, plantId: l.plantId, plantNickname: l.plantNickname, careType: l.careType, notes: l.notes, performedAt: l.performedAt };
+}
+
+/** completedAt is derived exactly as ReminderMapper does: updatedAt once disabled. */
+export function reminderOut(r: MockReminder): ReminderDto {
+  return {
+    id: r.id,
+    plantId: r.plantId,
+    plantNickname: r.plantNickname,
+    careType: r.careType,
+    frequencyDays: r.frequencyDays,
+    nextDueAt: r.nextDueAt,
+    enabled: r.enabled,
+    recurring: r.recurring,
+    treatmentPlanId: r.treatmentPlanId,
+    treatmentPlanTitle: r.treatmentPlanTitle,
+    stepOrder: r.stepOrder,
+    instruction: r.instruction,
+    completedAt: r.enabled ? undefined : r.updatedAt,
+    stepDetail: r.stepDetail,
+    stepDiagramFormat: r.stepDiagramFormat,
+    stepDiagramContent: r.stepDiagramContent,
+  };
+}
+
+function treatmentOut(t: MockTreatment): TreatmentDto {
+  return { ...t };
+}
+
+function planOut(seed: MockSeed, plan: MockTreatmentPlan): TreatmentPlanDto {
+  return {
+    id: plan.id,
+    plantId: plan.plantId,
+    title: plan.title,
+    diagramFormat: plan.diagramFormat,
+    diagramContent: plan.diagramContent,
+    status: plan.status,
+    createdAt: plan.createdAt,
+    steps: seed.reminders
+      .filter(r => r.treatmentPlanId === plan.id)
+      .sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0))
+      .map(reminderOut),
+  };
+}
+
+/**
+ * The dashboard the server would compute: buckets by LOCAL start of day with
+ * daysOverdue precomputed, health from each plant's latest completed scan, and
+ * trends from the last two scans of any plant that has two.
+ */
+export function seedDashboard(seed: MockSeed, now: number): DashboardDto {
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const dayStart = startOfDay.getTime();
+  const dayEnd = dayStart + DAY;
+
+  const enabled = seed.reminders.filter(r => r.enabled);
+  const overdueReminders: ReminderSummaryDto[] = enabled
+    .filter(r => Date.parse(r.nextDueAt) < dayStart)
+    .map(r => ({ ...reminderOut(r), daysOverdue: Math.floor((dayStart - Date.parse(r.nextDueAt)) / DAY) }));
+  const todayReminders: ReminderSummaryDto[] = enabled
+    .filter(r => {
+      const t = Date.parse(r.nextDueAt);
+      return t >= dayStart && t < dayEnd;
+    })
+    .map(r => reminderOut(r));
+
+  const active = seed.plants.filter(p => p.status === 'ACTIVE');
+  const healthSummary = { healthy: 0, issues: 0, unknown: 0 };
+  for (const p of active) {
+    const h = derivePlant(seed, p, now).healthStatus;
+    if (h === 'HEALTHY') healthSummary.healthy++;
+    else if (h === 'ISSUES_DETECTED') healthSummary.issues++;
+    else healthSummary.unknown++;
+  }
+
+  const recentScans = [...seed.identifications]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 3)
+    .map(i => ({ id: i.id, species: i.species, commonName: i.commonName, healthStatus: i.healthStatus, status: i.status, createdAt: i.createdAt, plantId: i.plantId }));
+
+  const healthTrends = active
+    .map(p => {
+      const scans = seed.identifications
+        .filter(i => i.plantId === p.id && i.status === 'COMPLETED')
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      if (scans.length < 2) return undefined;
+      const [latest, previous] = scans;
+      const trend =
+        latest.healthStatus === previous.healthStatus
+          ? 'STABLE'
+          : latest.healthStatus === 'HEALTHY'
+            ? 'IMPROVING'
+            : 'WORSENING';
+      return { plantId: p.id, plantNickname: p.nickname, trend };
+    })
+    .filter((x): x is { plantId: number; plantNickname: string; trend: string } => x !== undefined);
+
+  return {
+    healthSummary,
+    overdueReminders,
+    todayReminders,
+    healthTrends,
+    recentScans,
+    plantCount: active.length,
+    speciesCount: new Set(active.map(p => p.speciesId).filter(x => x !== undefined)).size,
   };
 }

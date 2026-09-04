@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { MOCK_MODE } from '../core/mock-mode';
 import { environment } from '../../environments/environment';
+import type { DashboardDto } from '../world/world.dto';
 import {
   buildMockSeed,
   derivePlant,
@@ -10,6 +11,7 @@ import {
   MockSeed,
   MockTreatment,
   PLAN_TEMPLATES,
+  seedDashboard,
 } from './mock.dataset';
 
 const DAY = 86400000;
@@ -239,65 +241,8 @@ export class MockBackend {
     return false;
   }
 
-  private dashboard(): unknown {
-    const now = Date.now();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = startOfDay.getTime() + DAY;
-
-    const enabled = this.seed.reminders.filter(r => r.enabled);
-    const overdueReminders = enabled
-      .filter(r => Date.parse(r.nextDueAt) < startOfDay.getTime())
-      .map(r => ({
-        ...(this.reminderOut(r) as Record<string, unknown>),
-        daysOverdue: Math.floor((startOfDay.getTime() - Date.parse(r.nextDueAt)) / DAY),
-      }));
-    const todayReminders = enabled
-      .filter(r => {
-        const t = Date.parse(r.nextDueAt);
-        return t >= startOfDay.getTime() && t < endOfDay;
-      })
-      .map(r => this.reminderOut(r));
-
-    const active = this.seed.plants.filter(p => p.status === 'ACTIVE');
-    const health = { healthy: 0, issues: 0, unknown: 0 };
-    for (const p of active) {
-      const h = derivePlant(this.seed, p, now).healthStatus;
-      if (h === 'HEALTHY') health.healthy++;
-      else if (h === 'ISSUES_DETECTED') health.issues++;
-      else health.unknown++;
-    }
-
-    const recentScans = [...this.seed.identifications]
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .slice(0, 3);
-
-    const healthTrends = active
-      .map(p => {
-        const scans = this.seed.identifications
-          .filter(i => i.plantId === p.id && i.status === 'COMPLETED')
-          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-        if (scans.length < 2) return undefined;
-        const [latest, previous] = scans;
-        const trend =
-          latest.healthStatus === previous.healthStatus
-            ? 'STABLE'
-            : latest.healthStatus === 'HEALTHY'
-              ? 'IMPROVING'
-              : 'WORSENING';
-        return { plantId: p.id, plantNickname: p.nickname, trend };
-      })
-      .filter((x): x is { plantId: number; plantNickname: string; trend: string } => x !== undefined);
-
-    return {
-      healthSummary: health,
-      overdueReminders,
-      todayReminders,
-      healthTrends,
-      recentScans,
-      plantCount: active.length,
-      speciesCount: new Set(active.map(p => p.speciesId).filter(x => x !== undefined)).size,
-    };
+  private dashboard(): DashboardDto {
+    return seedDashboard(this.seed, Date.now());
   }
 
   // ---------- the route table ----------

@@ -1,5 +1,5 @@
 import { assembleWorld } from './world.assembly';
-import { IdentificationDto, PlantDto, SpeciesDto, WorldSources } from './world.dto';
+import { emptySources, IdentificationDto, PlantDto, SpeciesDto, WorldSources } from './world.dto';
 
 function plant(id: number, over: Partial<PlantDto> = {}): PlantDto {
   return { id, nickname: `Plant ${id}`, species: 'Ficus lyrata', commonName: 'Fig', nextWaterDays: 5, healthStatus: 'HEALTHY', ...over };
@@ -12,13 +12,13 @@ function ident(id: number, status = 'COMPLETED', over: Partial<IdentificationDto
 }
 
 function sources(over: Partial<WorldSources> = {}): WorldSources {
-  return {
+  return emptySources({
     plants: [plant(1), plant(2), plant(3)],
     species: [species(1), species(2)],
     identifications: [ident(1)],
     user: { firstName: 'Mo', lastName: 'El', email: 'mo@example.com' },
     ...over,
-  };
+  });
 }
 
 const idsOf = (w: ReturnType<typeof assembleWorld>) => w.nodes.map(n => n.id);

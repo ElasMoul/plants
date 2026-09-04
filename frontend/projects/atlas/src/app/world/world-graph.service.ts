@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { API_BASE_URL, ApiResponse, AuthService, PageResponse } from '@plantpal/shared-core';
 import { forkJoin, map, Observable } from 'rxjs';
 import { assembleWorld } from './world.assembly';
-import { IdentificationDto, PlantDto, SpeciesDto } from './world.dto';
+import { emptySources, IdentificationDto, PlantDto, SpeciesDto } from './world.dto';
 import { WorldData } from './world.model';
 
 /**
@@ -33,7 +33,15 @@ export class WorldGraphService {
         .pipe(map(r => r.data.content)),
     }).pipe(
       map(({ plants, species, identifications }) =>
-        assembleWorld({ plants, species, identifications, user: this.auth.getCurrentUser() }),
+        assembleWorld(
+          emptySources({
+            now: new Date().toISOString(),
+            plants,
+            species,
+            identifications,
+            user: this.auth.getCurrentUser(),
+          }),
+        ),
       ),
     );
   }
