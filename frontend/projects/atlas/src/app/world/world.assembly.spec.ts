@@ -1115,4 +1115,88 @@ describe('S6 — the day, the knocks and the account', () => {
       expect(b).toContain('>Ask it again<');
     });
   });
+
+  describe('photographs on plates (PP-095)', () => {
+    const withPhoto = (over = {}) =>
+      emptySources({
+        plants: [
+          {
+            id: 1,
+            nickname: 'Office Fig',
+            species: 'Ficus lyrata',
+            commonName: 'Fiddle-leaf fig',
+            photoUrl: '/photos/a0096f2a-e25b-4bea-a191-943606989340.jpg',
+          },
+        ],
+        ...over,
+      });
+
+    it('puts the plant photograph in the plate the card already draws', () => {
+      const body = assembleWorld(withPhoto()).nodes.find(n => n.id === 'n-plant-1')?.body ?? '';
+      expect(body).toContain('data-photo="1"');
+      expect(body).toContain('/photos/a0096f2a-e25b-4bea-a191-943606989340.jpg');
+    });
+
+    it('falls back to the drawn specimen when the plant has no photograph', () => {
+      const body = assembleWorld(
+        emptySources({ plants: [{ id: 1, nickname: 'Office Fig', species: null, commonName: null }] }),
+      ).nodes.find(n => n.id === 'n-plant-1')?.body ?? '';
+      expect(body).toContain('class="plate__specimen"');
+      expect(body).not.toContain('data-photo');
+    });
+
+    it('draws the specimen instead when photographs are turned off', () => {
+      const sources = withPhoto();
+      const body = assembleWorld({
+        ...sources,
+        settings: { ...sources.settings, photos: false },
+      }).nodes.find(n => n.id === 'n-plant-1')?.body ?? '';
+      expect(body).not.toContain('data-photo');
+      expect(body).toContain('class="plate__specimen"');
+    });
+
+    it('shows the scanned photograph on the scan it belongs to', () => {
+      const body = assembleWorld(
+        emptySources({
+          identifications: [
+            {
+              id: 7,
+              species: 'Ficus lyrata',
+              commonName: 'Fiddle-leaf fig',
+              healthStatus: 'HEALTHY',
+              status: 'COMPLETED',
+              createdAt: '2026-09-01T09:00:00Z',
+              photoUrl: '/photos/ff174bd7-d727-4dc6-8bfb-be06d638bb90.jpg',
+            },
+          ],
+        }),
+      ).nodes.find(n => n.id === 'n-scan-7')?.body ?? '';
+      expect(body).toContain('data-photo="1"');
+      expect(body).toContain('/photos/ff174bd7-d727-4dc6-8bfb-be06d638bb90.jpg');
+    });
+
+    it('refuses any photo url that is not ours, so nothing can break out of the css', () => {
+      for (const bad of [
+        'https://evil.example/x.jpg',
+        '/photos/x.jpg");background:url(https://evil.example/y.jpg',
+        'javascript:alert(1)',
+        'data:text/html;base64,PHNjcmlwdD4=',
+      ]) {
+        const body = assembleWorld(
+          emptySources({ plants: [{ id: 1, nickname: 'X', species: null, commonName: null, photoUrl: bad }] }),
+        ).nodes.find(n => n.id === 'n-plant-1')?.body ?? '';
+        expect(body).not.toContain('data-photo');
+        expect(body).not.toContain('evil.example');
+      }
+    });
+
+    it('accepts the mock garden inline image so the mock needs no network', () => {
+      const body = assembleWorld(
+        emptySources({
+          plants: [{ id: 1, nickname: 'X', species: null, commonName: null, photoUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' }],
+        }),
+      ).nodes.find(n => n.id === 'n-plant-1')?.body ?? '';
+      expect(body).toContain('data-photo="1"');
+    });
+  });
 });

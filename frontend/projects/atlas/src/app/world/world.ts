@@ -8,6 +8,7 @@ import {
   ElementRef,
   HostListener,
   inject,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@plantpal/shared-core';
@@ -29,6 +30,7 @@ import { MOCK_MODE } from '../core/mock-mode';
 import { SECTION_OF_LABEL } from '../settings/settings.model';
 import {
   CARD_DRIFT_HTML,
+  PHOTOS_HTML,
   MOTION_FOLLOW_HTML,
   OverviewIntent,
   PaneContext,
@@ -37,6 +39,7 @@ import {
   routeOverviewClick,
 } from '../settings/settings-panes';
 import { ChatStore } from './chat.store';
+import { assembleWorld } from './world.assembly';
 import type { ChatFailure, ChatTurnDto } from './world.dto';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
@@ -298,6 +301,17 @@ export class World {
       this.settings.serverPrefs();
       this.settings.prefsState();
       queueMicrotask(() => this.renderSettingsPane());
+    });
+    // A setting the ASSEMBLY reads (photographs on plates, the api lines, the
+    // date style…) has to reach the cards that are already drawn, not wait for
+    // the next load. The sources are kept, so the world is rebuilt from them
+    // and handed over with updateWorld: same cells, same focus, same camera —
+    // only the material each card is made of changes (C9).
+    effect(() => {
+      const settings = this.settings.assemblySnapshot();
+      const sources = untracked(() => this.store.lastSources());
+      if (!sources) return;
+      untracked(() => this.store.updateWorld(assembleWorld({ ...sources, settings })));
     });
     // The periodic refresh follows its setting, and is re-armed when it changes.
     effect(() => {
@@ -766,7 +780,7 @@ export class World {
       const dl = pane.querySelector('dl.rows');
       const dd = dl?.querySelector('.row:last-child dd');
       if (dd) dd.innerHTML = MOTION_FOLLOW_HTML(s);
-      dl?.insertAdjacentHTML('afterend', CARD_DRIFT_HTML(s));
+      dl?.insertAdjacentHTML('afterend', CARD_DRIFT_HTML(s) + PHOTOS_HTML(s));
       this.refreshPickers();
       this.paneRestore(pane, mark);
       return;

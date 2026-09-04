@@ -33,10 +33,27 @@ export interface MockUser {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
+/**
+ * The mock garden's photographs, inline as base64 JPEGs (~1.4 kB each). A data
+ * URI keeps the promise the mock makes: it renders with no backend and no
+ * network at all, so a plate looks the way it will look against a real garden.
+ * Drawn, not photographed — they are obviously specimens of nothing.
+ */
+const MOCK_PHOTOS = {
+  fig: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAMBAQEAAAAAAAAAAAAAAAECAwUEBv/EACwQAAIBAwMCBQQCAwAAAAAAAAABAgMRMQQSIVFhIjJBcbETM1KBNMFykdH/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQMCBP/EABwRAQEBAQEBAAMAAAAAAAAAAAABAhExAyFBUf/aAAwDAQACEQMRAD8A+XAAQAAAAAAAAAAAAAAAAAOhptKqa3TSc/g5t451qZYUtFOavN7F/tnojo6KXKcu7ZuDO6tYXdrB6Oi1ZRa7pmFTQyXNOW7s+Ge7OAJqwm9Rx2mnZqzQOlqNPGtG6sp+j/6c2ScZNPKdmaS9bZ1NAAOnYAAPVoaO6X1JYi+Pc90pKKu3ZFKNP6VKMOiLRhFc2u+ryY29ry6vajdJ+VftjZfzNy7ehYiUlHLIiNjivBL9PlDfbzq3fKJjJSV0SATTV07o8muo3X1VlcM9Lgr3V0+qJcd0HGTyrNiXlXN5euQCZRcZOLynYg3eoL0I760Fa/PKKG2j/kw/fwS+JfHSIc0nbL6IkGDyK2lLPhXbJKjGOFz1JK778QW74KqXBN3w+q4IvKOfEu2Qp4UvDLuWAhSTdk+ehIcU7XWARHN1kduolxZPlGJ6df8Aej/j/bPMbTx6s+QNdLJR1EG+tjIRbjJNZTui1bOx2CJNqySuyYtSimsNXQMXkV2N+d37LBbGBKSirt2RW8pPjwrq1yFWaTVmrortcfI+OjIu4Lxcrqi6aaundARGV3Zpp9CQCI5+uknXsvRJHnL1p76s5Xum+PYobzx6szkAAV09+hqKVNweY/B6Xe3Fr9zk05unNTjlHUp1I1YKUXx8GWpy9ef6Z5ekYJO75l1ZYrOahnPRZI2yn5+I/ijlwvnBVw5vHwv5I2ShzT5X4smM1LjlPowJje3iST7GWrqKnRa9ZcI1lJQi5SdkvU5deq61RyeML2Osztd4z2qAA1egAAAvSqzpSvB26rqUBE9dCjXoyu77Zeu5/wBm9T7cvZnILU5yTUVJpN8pM4uGd+f8dOh9qJnXq0YrxSvJfjk8VWctzjue3pfgzEyk+f7rSrXnV8z4WEZgHbWTgACqAAAAABMPPH3IBBar9xlQ22+QEn4gACqAAD//2Q==',
+  monstera: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAMBAQEAAAAAAAAAAAAAAAEDBAIFBv/EACwQAAIBAgUDAwMFAQAAAAAAAAABAgMRBBIhMTJBUWETcbEiUqEUM0JygZH/xAAYAQEAAwEAAAAAAAAAAAAAAAAAAQIDBP/EAB0RAQEAAgIDAQAAAAAAAAAAAAABAhEDMRIhQTL/2gAMAwEAAhEDEQA/APlgASgAAAAAAAAAAAAAAAAANOFw6napPj0XchFsk3VdHDzq6rSPdmmGDpx5Nyf/AA0JJKy0QK7c95LVX6Wj9n5ZTPBL+Ev8kawNomeU+vLnCVOWWaszk9SpTjUjaSv57HnVqTpTyvXqn3LS7bYZ+TgAEtAAAWUKXq1FHpuz0tEuiSM+ChlpOX3F7gm7tX9ylc/Jd1Ge/FN/Ayt8pf4tDoNpK7diGbnIlxbiLyXJXXdExmpbMkCFJS2aZXiKXq07LktUWOKbu1r3EU0rNt+4TLr3HlAtxUMlZ9palRo6pdzYAAl6lKOSlGNrNLUlyUd2SDNxubylssvlkqCTu9X3ZJDkk7bvsgDipboi0o8XddmM7XNW8nW4EKavZ3T8khpNWauErKyAyY+OkJW8NmQ3Y79lf2MJedOjj/IACWj1YyUoqS2auS3ZbN+xVhZZqEdbtaFpm5LNXTm0pcnZdkdJKKslYbHOZy4K/noEOjnJbWLy/A+qOvJfklSUtmBCk1pJW8rY6AAzY6S9OMerdzEaMbK9VRvpFfkzl506cJrEABK7RgqihUcXtL5Nx5J6GGrKrCzf1rcrYx5MfqzJfWbv46HQbUVduxxeU7W+mPfqyrF2RKKlvv3Rz6eW2R2fyTGeqU1ll8gTHMnaVn5E5KEHKWyJMOLrKpLJF3ivyyZNrY4+VUSk5Scnu3cgAu6gAACYycJKUXZogAbKOIhJr1dJLr0NSakrxaa7o8kmMpRd4tp+GV0yy45eno0udT3JqTpxVqjXsYZznGMWpSTa1s9yoaVnHv2uq4iUk4wbUPO5SAWbSSdAACQAAAAAAAFlThD2Kw23uwQiTUAASkAAH//Z',
+  lemon: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAMBAQEAAAAAAAAAAAAAAAECBQQDBv/EADUQAAIBAgQDBgQDCQAAAAAAAAABAgMRBBIhMSJRYQUTMkFxgTORsdFywfAUNEJDUmKh4fH/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIEA//EAB0RAQEBAQEAAgMAAAAAAAAAAAABAhEDITESMkH/2gAMAwEAAhEDEQA/APlwAQAAAAAAAAAAAAAAAACYQlUmowV5PZE0qcq1SMIbvmbWHw0MPBKKvLzlbVnnvcyrjo9ltpOtO39sfudK7PwySTp36uTOkbHPd6v9VyVOzaElwJwfR3+pxYjAVaKclxwW7W69jYBc+moPnQaWOwUcrq0Uo2XFFaK3MzTpzqanYgADSAB6Yel31eFO9k3r6Et4NLs7D91S7x+Ka+SOuU4xdm9X5Bq6tdr0EYxiuFJHHb29rSt5y2WVddWO7i97t82y5WVSMXZvX6EEWnHaWZcpfcKotp8L6l1qroPVWYAxsfh+4rXj4J6rp0NfIk+FuPTyPDH0u9wstdY8S9jfnrlGMADrZDt7KhevKVrqMd+Tf6ZxGj2R/N9vzMen61WiU7xPwJy9NvmXC0VkciqZHLxvTkiySirJJehLaSu3ZFM7esItrm9ADppeBuL6bfIZpRdpRv1iTGalot+T3LARGSkrxd0S0mmmrp7pkZVmzW15kgfPSi4ScZKzTsyD0xP7zV/G/qeZ2z6ZDv7JklOpDzaT+X/TgOjs+p3eLhd2UuF/r1sZ3O5qtoq3Ju0V7ssDkVVU1e8nmfNlispqOj35Lci05a3y8l9wLSipboracduNddwp20qcL5+TLgRGSkrq/o0SDzxFTusPUnezS0fXyH2MOrJTrTmtpSbVyoB3MgAA3cNWVehGa381yZ6SUnazsvMxsFif2erxPglpLQ2k00mndPZo5N5/GtIjFRWnu+ZOxSVRKWWKzS5Ijus2tV5nyWyMD0eqsymRxd4Oy/pe3+iOOnznH/KLxkpq8XdASrtK6s+Rm9q1k8tFeXE/yOzFYiOHpOTfE/CubMSUnOTlJ3bd2evlnt6lQADpQAAA6MNi50bQbbp+aW69DnBLJfijbw9ehUilSkk3/C9ycV8NephnThak5TyynJxUdE3ojw15c+YvWy2km27JbtnDicZRptujK9TnHb3M2dSdS2ecpW2u7lTWfKT7OrVas6081SWZlQD2QAAAAAAAAPfCfFf4TwCk4u8W16Es7OAACgAAAAA//9k=',
+  pothos: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAIDAQAAAAAAAAAAAAAAAAIFAQMEBv/EADIQAAIBAgQEBAUCBwAAAAAAAAABAgMRBBIhMSIyQVEFE2FxM1JigZGx8DRDcqHB0fH/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAwECBP/EAB0RAQEBAQACAwEAAAAAAAAAAAABAhExQQMSIVH/2gAMAwEAAhEDEQA/APLAAxyAAAAAAAAAAAAAAAAAFjgsEsqq1UpXXDF6qxlvGW8aMPgalZKT4IPZvd/Y7Kfh9GK4rzfq7fodYI3dqd1a5ngMO01kt6qTOar4a0m6U7/TL/ZY77GTJqw+1UE4SpzcZq0luiJd4jDwxEGpK0ukuqKerTlSqShPddi2ddUmuoAA6aAADpwOH86teXLDV+voW7aSu3ZHPgaXlYaOusuL8m5U43u1d93qQ3e1LV7WM7lyRv6vRGcjlzyb9FoiZiUlFXk7I5Yj5duSTj6boxnlHnjp3WqJRmp7dOhIDCakrpp+xyeIYfzKXmLmgvyjplCMnfZ907Mkk0tXf1EvL0l48+DZiKXk15073Sensaz0rBmMXKSjFXbdkYNmH/iKX9a/UUXiSSSSslskYlNR0e/ZbkjHW55UUeOT+RfliNOMdbXfd6smQdRXtFZpdkaMyhGTu1quvUjacNuNeu4VS2lRZX36fk2AQjOMnbZ9mrMmYlFSVpK6MmCr8UhavGVrKUd+7/djiLDxX+V9/wDBXnox4Vz4CdKShVhJ7Rkm7EAdNehIybS0i2+yI4ep5tCE73bWr9epsPMi15JS53p8qJpJKyVkG0lduyIZpT5NF8zX6ATeqsyGRx+G7ej2HFDfijffqicZKSvF3QEVPW0otP8AsyYBgrfFZJzpx6pN/n/hwHRj6mfFT1uo8K/fvc5z0ZnIrPAADpqw8LrJZqT68SLB3s7b9LlBGTjJSi7NO6LrDV44ikpJ8S5l2ZHefaep7TUNc0nmfTsiZGc4wV5Mg1OrvwQ7dWcOWzfYjKCbuuGXdEXTcNaTt9L2ZKNRSeVpxl2YGY5tVJL3XUhiKyoUZT69F3ZsbSTbdkt2ynxuI8+rw8keXQ6zntbmdc4ALqgAAE6dSdKeanLKyAAtMPi6NSV6jyVPqen2OxNNJp3T2aPPkoVJwvknKN97OxO/H/HFwuML8N+4xFahCLVWSuui3K3EVJxlljOSi1qk9Gc5kx39JnrfiMVUrXjmfl30T3+5oAKycdycAAAAAAAAAABuxXxF7Gky25PVt+5gQk4AAAAAP//Z',
+  snake: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAMBAQEAAAAAAAAAAAAAAAECAwQFBv/EACwQAAIBAwMDAgYCAwAAAAAAAAABAgMRIQQSMTJRYXGxEyIzQVKBNHKhwdH/xAAXAQEBAQEAAAAAAAAAAAAAAAAAAwEC/8QAGBEBAQEBAQAAAAAAAAAAAAAAAAERAjH/2gAMAwEAAhEDEQA/APlQAGAAAAAAAAAAAAAAAAAB36fTKmt00nP2MtxluMKejnNXm9i/ydEdJSSynL1ZuDjalerWL0lFqyi15TMKmiks03u8PDO3kDaTqx5DTTs8MHpV9PGrG6sp9zzpJxk0+VhncuqS6gAGugAAdOipbpfEfEePU7m1FXbsVow+HSjDsSoJZtd93yTt1Hq7Ubm+lftjZfqbfsWIclHlmOUbWul/p5Q326lbz9iYyUldEgE01dO5ya2ldfFXKwzqcFe6un4Djug4t8qzZsuNlyvJBMouMnF8p2IKLhehHdWgrXzwUNtJ/Jh+/YVl8eiQ5JO3L7IkEkFbSlz8q8ckqKjwv2SV33xFbvYCXBN34fdEXlHn5l45CnwpYfksBCkm7J57EhpO11wAPO1cduoliyeUYnTrvrL+v/TmKTxfnwNdNJR1EG+9jIlNxkmuVlGlesQ21wrkpqUU1w8oEkFdrfW7+FwW4Dairt2K3lLj5V3fIFmk1Zq5Xa49Lx2Yu4dWV3RZNNXTuBEZXdmmn2JAA4NbJOvbskjnL1p76spXum8ehQpF54AA1ru0VRSp7PvH2Ol3ti1/J5VObpzUo8o9OnUjUgpReDjqJdTLqVGzu8vuySJTUeeeyK7ZT68R/FHLhfkq4ZvHD9yNsoZhlfiy0ZqWMp9mAje3zJX8GWrqKFFr7ywjWUlCLlJ2SPNrVXVqOT44XodSa65m1mADtYAAAvSqzpSvB+q7lAB6FGvSld32y++5/wCzafRL0PJL05yTSUmk3lJnN5TvD0aP0kUrVaUeqV5L8eTiqzlucdz29r4MxOScNKtadXqeFwjMA6dgADQAAAAAJh1x9SABer9RlA228gMgAA0AAH//2Q==',
+  scan: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABMNDhEODBMRDxEVFBMXHTAfHRoaHToqLCMwRT1JR0Q9Q0FMVm1dTFFoUkFDX4JgaHF1e3x7SlyGkIV3j214e3b/2wBDARQVFR0ZHTgfHzh2T0NPdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnb/wAARCACAAGADASIAAhEBAxEB/8QAGgABAAMBAQEAAAAAAAAAAAAAAAECBQMEBv/EAC0QAAIBAwMCBAYCAwAAAAAAAAABAgMRMQQSIVFhIjJBsRMzUnGBwQWRNEJy/8QAGAEBAQEBAQAAAAAAAAAAAAAAAAMBAgT/xAAbEQEBAQEBAQEBAAAAAAAAAAAAAQIRMSFBUf/aAAwDAQACEQMRAD8A+WAAAAAAAAAAAAAAAAAAAA0dNpVTW6ok5+xlvGW8eeloak1eb2L+2emOiopcpy7tnoBK6tRurXCWjotWUWu6Z56ugkuact3Z8M9+cATVhNWMVpp2as0DU1GmjWi2rKfo+v3MyScZOLynZlJrquddQADp0AAD16Gjvl8SWIvj7nulJRV27IrRp/CpRh0XJMYRjza76vJHV7UNXtN0n5V+WNl/O3Lt6FiJSUcs5co2OK8Evw+UN9vOrd8omMlJXRIBNNXTujx6+jdfFWVwz1OCvdXT6omUd1Nxk8qzZsvK2XlYwJnFwm4vKdiC70BehHfXgrX55XYodtH/AJUPz7GXxl8ahVzSdsvoiwIPOracs+FdskqMY4XPUkrvvxBbvYA4Ju+H1XAvOOfEu2RGeFLwy7lgIUlJ2T56EkOKdrrBIGZrY7dTLiyfKOB6v5D58f8An9s8pfPj0Z8DrpZKOpg31t/ZyJi3GSksp3RtK2SJNqyUbsRalFSWGrok87zq7HLzu/ZYLYwRKSirt2RF5SfHhXVrkCzSas1dFdrj5Hx0ZF5QXi5X1L9l001dO6ArGV3Zpp9CwAGbr5J6iy/1SR5y9afxK05Xum+H2KF58j0ScgADWtDQVVKk6bzH2PU724tfuY9ObpzU45RrU6kasFKDuvYlucvUdzl6Rgk7vmXVlis5qGc9FkrtlU8/EfpRw4dM4KuHN4+F+5XZKHNPlfSy0ZqXHKa9GBMb28SSfY46yqqdBr1lwjtKShFyk7JeplV6rrVXJ4wvsdZna7zO1zABZYAAAvSrToyvB26rqUAGjQ1FGV3fbL13P9nep8uX2Zjl6c5RaipSSb5SZO4TuP41KHyonOvWoxXileS+nJ4K05bnHdLb0vwcxMfrJj9dKtepW874WEcwCivOAAAAAAAABMPPH7kDAF63zGUDbbu3cBk+QAAaAAD/2Q==',
+} as const;
+
 /** Stored plant row — healthStatus/nextWaterDays/activeTreatmentId are DERIVED on read. */
 export interface MockPlant {
   id: number;
   nickname: string;
+  /** Inline so the mock garden shows photographs with no network at all. */
+  photoUrl?: string;
   species?: string;
   commonName?: string;
   speciesId?: number;
@@ -62,6 +79,8 @@ export interface MockIdentification {
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   createdAt: string;
   plantId?: number;
+  /** The photograph that was scanned — inline, so the mock needs no network. */
+  photoUrl?: string;
 }
 
 export interface MockReminder {
@@ -200,20 +219,20 @@ function garden(now: number): MockSeed {
   ];
 
   const plants: MockPlant[] = [
-    { id: 1, nickname: 'Office Fig', species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', speciesId: 1, location: 'Office · south window', lastScanId: 501, healthStatus: 'ISSUES_DETECTED', status: 'ACTIVE' },
-    { id: 2, nickname: 'Studio Fig', species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', speciesId: 1, location: 'Studio', lastScanId: 504, healthStatus: 'HEALTHY', status: 'ACTIVE' },
-    { id: 3, nickname: 'Monstera', species: 'Monstera deliciosa', commonName: 'Swiss cheese plant', speciesId: 2, location: 'Living room', lastScanId: 502, healthStatus: 'HEALTHY', status: 'ACTIVE' },
-    { id: 4, nickname: 'Hallway Pothos', species: 'Epipremnum aureum', commonName: 'Pothos', speciesId: 3, location: 'Hallway', status: 'ACTIVE' },
-    { id: 5, nickname: 'Terrace Lemon', species: 'Citrus × limon', commonName: 'Lemon tree', speciesId: 5, location: 'Terrace', lastScanId: 503, healthStatus: 'ISSUES_DETECTED', status: 'ACTIVE' },
-    { id: 6, nickname: 'Bedroom Snake Plant', species: 'Dracaena trifasciata', commonName: 'Snake plant', speciesId: 4, location: 'Bedroom', healthStatus: 'HEALTHY', status: 'ACTIVE' },
+    { id: 1, nickname: 'Office Fig', photoUrl: MOCK_PHOTOS.fig, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', speciesId: 1, location: 'Office · south window', lastScanId: 501, healthStatus: 'ISSUES_DETECTED', status: 'ACTIVE' },
+    { id: 2, nickname: 'Studio Fig', photoUrl: MOCK_PHOTOS.fig, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', speciesId: 1, location: 'Studio', lastScanId: 504, healthStatus: 'HEALTHY', status: 'ACTIVE' },
+    { id: 3, nickname: 'Monstera', photoUrl: MOCK_PHOTOS.monstera, species: 'Monstera deliciosa', commonName: 'Swiss cheese plant', speciesId: 2, location: 'Living room', lastScanId: 502, healthStatus: 'HEALTHY', status: 'ACTIVE' },
+    { id: 4, nickname: 'Hallway Pothos', photoUrl: MOCK_PHOTOS.pothos, species: 'Epipremnum aureum', commonName: 'Pothos', speciesId: 3, location: 'Hallway', status: 'ACTIVE' },
+    { id: 5, nickname: 'Terrace Lemon', photoUrl: MOCK_PHOTOS.lemon, species: 'Citrus × limon', commonName: 'Lemon tree', speciesId: 5, location: 'Terrace', lastScanId: 503, healthStatus: 'ISSUES_DETECTED', status: 'ACTIVE' },
+    { id: 6, nickname: 'Bedroom Snake Plant', photoUrl: MOCK_PHOTOS.snake, species: 'Dracaena trifasciata', commonName: 'Snake plant', speciesId: 4, location: 'Bedroom', healthStatus: 'HEALTHY', status: 'ACTIVE' },
   ];
 
   const identifications: MockIdentification[] = [
-    { id: 505, status: 'PENDING', createdAt: at(0, -0.02) },
-    { id: 503, status: 'FAILED', createdAt: at(-0.04) },
-    { id: 504, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', healthStatus: 'HEALTHY', status: 'COMPLETED', createdAt: at(-3), plantId: 2 },
-    { id: 501, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', healthStatus: 'ISSUES_DETECTED', status: 'COMPLETED', createdAt: at(-5), plantId: 1 },
-    { id: 502, species: 'Monstera deliciosa', commonName: 'Swiss cheese plant', healthStatus: 'HEALTHY', status: 'COMPLETED', createdAt: at(-12), plantId: 3 },
+    { id: 505, status: 'PENDING', createdAt: at(0, -0.02) , photoUrl: MOCK_PHOTOS.scan },
+    { id: 503, status: 'FAILED', createdAt: at(-0.04) , photoUrl: MOCK_PHOTOS.scan },
+    { id: 504, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', healthStatus: 'HEALTHY', status: 'COMPLETED', createdAt: at(-3), plantId: 2 , photoUrl: MOCK_PHOTOS.scan },
+    { id: 501, species: 'Ficus lyrata', commonName: 'Fiddle-leaf fig', healthStatus: 'ISSUES_DETECTED', status: 'COMPLETED', createdAt: at(-5), plantId: 1 , photoUrl: MOCK_PHOTOS.scan },
+    { id: 502, species: 'Monstera deliciosa', commonName: 'Swiss cheese plant', healthStatus: 'HEALTHY', status: 'COMPLETED', createdAt: at(-12), plantId: 3 , photoUrl: MOCK_PHOTOS.scan },
   ];
 
   const routine: MockReminder[] = [
@@ -405,6 +424,7 @@ export function derivePlant(seed: MockSeed, p: MockPlant, now: number): PlantDto
     nextWaterDays: nextWaterDays(seed, p.id, now),
     activeTreatmentId: active?.id,
     location: p.location,
+    photoUrl: p.photoUrl,
   };
 }
 
@@ -431,6 +451,7 @@ export function seedToSources(seed: MockSeed, now: string): WorldSources {
     status: i.status,
     createdAt: i.createdAt,
     plantId: i.plantId,
+    photoUrl: i.photoUrl,
   }));
 
   const careLogsByPlant: Record<number, CareLogDto[]> = {};
