@@ -41,6 +41,8 @@ export interface IdentificationDto {
   status: string; // PENDING | PROCESSING | COMPLETED | FAILED (backend enum)
   createdAt: string;
   plantId?: number | null;
+  /** The photograph that was scanned — served by the same /photos/** proxy. */
+  photoUrl?: string | null;
 }
 
 /** The ten backend CareType values (reminder/entity/CareType.java). */
@@ -245,6 +247,8 @@ export interface AssemblySettings {
   seenAt: string | null;
   /** What the bell counts — the notifications panel names it in the node's words. */
   bellCounts: 'due' | 'overdue' | 'none';
+  /** Whether a plate shows the real photograph or the drawn specimen. */
+  photos: boolean;
 }
 
 export type PushState = 'on' | 'off' | 'blocked' | 'unsupported' | 'unconfigured';
@@ -311,6 +315,7 @@ export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
   showApiIds: true,
   seenAt: null,
   bellCounts: 'due',
+  photos: true,
 };
 
 /** Every field defaulted, so a caller only states what it is testing. */

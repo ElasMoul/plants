@@ -203,6 +203,33 @@ function treatmentRank(ctx: Ctx, t: TreatmentDto): number {
 
 // ── per-node body builders (the prototype's material language, live data) ────
 
+/**
+ * Only a photograph this app itself serves may enter a CSS url(): our own
+ * /photos/** path (proxied to the backend) or the mock garden's inline image.
+ * The base64 alphabet carries no quote, paren or semicolon, so neither form can
+ * break out of the declaration. Anything else is treated as no photo at all.
+ */
+function safePhoto(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^\/photos\/[A-Za-z0-9._-]+$/.test(url)) return url;
+  if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(url)) return url;
+  return null;
+}
+
+/**
+ * The plate's specimen. Given a photograph (and Settings · Appearance ·
+ * photographs left on) the real picture fills the plate the card already draws;
+ * otherwise the token-drawn specimen stands in its place. Both are the same
+ * fixed 3/4 box, so a photo arriving, failing to load, or being switched off
+ * never resizes a card and never moves the board (C9).
+ */
+function specimen(url: string | null | undefined, settings: AssemblySettings): string {
+  const src = settings.photos ? safePhoto(url) : null;
+  return src
+    ? `<div class="plate__specimen" data-photo="1" style="background-image:url(&quot;${src}&quot;)" aria-hidden="true"></div>`
+    : '<div class="plate__specimen" aria-hidden="true"></div>';
+}
+
 function plantBody(p: PlantDto, ctx: Ctx): string {
   const binomial = p.species ? `<span class="plate__binomial">${esc(p.species)}</span>` : '';
   const water = remindersOfPlant(ctx, p.id, 'WATERING')[0];
@@ -227,7 +254,7 @@ function plantBody(p: PlantDto, ctx: Ctx): string {
     ) +
     full(`
       <div class="plate">
-        <div class="plate__specimen" aria-hidden="true"></div>
+        ${specimen(p.photoUrl, ctx.settings)}
         <div>
           <h3 class="plate__name">${esc(p.nickname)}</h3>
           ${binomial}
@@ -731,6 +758,14 @@ function scanBody(i: IdentificationDto, drawn: Set<string>, settings: AssemblySe
   return (
     recapWrap(scanStatusLine(i), esc(i.createdAt.slice(0, 10))) +
     full(`
+      <div class="plate">
+        ${specimen(i.photoUrl, settings)}
+        <div>
+          <h3 class="plate__name">${name}</h3>
+          ${i.species ? `<span class="plate__binomial">${esc(i.species)}</span>` : ''}
+          <p class="plate__meta">${scanStatusLine(i)}</p>
+        </div>
+      </div>
       <section class="state" data-brief-item="action:/api/v1/identifications/**">
         <div class="state__head"><h4 class="state__title">This scan</h4>${stateId(`action · /api/v1/identifications/${i.id}`, settings)}</div>
         <dl class="rows">

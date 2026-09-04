@@ -133,6 +133,7 @@ export class SettingsStore {
       showApiIds: s.integrations.showApiIds,
       seenAt: s.notifications.seenAt,
       bellCounts: s.notifications.bellCounts,
+      photos: s.appearance.photos,
     };
   }
 

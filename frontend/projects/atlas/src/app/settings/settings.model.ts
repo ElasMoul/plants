@@ -83,6 +83,7 @@ export interface AtlasSettings {
     palette: string;
     followSystemMotion: boolean;
     cardDrift: boolean;
+    photos: boolean;
   };
   /** Device-side AI choices; the server-backed ai.* keys live in serverPrefs. */
   ai: {
@@ -134,7 +135,13 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     dueWindow: 'server-day',
     seenAt: null,
   },
-  appearance: { ui: 'sill-line', palette: 'first-light', followSystemMotion: true, cardDrift: true },
+  appearance: {
+    ui: 'sill-line',
+    palette: 'first-light',
+    followSystemMotion: true,
+    cardDrift: true,
+    photos: true,
+  },
   ai: {
     craftPlanOnStart: false,
     chatTransport: 'stream',
@@ -211,6 +218,7 @@ export const ALLOWED: Record<string, Record<string, Rule>> = {
     palette: PALETTES,
     followSystemMotion: 'boolean',
     cardDrift: 'boolean',
+    photos: 'boolean',
   },
   ai: {
     craftPlanOnStart: 'boolean',
