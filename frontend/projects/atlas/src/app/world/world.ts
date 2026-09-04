@@ -232,8 +232,12 @@ export class World {
       if (mode === this.lastMode) return;
       const was = this.lastMode;
       this.lastMode = mode;
-      if (mode === 'overview') this.settings.open();
-      else if (was === 'overview') this.settings.save();
+      if (mode === 'overview') {
+        this.settings.open();
+        // The five server-backed keys are PlantPal's, not this device's: ask for
+        // them as the overlay opens, so no pane has to open on its failure state.
+        this.ensureServerPrefs();
+      } else if (was === 'overview') this.settings.save();
     });
     // The pane follows its section, the settings, and what PlantPal said about models.
     effect(() => {
@@ -257,6 +261,7 @@ export class World {
       this.startMotes();
       this.startDrift();
       this.renderSettingsPane();
+      this.labelCloseSettings();
       this.loadLive();
     });
   }
@@ -670,6 +675,23 @@ export class World {
     const again = pane.querySelector<HTMLElement>(mark.sel);
     if (again) again.focus({ preventScroll: true });
     pane.scrollTop = mark.top;
+  }
+
+  /** Read PlantPal's own preferences once per overlay opening; a read already in
+   *  flight, or an answer already held, is left alone. */
+  private ensureServerPrefs(): void {
+    if (this.settings.prefsState() === 'reading') return;
+    if (this.settings.serverPrefs() && this.settings.prefsState() === 'idle') return;
+    this.prefs.read().subscribe({ error: () => undefined });
+  }
+
+  /** The pin's ✕ commits, exactly as Save does. The pin is never hand-edited, so
+   *  the button is told what it means here instead of carrying a stale title. */
+  private labelCloseSettings(): void {
+    const btn = document.querySelector<HTMLElement>('#close-settings');
+    if (!btn) return;
+    btn.setAttribute('title', 'Close settings and keep these changes');
+    btn.setAttribute('aria-label', 'Close settings and keep these changes');
   }
 
   private renderSettingsPane(): void {

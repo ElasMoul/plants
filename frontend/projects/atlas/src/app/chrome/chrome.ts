@@ -218,7 +218,9 @@ export class Chrome {
       this.store.meta(),
       this.settings.settings(),
       this.device.care(this.mock?.enabled ? 'mock' : 'live').snoozed,
-      this.store.meta()?.syncedAt ?? new Date().toISOString(),
+      // Quiet hours and a lapsed snooze are read against now, never against the
+      // instant of the last sync — otherwise neither ever begins or ends.
+      new Date().toISOString(),
     ),
   );
 

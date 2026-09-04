@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, SettingsSection, structuredCloneish } from './settings.model';
 import {
+  coerce,
   MOTION_CONTROLS_HTML,
   PaneContext,
   renderPane,
@@ -238,6 +239,30 @@ describe('settings panes (S7)', () => {
       expect(
         click('<section id="settings"><footer><button class="hop">Reset to defaults</button></footer></section>', '.hop'),
       ).toEqual({ kind: 'reset' });
+    });
+
+    it('carries the three free-text fields as string-kinded inputs', () => {
+      const cases: [SettingsSection, string, string][] = [
+        ['profile', 'profile.displayName', ''],
+        ['integrations', 'integrations.classicAppUrl', ''],
+        ['ai', 'ai.plantnetProject', 'all'],
+      ];
+      for (const [section, key, expected] of cases) {
+        const el = dom(renderPane(section, ctx()) as string);
+        const input = el.querySelector<HTMLInputElement>(`input[data-set="${key}"]`);
+        expect(input).not.toBeNull();
+        expect(input!.type).toBe('text');
+        expect(input!.dataset['kind']).toBe('string');
+        if (expected) expect(input!.value).toBe(expected);
+      }
+    });
+
+    it('coerces a typed value by its declared kind, leaving text as text', () => {
+      expect(coerce('7', 'number')).toBe(7);
+      expect(coerce('true', 'boolean')).toBe(true);
+      expect(coerce('false', 'boolean')).toBe(false);
+      expect(coerce('k-world-flora', 'string')).toBe('k-world-flora');
+      expect(coerce('https://plants.example.org', undefined)).toBe('https://plants.example.org');
     });
 
     it('ignores a click on nothing in particular', () => {
