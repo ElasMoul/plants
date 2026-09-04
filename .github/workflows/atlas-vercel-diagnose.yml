@@ -1,0 +1,38 @@
+name: Atlas Vercel diagnose
+
+# Throwaway diagnostic for the "Project not found" failure of deploy-atlas.
+# Deploys nothing and touches no environment: it only reports which projects the
+# VERCEL_TOKEN can see and a non-reversible fingerprint of the configured ids,
+# so a wrong/stale secret can be told apart from a token-visibility problem.
+# Delete this file once the atlas deploy is green.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: What can the Vercel token see?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Fingerprint the configured ids
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          ATLAS_ID: ${{ secrets.VERCEL_PROJECT_ID_ATLAS }}
+          CLASSIC_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          fp() { printf '%s' "$1" | sha256sum | cut -c1-12; }
+          echo "org id      : len=${#VERCEL_ORG_ID} sha=$(fp "$VERCEL_ORG_ID")"
+          echo "atlas id    : len=${#ATLAS_ID} sha=$(fp "$ATLAS_ID")"
+          echo "classic id  : len=${#CLASSIC_ID} sha=$(fp "$CLASSIC_ID")"
+          echo "expected atlas id sha (prj_xyJ9...AgUX) = da869ba6d3fa"
+
+      - name: List every project this token can reach
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "--- vercel whoami ---"
+          vercel whoami --token="$VERCEL_TOKEN" || echo "(whoami failed)"
+          echo "--- vercel project ls ---"
+          vercel project ls --token="$VERCEL_TOKEN" || echo "(project ls failed)"
