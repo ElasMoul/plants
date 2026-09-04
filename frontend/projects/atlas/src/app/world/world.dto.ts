@@ -232,6 +232,10 @@ export interface AssemblySettings {
   pause: 'local' | 'off';
   keepFinished: 'session' | 'hide';
   careLogPageSize: number;
+  /** Turns the n-ask feed draws before "Read the whole thread" is offered. */
+  chatTurnsKept: number;
+  /** Threads kept per source, newest-touched first. */
+  chatThreadsKept: number;
   displayName: string;
   units: 'metric' | 'imperial';
   quietHours: string;
@@ -292,6 +296,8 @@ export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
   pause: 'local',
   keepFinished: 'session',
   careLogPageSize: 5,
+  chatTurnsKept: 3,
+  chatThreadsKept: 8,
   displayName: '',
   units: 'metric',
   quietHours: '21:00-07:30',
@@ -324,4 +330,67 @@ export function emptySources(over: Partial<WorldSources> = {}): WorldSources {
     push: 'off',
     ...over,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Chat — the companion's wire shapes and the atlas's own thread.
+//
+// The server keeps no conversation: POST /api/v1/chat and /api/v1/chat/stream
+// are both single-shot, and history travels in the request. So the thread is
+// the atlas's own object, held on the device beside the care slice.
+// ---------------------------------------------------------------------------
+
+/** One message on the wire. The server takes any string; the classic app sends these two. */
+export interface ChatMessageDto {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatRequestDto {
+  message: string;
+  plantId?: number;
+  history?: ChatMessageDto[];
+}
+
+export interface ChatResponseDto {
+  reply: string;
+}
+
+/** How a turn ended — a truncated answer wears its own line rather than pretending. */
+export type ChatOutcome = 'answered' | 'truncated' | 'refused';
+
+export interface ChatTurnDto {
+  id: string;
+  askedAt: string;
+  question: string;
+  reply: string;
+  plantId?: number;
+  outcome: ChatOutcome;
+}
+
+export interface ChatThreadDto {
+  /** 'garden' or 'plant:<id>' — the only two shapes. */
+  key: string;
+  plantId?: number;
+  plantName?: string;
+  turns: ChatTurnDto[];
+  updatedAt: string;
+}
+
+/**
+ * Why an ask did not answer. `retryAfterSeconds` is null unless the body
+ * actually carried it — chat's 429 comes from the generic PlantPalException
+ * handler, which does not, so no wait is ever invented.
+ */
+export interface ChatFailure {
+  kind: 'rate-limited' | 'unavailable' | 'too-long' | 'not-found' | 'blocked' | 'offline' | 'unknown';
+  retryAfterSeconds: number | null;
+}
+
+/** The server's @Size(max = 2000) on ChatRequest.message, mirrored client-side. */
+export const MAX_MESSAGE_CHARS = 2000;
+
+/** The thread a question belongs to: a plant's own, or the garden's. */
+export function threadKey(plantId?: number): string {
+  return plantId === undefined || plantId === null ? 'garden' : `plant:${plantId}`;
 }

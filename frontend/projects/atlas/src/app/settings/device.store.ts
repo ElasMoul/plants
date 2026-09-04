@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { ChatThreadDto, ChatTurnDto } from '../world/world.dto';
 
 export const DEVICE_KEY = 'atlas_device';
 
@@ -13,11 +14,17 @@ export interface CareLocal {
   knownTreatmentIds: number[];
 }
 
+/** The companion's threads — the server keeps none, so this device owns them. */
+export interface ChatLocal {
+  threads: ChatThreadDto[];
+}
+
 export interface DeviceState {
   v: 1;
   lastFocus?: string;
   push?: { endpoint: string; subscribedAt: string };
   care: { live: CareLocal; mock: CareLocal };
+  chat: { live: ChatLocal; mock: ChatLocal };
 }
 
 const MAX_KNOWN = 10;
@@ -26,8 +33,16 @@ function emptyCare(): CareLocal {
   return { pausedPlanIds: [], snoozed: {}, knownTreatmentIds: [] };
 }
 
+function emptyChat(): ChatLocal {
+  return { threads: [] };
+}
+
 function emptyState(): DeviceState {
-  return { v: 1, care: { live: emptyCare(), mock: emptyCare() } };
+  return {
+    v: 1,
+    care: { live: emptyCare(), mock: emptyCare() },
+    chat: { live: emptyChat(), mock: emptyChat() },
+  };
 }
 
 function numbers(value: unknown): number[] {
@@ -54,6 +69,47 @@ function careFrom(value: unknown): CareLocal {
   };
 }
 
+function turnFrom(value: unknown): ChatTurnDto | null {
+  if (!value || typeof value !== 'object') return null;
+  const r = value as Record<string, unknown>;
+  const outcome = r['outcome'];
+  if (typeof r['id'] !== 'string' || typeof r['question'] !== 'string') return null;
+  if (typeof r['reply'] !== 'string' || typeof r['askedAt'] !== 'string') return null;
+  if (outcome !== 'answered' && outcome !== 'truncated' && outcome !== 'refused') return null;
+  const turn: ChatTurnDto = {
+    id: r['id'],
+    askedAt: r['askedAt'],
+    question: r['question'],
+    reply: r['reply'],
+    outcome,
+  };
+  if (typeof r['plantId'] === 'number') turn.plantId = r['plantId'];
+  return turn;
+}
+
+/** An unreadable thread is dropped, never thrown over — the garden still opens. */
+function threadFrom(value: unknown): ChatThreadDto | null {
+  if (!value || typeof value !== 'object') return null;
+  const r = value as Record<string, unknown>;
+  if (typeof r['key'] !== 'string' || typeof r['updatedAt'] !== 'string') return null;
+  const raw = Array.isArray(r['turns']) ? (r['turns'] as unknown[]) : [];
+  const thread: ChatThreadDto = {
+    key: r['key'],
+    turns: raw.map(turnFrom).filter((t): t is ChatTurnDto => t !== null),
+    updatedAt: r['updatedAt'],
+  };
+  if (typeof r['plantId'] === 'number') thread.plantId = r['plantId'];
+  if (typeof r['plantName'] === 'string') thread.plantName = r['plantName'];
+  return thread;
+}
+
+function chatFrom(value: unknown): ChatLocal {
+  if (!value || typeof value !== 'object') return emptyChat();
+  const raw = (value as Record<string, unknown>)['threads'];
+  if (!Array.isArray(raw)) return emptyChat();
+  return { threads: raw.map(threadFrom).filter((t): t is ChatThreadDto => t !== null) };
+}
+
 export function parseDevice(raw: string | null): DeviceState {
   const out = emptyState();
   if (!raw) return out;
@@ -74,6 +130,9 @@ export function parseDevice(raw: string | null): DeviceState {
   const care = (r['care'] ?? {}) as Record<string, unknown>;
   out.care.live = careFrom(care['live']);
   out.care.mock = careFrom(care['mock']);
+  const chat = (r['chat'] ?? {}) as Record<string, unknown>;
+  out.chat.live = chatFrom(chat['live']);
+  out.chat.mock = chatFrom(chat['mock']);
   return out;
 }
 
@@ -94,6 +153,18 @@ export class DeviceStore {
       snoozed: { ...care.snoozed },
       knownTreatmentIds: [...care.knownTreatmentIds],
     };
+  }
+
+  /** A copy of this source's threads — mock threads never leak into live. */
+  chat(source: DataSource): ChatThreadDto[] {
+    return JSON.parse(JSON.stringify(this.state().chat[source].threads)) as ChatThreadDto[];
+  }
+
+  /** The whole slice at once: ChatStore owns the caps, this owns the storage. */
+  setChat(source: DataSource, threads: ChatThreadDto[]): void {
+    const next = this.clone();
+    next.chat[source] = { threads: JSON.parse(JSON.stringify(threads)) as ChatThreadDto[] };
+    this.commit(next);
   }
 
   pausePlan(source: DataSource, planId: number): void {

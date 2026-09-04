@@ -123,3 +123,58 @@ describe('SettingsStore', () => {
     });
   });
 });
+
+describe('SettingsStore — the companion keys', () => {
+  beforeEach(() => localStorage.clear());
+
+  function store(): SettingsStore {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [SettingsStore] });
+    return TestBed.inject(SettingsStore);
+  }
+
+  it('defaults all six, and survives a reload', () => {
+    const s = store();
+    expect(s.get('ai.chatTransport')).toBe('stream');
+    expect(s.get('ai.chatHistoryTurns')).toBe(5);
+    expect(s.get('ai.chatPlantContext')).toBe('focused');
+    expect(s.get('ai.chatThreads')).toBe('device');
+    expect(s.get('data.chatTurnsKept')).toBe(3);
+    expect(s.get('data.chatThreadsKept')).toBe(8);
+
+    s.patch({
+      'ai.chatTransport': 'buffered',
+      'ai.chatHistoryTurns': 0,
+      'ai.chatPlantContext': 'never',
+      'ai.chatThreads': 'session',
+      'data.chatTurnsKept': 10,
+      'data.chatThreadsKept': 20,
+    });
+    const back = store();
+    expect(back.get('ai.chatTransport')).toBe('buffered');
+    expect(back.get('ai.chatHistoryTurns')).toBe(0);
+    expect(back.get('ai.chatPlantContext')).toBe('never');
+    expect(back.get('ai.chatThreads')).toBe('session');
+    expect(back.get('data.chatTurnsKept')).toBe(10);
+    expect(back.get('data.chatThreadsKept')).toBe(20);
+  });
+
+  it('ignores a value no pane offers, and resets to the defaults', () => {
+    const s = store();
+    s.set('ai.chatHistoryTurns', 99);
+    s.set('ai.chatTransport', 'websocket');
+    expect(s.get('ai.chatHistoryTurns')).toBe(5);
+    expect(s.get('ai.chatTransport')).toBe('stream');
+    s.set('data.chatTurnsKept', 0);
+    expect(s.get('data.chatTurnsKept')).toBe(0);
+    s.reset();
+    expect(s.get('data.chatTurnsKept')).toBe(3);
+  });
+
+  it('carries both data keys into the assembly snapshot', () => {
+    const s = store();
+    s.patch({ 'data.chatTurnsKept': 10, 'data.chatThreadsKept': 3 });
+    expect(s.assemblySnapshot().chatTurnsKept).toBe(10);
+    expect(s.assemblySnapshot().chatThreadsKept).toBe(3);
+  });
+});

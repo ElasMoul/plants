@@ -270,3 +270,40 @@ describe('settings panes (S7)', () => {
     });
   });
 });
+
+describe('the companion\u2019s settings controls', () => {
+  const keys = [
+    'ai.chatTransport',
+    'ai.chatHistoryTurns',
+    'ai.chatPlantContext',
+    'ai.chatThreads',
+    'data.chatTurnsKept',
+    'data.chatThreadsKept',
+  ];
+
+  it('renders all six inside the nine existing sections', () => {
+    const html = SECTIONS.map(section => renderPane(section, ctx())).join('');
+    for (const key of keys) expect(html).toContain(`data-set="${key}"`);
+    expect(renderPane('ai', ctx())).toContain('data-set="ai.chatTransport"');
+    expect(renderPane('data', ctx())).toContain('data-set="data.chatTurnsKept"');
+  });
+
+  it('presses the option that is actually chosen', () => {
+    const settings = structuredCloneish(DEFAULT_SETTINGS);
+    settings.ai.chatTransport = 'buffered';
+    const html = renderPane('ai', ctx({ settings }));
+    expect(html).toContain('data-set="ai.chatTransport" data-value="buffered" data-kind="string" aria-pressed="true"');
+    expect(html).toContain('data-set="ai.chatTransport" data-value="stream" data-kind="string" aria-pressed="false"');
+  });
+
+  it('coerces the numeric ones back to numbers', () => {
+    expect(coerce('3', 'number')).toBe(3);
+    expect(coerce('0', 'number')).toBe(0);
+  });
+
+  it('keeps the copy honest \u2014 no loading, no bare ellipsis', () => {
+    const html = SECTIONS.map(section => renderPane(section, ctx())).join('').toLowerCase();
+    expect(html).not.toContain('loading');
+    expect(html).not.toContain('something went wrong');
+  });
+});

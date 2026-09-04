@@ -53,6 +53,40 @@ describe('DeviceStore', () => {
     expect(d.care('live').snoozed[602]).toBe('2026-09-06T09:00:00.000Z');
   });
 
+
+  it('round-trips the companion threads, one slice per source', () => {
+    const d = make();
+    d.setChat('mock', [
+      {
+        key: 'plant:2',
+        plantId: 2,
+        plantName: 'Studio Fig',
+        updatedAt: '2026-09-04T09:12:00.000Z',
+        turns: [
+          {
+            id: 'c1',
+            askedAt: '2026-09-04T09:12:00.000Z',
+            question: 'why are the low leaves going?',
+            reply: 'Draught, most likely.',
+            plantId: 2,
+            outcome: 'answered',
+          },
+        ],
+      },
+    ]);
+    const back = make();
+    expect(back.chat('mock')[0].turns[0].reply).toBe('Draught, most likely.');
+    expect(back.chat('live')).toEqual([]);
+  });
+
+  it('drops an unreadable thread instead of throwing', () => {
+    localStorage.setItem(
+      DEVICE_KEY,
+      JSON.stringify({ v: 1, chat: { live: { threads: [{ key: 'garden' }, null, 3] } } }),
+    );
+    expect(make().chat('live')).toEqual([]);
+  });
+
   it('clear removes the key', () => {
     const d = make();
     d.setLastFocus('n-garden');

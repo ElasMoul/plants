@@ -351,7 +351,22 @@ function dataPane(s: AtlasSettings, ctx: PaneContext): string {
         { value: 3, name: '3 entries' },
         { value: 5, name: '5 entries', note: 'default' },
         { value: 10, name: '10 entries' },
-      ])}`;
+      ])}
+
+      ${sec('Data & Sync · the companion’s threads')}
+      ${note('PlantPal keeps no conversation of its own, so the thread is this device’s. These two decide how much of it is drawn, and how much is kept.')}
+      ${picker('Turns drawn on the card', 'data.chatTurnsKept', s.data.chatTurnsKept, [
+        { value: 0, name: 'Draw none', note: 'the card is a doorway' },
+        { value: 3, name: '3 turns', note: 'default' },
+        { value: 10, name: '10 turns' },
+      ])}
+      ${note('Older turns are still there — “Read the whole thread” opens them in place.')}
+      ${picker('Threads kept', 'data.chatThreadsKept', s.data.chatThreadsKept, [
+        { value: 3, name: '3 threads' },
+        { value: 8, name: '8 threads', note: 'default' },
+        { value: 20, name: '20 threads' },
+      ])}
+      ${note('Newest-touched first; the oldest is dropped when the count is reached. Twenty turns per thread, always.')}`;
 }
 
 const VISION_OPTIONS: { value: string; name: string; note: string }[] = [
@@ -431,7 +446,31 @@ function aiPane(s: AtlasSettings, ctx: PaneContext): string {
         s.ai.craftPlanOnStart,
         'Write it straight away',
         'Wait until I ask',
-      )}`;
+      )}
+
+      ${sec('AI Preferences · asking PlantPal')}
+      ${note('An answer can be painted as it is written, or land whole. Word by word is only true of the local model: under the gateway or Claude the whole answer arrives at once, so “When it is finished” is the honest choice against a production server.')}
+      ${picker('How an answer arrives', 'ai.chatTransport', s.ai.chatTransport, [
+        { value: 'stream', name: 'As it is written', note: 'default' },
+        { value: 'buffered', name: 'When it is finished' },
+      ])}
+      ${note('Each question can carry the turns before it, so “and the other one?” still means something. PlantPal reads the last ten messages and no more, which is five turns exactly.')}
+      ${picker('Thread sent with a question', 'ai.chatHistoryTurns', s.ai.chatHistoryTurns, [
+        { value: 0, name: 'Nothing', note: 'every question stands alone' },
+        { value: 2, name: 'The last 2 turns' },
+        { value: 5, name: 'The last 5 turns', note: 'default · all PlantPal reads' },
+      ])}
+      ${note('A question opened from a plant can already know which plant you mean.')}
+      ${picker('Which plant a question is about', 'ai.chatPlantContext', s.ai.chatPlantContext, [
+        { value: 'focused', name: 'The one you opened it from', note: 'default' },
+        { value: 'ask', name: 'Ask me each time' },
+        { value: 'never', name: 'Never — the whole garden' },
+      ])}
+      ${note('PlantPal forgets every conversation the moment it answers. This device can remember it instead.')}
+      ${picker('Threads after a reload', 'ai.chatThreads', s.ai.chatThreads, [
+        { value: 'device', name: 'Kept on this device', note: 'default' },
+        { value: 'session', name: 'Gone when the page closes' },
+      ])}`;
 }
 
 function privacyPane(s: AtlasSettings): string {

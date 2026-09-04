@@ -371,6 +371,7 @@ export function buildMockSeed(scenario: MockScenario, now: number): MockSeed {
         { method: 'GET', re: /^\/reminders$/ },
         { method: 'GET', re: /^\/dashboard$/ },
         { method: 'GET', re: /^\/treatment-plans\/201$/ },
+        { method: 'POST', re: /^\/chat(\/stream)?$/ },
       ],
     };
   }
@@ -570,4 +571,139 @@ export function seedDashboard(seed: MockSeed, now: number): DashboardDto {
     plantCount: active.length,
     speciesCount: new Set(active.map(p => p.speciesId).filter(x => x !== undefined)).size,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The companion's answers.
+//
+// A pure function of (seed, question, plantId). No Math.random, no Date.now, no
+// wall-clock words — the same seed and the same question give a byte-identical
+// reply for ever, which is what the determinism walk rests on. Every answer ends
+// by pointing at the plant: this companion reads the garden, it never writes to
+// it, so the press that changes anything lives on the plant's own node.
+// ---------------------------------------------------------------------------
+
+const PRESS_NOTE = 'If you want that done, the plant itself carries the press.';
+
+function plantOf(seed: MockSeed, plantId?: number): MockPlant | undefined {
+  if (plantId === undefined) return undefined;
+  return seed.plants.find(p => p.id === plantId && p.status === 'ACTIVE');
+}
+
+function latestHealth(seed: MockSeed, plantId: number): string | undefined {
+  return seed.identifications
+    .filter(i => i.plantId === plantId && i.status === 'COMPLETED' && i.healthStatus)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0]?.healthStatus;
+}
+
+function activeDisease(seed: MockSeed, plantId: number): string | undefined {
+  return seed.treatments
+    .filter(t => t.plantId === plantId && (t.status === 'DRAFT' || t.status === 'IN_PROGRESS'))
+    .sort((a, b) => b.id - a.id)[0]?.diseaseName;
+}
+
+/** "the fig, the Monstera and the Pothos" — deterministic, seed order. */
+function nameList(seed: MockSeed, limit = 3): string {
+  const names = seed.plants.filter(p => p.status === 'ACTIVE').map(p => p.nickname).slice(0, limit);
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+function subject(seed: MockSeed, plant: MockPlant | undefined): string {
+  if (plant) return plant.nickname;
+  const first = seed.plants.find(p => p.status === 'ACTIVE');
+  return first ? first.nickname : 'a plant';
+}
+
+type Bucket = 'water' | 'light' | 'yellow' | 'pests' | 'treatment' | 'due' | 'who' | 'unknown';
+
+/** Which bucket a question falls in. First match wins, so the order is the rule. */
+export function chatBucket(question: string): Bucket {
+  const q = question.toLowerCase();
+  if (/\bwho\b|what are you|your name/.test(q)) return 'who';
+  if (/water|thirsty|dry soil|how often/.test(q)) return 'water';
+  if (/light|sun|shade|window/.test(q)) return 'light';
+  if (/yellow|dropping|browning|leaves? (are|going|falling)/.test(q)) return 'yellow';
+  if (/pest|mite|gnat|bug|insect|miner/.test(q)) return 'pests';
+  if (/treatment|course|disease|cure|sick|ill/.test(q)) return 'treatment';
+  if (/due|today|overdue|schedule|remind/.test(q)) return 'due';
+  return 'unknown';
+}
+
+/**
+ * The mock companion's whole answer, in the voice: warm, concrete about what it
+ * can actually see, and honest the moment it cannot.
+ */
+export function chatReply(seed: MockSeed, question: string, plantId?: number): string {
+  const plant = plantOf(seed, plantId);
+  const active = seed.plants.filter(p => p.status === 'ACTIVE');
+  const steps = seed.reminders.filter(r => r.enabled).length;
+  const bucket = chatBucket(question);
+
+  if (active.length === 0) {
+    const opening = 'Your garden is empty here: no plants, and no care steps on the list.';
+    if (bucket === 'who') {
+      return `${opening}
+
+I am PlantPal — the knowledgeable friend rather than the botanist. Once a plant is in the garden I can answer about that one in particular.`;
+    }
+    return `${opening}
+
+So I can only answer generally, and I would rather say that than invent a plant for you. Add one and ask me again, and the answer will be about yours.`;
+  }
+
+  const it = subject(seed, plant);
+  switch (bucket) {
+    case 'who':
+      return `I am PlantPal. I read your garden — right now ${nameList(seed)} and ${steps} care steps on the list — and I answer questions about it. I never change anything myself. ${PRESS_NOTE}`;
+    case 'water':
+      return `${it} would rather be a little dry than a little wet: water when the top few centimetres are dry to the finger, not on a fixed day.
+
+Your watering schedule already sits with the plant, and ${steps} care steps stand on the list overall. ${PRESS_NOTE}`;
+    case 'light':
+      return `Bright light, no direct midday sun — a metre back from a window facing the sun is usually right for ${it}.
+
+If it has been leaning, turn it a quarter each week. ${PRESS_NOTE}`;
+    case 'yellow': {
+      const health = plant ? latestHealth(seed, plant.id) : undefined;
+      const seen =
+        health === 'ISSUES_DETECTED'
+          ? `The last scan of ${it} did flag something, so this may not be watering alone.`
+          : health === 'HEALTHY'
+            ? `The last scan of ${it} came back healthy, so I would look at watering before anything else.`
+            : `I have no recent scan of ${it} to lean on, so take this as the general answer.`;
+      return `Lower leaves going yellow is usually drought or the opposite of it — roots standing in water.
+
+${seen} ${PRESS_NOTE}`;
+    }
+    case 'pests':
+      return `Look at the undersides and where leaf meets stem: mites leave fine webbing, gnats mean the top of the soil is staying wet.
+
+For ${it} I would check both before treating anything. ${PRESS_NOTE}`;
+    case 'treatment': {
+      const disease = plant ? activeDisease(seed, plant.id) : undefined;
+      if (disease) {
+        return `${it} has a course running for ${disease}. Its steps are on the plant, in order, with the next one due first.
+
+I can talk you through any step, but I do not tick them off. ${PRESS_NOTE}`;
+      }
+      return `Nothing is under treatment on ${it} at the moment.
+
+If a scan turns something up, a course is offered there rather than here. ${PRESS_NOTE}`;
+    }
+    case 'due':
+      return `There are ${steps} care steps on the list across ${active.length} plants — ${nameList(seed)} among them.
+
+Today's are gathered on the reminders board. ${PRESS_NOTE}`;
+    default:
+      return `I am not sure about that one, and I would rather say so than guess.
+
+What I can see is ${active.length} plants — ${nameList(seed)} — and ${steps} care steps on the list. Ask me about watering, light, leaves, pests or a course and I will be on firmer ground.`;
+  }
+}
+
+/** The reply cut into tokens, whitespace kept, so the stream reads as writing. */
+export function chatTokens(reply: string): string[] {
+  return reply.match(/\S+\s*/g) ?? [];
 }
