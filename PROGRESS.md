@@ -233,3 +233,9 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-08-24 vercel-railway production deploy (H10-H17)
+
+- State: Atlas rounds 2 & 3 built on `atlas/R2-care-loop` (base dev = main 1c1c444): care loop (/care, /reminders, /treatment-plans + treatments as courses with per-step stakes, per-plant vitals), round 3 (Today from /dashboard, notifications + push knock, account + AI preferences), a zero-backend MOCK GARDEN (?mock=1|garden|day-zero|outage, in-memory backend behind an HttpInterceptorFn + MockAuthService swap, every stake mutates in place), nine settings panes with 45 parametrised choices (SettingsStore in localStorage `atlas_settings`, live apply, Save/Cancel/Reset, boot restore), insertion-stable layout (C8, `atlas_layout`), atlas lint target, Playwright atlas harness (36 e2e walks in mock mode, own config on :4300). 22 commits, +12k lines; gates: 431 jest tests, lint both projects, engine typecheck, both prod builds (atlas 537 kB, budget raised to 600 warn/800 error). Docs: FIDELITY_PLAN Phase I, STATE.md, CLAUDE.md build row, FRONTEND.md atlas inventory -- status: done, PR to dev pending merge.
+- Next step: merge the PR into dev (CI now runs on dev); run the atlas locally with `npm run start:atlas` and open http://localhost:4300/?mock=1 (no backend, no login); owner rulings still open: stake sheet keeps role=dialog (FIDELITY_PLAN decision 11), n-ask/chat stays deferred (last round per coverage scope), first real push subscription needs VAPID_PUBLIC_KEY in the atlas environment.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none (mission cae942ee coverage-gate round 2/3 report is a design-studio concern, not a vault delta)
+- Session: 2026-09-03/04 atlas R2/R3 care loop + mock garden + settings (workflow-orchestrated, S0-S8)
