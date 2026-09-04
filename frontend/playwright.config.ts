@@ -1,8 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// The atlas suite lives in playwright.atlas.config.ts (its own dev server); the
+// classic suites must not select its specs.
+const ignored = ['**/e2e/atlas/**', '**/visual.spec.ts'];
+
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/visual.spec.ts'],
+  testIgnore: ignored,
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
@@ -17,7 +21,7 @@ export default defineConfig({
     toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'chromium', testIgnore: ignored, use: { ...devices['Desktop Chrome'] } },
+    { name: 'webkit', testIgnore: ignored, use: { ...devices['Desktop Safari'] } },
   ],
 });

@@ -8,5 +8,8 @@
 export const environment = {
   production: true,
   apiUrl: '/api/v1',
+  // must equal the backend's app.web-push.public-key; empty ⇒ push refused in words
+  vapidPublicKey: '',
+  mockByDefault: false,
   classicAppUrl: 'https://localhost:8444',
 };

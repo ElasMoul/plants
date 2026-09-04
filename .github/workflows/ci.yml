@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:       # allow manual trigger from the Actions tab / API
 
 jobs:
@@ -101,7 +101,28 @@ jobs:
         working-directory: frontend
         run: npm test
 
-      # E2E (Playwright) — disabled until tests are stabilised
+      - name: Install Playwright chromium (atlas E2E)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (atlas)
+        working-directory: frontend
+        run: npm run e2e:atlas
+        env:
+          CI: true
+
+      - name: Upload E2E report (atlas)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # E2E (classic, Playwright) — disabled until tests are stabilised
       # - name: Install Playwright browsers
       #   working-directory: frontend
       #   run: npx playwright install --with-deps chromium webkit

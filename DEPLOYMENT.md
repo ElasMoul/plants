@@ -42,14 +42,33 @@ deploy, on its own cadence; the platform observes via `app.health`).
    into the frontend build); repo **variable** `BACKEND_PUBLIC_URL` = the
    Railway service's public URL (deploy.yml writes the Vercel `/api/*` rewrite
    from it and fails fast if unset).
-3b. **Atlas frontend (optional second Vercel project)** — create a second Vercel
-   project for the atlas; add secret `VERCEL_PROJECT_ID_ATLAS` and repo variables
-   `DEPLOY_ATLAS=true`, `ATLAS_PUBLIC_URL` (the atlas Vercel domain) and
-   `CLASSIC_PUBLIC_URL` (the classic Vercel domain) — deploy.yml bakes the
-   cross-app login-handoff links from them. Add BOTH Vercel domains to the
-   backend's `CORS_ALLOWED_ORIGINS` (comma-separated): Vercel's rewrite proxy
-   forwards the browser's Origin header, so Spring sees each frontend's own
-   domain.
+3b. **Atlas frontend (second Vercel project)** — the atlas is a whole second app
+   (its own Vercel project, its own domain, the same backend). Live setup:
+   project `plants-atlas`, domain `https://plants-atlas.moulworks.com`, beside
+   the classic `plants-qvj8` / `https://plants.moulworks.com`.
+   1. In the atlas Vercel project → Settings: **Root Directory empty** and
+      **Ignored Build Step = `exit 0`**. Both matter — deploy.yml uploads a
+      PREBUILT `dist` and a non-empty Root Directory is appended to the upload
+      path (the "provided path does not exist" failure), while any framework
+      auto-detect re-runs `ng build` inside the upload and exits 127.
+   2. `cd frontend && vercel link --project plants-atlas`, then read
+      `.vercel/project.json` → `projectId`. Set it as repo **secret**
+      `VERCEL_PROJECT_ID_ATLAS` (`orgId` is the already-set `VERCEL_ORG_ID`).
+      Do this BEFORE the next step: `DEPLOY_ATLAS=true` with no project id
+      makes the deploy-atlas job fail the whole Deploy run.
+   3. Repo **variables**: `DEPLOY_ATLAS=true` (the job's gate),
+      `ATLAS_PUBLIC_URL` and `CLASSIC_PUBLIC_URL` — deploy.yml seds these into
+      both apps' `environment.prod.ts`, which is what makes the login page's
+      "Continue into the Atlas" checkbox and the atlas's "Open in PlantPal"
+      links point at each other instead of at localhost.
+   4. Add BOTH domains to the backend's `CORS_ALLOWED_ORIGINS` on Railway
+      (comma-separated, no spaces) and click **Apply/Deploy** — Vercel's
+      rewrite proxy forwards the browser's Origin header, so Spring sees each
+      frontend's own domain and 403s an unlisted one.
+   5. DNS for the subdomain: add the CNAME Vercel shows for
+      `plants-atlas.moulworks.com` at the registrar, same as the classic one.
+   Note `VAPID_PUBLIC_KEY` is baked into BOTH apps (each carries its own push
+   subscribe); unset, push is refused in words rather than breaking.
 3c. **Photo storage (Cloudinary — recommended in prod)** — the Railway container
    disk is wiped on every redeploy, so `STORAGE_TYPE=local` keeps photos only in
    the 30-day Redis cache. For durable storage: create a free Cloudinary account

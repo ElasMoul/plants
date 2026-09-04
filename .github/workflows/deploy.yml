@@ -94,6 +94,10 @@ jobs:
         run: |
           sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" src/environments/environment.prod.ts
           sed -i "s|sentryDsn: ''|sentryDsn: '${SENTRY_DSN}'|" src/environments/environment.prod.ts
+          # The atlas carries its own push subscribe (round 3) and its own copy of the
+          # key — without this line a deployed atlas can never subscribe, whatever the
+          # backend holds. Unset secret leaves the empty placeholder (push refused in words).
+          sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" projects/atlas/src/environments/environment.prod.ts
           if [ -n "$ATLAS_PUBLIC_URL" ]; then
             sed -i "s|atlasUrl: 'https://localhost:8445'|atlasUrl: '${ATLAS_PUBLIC_URL}'|" src/environments/environment.prod.ts
           fi
@@ -221,7 +225,9 @@ jobs:
 
     steps:
       - name: Download atlas dist
-        uses: actions/download-artifact@v7
+        # v8 to match the backend/frontend deploy jobs — the only download path
+        # proven against this workflow's upload-artifact@v7 producers.
+        uses: actions/download-artifact@v8
         with:
           name: atlas-dist
           path: atlas-dist/

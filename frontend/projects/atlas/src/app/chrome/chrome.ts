@@ -1,35 +1,52 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { AuthService } from '@plantpal/shared-core';
 import { environment } from '../../environments/environment';
-import { classicLoginLink } from '../world/interop';
+import { classicLinkFor, classicLoginLink } from '../world/interop';
 import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
+import { MOCK_MODE } from '../core/mock-mode';
+import { SettingsStore } from '../settings/settings.store';
+import { DeviceStore } from '../settings/device.store';
+import { becameDueAt, withinQuietHours } from '../world/dates';
+import type { AtlasSettings } from '../settings/settings.model';
+import type { WorldMeta } from '../world/world.model';
+import { actionsFor } from './actions-for';
 
-/** The per-focus mutation-rail entries (theme-a ACTIONS, verbatim). */
-const ACTIONS: Record<string, string[]> = {
-  'n-fig': ['Water plant', 'Fertilize', 'Add note', 'Log photo', 'Scan leaf (AI)'],
-  'n-garden': ['Add new plant', 'Water all', 'Fertilize schedule', 'Add note'],
-  'n-species': ['Add a species by hand', 'Import a list'],
-  'n-species-more': ['Add a species by hand'],
-  'n-monstera': ['Water plant', 'Add note'],
-  'n-problems': ['Log a symptom', 'Start a treatment plan'],
-  'n-underwater': ['Start a treatment plan', 'Dismiss this problem'],
-  'n-overwater': ['Mark as resolved', 'Add note'],
-  'n-rootrot': ['Start a treatment plan', 'Add note'],
-  'n-treatment': ['Mark step done', 'Reschedule', 'Abandon plan'],
-  'n-journal': ['Add note', 'Log photo'],
-  'n-j1': ['Add note'],
-  'n-j2': ['Add note'],
-  'n-journal-more': ['Add note'],
-  'n-reminders': ['Add a reminder', 'Snooze all'],
-  'n-ident': ['Try the scan again', 'Identify by hand'],
-  'n-care': ['Save to my notes'],
-  'n-platform': ['Check health again'],
-  'n-garden-more': ['Add new plant'],
-  'n-unknown': ['Fetch this region'],
-  'n-office': ['Water plant', 'Add note'],
-  'n-studio': ['Water plant', 'Add note'],
-};
+/**
+ * What the bell counts, as a pure function of what the loader learned. Never a
+ * feed and never a guess: due reminders (or only the late ones), minus the ones
+ * snoozed on this device, minus everything already due when the reader last said
+ * they had seen it, and silent inside quiet hours. Treatment steps belong to
+ * their course, so they only count when the reader asked for them in the list.
+ */
+export function bellCountFor(
+  meta: WorldMeta | undefined,
+  settings: AtlasSettings,
+  snoozed: Record<number, string>,
+  nowIso: string,
+): number {
+  if (settings.notifications.bellCounts === 'none') return 0;
+  if (withinQuietHours(nowIso, settings.profile.quietHours)) return 0;
+  const now = Date.parse(nowIso);
+  const seen = settings.notifications.seenAt ? Date.parse(settings.notifications.seenAt) : null;
+  return (meta?.dueReminders ?? []).filter(r => {
+    if (settings.data.stepReminders !== 'also-in-reminders' && r.treatmentPlanId != null) return false;
+    const until = snoozed[r.id];
+    if (until != null && Date.parse(until) > now) return false;
+    if (seen != null && becameDueAt(r.nextDueAt, settings.notifications.dueWindow) <= seen) return false;
+    // the rows are already the due ones; "overdue" narrows to the ones past their moment
+    if (settings.notifications.bellCounts === 'overdue') return Date.parse(r.nextDueAt) < now;
+    return true;
+  }).length;
+}
 
 const MM_W = 208;
 const MM_H = 104;
@@ -46,12 +63,12 @@ const MM_H = 104;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div id="offline-bar" role="status">
-      <span>Offline · showing the world as it was at 09:12 · changes will be queued</span>
+      <span>Offline · showing the world as it was at {{ store.readAtLabel() }} · changes will be queued</span>
     </div>
 
     <header id="topbar" class="chrome">
       <span class="mark"><span class="glyph" aria-hidden="true">❧</span> PlantPal</span>
-      <span class="sub">Botanical Network</span>
+      <span class="sub">{{ mock?.enabled ? 'Botanical Network · mock garden' : 'Botanical Network' }}</span>
       <span class="spacer"></span>
       <div id="here">
         <span class="label">You are here</span>
@@ -68,12 +85,12 @@ const MM_H = 104;
         <input id="search" type="search" placeholder="Search…" aria-label="Search the network" (keydown.enter)="onSearch($event)" />
       </div>
       <button class="ch-btn" id="bell" type="button" style="width:auto" (click)="onBell()">
-        Notifications <span class="ch-count">2</span>
+        Notifications @if (bellCount() > 0) {<span class="ch-count">{{ bellCount() }}</span>}
       </button>
       @if (authed()) {
         <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false" (click)="goIfThere('n-account')">{{ accountName() }}</button>
       } @else {
-        <a class="ch-btn" id="account" style="width:auto" [href]="signInUrl">Sign in</a>
+        <a class="ch-btn" id="account" style="width:auto" [href]="signInUrl()">Sign in</a>
       }
     </header>
 
@@ -82,7 +99,7 @@ const MM_H = 104;
       <button class="ch-btn ch-btn--square" type="button" title="My garden" (click)="goIfThere('n-garden')"><span aria-hidden="true">♣</span><span class="sr">My garden</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Due today" (click)="goIfThere('n-reminders')"><span aria-hidden="true">◷</span><span class="sr">Due today</span></button>
       <button class="ch-btn ch-btn--square" type="button" title="Identify" (click)="goIfThere('n-ident')"><span aria-hidden="true">◎</span><span class="sr">Identify</span></button>
-      <button class="ch-btn ch-btn--square" type="button" title="Journal" (click)="goIfThere('n-journal')"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
+      <button class="ch-btn ch-btn--square" type="button" title="Journal" (click)="goJournal()"><span aria-hidden="true">▤</span><span class="sr">Journal</span></button>
       <button class="ch-btn ch-btn--square" type="button" id="open-settings" title="Settings" (click)="openSettings($event)"><span aria-hidden="true">⚙</span><span class="sr">Settings</span></button>
     </nav>
 
@@ -109,7 +126,12 @@ const MM_H = 104;
           >→ {{ n.name }} <small>{{ n.recap }}</small></button>
         }
       </div>
-      <span class="chrome__foot"><button class="ch-btn" type="button" id="show-all" (click)="onShowAll()">Show all connections</button></span>
+      <span class="chrome__foot">
+        <button class="ch-btn" type="button" id="show-all" (click)="onShowAll()">Show all connections</button>
+        @if (classicLink(); as link) {
+          <a class="ch-btn" id="open-classic" [href]="link" target="_blank" rel="noopener">Open in PlantPal ↗</a>
+        }
+      </span>
     </aside>
 
     <div id="atlas" class="chrome">
@@ -153,27 +175,77 @@ const MM_H = 104;
       <button class="ch-btn ch-btn--square" type="button" title="Help">?</button>
     </p>
 
+    @if (probesShown()) {
     <div id="probe" class="chrome">
       <span class="chrome__title">Show this screen</span>
       <button class="ch-btn" type="button" id="p-slow" [attr.aria-pressed]="store.probeSlow()" (click)="toggleSlow()">Slow (≥10s)</button>
       <button class="ch-btn" type="button" id="p-offline" [attr.aria-pressed]="store.probeOffline()" (click)="toggleOffline()">Offline</button>
       <button class="ch-btn" type="button" id="p-motion" [attr.aria-pressed]="store.probeReduced()" (click)="toggleReduced()">Reduced motion</button>
     </div>
+    }
   `,
 })
 export class Chrome {
   protected readonly store = inject(WorldStore);
   private readonly auth = inject(AuthService);
   private readonly actions = inject(WorldActionsService);
+  /** Named in the topbar so a mock garden is never mistaken for a real one. */
+  protected readonly mock = inject(MOCK_MODE, { optional: true });
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
-  protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');
-  protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
+  protected readonly accountName = computed(
+    () =>
+      this.settings.settings().profile.displayName ||
+      this.auth.getCurrentUser()?.firstName ||
+      'Account',
+  );
+  private readonly settings = inject(SettingsStore);
+  private readonly device = inject(DeviceStore);
+  /** Reviewer furniture: shown unless this reader asked for a quieter board. */
+  protected readonly probesShown = computed(
+    () => this.settings.settings().advanced.probes === 'show',
+  );
+  /** Interop, never a stake and never a hop: chrome, and only when asked for. */
+  protected readonly classicLink = computed(() => {
+    if (this.settings.settings().integrations.openInClassic !== 'show') return null;
+    const focus = this.store.nodes().find(n => n.id === this.store.focusId());
+    return focus
+      ? classicLinkFor(
+          focus,
+          this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl,
+        )
+      : null;
+  });
+  protected readonly signInUrl = computed(() =>
+    classicLoginLink(this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl),
+  );
+
+  /** The bell's own clock, moved once a minute. A computed only re-reads the wall
+   *  clock when something it depends on changes, so without this the count keeps
+   *  answering for the instant of the last sync: quiet hours would never begin or
+   *  end and a lapsed snooze would never come back without a reload. Nothing here
+   *  animates — chrome still carries no tick (C14). */
+  private readonly minute = signal(Date.now());
+
+  /** The arrival's own count — recomputed when the loader learns something new,
+   *  and on the minute, so it is always the count for now. */
+  protected readonly bellCount = computed(() =>
+    bellCountFor(
+      this.store.meta(),
+      this.settings.settings(),
+      this.device.care(this.mock?.enabled ? 'mock' : 'live').snoozed,
+      // Quiet hours and a lapsed snooze are read against now, never against the
+      // instant of the last sync — otherwise neither ever begins or ends.
+      new Date(this.minute()).toISOString(),
+    ),
+  );
 
   protected readonly focusName = computed(
     () => this.store.nodes().find(n => n.id === this.store.focusId())?.name ?? '',
   );
-  protected readonly focusActions = computed(() => ACTIONS[this.store.focusId()] ?? []);
+  protected readonly focusActions = computed(() =>
+    actionsFor(this.store.focusId(), this.store.meta(), this.settings.settings()),
+  );
   protected readonly neighbours = computed(() => {
     this.store.focusId();
     return this.store.focusNeighbours();
@@ -234,6 +306,8 @@ export class Chrome {
   });
 
   constructor() {
+    const clock = setInterval(() => this.minute.set(Date.now()), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
     // Probes are body-level material states — rhizome.css keys off these attrs.
     effect(() => {
       document.body.dataset['mode'] = this.store.mode();
@@ -242,6 +316,10 @@ export class Chrome {
       document.body.dataset['net'] = this.store.probeOffline() ? 'offline' : 'online';
       if (this.store.probeReduced()) document.body.dataset['motion'] = 'reduced';
       else delete document.body.dataset['motion'];
+      // the `action · /api/v1/…` lines are the atlas being the API's brief — optional
+      document.body.dataset['apiIds'] = this.settings.settings().integrations.showApiIds
+        ? 'on'
+        : 'off';
     });
   }
 
@@ -261,6 +339,8 @@ export class Chrome {
 
   protected openSettings(ev: Event): void {
     ev.stopPropagation(); // the opening click must not reach #shell's click-to-exit
+    // Cancel must be able to put back exactly what was here when it opened.
+    this.settings.open();
     this.store.mode.set('overview');
   }
 
@@ -269,9 +349,34 @@ export class Chrome {
     else this.store.say('That place is not on this board yet.');
   }
 
+  /** The journal is a live hub; the fixture board reaches the care guide instead. */
+  protected goJournal(): void {
+    const has = (id: string) => this.store.nodes().some(n => n.id === id);
+    this.goIfThere(has('n-journal') ? 'n-journal' : 'n-care');
+  }
+
+  /**
+   * An arrival: the count and the distance are spoken FIRST, then the same go()
+   * a card click uses — nothing on the way opens and nothing else moves (C16/C21).
+   */
   protected onBell(): void {
-    this.store.say('Travelling to Reminders.');
-    this.store.go('n-reminders');
+    const target = this.settings.settings().notifications.bellTarget;
+    const hops = this.store.distanceTo(target);
+    if (hops < 0) {
+      this.store.say('That place is not on this board yet.');
+      return;
+    }
+    const n = this.bellCount();
+    if (hops === 0) {
+      this.store.say(`${n} due. You are already there.`);
+      return;
+    }
+    this.store.say(
+      `${n} due, ${hops} vein${hops === 1 ? '' : 's'} from here. Crossing the veins to get there; nothing on the way opens.`,
+    );
+    // the travel sentence replaces this one in the same change-detection pass, so
+    // the arrival is given a tick of its own — the distance is really spoken first
+    setTimeout(() => this.store.go(target), 0);
   }
 
   protected onAction(a: string): void {

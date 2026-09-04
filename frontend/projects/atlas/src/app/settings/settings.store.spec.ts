@@ -1,0 +1,180 @@
+import { TestBed } from '@angular/core/testing';
+import { applyBootAppearance, SettingsStore } from './settings.store';
+import { DEFAULT_SETTINGS, SETTINGS_KEY } from './settings.model';
+
+function make(): SettingsStore {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({ providers: [SettingsStore] });
+  return TestBed.inject(SettingsStore);
+}
+
+describe('SettingsStore', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('uses the defaults when storage is empty', () => {
+    expect(make().settings()).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('persists only the difference from the defaults', () => {
+    const s = make();
+    s.set('general.pollIntervalMs', 20000);
+    // data.source is always written, default or not, so an explicit "live"
+    // choice survives a reload (mock-mode reads this blob).
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({
+      general: { pollIntervalMs: 20000 },
+      data: { source: 'live' },
+    });
+    expect(make().get('general.pollIntervalMs')).toBe(20000);
+  });
+
+  it('drops unknown keys and out-of-range values', () => {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ general: { pollIntervalMs: 9, nonsense: 1 }, data: { source: 'x' } }),
+    );
+    const s = make();
+    expect(s.get('general.pollIntervalMs')).toBe(8000);
+    expect(s.get('general.nonsense')).toBeUndefined();
+    expect(s.get('data.source')).toBe('live');
+  });
+
+  it('ignores malformed JSON', () => {
+    localStorage.setItem(SETTINGS_KEY, '{not json');
+    expect(make().settings()).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('reset restores the defaults and persists them', () => {
+    const s = make();
+    s.set('care.askForNotes', true);
+    s.reset();
+    expect(s.settings()).toEqual(DEFAULT_SETTINGS);
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({ data: { source: 'live' } });
+  });
+
+  it('open, change and cancel restores the snapshot taken at open', () => {
+    const s = make();
+    s.set('appearance.palette', 'terrarium');
+    s.open();
+    s.set('appearance.palette', 'late-bench');
+    s.set('care.defaultFrequencyDays', 14);
+    expect(s.get('appearance.palette')).toBe('late-bench');
+    s.cancel();
+    expect(s.get('appearance.palette')).toBe('terrarium');
+    expect(s.get('care.defaultFrequencyDays')).toBe(7);
+  });
+
+  it('save keeps the changes made since open', () => {
+    const s = make();
+    s.open();
+    s.set('appearance.palette', 'terrarium');
+    s.save();
+    s.cancel();
+    expect(s.get('appearance.palette')).toBe('terrarium');
+  });
+
+  it('assemblySnapshot is a plain object', () => {
+    const s = make();
+    s.set('general.dateStyle', 'absolute');
+    const snap = s.assemblySnapshot();
+    expect(Object.getPrototypeOf(snap)).toBe(Object.prototype);
+    expect(snap.dateStyle).toBe('absolute');
+    (snap as { dateStyle: string }).dateStyle = 'relative';
+    expect(s.settings().general.dateStyle).toBe('absolute');
+  });
+
+  it('does not throw when localStorage.setItem throws', () => {
+    const s = make();
+    const setItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(() => s.set('care.askForNotes', true)).not.toThrow();
+    expect(s.get('care.askForNotes')).toBe(true);
+    setItem.mockRestore();
+  });
+
+  describe('applyBootAppearance', () => {
+    afterEach(() => {
+      document.documentElement.setAttribute('data-ui', 'sill-line');
+      document.documentElement.setAttribute('data-palette', 'first-light');
+    });
+
+    it('paints the remembered reading onto the document before anything renders', () => {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({ appearance: { ui: 'glasshouse-table', palette: 'late-bench' } }),
+      );
+      applyBootAppearance();
+      expect(document.documentElement.getAttribute('data-ui')).toBe('glasshouse-table');
+      expect(document.documentElement.getAttribute('data-palette')).toBe('late-bench');
+    });
+
+    it('leaves the page markup alone when nothing was ever stored', () => {
+      document.documentElement.setAttribute('data-ui', 'glasshouse-table');
+      applyBootAppearance();
+      expect(document.documentElement.getAttribute('data-ui')).toBe('glasshouse-table');
+    });
+
+    it('does not throw when storage is unreadable', () => {
+      const getItem = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked');
+      });
+      expect(() => applyBootAppearance()).not.toThrow();
+      getItem.mockRestore();
+    });
+  });
+});
+
+describe('SettingsStore — the companion keys', () => {
+  beforeEach(() => localStorage.clear());
+
+  function store(): SettingsStore {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [SettingsStore] });
+    return TestBed.inject(SettingsStore);
+  }
+
+  it('defaults all six, and survives a reload', () => {
+    const s = store();
+    expect(s.get('ai.chatTransport')).toBe('stream');
+    expect(s.get('ai.chatHistoryTurns')).toBe(5);
+    expect(s.get('ai.chatPlantContext')).toBe('focused');
+    expect(s.get('ai.chatThreads')).toBe('device');
+    expect(s.get('data.chatTurnsKept')).toBe(3);
+    expect(s.get('data.chatThreadsKept')).toBe(8);
+
+    s.patch({
+      'ai.chatTransport': 'buffered',
+      'ai.chatHistoryTurns': 0,
+      'ai.chatPlantContext': 'never',
+      'ai.chatThreads': 'session',
+      'data.chatTurnsKept': 10,
+      'data.chatThreadsKept': 20,
+    });
+    const back = store();
+    expect(back.get('ai.chatTransport')).toBe('buffered');
+    expect(back.get('ai.chatHistoryTurns')).toBe(0);
+    expect(back.get('ai.chatPlantContext')).toBe('never');
+    expect(back.get('ai.chatThreads')).toBe('session');
+    expect(back.get('data.chatTurnsKept')).toBe(10);
+    expect(back.get('data.chatThreadsKept')).toBe(20);
+  });
+
+  it('ignores a value no pane offers, and resets to the defaults', () => {
+    const s = store();
+    s.set('ai.chatHistoryTurns', 99);
+    s.set('ai.chatTransport', 'websocket');
+    expect(s.get('ai.chatHistoryTurns')).toBe(5);
+    expect(s.get('ai.chatTransport')).toBe('stream');
+    s.set('data.chatTurnsKept', 0);
+    expect(s.get('data.chatTurnsKept')).toBe(0);
+    s.reset();
+    expect(s.get('data.chatTurnsKept')).toBe(3);
+  });
+
+  it('carries both data keys into the assembly snapshot', () => {
+    const s = store();
+    s.patch({ 'data.chatTurnsKept': 10, 'data.chatThreadsKept': 3 });
+    expect(s.assemblySnapshot().chatTurnsKept).toBe(10);
+    expect(s.assemblySnapshot().chatThreadsKept).toBe(3);
+  });
+});
