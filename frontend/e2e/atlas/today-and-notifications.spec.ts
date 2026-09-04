@@ -97,8 +97,8 @@ test.describe('round 3 on the running mock garden', () => {
     await opened(atlas, 'n-account');
     const account = await atlas.node('n-account').innerText();
     expect(account).toContain('sam@example.org');
-    expect(account).toContain('GPT-4o');
-    expect(account).toContain('DeepSeek-R1');
+    // the mock seed mirrors the server's current defaults (Claude for both menus)
+    expect(account).toContain('Claude');
     expect(account).toContain('mock session');
 
     await atlas.stake('n-account', 'Sign out here').click();
