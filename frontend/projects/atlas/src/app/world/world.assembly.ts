@@ -1,6 +1,33 @@
 import { buildAdjacency, Edge, rank } from '@plantpal/rhizome-engine';
-import { IdentificationDto, PlantDto, SpeciesDto, WorldSources } from './world.dto';
-import { NodeKind, WorldData, WorldNode } from './world.model';
+import {
+  agoLabel,
+  becameDueAt,
+  careLabel,
+  dateLabel,
+  daysUntil,
+  dueLine,
+  isDue,
+  timeLabel,
+  wordNumber,
+} from './dates';
+import {
+  AssemblySettings,
+  CareLogDto,
+  Cell,
+  DashboardDto,
+  FamilyFailure,
+  IdentificationDto,
+  PlantDto,
+  PushState,
+  ReminderDto,
+  ReminderSummaryDto,
+  SpeciesDto,
+  TreatmentDto,
+  TreatmentPlanDto,
+  UserPreferencesDto,
+  WorldSources,
+} from './world.dto';
+import { NodeKind, WorldData, WorldMeta, WorldNode } from './world.model';
 
 /** A collection with this many members or more collapses to 2 + "+N more" (C4/density). */
 const DENSITY_CAP = 4;
@@ -17,9 +44,28 @@ function esc(s: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
-const recapWrap = (line: string, note?: string) =>
+/** The default skeleton shape — a name and two lines, the prototype's card blank. */
+const DEFAULT_SKEL = ['sk--name', 'sk--line', 'sk--line is-short'];
+
+/** Still-arriving material, revealed only under the slow probe (rhizome.css:899). */
+const PENDING_BLOCK =
+  '<div class="pending"><p class="label" style="margin:0">Still arriving</p><div class="sk sk--row"></div><div class="sk sk--row"></div></div>';
+
+/**
+ * The head of every generated body, in the prototype's own order: the recap, this
+ * node's own staleness sentence (each node says its own — C24), its own skeleton
+ * shape at the height of the rows it will hold, and the still-arriving block.
+ */
+const recapWrap = (line: string, note?: string, stale?: string, skel: string[] = DEFAULT_SKEL) =>
   `<div class="n__recap"><p class="n__recap-line">${line}</p>${note ? `<p class="n__recap-note">${note}</p>` : ''}</div>
-   <div class="n__skel" aria-hidden="true"><div class="sk sk--name"></div><div class="sk sk--line"></div><div class="sk sk--line is-short"></div></div>`;
+   ${stale ? `<div class="staleness"><span aria-hidden="true">◷</span> ${stale}</div>` : ''}
+   <div class="n__skel" aria-hidden="true">${skel.map(c => `<div class="sk ${c}"></div>`).join('')}</div>
+   ${PENDING_BLOCK}`;
+
+/** The `action · …` line is the API's own brief — a reader may turn it off. */
+function stateId(id: string, settings: AssemblySettings): string {
+  return settings.showApiIds ? `<span class="state__id">${id}</span>` : '';
+}
 
 const full = (inner: string) => `<div class="n__full">${inner}</div>`;
 
@@ -36,12 +82,146 @@ function waterLine(p: PlantDto): string {
   return `In ${d} days`;
 }
 
+// ── the care loop's shared reading of the sources ────────────────────────────
+
+/**
+ * What every care-loop body reads: the rows themselves, the device-local state
+ * that is honestly named as device-local, and the set of nodes that will actually
+ * be drawn, so a row can only ever link somewhere that exists.
+ */
+interface Ctx {
+  now: string;
+  settings: AssemblySettings;
+  drawn: Set<string>;
+  reminders: ReminderDto[];
+  logs: CareLogDto[];
+  treatments: TreatmentDto[];
+  plansById: Record<number, TreatmentPlanDto>;
+  plants: PlantDto[];
+  paused: number[];
+  snoozed: Record<number, string>;
+  rateLimited: Record<number, { retryAfterSeconds: number; at: string }>;
+  /** The server's own overdue count, per reminder id, from /dashboard's buckets. */
+  overdueByReminder: Record<number, number>;
+  /** True when care history was fetched only for the plants this board draws. */
+  logsPartial: boolean;
+  /** Where this device stands with push knocks — a readout, never a promise. */
+  push: PushState;
+  /** The server's own count, when it answered. */
+  dashboard: DashboardDto | null;
+  speciesCount: number;
+}
+
+/** The scope clause a count wears when it is not the whole garden's record. */
+function logScope(ctx: Ctx): string {
+  return ctx.logsPartial ? ' from the plants on this board' : '';
+}
+
+/** "3 entries" / "1 entry", scoped honestly when the fan-out was partial. */
+function entriesLine(ctx: Ctx): string {
+  const n = ctx.logs.length;
+  return `${n} ${n === 1 ? 'entry' : 'entries'}${logScope(ctx)}`;
+}
+
+/** "3 things logged" / "1 thing logged", scoped honestly. */
+function loggedLine(ctx: Ctx): string {
+  const n = ctx.logs.length;
+  return `${n} ${n === 1 ? 'thing' : 'things'} logged${logScope(ctx)}`;
+}
+
+/** The one sentence a due row says about itself, in this world's clock. */
+function due(ctx: Ctx, r: ReminderDto): string {
+  return dueLine(r.nextDueAt, ctx.now, ctx.settings, ctx.overdueByReminder[r.id]);
+}
+
+function isSnoozed(ctx: Ctx, r: ReminderDto): boolean {
+  const until = ctx.snoozed[r.id];
+  return until != null && Date.parse(until) > Date.parse(ctx.now);
+}
+
+/** Routine care: treatment steps live inside their course unless the reader says otherwise. */
+function routineReminders(ctx: Ctx): ReminderDto[] {
+  return ctx.reminders
+    .filter(r => r.enabled)
+    .filter(r => ctx.settings.stepReminders === 'also-in-reminders' || r.treatmentPlanId == null)
+    .sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt) || a.id - b.id);
+}
+
+function remindersOfPlant(ctx: Ctx, plantId: number, careType?: string): ReminderDto[] {
+  return routineReminders(ctx).filter(
+    r => r.plantId === plantId && (careType == null || r.careType === careType),
+  );
+}
+
+function logsOfPlant(ctx: Ctx, plantId: number, careType?: string): CareLogDto[] {
+  return ctx.logs.filter(l => l.plantId === plantId && (careType == null || l.careType === careType));
+}
+
+function stepsOf(ctx: Ctx, t: TreatmentDto): ReminderDto[] {
+  const plan = t.treatmentPlanId != null ? ctx.plansById[t.treatmentPlanId] : undefined;
+  return [...(plan?.steps ?? [])].sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0) || a.id - b.id);
+}
+
+/** Did this course's plan actually arrive? A missing answer is never "0 of 0". */
+function hasPlan(ctx: Ctx, t: TreatmentDto): boolean {
+  return t.treatmentPlanId == null || ctx.plansById[t.treatmentPlanId] != null;
+}
+
+function isPaused(ctx: Ctx, t: TreatmentDto): boolean {
+  return (
+    ctx.settings.pause === 'local' &&
+    t.treatmentPlanId != null &&
+    ctx.paused.includes(t.treatmentPlanId)
+  );
+}
+
+/** The one clause a course says about itself from across the plane (C17/C19). */
+function courseRecap(ctx: Ctx, t: TreatmentDto): string {
+  if (t.status === 'DRAFT') return 'Draft · no plan yet';
+  const steps = stepsOf(ctx, t);
+  if (t.status === 'COMPLETED') return `${esc(t.diseaseName)} · finished`;
+  if (t.status === 'DISMISSED') return `${esc(t.diseaseName)} · dismissed`;
+  if (!hasPlan(ctx, t)) return `${esc(t.diseaseName)} · the plan did not come back`;
+  const done = steps.filter(s => !s.enabled).length;
+  const line = `${done} of ${steps.length} done`;
+  return isPaused(ctx, t) ? `paused · ${line}` : line;
+}
+
+/** Rank: what is due first, then what is running, then what is waiting, then what is over. */
+function treatmentRank(ctx: Ctx, t: TreatmentDto): number {
+  if (t.status === 'COMPLETED' || t.status === 'DISMISSED') return 4;
+  // A device-local pause deliberately does NOT re-rank: pausing the course you are
+  // reading must change that node's own words, never the board's membership — a
+  // demoted course would drop out of the drawn two and vanish under the reader (C9).
+  if (t.status === 'DRAFT') return 2;
+  const open = stepsOf(ctx, t).filter(s => s.enabled);
+  return open.some(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow)) ? 0 : 1;
+}
+
 // ── per-node body builders (the prototype's material language, live data) ────
 
-function plantBody(p: PlantDto): string {
+function plantBody(p: PlantDto, ctx: Ctx): string {
   const binomial = p.species ? `<span class="plate__binomial">${esc(p.species)}</span>` : '';
+  const water = remindersOfPlant(ctx, p.id, 'WATERING')[0];
+  const routine = remindersOfPlant(ctx, p.id);
+  const lastWater = logsOfPlant(ctx, p.id, 'WATERING')[0];
+  const lastFeed = logsOfPlant(ctx, p.id, 'FERTILIZING')[0];
+  const course = ctx.treatments.find(
+    t => t.plantId === p.id && (t.status === 'DRAFT' || t.status === 'IN_PROGRESS'),
+  );
+  const courseCell = course
+    ? linkTo(ctx.drawn, `n-treatment-${course.id}`, `${esc(course.diseaseName)} · ${courseRecap(ctx, course)}`)
+    : 'None running';
+  const careRows = routine
+    .map(r => `<div class="row"><dt>${careLabel(r.careType)}</dt><dd>${due(ctx, r)}</dd></div>`)
+    .join('');
   return (
-    recapWrap(`${waterLine(p)} · water`, esc(p.commonName ?? p.species ?? '')) +
+    recapWrap(
+      `${waterLine(p)} · water`,
+      esc(p.commonName ?? p.species ?? ''),
+      `Last read ${timeLabel(ctx.now)}`,
+      ['sk--plate', 'sk--row', 'sk--row'],
+    ) +
     full(`
       <div class="plate">
         <div class="plate__specimen" aria-hidden="true"></div>
@@ -52,19 +232,427 @@ function plantBody(p: PlantDto): string {
         </div>
       </div>
       <section class="state" data-brief-item="action:/api/v1/plants/**">
-        <div class="state__head"><h4 class="state__title">This plant</h4><span class="state__id">action · /api/v1/plants/${p.id}</span></div>
-        <dl class="rows">
+        <div class="state__head"><h4 class="state__title">This plant</h4>${stateId(`action · /api/v1/plants/${p.id}`, ctx.settings)}</div>
+        <dl class="rows" data-vitals>
+          <div class="row"><dt>Health</dt><dd>${healthTag(p.healthStatus)}</dd></div>
           <div class="row"><dt>Species</dt><dd>${esc(p.commonName ?? p.species ?? 'Not identified yet')}</dd></div>
-          <div class="row"><dt>Next water</dt><dd>${waterLine(p)}</dd></div>
-          ${p.location ? `<div class="row"><dt>Location</dt><dd>${esc(p.location)}</dd></div>` : ''}
-          ${p.activeTreatmentId ? '<div class="row"><dt>Treatment</dt><dd>Active plan running</dd></div>' : ''}
+          <div class="row"><dt>Next water</dt><dd>${water ? due(ctx, water) : 'No schedule yet'}</dd></div>
+          <div class="row"><dt>Location</dt><dd>${p.location ? esc(p.location) : 'Not recorded'}</dd></div>
+          <div class="row"><dt>Course</dt><dd>${courseCell}</dd></div>
+          <div class="row"><dt>Watered</dt><dd>${lastWater ? agoLabel(lastWater.performedAt, ctx.now, ctx.settings.dateStyle) : 'Not logged yet'}</dd></div>
+          <div class="row"><dt>Fed</dt><dd>${lastFeed ? agoLabel(lastFeed.performedAt, ctx.now, ctx.settings.dateStyle) : 'Not logged yet'}</dd></div>
         </dl>
-        <div class="btn-row"><button class="stake" type="button">Water plant</button><button class="stake stake--quiet" type="button">Add note</button></div>
+        <div class="btn-row">
+          <button class="stake" type="button" data-arg="plant:${p.id}">${water ? 'Water plant' : 'Set a watering schedule'}</button>
+          <button class="stake stake--quiet" type="button" data-arg="plant:${p.id}">Add note</button>
+          <button class="stake stake--quiet" type="button" data-arg="plant:${p.id}">Add a reminder</button>
+        </div>
+      </section>
+      <section class="state" data-brief-item="action:/api/v1/care/**">
+        <div class="state__head"><h4 class="state__title">Care, and what you actually did</h4>${stateId('action · /api/v1/care/**', ctx.settings)}</div>
+        ${careRows ? `<dl class="rows">${careRows}</dl>` : `<p class="state__note">${esc(p.nickname)} has no care schedule yet — one press below makes the first one.</p>`}
+        <div class="btn-row">
+          <button class="stake" type="button" data-arg="plant:${p.id}">Log a watering</button>
+          ${water ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${water.id}">Change the schedule</button>` : ''}
+          ${water ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${water.id}">Stop this reminder</button>` : ''}
+        </div>
       </section>`)
   );
 }
 
-function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<string>): string {
+// ── the care loop's own nodes ────────────────────────────────────────────────
+
+function reminderHubBody(ctx: Ctx): string {
+  const routine = routineReminders(ctx);
+  const awake = routine.filter(r => !isSnoozed(ctx, r));
+  const dueToday = awake.filter(r => daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow) === 0);
+  const next = awake.find(r => !isDue(r.nextDueAt, ctx.now, ctx.settings.dueWindow)) ?? awake[0];
+  const overdue = awake.find(r => daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow) < 0);
+
+  const rows = routine
+    .slice(0, 6)
+    .map(r => {
+      const overdueRow = !isSnoozed(ctx, r) && daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow) <= 0;
+      const dd = isSnoozed(ctx, r)
+        ? 'Snoozed until tomorrow · on this device'
+        : `${due(ctx, r)} <button class="stake stake--quiet" type="button" data-arg="reminder:${r.id}">Done</button>`;
+      return `<div class="row" data-due="${overdueRow}"><dt>${careLabel(r.careType)} · ${linkTo(ctx.drawn, `n-plant-${r.plantId}`, esc(r.plantNickname ?? `Plant ${r.plantId}`))}</dt><dd>${dd}</dd></div>`;
+    })
+    .join('');
+
+  const snoozeStake =
+    ctx.settings.snooze === 'local' && overdue
+      ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${overdue.id}">Snooze the overdue one</button>`
+      : '';
+  const snoozeNote =
+    ctx.settings.snooze === 'off'
+      ? '<p class="state__note">Snoozing is not something PlantPal keeps yet.</p>'
+      : '';
+
+  const emptyPanel = `
+      <section class="state state--empty" data-brief-item="state:empty">
+        <div class="state__head"><h4 class="state__title">Nothing due today</h4>${stateId('state · empty', ctx.settings)}</div>
+        <div class="empty-plot">
+          <span class="glyph" aria-hidden="true">◌</span>
+          <p class="state__note">No reminder is due. This is an empty plot with room in it, not a failure${next ? ` — the next check-in is ${due(ctx, next).toLowerCase()}` : ''}.</p>
+        </div>
+        <button class="stake stake--quiet" type="button">Add a reminder</button>
+      </section>`;
+
+  return (
+    recapWrap(
+      dueToday.length > 0 ? `${dueToday.length} due today` : 'Nothing due today',
+      next ? `Next check-in ${due(ctx, next).toLowerCase()}.` : undefined,
+      `Last synced ${timeLabel(ctx.now)}`,
+      ['sk--row'],
+    ) +
+    full(`
+      <section class="state" data-brief-item="action:/api/v1/reminders/**">
+        <div class="state__head"><h4 class="state__title">What PlantPal will remind you of</h4>${stateId('action · /api/v1/reminders/**', ctx.settings)}</div>
+        <p class="state__note">A reminder belongs to a plant and to a kind of care. Snoozing one moves that reminder and nothing else; it never silently reschedules the rest of your garden.</p>
+        ${rows ? `<dl class="rows">${rows}</dl>` : ''}
+        ${routine.length > 6 ? `<p class="state__note">${routine.length - 6} more reminders are not listed here.</p>` : ''}
+        ${snoozeNote}
+        <div class="btn-row">
+          <button class="stake" type="button">Add a reminder</button>
+          ${snoozeStake}
+        </div>
+      </section>
+      ${notificationsSection(ctx)}
+      ${routine.length === 0 ? emptyPanel : ''}`)
+  );
+}
+
+/** Awake, routine and due — what a knock would be about. */
+function dueAwake(ctx: Ctx): ReminderDto[] {
+  return routineReminders(ctx).filter(
+    r => !isSnoozed(ctx, r) && isDue(r.nextDueAt, ctx.now, ctx.settings.dueWindow),
+  );
+}
+
+/** Due since the reader last said they had seen it — the count the bell wears. */
+function unreadOf(ctx: Ctx): number {
+  const seen = ctx.settings.seenAt ? Date.parse(ctx.settings.seenAt) : null;
+  return dueAwake(ctx).filter(
+    r => seen == null || becameDueAt(r.nextDueAt, ctx.settings.dueWindow) > seen,
+  ).length;
+}
+
+const PUSH_ROW: Record<PushState, string> = {
+  on: 'On · this device',
+  off: 'Off · enable in Settings · Notifications',
+  blocked: 'Blocked by the browser',
+  unsupported: 'Not supported in this browser',
+  unconfigured: 'Not configured on this server',
+};
+
+/**
+ * How a reminder reaches you — the verbatim panel, told about this device. A
+ * reminder is the thing and a knock is the knock: every row here can read off
+ * while every reminder on the card above stays on.
+ */
+function notificationsSection(ctx: Ctx): string {
+  const quiet = ctx.settings.quietHours !== 'off';
+  const push =
+    ctx.push === 'on' ? `${PUSH_ROW.on}${quiet ? ' · not during quiet hours' : ''}` : PUSH_ROW[ctx.push];
+  const knocks = dueAwake(ctx).length;
+  const unread = unreadOf(ctx);
+  const first = dueAwake(ctx)[0];
+  const vein =
+    first && ctx.drawn.has(`n-plant-${first.plantId}`)
+      ? ` — see the vein to ${linkTo(ctx.drawn, `n-plant-${first.plantId}`, esc(first.plantNickname ?? `Plant ${first.plantId}`))}`
+      : '';
+  return `
+      <section class="state" data-brief-item="action:/api/v1/notifications/**">
+        <div class="state__head"><h4 class="state__title">How it reaches you</h4>${stateId('action · /api/v1/notifications/**', ctx.settings)}</div>
+        <p class="state__note">A reminder is the thing; a notification is the knock. They are separate on purpose — you can keep every reminder and turn every knock off.</p>
+        <dl class="rows" data-notifications>
+          <div class="row"><dt>Push</dt><dd>${push}</dd></div>
+          <div class="row"><dt>Daily knock</dt><dd>Every day at 08:00, PlantPal's clock · ${knocks} would knock today</dd></div>
+          <div class="row"><dt>Email</dt><dd>Not offered by PlantPal</dd></div>
+          <div class="row"><dt>Unread</dt><dd>${unread}</dd></div>
+        </dl>
+        <p class="state__note">An arrival never moves the camera. It lights the node it concerns and waits${vein}.</p>
+        <div class="btn-row">
+          <button class="stake stake--quiet" type="button"${unread === 0 ? ' aria-disabled="true"' : ''}>Mark all read</button>
+        </div>
+      </section>`;
+}
+
+function careHubBody(ctx: Ctx): string {
+  const logs = ctx.logs;
+  const last = logs[0];
+  const lastWater = logs.find(l => l.careType === 'WATERING');
+  const lastFeed = logs.find(l => l.careType === 'FERTILIZING');
+  const nextWater = routineReminders(ctx).find(r => r.careType === 'WATERING');
+  const off = ctx.settings.careLogPageSize === 0;
+
+  const notFetched = `
+      <section class="state state--empty" data-brief-item="action:/api/v1/care/**">
+        <div class="state__head"><h4 class="state__title">Care, and what you actually did</h4>${stateId('action · /api/v1/care/**', ctx.settings)}</div>
+        <div class="empty-plot"><span class="glyph" aria-hidden="true">◌</span>
+        <p class="state__note">Care history not fetched — turn it on in Settings · Data &amp; Sync.</p></div>
+      </section>`;
+
+  const record = `
+      <section class="state" data-brief-item="action:/api/v1/care/**">
+        <div class="state__head"><h4 class="state__title">Care, and what you actually did</h4>${stateId('action · /api/v1/care/**', ctx.settings)}</div>
+        <p class="state__note">The guide below is what a plant wants. This is the record of what it got: every watering, feeding and repotting you logged, and the schedule they are measured against.</p>
+        <dl class="rows">
+          <div class="row"><dt>Watered</dt><dd>${lastWater ? `${agoLabel(lastWater.performedAt, ctx.now, ctx.settings.dateStyle)}${lastWater.notes ? ` · ${esc(lastWater.notes)}` : ''}` : 'Not logged yet'}</dd></div>
+          <div class="row"><dt>Fed</dt><dd>${lastFeed ? `${agoLabel(lastFeed.performedAt, ctx.now, ctx.settings.dateStyle)}${lastFeed.notes ? ` · ${esc(lastFeed.notes)}` : ''}` : 'Not logged yet'}</dd></div>
+          <div class="row"><dt>Next due</dt><dd>${nextWater ? due(ctx, nextWater) : 'No schedule yet'}</dd></div>
+        </dl>
+        <div class="btn-row">
+          <button class="stake" type="button">Log a watering</button>
+          ${nextWater ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${nextWater.id}">Change the schedule</button>` : ''}
+        </div>
+      </section>`;
+
+  return (
+    recapWrap(
+      off ? 'Care history not fetched' : loggedLine(ctx),
+      off
+        ? undefined
+        : last
+          ? `Last ${careLabel(last.careType).toLowerCase()} ${agoLabel(last.performedAt, ctx.now, ctx.settings.dateStyle).toLowerCase()}.`
+          : 'Nothing logged yet.',
+      `Cached ${timeLabel(ctx.now)} · the record only grows`,
+      ['sk--sub', 'sk--line', 'sk--line is-short'],
+    ) +
+    full(`
+      ${off ? notFetched : record}
+      <section>
+        <h3 class="sec">Watering</h3>
+        <p>Water slowly until it drains from the bottom, then let the top 2–3 cm dry before the next drink. If the leaves are drooping and the soil is dry all the way down, see ${linkTo(ctx.drawn, 'n-problems', 'underwatering')}.</p>
+        <dl class="rows">
+          <div class="row"><dt>Ideal moisture</dt><dd>40 – 60%</dd></div>
+          <div class="row"><dt>Soil</dt><dd>Well-draining, rich</dd></div>
+          <div class="row"><dt>Pot</dt><dd>With drainage</dd></div>
+        </dl>
+      </section>`)
+  );
+}
+
+function journalHubBody(ctx: Ctx, collapsed: number): string {
+  const logs = ctx.logs;
+  const feed = logs
+    .slice(0, 2)
+    .map(
+      l =>
+        `<div class="feed__row"><span class="feed__when">${dateLabel(l.performedAt)}</span><span>${careLabel(l.careType)} · ${linkTo(ctx.drawn, `n-plant-${l.plantId}`, esc(l.plantNickname ?? `Plant ${l.plantId}`))}</span><span class="feed__val">${l.notes ? esc(l.notes) : '·'}</span></div>`,
+    )
+    .join('');
+  const empty = `
+      <section class="state state--empty" data-brief-item="state:empty">
+        <div class="state__head"><h4 class="state__title">Nothing written yet · a good place to start</h4>${stateId('state · empty', ctx.settings)}</div>
+        <div class="empty-plot"><span class="glyph" aria-hidden="true">◌</span>
+        <p class="state__note">The journal fills itself: every watering you log writes a line here.</p></div>
+        <button class="stake stake--quiet" type="button">Log a watering</button>
+      </section>`;
+  return (
+    recapWrap(
+      logs.length === 0 ? 'Nothing written yet' : entriesLine(ctx),
+      logs.length === 0 ? 'A good place to start.' : 'Watering, notes and photos, newest first.',
+      `Last synced ${timeLabel(ctx.now)}`,
+      ['sk--row', 'sk--row'],
+    ) +
+    full(
+      logs.length === 0
+        ? empty
+        : `
+      <section>
+        <h3 class="sec">${entriesLine(ctx)}</h3>
+        <p>${collapsed > 0 ? `${wordNumber(logs.length)} is four or more, so the same rule applies here as to species and to plants: the two most recent entries are drawn, and one node holds the other ${wordNumber(collapsed)}.` : `${wordNumber(logs.length)} is fewer than four, so every entry is drawn as its own node beside this card.`}</p>
+        <div class="feed">${feed}</div>
+        ${collapsed > 0 ? `<button class="hop hop--block" type="button" data-goto="n-journal-more" style="margin-top:var(--hbm-space-4)">Reach the other ${collapsed} entries <small>+${collapsed} more</small></button>` : ''}
+      </section>`,
+    )
+  );
+}
+
+function logBody(l: CareLogDto, ctx: Ctx): string {
+  return (
+    recapWrap(
+      `${careLabel(l.careType)} · ${esc(l.plantNickname ?? `Plant ${l.plantId}`)}`,
+      agoLabel(l.performedAt, ctx.now, ctx.settings.dateStyle),
+      `Last synced ${timeLabel(ctx.now)}`,
+      ['sk--line'],
+    ) +
+    full(`
+      <section class="state" data-brief-item="action:/api/v1/care/**">
+        <div class="state__head"><h4 class="state__title">This entry</h4>${stateId(`action · /api/v1/care/plant/${l.plantId}`, ctx.settings)}</div>
+        <dl class="rows">
+          <div class="row"><dt>Care</dt><dd>${careLabel(l.careType)}</dd></div>
+          <div class="row"><dt>Plant</dt><dd>${linkTo(ctx.drawn, `n-plant-${l.plantId}`, esc(l.plantNickname ?? `Plant ${l.plantId}`))}</dd></div>
+          <div class="row"><dt>When</dt><dd class="v mono">${dateLabel(l.performedAt)} ${timeLabel(l.performedAt)}</dd></div>
+        </dl>
+        ${l.notes ? `<p>${esc(l.notes)}</p>` : '<p class="state__note">No note was written with this one.</p>'}
+      </section>`)
+  );
+}
+
+function treatmentsHubBody(ctx: Ctx): string {
+  const active = ctx.treatments.filter(t => t.status === 'IN_PROGRESS');
+  const drafts = ctx.treatments.filter(t => t.status === 'DRAFT');
+  const rows = [...active, ...drafts]
+    .map(
+      t =>
+        `<div class="row"><dt>${linkTo(ctx.drawn, `n-treatment-${t.id}`, esc(t.plantNickname ?? plantName(ctx, t.plantId)))}</dt><dd>${esc(t.diseaseName)} · ${courseRecap(ctx, t)}</dd></div>`,
+    )
+    .join('');
+  const line =
+    active.length === 0 && drafts.length === 0
+      ? 'No course running'
+      : `${active.length} running${drafts.length ? ` · ${drafts.length} waiting for a plan` : ''}`;
+  const empty = `
+      <section class="state state--empty" data-brief-item="state:empty">
+        <div class="state__head"><h4 class="state__title">No course is running</h4>${stateId('state · empty', ctx.settings)}</div>
+        <div class="empty-plot"><span class="glyph" aria-hidden="true">◌</span>
+        <p class="state__note">When a scan finds a problem, start one from the plant.</p></div>
+        <button class="stake stake--quiet" type="button">Start a treatment plan</button>
+      </section>`;
+  return (
+    recapWrap(
+      line,
+      'A course is a sequence with an end, not a setting.',
+      `Last synced ${timeLabel(ctx.now)} · steps may have been ticked elsewhere`,
+      ['sk--row', 'sk--row'],
+    ) +
+    full(
+      rows
+        ? `
+      <section class="state" data-brief-item="action:/api/v1/treatments/**">
+        <div class="state__head"><h4 class="state__title">The courses you are running</h4>${stateId('action · /api/v1/treatments/**', ctx.settings)}</div>
+        <dl class="rows">${rows}</dl>
+        <div class="btn-row"><button class="stake" type="button">Start a treatment plan</button></div>
+      </section>`
+        : empty,
+    )
+  );
+}
+
+function plantName(ctx: Ctx, plantId: number): string {
+  return ctx.plants.find(p => p.id === plantId)?.nickname ?? `Plant ${plantId}`;
+}
+
+function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
+  const steps = stepsOf(ctx, t);
+  const open = steps.filter(s => s.enabled);
+  const paused = isPaused(ctx, t);
+  const nextOpen = open[0];
+  const dueStep = open.find(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow));
+  const planHere = hasPlan(ctx, t);
+  const limit = ctx.rateLimited[t.id];
+
+  // 1 — what this is
+  const model = t.diseaseDescriptionModel ? esc(t.diseaseDescriptionModel) : 'PlantPal';
+  const description =
+    t.descriptionStatus === 'READY' && t.diseaseDescription
+      ? `<section><h3 class="sec">What this is</h3><p>${esc(t.diseaseDescription)}</p><p class="state__note">Described by ${model}.</p></section>`
+      : t.descriptionStatus === 'FAILED'
+        ? `<section class="state state--error" data-brief-item="state:error">
+             <div class="state__head"><h4 class="state__title">The write-up did not come back</h4>${stateId('state · error', ctx.settings)}</div>
+             <p class="state__note">PlantPal's model answered with an error at ${timeLabel(ctx.now)}. The treatment and its steps are kept. Nothing moved.</p>
+             <div class="btn-row"><button class="stake" type="button" data-arg="treatment:${t.id}">Write it up again</button></div>
+             <p class="state__note">The ${linkTo(ctx.drawn, 'n-care', 'care guide')} covers the same ground without a model.</p>
+           </section>`
+        : `<section class="state state--loading" data-brief-item="state:loading">
+             <div class="state__head"><h4 class="state__title">Still describing this disease</h4>${stateId('state · pending', ctx.settings)}</div>
+             <p class="state__note">Usually about fifteen seconds. The course keeps its place.</p>
+             <div class="sk sk--row"></div><div class="sk sk--row"></div>
+           </section>`;
+
+  // 2 — the course
+  const stepReason = !planHere
+    ? 'The plan did not come back.'
+    : paused
+      ? 'The course is paused on this device.'
+      : !nextOpen
+        ? 'Every step is done.'
+        : 'Nothing is due today.';
+  const stepStake =
+    paused || !dueStep
+      ? `<button class="stake" type="button" aria-disabled="true" data-reason="${stepReason}">Mark today done</button>`
+      : `<button class="stake" type="button" data-arg="reminder:${dueStep.id}">Mark today done</button>`;
+  const pauseStake =
+    ctx.settings.pause === 'local' && t.treatmentPlanId != null
+      ? `<button class="stake stake--quiet" type="button" data-arg="plan:${t.treatmentPlanId}">${paused ? 'Resume this course' : 'Pause this course'}</button>`
+      : '';
+  const limitPanel = limit
+    ? `<section class="state state--error" data-limit="reached" data-brief-item="state:limit">
+         <div class="state__head"><h4 class="state__title">You have used today's AI plans</h4>${stateId('state · limit', ctx.settings)}</div>
+         <p class="state__note">They come back in ${Math.max(1, Math.round(limit.retryAfterSeconds / 60))} minutes, and everything else still works.</p>
+         <div class="btn-row"><button class="stake stake--quiet" type="button" data-arg="treatment:${t.id}">Add the steps by hand</button></div>
+       </section>`
+    : '';
+  const courseButtons =
+    t.status === 'DRAFT'
+      ? limit
+        ? ''
+        : `<div class="btn-row"><button class="stake" type="button" data-arg="treatment:${t.id}">Craft the treatment plan</button></div>`
+      : t.status === 'IN_PROGRESS'
+        ? `<div class="btn-row">${stepStake}${pauseStake}<button class="stake stake--quiet" type="button" data-arg="treatment:${t.id}">Finish this course</button></div>`
+        : `<p class="state__note">${t.status === 'DISMISSED' ? 'Dismissed' : 'Finished'} ${t.completedAt ? dateLabel(t.completedAt) : dateLabel(t.createdAt)}. It stays on ${esc(plantName(ctx, t.plantId))} as part of its story.</p>`;
+
+  const course = `
+      <section class="state" data-brief-item="action:/api/v1/treatment-plans/**">
+        <div class="state__head"><h4 class="state__title">The course you are running</h4>${stateId('action · /api/v1/treatment-plans/**', ctx.settings)}</div>
+        <p class="state__note">A plan is a sequence with an end, not a setting. You can start one, mark a step done, or pause it while you are away.</p>
+        <dl class="rows">
+          <div class="row"><dt>Running</dt><dd>${esc(t.diseaseName)} · ${courseRecap(ctx, t)}</dd></div>
+          <div class="row"><dt>Next step</dt><dd>${nextOpen ? `${due(ctx, nextOpen)} · ${esc(nextOpen.instruction ?? careLabel(nextOpen.careType))}` : planHere ? 'Every step is done' : 'Not fetched — the plan did not come back'}</dd></div>
+          <div class="row"><dt>Treating</dt><dd>${linkTo(ctx.drawn, `n-plant-${t.plantId}`, esc(plantName(ctx, t.plantId)))}</dd></div>
+          ${t.treatmentPlanModel ? `<div class="row"><dt>Plan crafted using</dt><dd>${esc(t.treatmentPlanModel)}</dd></div>` : ''}
+        </dl>
+        ${courseButtons}
+      </section>
+      ${limitPanel}`;
+
+  // 3 — the steps: a mutation, never an exit (no link, no hop, inside data-course)
+  const stepRows = steps
+    .map(s => {
+      const isDueRow = dueStep != null && s.id === dueStep.id;
+      return `<div class="row" data-step-id="${s.id}" data-done="${!s.enabled}" data-due="${isDueRow}" data-paused="${paused}"><dt>${s.stepOrder ?? ''} · ${esc(s.instruction ?? careLabel(s.careType))}</dt><dd>${s.enabled ? due(ctx, s) : `Done · ${dateLabel(s.completedAt ?? s.nextDueAt)}`}</dd></div>`;
+    })
+    .join('');
+  const markStake =
+    !paused && dueStep
+      ? `<button class="stake" type="button" data-arg="reminder:${dueStep.id}" aria-pressed="false" style="margin-top:var(--hbm-space-4)">Mark step ${dueStep.stepOrder ?? 1} as done</button>`
+      : '';
+  const stepsSection = steps.length
+    ? `<section><h3 class="sec">${wordNumber(steps.length)} ${steps.length === 1 ? 'step' : 'steps'}</h3><dl class="rows" data-course>${stepRows}</dl>${markStake}</section>`
+    : planHere
+      ? ''
+      : `<section class="state state--unknown" data-brief-item="state:unknown">
+        <div class="state__head"><h4 class="state__title">The steps did not come back</h4>${stateId('state · unknown', ctx.settings)}</div>
+        <p class="state__note">PlantPal did not answer for this course's plan, so its steps are not drawn. What they are is unknown here, not empty. The course itself is kept.</p>
+      </section>`;
+
+  const recapNote = t.plantNickname ?? plantName(ctx, t.plantId);
+  return (
+    recapWrap(
+      courseRecap(ctx, t),
+      esc(recapNote),
+      `Course read ${timeLabel(ctx.now)}`,
+      ['sk--row', 'sk--row'],
+    ) +
+    full(`
+      ${description}
+      ${course}
+      ${stepsSection}
+      <section class="state" data-brief-item="action:/api/v1/treatments/**">
+        <div class="state__head"><h4 class="state__title">This course</h4>${stateId(`action · /api/v1/treatments/${t.id}`, ctx.settings)}</div>
+        <dl class="rows">
+          <div class="row"><dt>Plant</dt><dd>${linkTo(ctx.drawn, `n-plant-${t.plantId}`, esc(plantName(ctx, t.plantId)))}</dd></div>
+          <div class="row"><dt>Started</dt><dd>${t.startedAt ? dateLabel(t.startedAt) : 'Not started'}</dd></div>
+          <div class="row"><dt>Written by</dt><dd>${model}</dd></div>
+        </dl>
+      </section>`)
+  );
+}
+
+function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<string>, settings: AssemblySettings): string {
   const rows = plantsOfSpecies
     .slice(0, 3)
     .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${waterLine(p)}</dd></div>`)
@@ -80,7 +668,7 @@ function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<stri
         </div>
       </div>
       <section class="state" data-brief-item="action:/api/v1/species/**">
-        <div class="state__head"><h4 class="state__title">This species</h4><span class="state__id">action · /api/v1/species/${s.id}</span></div>
+        <div class="state__head"><h4 class="state__title">This species</h4>${stateId(`action · /api/v1/species/${s.id}`, settings)}</div>
         ${rows ? `<dl class="rows">${rows}</dl>` : '<p class="state__note">None of your plants are this species yet.</p>'}
       </section>`)
   );
@@ -89,11 +677,11 @@ function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<stri
 function scanStatusLine(i: IdentificationDto): string {
   const name = esc(i.commonName ?? i.species ?? 'Unknown');
   if (i.status === 'FAILED') return `<span class="tag tag--ailing">Failed</span>`;
-  if (i.status === 'PENDING' || i.status === 'PROCESSING') return `<span class="tag tag--watch">Analysing…</span>`;
+  if (i.status === 'PENDING' || i.status === 'PROCESSING') return `<span class="tag tag--watch">Still identifying</span>`;
   return name;
 }
 
-function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
+function identBody(idents: IdentificationDto[], drawn: Set<string>, settings: AssemblySettings): string {
   const latest = idents[0];
   const feed = idents
     .slice(0, 4)
@@ -102,7 +690,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
   const failedPanel =
     latest && latest.status === 'FAILED'
       ? `<section class="state state--error">
-           <div class="state__head"><h4 class="state__title">The last scan did not come back</h4><span class="state__id">action · /api/v1/identifications/**</span></div>
+           <div class="state__head"><h4 class="state__title">The last scan did not come back</h4>${stateId(`action · /api/v1/identifications/**`, settings)}</div>
            <p class="state__note">Your photo is kept — nothing was lost. Retry sits here, in the node.</p>
            <div class="btn-row"><button class="stake" type="button">Try the scan again</button><button class="stake stake--quiet" type="button">Identify by hand</button></div>
          </section>`
@@ -110,7 +698,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
   const pendingPanel =
     latest && (latest.status === 'PENDING' || latest.status === 'PROCESSING')
       ? `<section class="state state--loading">
-           <div class="state__head"><h4 class="state__title">A scan is being analysed</h4><span class="state__id">data · polling</span></div>
+           <div class="state__head"><h4 class="state__title">A scan is being analysed</h4>${stateId(`data · polling`, settings)}</div>
            <p class="state__note">The answer arrives into this node — the geography holds while it does.</p>
          </section>`
       : '';
@@ -119,7 +707,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
     full(`
       ${failedPanel}${pendingPanel}
       <section class="state" data-brief-item="action:/api/v1/identifications/**">
-        <div class="state__head"><h4 class="state__title">Your identifications</h4><span class="state__id">action · /api/v1/identifications/**</span></div>
+        <div class="state__head"><h4 class="state__title">Your identifications</h4>${stateId(`action · /api/v1/identifications/**`, settings)}</div>
         ${feed ? `<div class="feed">${feed}</div>` : '<p class="state__note">Photograph a plant and the answer lands here.</p>'}
         <div class="btn-row"><button class="stake" type="button">Identify a plant</button></div>
       </section>`)
@@ -131,7 +719,7 @@ function linkTo(drawn: Set<string>, id: string, label: string): string {
   return drawn.has(id) ? `<a class="doc-link" href="#${id}" data-goto="${id}">${label}</a>` : label;
 }
 
-function scanBody(i: IdentificationDto, drawn: Set<string>): string {
+function scanBody(i: IdentificationDto, drawn: Set<string>, settings: AssemblySettings): string {
   const name = esc(i.commonName ?? i.species ?? 'Unknown plant');
   const plantNode = i.plantId != null ? `n-plant-${i.plantId}` : null;
   const plantRow = plantNode
@@ -141,7 +729,7 @@ function scanBody(i: IdentificationDto, drawn: Set<string>): string {
     recapWrap(scanStatusLine(i), esc(i.createdAt.slice(0, 10))) +
     full(`
       <section class="state" data-brief-item="action:/api/v1/identifications/**">
-        <div class="state__head"><h4 class="state__title">This scan</h4><span class="state__id">action · /api/v1/identifications/${i.id}</span></div>
+        <div class="state__head"><h4 class="state__title">This scan</h4>${stateId(`action · /api/v1/identifications/${i.id}`, settings)}</div>
         <dl class="rows">
           <div class="row"><dt>Answer</dt><dd>${name}</dd></div>
           ${i.species ? `<div class="row"><dt>Species</dt><dd>${esc(i.species)}</dd></div>` : ''}
@@ -154,82 +742,500 @@ function scanBody(i: IdentificationDto, drawn: Set<string>): string {
   );
 }
 
-function gardenBody(plants: PlantDto[], drawn: Set<string>): string {
+function gardenBody(plants: PlantDto[], drawn: Set<string>, ctx: Ctx): string {
   const ranked = [...plants].sort(plantByOwed);
   const rows = ranked
     .slice(0, 3)
     .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${waterLine(p)}</dd></div>`)
     .join('');
   return (
-    recapWrap(`${plants.length} plants`) +
+    recapWrap(`${plants.length} plants`, undefined, `Last synced ${timeLabel(ctx.now)} · watering counts may be stale`, ['sk--sub', 'sk--row', 'sk--row']) +
     full(`
       <section class="state" data-brief-item="action:/api/v1/plants/**">
-        <div class="state__head"><h4 class="state__title">Your plants</h4><span class="state__id">action · /api/v1/plants/**</span></div>
+        <div class="state__head"><h4 class="state__title">Your plants</h4>${stateId(`action · /api/v1/plants/**`, ctx.settings)}</div>
         ${rows ? `<dl class="rows">${rows}</dl>` : '<p class="state__note">No plants yet — add the first one.</p>'}
         <div class="btn-row"><button class="stake" type="button">Add a plant</button></div>
       </section>`)
   );
 }
 
-function accountBody(user: WorldSources['user']): string {
-  const who = user ? `${esc(user.firstName)} ${esc(user.lastName)}` : 'Signed in';
+// -- Today: a count, not a feed ----------------------------------------------
+
+/** One line of the day's work: a kind of care, the plant it is about, how late. */
+interface TodayRow {
+  careType: string;
+  plantId: number;
+  plantNickname?: string;
+  /** Whole days late; 0 means today. */
+  overdue: number;
+}
+
+function todayRowOf(r: ReminderDto, ctx: Ctx, serverOverdue?: number): TodayRow {
+  const late =
+    serverOverdue != null
+      ? serverOverdue
+      : Math.max(0, -daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow));
+  return { careType: r.careType, plantId: r.plantId, plantNickname: r.plantNickname, overdue: late };
+}
+
+/**
+ * A dashboard bucket row, made whole. The server sends a narrow summary keyed by
+ * reminderId; enabled/treatmentPlanId live on GET /reminders, so we join by id
+ * and fall back to "enabled" when the reminder is not among the ones we hold.
+ */
+function resolveSummary(ctx: Ctx, s: ReminderSummaryDto): ReminderDto {
+  const id = s.reminderId ?? s.id;
+  const known = id != null ? ctx.reminders.find(r => r.id === id) : undefined;
+  return {
+    ...(known ?? {}),
+    ...s,
+    id: id ?? -1,
+    plantId: s.plantId,
+    careType: s.careType,
+    nextDueAt: s.nextDueAt,
+    enabled: s.enabled ?? known?.enabled ?? true,
+    treatmentPlanId: s.treatmentPlanId ?? known?.treatmentPlanId,
+  } as ReminderDto;
+}
+
+/** Steps belong to their course, not to the day's list (data.stepReminders). */
+function countable(ctx: Ctx, r: ReminderDto): boolean {
   return (
-    recapWrap(user ? esc(user.email) : 'Your session') +
+    r.enabled &&
+    !isSnoozed(ctx, r) &&
+    (ctx.settings.stepReminders === 'also-in-reminders' || r.treatmentPlanId == null)
+  );
+}
+
+/**
+ * The day's rows, and where they were counted. The dashboard's buckets are the
+ * server's own day (daysOverdue precomputed in its clock); under 'rolling-24h',
+ * or when the dashboard did not answer, the same rows are counted here from the
+ * reminders -- and the card says which, rather than going blank.
+ */
+function todayCount(ctx: Ctx): {
+  overdue: TodayRow[];
+  today: TodayRow[];
+  source: 'server' | 'client';
+} {
+  if (ctx.dashboard && ctx.settings.dueWindow === 'server-day') {
+    return {
+      overdue: ctx.dashboard.overdueReminders
+        .map(s => ({ s, r: resolveSummary(ctx, s) }))
+        .filter(x => countable(ctx, x.r))
+        // no server count: work the lateness out from the due date rather than invent one
+        .map(x => todayRowOf(x.r, ctx, x.s.daysOverdue ?? undefined)),
+      today: ctx.dashboard.todayReminders
+        .map(s => resolveSummary(ctx, s))
+        .filter(r => countable(ctx, r))
+        .map(r => todayRowOf(r, ctx, 0)),
+      source: 'server',
+    };
+  }
+  const rows = routineReminders(ctx)
+    .filter(r => !isSnoozed(ctx, r) && isDue(r.nextDueAt, ctx.now, ctx.settings.dueWindow))
+    .map(r => todayRowOf(r, ctx));
+  return {
+    overdue: rows.filter(r => r.overdue > 0),
+    today: rows.filter(r => r.overdue === 0),
+    source: 'client',
+  };
+}
+
+/** How far into a running course you are, when one of its steps is due today. */
+function courseDay(ctx: Ctx, t: TreatmentDto): string | null {
+  if (t.status !== 'IN_PROGRESS' || isPaused(ctx, t)) return null;
+  const steps = stepsOf(ctx, t);
+  const open = steps.filter(s => s.enabled);
+  if (!open.some(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow))) return null;
+  const started = t.startedAt ?? t.createdAt;
+  const elapsed = Math.max(0, -daysUntil(started, ctx.now, 'server-day'));
+  const lastDue = steps.length ? steps[steps.length - 1].nextDueAt : ctx.now;
+  const remaining = Math.max(0, daysUntil(lastDue, ctx.now, 'server-day'));
+  return `day ${elapsed + 1} of ${elapsed + remaining + 1}`;
+}
+
+/** The rows themselves -- every name a door into the plant or the course. */
+function todayRowsHtml(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const all = [...count.overdue, ...count.today];
+  const shown = all.slice(0, 6);
+  const rows = shown
+    .map(
+      r =>
+        `<div class="row"><dt>${careLabel(r.careType)}</dt><dd>${linkTo(
+          ctx.drawn,
+          `n-plant-${r.plantId}`,
+          esc(r.plantNickname ?? plantName(ctx, r.plantId)),
+        )} · ${
+          r.overdue > 0 ? `${r.overdue} ${r.overdue === 1 ? 'day' : 'days'} overdue` : 'today'
+        }</dd></div>`,
+    )
+    .join('');
+  const more =
+    all.length > shown.length
+      ? `<div class="row"><dt>And ${all.length - shown.length} more</dt><dd>${linkTo(ctx.drawn, 'n-reminders', 'Reminders')}</dd></div>`
+      : '';
+  const courses = ctx.treatments
+    .map(t => ({ t, day: courseDay(ctx, t) }))
+    .filter((x): x is { t: TreatmentDto; day: string } => x.day !== null)
+    .map(
+      x =>
+        `<div class="row"><dt>Check on</dt><dd>${linkTo(
+          ctx.drawn,
+          `n-treatment-${x.t.id}`,
+          esc(x.t.diseaseName),
+        )} · ${x.day}</dd></div>`,
+    )
+    .join('');
+  return rows + more + courses;
+}
+
+/** What the garden is, under the day's work: a count of health, not a feed. */
+function gardenSummarySection(ctx: Ctx): string {
+  const d = ctx.dashboard;
+  // the server and the mock name these fields differently, and the server sends
+  // no plantCount at all — take a number where there is one, count here otherwise
+  const num = (...vs: (number | undefined)[]): number | undefined =>
+    vs.find(v => typeof v === 'number');
+  const hs = d?.healthSummary;
+  const healthy =
+    num(hs?.healthy, hs?.healthyCount) ??
+    ctx.plants.filter(p => p.healthStatus === 'HEALTHY').length;
+  const issues =
+    num(hs?.issues, hs?.issuesCount) ??
+    ctx.plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').length;
+  const unknown =
+    num(hs?.unknown, hs?.unknownCount) ??
+    ctx.plants.filter(p => p.healthStatus !== 'HEALTHY' && p.healthStatus !== 'ISSUES_DETECTED')
+      .length;
+  const plants = num(d?.plantCount, hs?.totalPlants) ?? ctx.plants.length;
+  const species = num(d?.speciesCount) ?? ctx.speciesCount;
+  const feed = (d?.healthTrends ?? [])
+    .filter(t => t.trend !== 'STABLE')
+    .map(
+      t =>
+        `<div class="feed__row"><span class="feed__when">${esc(t.plantNickname)}</span><span class="feed__val">${
+          t.trend === 'IMPROVING' ? 'Improving' : 'Getting worse'
+        }</span></div>`,
+    )
+    .join('');
+  return `
+      <section>
+        <h3 class="sec">Your garden</h3>
+        <dl class="rows">
+          <div class="row"><dt>Plants</dt><dd class="v mono">${plants}</dd></div>
+          <div class="row"><dt>Healthy</dt><dd class="v mono">${healthy}</dd></div>
+          <div class="row"><dt>Needs attention</dt><dd class="v mono">${issues}</dd></div>
+          <div class="row"><dt>Unknown</dt><dd class="v mono">${unknown}</dd></div>
+          <div class="row"><dt>Species</dt><dd class="v mono">${species}</dd></div>
+        </dl>
+        ${feed ? `<div class="feed">${feed}</div>` : ''}
+      </section>`;
+}
+
+/** The day's own panel -- reused verbatim under a failure, so a count is never lost. */
+function todaySummarySection(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const rows = todayRowsHtml(ctx, count);
+  const counted =
+    count.source === 'server'
+      ? ''
+      : `<div class="row"><dt>Counted from reminders</dt><dd>${
+          ctx.dashboard ? 'your due window is a rolling 24 hours' : 'the dashboard did not come back'
+        }</dd></div>`;
+  return `
+      <section class="state" data-brief-item="action:/api/v1/dashboard/**">
+        <div class="state__head"><h4 class="state__title">Today's summary</h4>${stateId('action · /api/v1/dashboard/**', ctx.settings)}</div>
+        <p class="state__note">A count, not a feed. Every line here is a door: pressing one travels to the plant it is about, and the plant is already drawn beside this card, so you can see where you are going before you go.</p>
+        ${rows || counted ? `<dl class="rows" data-today>${rows}${counted}</dl>` : '<p class="state__note">Nothing is due and nothing is late.</p>'}
+        <p class="state__note">Counts move; nothing on the plane moves with them (C9).</p>
+      </section>`;
+}
+
+/** The day-zero board's Today: a real zero, never a sample. */
+function todayEmptySection(ctx: Ctx): string {
+  return `
+      <section class="state state--empty" data-brief-item="state:empty">
+        <div class="state__head"><h4 class="state__title">Nothing to do today</h4>${stateId('state · empty', ctx.settings)}</div>
+        <div class="empty-plot"><span class="glyph" aria-hidden="true">◌</span>
+        <p class="state__note">No plants yet — the first one you add lands beside this card.</p></div>
+      </section>`;
+}
+
+/** The count, its rows and the garden under it. Today carries no stake (prototype). */
+function todayBody(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const dayZero = ctx.plants.length === 0;
+  const line =
+    count.today.length + count.overdue.length === 0
+      ? 'Nothing due · nothing overdue'
+      : `<span class="tag tag--watch">${count.today.length} due</span> ${count.overdue.length} overdue`;
+  const note = `${ctx.settings.displayName ? `${esc(ctx.settings.displayName)} · ` : ''}What your garden wants from you before this evening.`;
+  const stale =
+    count.source === 'server'
+      ? `Counted ${timeLabel(ctx.now)} · from PlantPal's own day`
+      : `Counted ${timeLabel(ctx.now)} · counted here, from your reminders`;
+  return (
+    recapWrap(line, note, stale, ['sk--sub', 'sk--row', 'sk--row']) +
+    full(
+      `${dayZero ? todayEmptySection(ctx) : todaySummarySection(ctx, count)}${gardenSummarySection(ctx)}`,
+    )
+  );
+}
+
+/** The gardener's word for a model choice -- never the enum. */
+const MODEL_LABELS: Record<string, string> = {
+  GITHUB_GPT4O: 'GPT-4o',
+  GITHUB_GPT41: 'GPT-4.1',
+  GITHUB_O4_MINI: 'o4-mini',
+  GITHUB_GPT41_MINI: 'GPT-4.1 mini',
+  DEEPSEEK_R1: 'DeepSeek-R1',
+  OLLAMA_GEMMA3: 'Gemma 3, on this machine',
+  OLLAMA_LLAVA: 'Gemma 3, on this machine',
+  PLANTNET: 'PlantNet',
+  ANTHROPIC_CLAUDE: 'Claude',
+};
+
+function modelLabel(value: string | undefined): string {
+  if (!value) return 'Not fetched — try again';
+  return MODEL_LABELS[value] ?? value;
+}
+
+/** "Since 08:41 · this device" -- or the plain truth when there is no token to read. */
+function sessionRows(session: WorldSources['sessionTimes'], settings: AssemblySettings): string {
+  if (session?.mock) {
+    return `
+          <div class="row"><dt>This session</dt><dd>mock session</dd></div>
+          <div class="row"><dt>Expires</dt><dd>mock session</dd></div>`;
+  }
+  const since = session?.issuedAt ? `Since ${timeLabel(session.issuedAt)} · this device` : 'This device';
+  const until = session?.expiresAt ? timeLabel(session.expiresAt) : 'Not stated in the token';
+  void settings;
+  return `
+          <div class="row"><dt>This session</dt><dd>${since}</dd></div>
+          <div class="row"><dt>Expires</dt><dd>${until}</dd></div>`;
+}
+
+/**
+ * The account, as PlantPal holds you: the session it issued, and the fields it
+ * actually keeps. Display name, units and quiet hours have no server field --
+ * they live on this device and the settings pane says so.
+ */
+function accountBody(
+  user: WorldSources['user'],
+  prefs: UserPreferencesDto | null,
+  session: WorldSources['sessionTimes'],
+  now: string,
+  settings: AssemblySettings,
+): string {
+  const missing = 'Not fetched — try again';
+  const name = settings.displayName || user?.firstName || '';
+  const quiet = settings.quietHours === 'off' ? 'Off' : settings.quietHours.replace('-', ' – ');
+  const stale = session?.mock
+    ? 'Read from the mock session'
+    : session?.expiresAt
+      ? `Session read ${timeLabel(now)} · valid until ${timeLabel(session.expiresAt)}`
+      : `Session read ${timeLabel(now)}`;
+  return (
+    recapWrap(
+      user ? esc(user.email) : 'Your session',
+      undefined,
+      stale,
+      ['sk--sub', 'sk--row', 'sk--row'],
+    ) +
     full(`
       <section class="state" data-brief-item="action:POST /api/v1/auth/login">
-        <div class="state__head"><h4 class="state__title">Signing in</h4><span class="state__id">action · POST /api/v1/auth/login</span></div>
+        <div class="state__head"><h4 class="state__title">Signing in</h4>${stateId(`action · POST /api/v1/auth/login`, settings)}</div>
         <p class="state__note">Sign-in lives on the classic PlantPal page — the session it issues is the one this atlas is using now.</p>
+        <dl class="rows">${sessionRows(session, settings)}
+        </dl>
+        <div class="btn-row">
+          <button class="stake" type="button">Sign in on another device</button>
+          <button class="stake stake--quiet" type="button">Sign out here</button>
+        </div>
       </section>
       <section class="state" data-brief-item="action:/api/v1/users/**">
-        <div class="state__head"><h4 class="state__title">You, as PlantPal holds you</h4><span class="state__id">action · /api/v1/users/**</span></div>
-        <dl class="rows">
-          <div class="row"><dt>Name</dt><dd>${who}</dd></div>
-          ${user ? `<div class="row"><dt>Email</dt><dd class="v mono">${esc(user.email)}</dd></div>` : ''}
+        <div class="state__head"><h4 class="state__title">You, as PlantPal holds you</h4>${stateId(`action · /api/v1/users/**`, settings)}</div>
+        <p class="state__note">Your name, your email, your units and your quiet hours. If a field is not on this list, PlantPal is not keeping it — the first three live on this device only.</p>
+        <dl class="rows" data-account>
+          <div class="row"><dt>Display name</dt><dd>${name ? esc(name) : 'Not set on this device'}</dd></div>
+          <div class="row"><dt>Email</dt><dd class="v mono">${user ? esc(user.email) : missing}</dd></div>
+          <div class="row"><dt>Units</dt><dd>${settings.units === 'metric' ? 'Metric · °C' : 'Imperial · °F'}</dd></div>
+          <div class="row"><dt>Quiet hours</dt><dd>${quiet}</dd></div>
+          <div class="row"><dt>Garden type</dt><dd>${prefs ? (prefs.businessTier ? 'Business or professional' : 'Home garden') : missing}</dd></div>
+          <div class="row"><dt>Vision model</dt><dd>${modelLabel(prefs?.visionModelPreference)}</dd></div>
+          <div class="row"><dt>Reasoning model</dt><dd>${modelLabel(prefs?.reasoningModelPreference)}</dd></div>
+          <div class="row"><dt>PlantNet</dt><dd>${prefs ? `${esc(prefs.plantnetProject ?? 'all')} · ${esc(prefs.plantnetLang ?? 'en')}` : missing}</dd></div>
         </dl>
+        <div class="btn-row">
+          <button class="stake" type="button">Edit your details</button>
+          <button class="stake stake--quiet" type="button">Export everything</button>
+        </div>
       </section>`)
   );
 }
 
-function platformBody(): string {
+function platformBody(settings: AssemblySettings): string {
   return (
     recapWrap('Health · feeds') +
     full(`
       <section class="state" data-brief-item="action:\`app.health\`">
-        <div class="state__head"><h4 class="state__title">Health check</h4><span class="state__id">action · app.health</span></div>
+        <div class="state__head"><h4 class="state__title">Health check</h4>${stateId(`action · app.health`, settings)}</div>
         <p class="state__note">The backend behind this world. A check runs end-to-end and reports here.</p>
         <div class="btn-row"><button class="stake stake--quiet" type="button">Check health again</button></div>
       </section>
       <section class="state state--unknown" data-brief-item="data:dimension.event">
-        <div class="state__head"><h4 class="state__title">Dimension events</h4><span class="state__id">data · dimension.event</span></div>
+        <div class="state__head"><h4 class="state__title">Dimension events</h4>${stateId(`data · dimension.event`, settings)}</div>
         <p class="state__note">Not fetched yet — the platform feed lands in a later round.</p>
       </section>
       <section class="state state--unknown" data-brief-item="data:state.event">
-        <div class="state__head"><h4 class="state__title">State events</h4><span class="state__id">data · state.event</span></div>
+        <div class="state__head"><h4 class="state__title">State events</h4>${stateId(`data · state.event`, settings)}</div>
         <p class="state__note">Not fetched yet.</p>
       </section>`)
   );
 }
 
-/** A deferred-family node body (coverage-scope: rounds 2/3). */
-function deferredBody(title: string, id: string, note: string): string {
+/** A node body for a family the atlas does not cover yet (currently: the chat
+ *  companion). It names what is missing rather than drawing an empty card. */
+function deferredBody(title: string, id: string, note: string, settings: AssemblySettings): string {
   return (
-    recapWrap('Coming with the care loop') +
+    recapWrap('Not on this board yet') +
     full(`
       <section class="state state--empty" data-brief-item="action:${id}">
-        <div class="state__head"><h4 class="state__title">${title}</h4><span class="state__id">action · ${id}</span></div>
+        <div class="state__head"><h4 class="state__title">${title}</h4>${stateId(`action · ${id}`, settings)}</div>
         <div class="empty-plot"><span aria-hidden="true">◌</span></div>
         <p class="state__note">${note}</p>
       </section>`)
   );
 }
 
+/** Which node wears a family's failure — degradation is per-node material (C25). */
+const FAILURE_NODE: Record<string, string[]> = {
+  reminders: ['n-reminders'],
+  dashboard: ['n-today'],
+  // the journal is built from the same care rows — an outage is not an empty plot
+  care: ['n-care', 'n-journal'],
+  treatments: ['n-treatments'],
+  users: ['n-account'],
+};
+
+/** A spoken noun for each family — a slug never belongs in a sentence. */
+const FAILURE_NAME: Record<string, string> = {
+  reminders: 'your reminders',
+  dashboard: "today's count",
+  care: 'your care history',
+  treatments: 'the treatments',
+  users: 'your account',
+  'treatment-plans': 'the treatment plan',
+};
+
+function failureName(f: FamilyFailure): string {
+  return FAILURE_NAME[f.family] ?? f.family;
+}
+
+/**
+ * Which nodes wear a family's failure. `treatment-plans` is stamped with the PLAN
+ * id, not the treatment id — resolve it back through the treatments, or the outage
+ * lands on a node that cannot exist and is silently swallowed.
+ */
+function failureNodeIds(f: FamilyFailure, treatments: TreatmentDto[]): string[] {
+  if (f.family === 'treatment-plans') {
+    if (f.ref == null) return [];
+    const t = treatments.find(x => x.treatmentPlanId === f.ref);
+    return t ? [`n-treatment-${t.id}`] : [];
+  }
+  return FAILURE_NODE[f.family] ?? [];
+}
+
+/** The failure, written inside the node it belongs to: fact, time, fate, ways on. */
+function failureBody(
+  f: FamilyFailure,
+  extraWay: boolean,
+  settings: AssemblySettings,
+  appendix = '',
+): string {
+  const note = `PlantPal answered with ${f.status} at ${timeLabel(f.at)}. Everything already drawn is kept; nothing moved.`;
+  return (
+    recapWrap('Did not come back', esc(f.message ?? undefined)) +
+    full(`
+      <section class="state state--error" data-brief-item="state:error">
+        <div class="state__head"><h4 class="state__title">${esc(failureName(f))} did not come back</h4>${stateId(`state · error`, settings)}</div>
+        <p class="state__note">${note}</p>
+        <div class="btn-row"><button class="stake" type="button">Fetch this region</button>${
+          extraWay ? '<button class="stake stake--quiet" type="button">Count again</button>' : ''
+        }</div>
+      </section>
+      ${appendix}`)
+  );
+}
+
+/** Loader facts beside the board — never rendered, read by the chrome and actions. */
+function buildMeta(sources: WorldSources): WorldMeta {
+  const { now, reminders, plants, identifications, treatments, plansById, paused, failures } =
+    sources;
+  const dueReminders = reminders
+    .filter(r => r.enabled && isDue(r.nextDueAt, now, sources.settings.dueWindow))
+    .map(r => ({
+      id: r.id,
+      nextDueAt: r.nextDueAt,
+      plantId: r.plantId,
+      treatmentPlanId: r.treatmentPlanId,
+      label: r.plantNickname
+        ? `${careLabel(r.careType)} · ${r.plantNickname}`
+        : careLabel(r.careType),
+    }));
+
+  const scansByPlant: Record<number, number> = {};
+  for (const i of [...identifications].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    if (i.plantId != null) scansByPlant[i.plantId] = i.id;
+  }
+
+  const treatmentsIndex: WorldMeta['treatmentsIndex'] = {};
+  for (const t of treatments) {
+    const plan = t.treatmentPlanId != null ? plansById[t.treatmentPlanId] : undefined;
+    const nextStep = plan?.steps
+      .filter(st => st.enabled)
+      .sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0))[0];
+    treatmentsIndex[t.id] = {
+      plantId: t.plantId,
+      status: t.status,
+      planId: t.treatmentPlanId ?? undefined,
+      nextStepId: nextStep?.id,
+      nextStepOrder: nextStep?.stepOrder,
+      paused: t.treatmentPlanId != null && paused.includes(t.treatmentPlanId),
+    };
+  }
+
+  return {
+    syncedAt: now,
+    reminders,
+    dueReminders,
+    plantsIndex: plants.map(p => ({
+      id: p.id,
+      nickname: p.nickname,
+      lastScanId: p.lastScanId ?? scansByPlant[p.id],
+    })),
+    treatmentsIndex,
+    scansByPlant,
+    // only an explicitly pending description on a course still running is worth
+    // polling for — a finished or dismissed course will never write one again
+    hasPendingDescription: treatments.some(
+      t =>
+        t.descriptionStatus === 'PENDING' &&
+        t.status !== 'COMPLETED' &&
+        t.status !== 'DISMISSED',
+    ),
+    failures,
+  };
+}
+
 // ── the assembly ─────────────────────────────────────────────────────────────
 
 /**
- * Assemble the world from live PlantPal data — the round-1 spine of the
- * mission's coverage scope: plants, species, identifications (async), auth,
- * platform. Deterministic in its inputs: stable ids, density collapse, BFS cell
- * layout (C7). Deferred families render as honest deferred panels, never blanks.
+ * Assemble the world from live PlantPal data — rounds 1 to 3 of the mission's
+ * coverage scope: the spine (plants, species, identifications, auth, platform),
+ * the care loop (reminders, care journal, treatment courses, plant vitals) and
+ * the dashboard, notifications and account. Deterministic in its inputs: stable
+ * ids, density collapse, BFS cell layout with prior-cell allocation (C7/C8).
+ * A family PlantPal has no endpoint for says so in its own words, never blank.
  */
 export function assembleWorld(sources: WorldSources): WorldData {
   const { plants, species, identifications, user } = sources;
@@ -249,34 +1255,82 @@ export function assembleWorld(sources: WorldSources): WorldData {
   const rankedPlantsAll = [...plants].sort(plantByOwed);
   const drawnPlants = rankedPlantsAll.length < DENSITY_CAP ? rankedPlantsAll : rankedPlantsAll.slice(0, 2);
   const drawnScans = latestScan.length < DENSITY_CAP ? latestScan : latestScan.slice(0, 2);
+
+  const overdueByReminder: Record<number, number> = {};
+  for (const r of [
+    ...(sources.dashboard?.overdueReminders ?? []),
+    ...(sources.dashboard?.todayReminders ?? []),
+  ]) {
+    const id = r.reminderId ?? r.id;
+    if (r.daysOverdue != null && id != null) overdueByReminder[id] = r.daysOverdue;
+  }
+  const logs = Object.values(sources.careLogsByPlant)
+    .flat()
+    .sort((a, b) => b.performedAt.localeCompare(a.performedAt) || b.id - a.id);
+
+  const ctx: Ctx = {
+    now: sources.now,
+    settings: sources.settings,
+    drawn: new Set<string>(),
+    reminders: sources.reminders,
+    logs,
+    treatments: sources.treatments,
+    plansById: sources.plansById,
+    plants,
+    paused: sources.paused,
+    snoozed: sources.snoozed,
+    rateLimited: sources.rateLimited,
+    overdueByReminder,
+    push: sources.push,
+    dashboard: sources.dashboard,
+    speciesCount: species.length,
+    logsPartial: Object.keys(sources.careLogsByPlant).length < plants.length,
+  };
+
+  const rankedTreatments = [...sources.treatments].sort(
+    (a, b) => treatmentRank(ctx, a) - treatmentRank(ctx, b) || a.id - b.id,
+  );
+  const drawnTreatments =
+    rankedTreatments.length < DENSITY_CAP ? rankedTreatments : rankedTreatments.slice(0, 2);
+  const drawnLogs = logs.length < DENSITY_CAP ? logs : logs.slice(0, 2);
+  const collapsedLogs = logs.length >= DENSITY_CAP ? logs.length - 2 : 0;
+
+  // every drawn id is known before a single body is built, so a row can only
+  // ever link somewhere that exists (a doc-link never points at a missing node)
   const drawn = new Set<string>([
     ...drawnPlants.map(p => `n-plant-${p.id}`),
     ...drawnScans.map(i => `n-scan-${i.id}`),
+    ...drawnTreatments.map(t => `n-treatment-${t.id}`),
+    ...drawnLogs.map(l => `n-log-${l.id}`),
+    'n-care',
+    ...(issues > 0 ? ['n-problems'] : []),
   ]);
+  ctx.drawn = drawn;
 
   // hub
   add({ id: 'n-garden', glyph: '♣', kind: 'collection', kindLabel: 'Garden', name: 'My garden',
-    recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants, drawn) });
+    recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants, drawn, ctx) });
 
   add({ id: 'n-account', glyph: '◉', kind: 'platform', kindLabel: 'Account', name: user ? `${user.firstName}'s account` : 'Your account',
-    recap: user ? user.email : 'Signed in', body: accountBody(user) });
+    recap: user ? user.email : 'Signed in',
+    body: accountBody(user, sources.preferences, sources.sessionTimes, sources.now, sources.settings) });
   link('n-account', 'n-garden');
 
   add({ id: 'n-platform', glyph: '◈', kind: 'platform', kindLabel: 'Platform', name: 'Platform link',
-    recap: 'Health · 2 feeds', body: platformBody() });
+    recap: 'Health · 2 feeds', body: platformBody(sources.settings) });
   link('n-account', 'n-platform');
 
   add({ id: 'n-ident', glyph: '◎', kind: 'platform', kindLabel: 'Identification', name: 'Identification',
     recap: latestScan[0] ? `Last scan · ${latestScan[0].status.toLowerCase()}` : 'No scans yet',
     state: latestScan[0]?.status === 'FAILED' ? 'failed' : undefined,
-    body: identBody(latestScan, drawn) });
+    body: identBody(latestScan, drawn, sources.settings) });
   link('n-garden', 'n-ident');
 
   add({ id: 'n-species', glyph: '❋', kind: 'collection', kindLabel: 'Collection', name: 'Species',
     recap: `${species.length} species`, state: species.length === 0 ? 'empty' : undefined,
     body: recapWrap(`${species.length} species`) + full(`
       <section class="state" data-brief-item="action:/api/v1/species/**">
-        <div class="state__head"><h4 class="state__title">The species index</h4><span class="state__id">action · /api/v1/species/**</span></div>
+        <div class="state__head"><h4 class="state__title">The species index</h4>${stateId('action · /api/v1/species/**', sources.settings)}</div>
         <p class="state__note">Everything you have identified or added by hand. A species is a reference thing — nothing here can be watered.</p>
         <div class="btn-row"><button class="stake" type="button">Add a species</button></div>
       </section>`) });
@@ -286,21 +1340,27 @@ export function assembleWorld(sources: WorldSources): WorldData {
   if (issues > 0) {
     add({ id: 'n-problems', glyph: '⚠', kind: 'problem', kindLabel: 'Problems', name: 'Problems',
       recap: `${issues} plant${issues === 1 ? '' : 's'} need attention`,
-      body: recapWrap(`${issues} active`) + full(`
+      body: recapWrap(`${issues} active`, undefined, `Last synced ${timeLabel(ctx.now)}`, ['sk--row', 'sk--row']) + full(`
         <section class="state" data-brief-item="action:/api/v1/plants/**">
-          <div class="state__head"><h4 class="state__title">Plants needing attention</h4><span class="state__id">data · healthStatus</span></div>
+          <div class="state__head"><h4 class="state__title">Plants needing attention</h4>${stateId('data · healthStatus', sources.settings)}</div>
           <dl class="rows">${plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').slice(0, 3)
-            .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${healthTag(p.healthStatus)}</dd></div>`).join('')}</dl>
+            .map(p => {
+              const t = ctx.treatments.find(x => x.plantId === p.id && (x.status === 'DRAFT' || x.status === 'IN_PROGRESS'));
+              const course = t ? ` · ${linkTo(drawn, `n-treatment-${t.id}`, courseRecap(ctx, t))}` : '';
+              return `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${healthTag(p.healthStatus)}${course}</dd></div>`;
+            }).join('')}</dl>
+          ${drawnTreatments.filter(t => plants.some(p => p.id === t.plantId && p.healthStatus === 'ISSUES_DETECTED'))
+            .map(t => `<button class="hop hop--block" type="button" data-goto="n-treatment-${t.id}" style="margin-top:var(--hbm-space-4)">Open the treatment plan <small>${stepsOf(ctx, t).length} steps</small></button>`).join('')}
         </section>`) });
     link('n-garden', 'n-problems');
   }
 
   // each scan is a node of its own (the classic scan-detail modal, as geography)
-  emitCollapsed(drawnScans.length === latestScan.length ? latestScan : latestScan, 'n-ident', {
+  emitCollapsed(latestScan, 'n-ident', {
     kind: 'platform', kindLabel: 'Scan', aggregateId: 'n-scans-more', aggregateName: 'more scans',
     toNode: i => ({ id: `n-scan-${i.id}`, glyph: '◎', kind: 'platform', kindLabel: 'Scan',
       name: i.commonName ?? i.species ?? `Scan #${i.id}`, recap: `${i.status.toLowerCase()} · ${i.createdAt.slice(0, 10)}`,
-      state: i.status === 'FAILED' ? 'failed' : undefined, body: scanBody(i, drawn) }),
+      state: i.status === 'FAILED' ? 'failed' : undefined, body: scanBody(i, drawn, sources.settings) }),
   }, add, link);
   // a scan with a plant in the garden veins to it (identify → plant path)
   for (const i of drawnScans) {
@@ -310,29 +1370,81 @@ export function assembleWorld(sources: WorldSources): WorldData {
   // the remaining classic pages, as nodes (chat + home dashboard + treatments)
   add({ id: 'n-ask', glyph: '✎', kind: 'guide', kindLabel: 'Companion', name: 'Ask PlantPal',
     recap: 'Coming soon', state: 'empty',
-    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.') });
+    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.', sources.settings) });
   link('n-garden', 'n-ask');
 
+  const today = todayCount(ctx);
+  const dueNow = today.today.length;
+  const lateNow = today.overdue.length;
   add({ id: 'n-today', glyph: '◷', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
-    recap: 'Coming with the care loop', state: 'empty',
-    body: deferredBody("Today's summary", '/api/v1/dashboard/**', 'The dashboard aggregates the care loop — it lands once reminders and treatments do.') });
+    recap: dueNow + lateNow === 0 ? 'Nothing due · nothing overdue' : `${dueNow} due · ${lateNow} overdue`,
+    state: plants.length === 0 ? 'empty' : undefined,
+    body: todayBody(ctx, today) });
   link('n-garden', 'n-today');
   link('n-today', 'n-reminders');
 
-  add({ id: 'n-treatments', glyph: '◈', kind: 'problem', kindLabel: 'Treatment', name: 'Treatments',
-    recap: 'Coming with the care loop', state: 'empty',
-    body: deferredBody('Treatment plans', '/api/v1/treatment-plans/**', 'Per-disease treatment courses arrive with the care loop.') });
-  link('n-garden', 'n-treatments');
-
-  // deferred families — honest panels, still traversable (coverage-scope rounds 2/3)
+  // ── the care loop ──────────────────────────────────────────────────────────
+  const routine = routineReminders(ctx);
+  const dueToday = routine.filter(
+    r => !isSnoozed(ctx, r) && daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow) === 0,
+  ).length;
   add({ id: 'n-reminders', glyph: '◷', kind: 'journal', kindLabel: 'Reminders', name: 'Reminders',
-    recap: 'Coming with the care loop', state: 'empty',
-    body: deferredBody('Reminders', '/api/v1/reminders/**', 'Reminders arrive with the care loop — the next round of this atlas.') });
+    recap: dueToday > 0 ? `${dueToday} due today` : 'Nothing due today',
+    state: routine.length === 0 ? 'empty' : undefined,
+    body: reminderHubBody(ctx) });
   link('n-garden', 'n-reminders');
 
-  add({ id: 'n-care', glyph: '☂', kind: 'guide', kindLabel: 'Guide', name: 'Care', recap: 'Coming with the care loop', state: 'empty',
-    body: deferredBody('Care, and what you did', '/api/v1/care/**', 'Care logging arrives with reminders and treatment plans.') });
+  add({ id: 'n-care', glyph: '☂', kind: 'guide', kindLabel: 'Guide', name: 'Care',
+    recap: sources.settings.careLogPageSize === 0 ? 'Care history not fetched' : loggedLine(ctx),
+    state: sources.settings.careLogPageSize === 0 ? 'empty' : undefined,
+    body: careHubBody(ctx) });
   link('n-garden', 'n-care');
+
+  add({ id: 'n-journal', glyph: '▤', kind: 'journal', kindLabel: 'Journal', name: 'Journal',
+    recap: logs.length === 0 ? 'Nothing written yet' : entriesLine(ctx),
+    state: logs.length === 0 ? 'empty' : undefined,
+    body: journalHubBody(ctx, collapsedLogs) });
+  link('n-garden', 'n-journal');
+  link('n-care', 'n-journal');
+
+  emitCollapsed(logs, 'n-journal', {
+    kind: 'journal', kindLabel: 'Entry', aggregateId: 'n-journal-more', aggregateName: 'more entries',
+    toNode: l => ({ id: `n-log-${l.id}`, glyph: '▤', kind: 'journal', kindLabel: 'Entry',
+      name: `${dateLabel(l.performedAt)} · ${careLabel(l.careType).toLowerCase()}`,
+      recap: `${careLabel(l.careType)} · ${l.plantNickname ?? plantName(ctx, l.plantId)}`,
+      body: logBody(l, ctx) }),
+  }, add, link);
+  for (const l of drawnLogs) {
+    if (drawn.has(`n-plant-${l.plantId}`)) link(`n-log-${l.id}`, `n-plant-${l.plantId}`);
+  }
+
+  const running = sources.treatments.filter(t => t.status === 'IN_PROGRESS').length;
+  const drafts = sources.treatments.filter(t => t.status === 'DRAFT').length;
+  add({ id: 'n-treatments', glyph: '◈', kind: 'problem', kindLabel: 'Treatment', name: 'Treatments',
+    recap: running + drafts === 0 ? 'No course running' : `${running} running${drafts ? ` · ${drafts} waiting for a plan` : ''}`,
+    state: sources.treatments.length === 0 ? 'empty' : undefined,
+    body: treatmentsHubBody(ctx) });
+  link('n-garden', 'n-treatments');
+
+  emitCollapsed(rankedTreatments, 'n-treatments', {
+    kind: 'problem', kindLabel: 'Course', aggregateId: 'n-treatments-more', aggregateName: 'more courses',
+    toNode: t => ({ id: `n-treatment-${t.id}`, glyph: '◈', kind: 'problem', kindLabel: 'Course',
+      name: t.diseaseName, recap: courseRecap(ctx, t),
+      recapNote: t.plantNickname ?? plantName(ctx, t.plantId),
+      state:
+        t.descriptionStatus === 'PENDING' && t.status !== 'COMPLETED' && t.status !== 'DISMISSED'
+          ? 'loading'
+          : t.status === 'COMPLETED' || t.status === 'DISMISSED'
+            ? 'archived'
+            : undefined,
+      body: treatmentBody(t, ctx) }),
+  }, add, link);
+  for (const t of drawnTreatments) {
+    if (drawn.has(`n-plant-${t.plantId}`)) link(`n-treatment-${t.id}`, `n-plant-${t.plantId}`);
+    link(`n-treatment-${t.id}`, 'n-care');
+    const p = plants.find(x => x.id === t.plantId);
+    if (issues > 0 && p?.healthStatus === 'ISSUES_DETECTED') link('n-problems', `n-treatment-${t.id}`);
+  }
 
   // plants under the garden, density-collapsed
   const rankedPlants = [...plants].sort(plantByOwed);
@@ -340,7 +1452,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     kind: 'plant', kindLabel: 'Plant', aggregateId: 'n-garden-more', aggregateName: 'more plants',
     toNode: p => ({ id: `n-plant-${p.id}`, glyph: '♠', kind: 'plant', kindLabel: 'Plant', name: p.nickname,
       recap: plantRecap(p), recapNote: p.commonName ?? p.species ?? undefined,
-      state: p.healthStatus === 'UNKNOWN' ? 'unknown' : undefined, body: plantBody(p) }),
+      state: p.healthStatus === 'UNKNOWN' || p.healthStatus == null ? 'unknown' : undefined, body: plantBody(p, ctx) }),
   }, add, link);
 
   // species under the collection, density-collapsed; each links to its plants
@@ -350,7 +1462,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     kind: 'species', kindLabel: 'Species', aggregateId: 'n-species-more', aggregateName: 'more species',
     toNode: s => ({ id: `n-species-${s.id}`, glyph: '♣', kind: 'species', kindLabel: 'Species',
       name: s.commonName ?? s.scientificName, recap: `${bySpecies(s).length} of your plants`,
-      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s), drawn) }),
+      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s), drawn, sources.settings) }),
   }, add, link);
   // vein each drawn species to its drawn plants (cross-entity traversal)
   for (const s of rankedSpecies.slice(0, DENSITY_CAP - 1 < rankedSpecies.length ? 2 : rankedSpecies.length)) {
@@ -361,11 +1473,53 @@ export function assembleWorld(sources: WorldSources): WorldData {
     }
   }
 
-  layoutCells(nodes, edges, 'n-garden');
-  return { nodes: nodes as WorldNode[], edges, initialFocus: 'n-garden', hasPendingScan, latestFailedScanId };
+  // a family that did not come back wears its own failure — the rest stays live
+  for (const f of sources.failures) {
+    for (const id of failureNodeIds(f, sources.treatments)) {
+      const node = nodes.find(n => n.id === id);
+      if (!node) continue;
+      const extraWay = id === 'n-today';
+      node.state = 'failed';
+      node.recap = 'Did not come back';
+      node.failure = {
+        fact: `${failureName(f)} did not come back (${f.status}).`,
+        time: timeLabel(f.at),
+        dataNote: 'Everything already drawn is kept; nothing moved.',
+        waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
+      };
+      node.body = failureBody(
+        f,
+        extraWay,
+        sources.settings,
+        // a count that did not come back is still countable here: the rows stay,
+        // under the sentence that names where they were counted (C25, never blank)
+        extraWay ? todaySummarySection(ctx, todayCount({ ...ctx, dashboard: null })) : '',
+      );
+    }
+  }
+
+  layoutCells(nodes, edges, 'n-garden', sources.priorCells);
+  return {
+    nodes: nodes as WorldNode[],
+    edges,
+    initialFocus: 'n-garden',
+    hasPendingScan,
+    latestFailedScanId,
+    meta: buildMeta(sources),
+  };
 }
 
-function plantByOwed(a: PlantDto, b: PlantDto): number {
+/**
+ * The plants the board actually draws, under the density rule — the single
+ * source for both the geography and the loader's care-history fan-out, so a
+ * request is never spent on a plant folded into "+N more".
+ */
+export function drawnPlantsOf(plants: PlantDto[]): PlantDto[] {
+  const ranked = [...plants].sort(plantByOwed);
+  return ranked.length < DENSITY_CAP ? ranked : ranked.slice(0, 2);
+}
+
+export function plantByOwed(a: PlantDto, b: PlantDto): number {
   const score = (p: PlantDto) => (p.healthStatus === 'ISSUES_DETECTED' ? -1000 : 0) + (p.nextWaterDays ?? 99);
   return score(a) - score(b) || a.id - b.id;
 }
@@ -411,8 +1565,24 @@ function emitCollapsed<T>(
 /**
  * Deterministic cell layout: breadth-first from the root; col = 2 × depth, rows
  * centred per layer. Same graph → same cells (C7). Unreachable nodes are parked.
+ *
+ * With `prior` cells given, insertion stability becomes real (C8): a node already on
+ * the board keeps the exact cell it had, and a new node takes the first free row of
+ * its own depth column — where free means free of every remembered cell, not only of
+ * the ones this world happens to draw. A family that density-collapses (2 + "+N more")
+ * drops nodes off the board while the device still remembers where they sat; seating a
+ * newcomer on one of those cells is how the entry that comes back later loses the cell
+ * it kept, so a remembered cell is reserved for its own node whether or not this world
+ * draws it. "A new node takes a free cell, nothing else moves" then holds across
+ * reloads, not only within one. With `prior` absent or empty the centred algorithm runs
+ * unchanged, so the shipped geography is untouched.
  */
-export function layoutCells(nodes: DraftNode[], edges: Edge[], rootId: string): void {
+export function layoutCells(
+  nodes: DraftNode[],
+  edges: Edge[],
+  rootId: string,
+  prior?: Record<string, Cell>,
+): void {
   const ids = nodes.map(n => n.id);
   const adjacency = buildAdjacency(edges, ids);
   const depth = rank(rootId, adjacency);
@@ -424,12 +1594,47 @@ export function layoutCells(nodes: DraftNode[], edges: Edge[], rootId: string): 
     (byDepth.get(d) ?? byDepth.set(d, []).get(d)!).push(id);
   }
   const cellFor: Record<string, WorldNode['cell']> = {};
-  for (const [d, layer] of byDepth) {
-    layer.sort();
-    const mid = Math.floor((layer.length - 1) / 2);
-    layer.forEach((id, i) => {
-      cellFor[id] = { col: 2 * d, row: CENTER_ROW + i - mid };
-    });
+  if (prior && Object.keys(prior).length > 0) {
+    const taken = new Map<number, Set<number>>();
+    const rowsOf = (col: number) => taken.get(col) ?? taken.set(col, new Set()).get(col)!;
+    // Every remembered cell is reserved before a single node is seated: a cell
+    // belongs to the node that holds it even in a reload that does not draw it.
+    for (const kept of Object.values(prior)) rowsOf(kept.col).add(kept.row);
+    // 1. every node the device remembers keeps its exact cell — drawn or parked.
+    const heldBy = new Map<string, string>();
+    for (const id of [...ids].sort()) {
+      const kept = prior[id];
+      if (!kept) continue;
+      const at = `${kept.col},${kept.row}`;
+      // a map written before this rule could stack two ids on one cell; the first
+      // by id keeps it and the other is seated as a newcomer, never hidden under it
+      if (heldBy.has(at)) continue;
+      heldBy.set(at, id);
+      cellFor[id] = { col: kept.col, row: kept.row };
+    }
+    // 2. a new node takes the first free row of its own depth column.
+    for (const [d, layer] of byDepth) {
+      const col = 2 * d;
+      for (const id of [...layer].sort()) {
+        if (cellFor[id]) continue;
+        const rows = rowsOf(col);
+        let row = CENTER_ROW;
+        for (let step = 0; rows.has(row); step++) {
+          const spread = Math.floor(step / 2) + 1;
+          row = step % 2 === 0 ? CENTER_ROW - spread : CENTER_ROW + spread;
+        }
+        cellFor[id] = { col, row };
+        rows.add(row);
+      }
+    }
+  } else {
+    for (const [d, layer] of byDepth) {
+      layer.sort();
+      const mid = Math.floor((layer.length - 1) / 2);
+      layer.forEach((id, i) => {
+        cellFor[id] = { col: 2 * d, row: CENTER_ROW + i - mid };
+      });
+    }
   }
   let parked = 0;
   for (const n of nodes) {

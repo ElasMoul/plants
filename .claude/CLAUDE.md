@@ -515,6 +515,7 @@ open backend/target/site/jacoco/index.html
 | 10 — Contextual Scanning & Treatment Polish | ✅ Complete (T10.A–I, PP-071–078, merged to dev incl. post-phase bugfixes) |
 | DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–5(code) ✅ merged (PRs #125/#126, no Kafka in prod); remaining: account setup → deploy → beta → v1.0.0 |
 | ATLAS — Rhizome second frontend | ✅ Complete (A–H waves merged to main 2026-08-18; frontend-atlas/FIDELITY_PLAN.md; apps: :4300 dev / :8445 compose) |
+| ATLAS R2/R3 — care loop, dashboard/notifications/users, mock garden, settings | ✅ (I1–I7, slices S0–S8 on `atlas/R2-care-loop`) |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ---

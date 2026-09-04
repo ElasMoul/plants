@@ -83,6 +83,11 @@ export type NodeMode = 'min' | 'auto' | 'full';
                 <p class="state__note">Nothing here yet.</p>
               </div>
             }
+            @case ('archived') {
+              <div class="state">
+                <p class="state__note">Archived — still readable.</p>
+              </div>
+            }
             @case ('unknown') {
               <div class="state state--unknown">
                 <div class="state__head"><h4 class="state__title">Not fetched yet</h4><span class="state__id">region · unknown</span></div>

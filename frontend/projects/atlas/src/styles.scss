@@ -12,3 +12,43 @@ rz-world {
   display: contents;
 }
 rz-chrome { display: contents; }
+
+/* The normative rz- course/vitals API is mirrored in ATTRIBUTES, not classes:
+   a course is the prototype's dl.rows whose rows carry data-done / data-due /
+   data-paused. rhizome.css has no rules for them, so the five rules below —
+   tokens only, no new colour — are the whole of this phase's added CSS. */
+.rows .row[data-due="true"] { border-inline-start: var(--vs-strong) solid var(--vs-watch); }
+.rows .row[data-done="true"] { border-inline-start: var(--vs-strong) solid var(--vs-thriving); opacity: .72; }
+.rows .row[data-done="true"] dt { text-decoration: line-through; text-decoration-color: var(--vs-thriving); }
+.rows .row[data-paused="true"] { border-inline-start: var(--vs-strong) dashed var(--vs-stale); }
+.n .stake[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+
+/* Settings panes: the pinned overlay styles .palettes, .rows, .state and .stake
+   already — only the text fields and the API-line switch are new here. */
+#settings .pane .rz-field {
+  display: grid;
+  gap: 4px;
+  margin-block: var(--vs-gutter-tight);
+}
+#settings .pane .rz-field span {
+  color: var(--vs-face-label);
+  font-size: var(--vs-type-label);
+  letter-spacing: var(--vs-track-label);
+}
+#settings .pane .rz-field input {
+  background: var(--vs-well);
+  border: var(--vs-hair) solid var(--vs-membrane);
+  border-radius: var(--vs-corner-well);
+  color: inherit;
+  font: inherit;
+  padding: 6px 8px;
+}
+body[data-api-ids="off"] .state__id { display: none; }
+
+/* Degradation material inside a settings pane: .n__skel is hidden outside a node
+   card, so the pane reveals its own copy while PlantPal is being asked. */
+#settings .pane .n__skel {
+  display: grid;
+  gap: var(--vs-gutter-tight);
+  margin-block: var(--vs-gutter-tight);
+}

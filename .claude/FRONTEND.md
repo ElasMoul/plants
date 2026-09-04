@@ -317,3 +317,67 @@ frontend/src/app/features/species/pages/species-detail/
 frontend/src/app/features/dashboard/pages/home/
 frontend/src/app/features/identification/components/care-plan/
 ```
+
+## Atlas (second frontend) — inventory, seams and rules
+
+> The atlas is `frontend/projects/atlas` (Angular 20 **standalone + signals**, no
+> NgModules, no Router). The conventions above describe the CLASSIC app; the
+> atlas follows its own, recorded here and in `frontend-atlas/FIDELITY_PLAN.md`.
+
+### Folders (`projects/atlas/src/app`)
+```
+app.ts / app.config.ts       appConfigFor(mode) — the one place providers are chosen
+core/                        mock-mode.ts (MOCK_MODE token, resolveMockMode), atlas-auth.interceptor
+mock/                        mock.dataset.ts, mock-backend.ts, mock-api.interceptor.ts, mock-auth.service.ts
+settings/                    settings.model.ts, settings.store.ts (atlas_settings), device.store.ts (atlas_device)
+push/                        push.service.ts (permission, push-sw.js, PushManager, /notifications/subscribe)
+world/                       world-graph.service (loader), world-actions.service (every stake),
+                             world.assembly (sources -> board), world.store (camera/focus/layout),
+                             world.dto, world.model, dates.ts, interop.ts, world.bodies.ts, world.fixture.ts
+chrome/                      chrome.ts (all fixed furniture), actions-for.ts (the rail), overview.html.ts
+node/                        node-card.ts
+forms/                       stake-form.ts (the one in-world sheet)
+styles/                      tokens.css + rhizome.css (pinned copies) + tokens-pin.spec.ts
+```
+E2E lives in `frontend/e2e/atlas` with its own `playwright.atlas.config.ts`
+(port 4300, Playwright owns the dev server, `PW_NO_SERVER=1` attaches to a
+running one).
+
+### The seams
+- **Data**: `WorldGraphService.load()` -> `assembleWorld(sources)` ->
+  `WorldStore.setWorld` (first load) / `updateWorld` (every later load, camera
+  untouched). `assembleWorld` is a pure function of its argument.
+- **Mutations**: every stake, rail action and sheet ends in
+  `WorldActionsService.dispatch(nodeId, label, arg?)`; a successful write calls
+  `store.say(...)` then `reloadRequested.update(v => v + 1)`. Nothing in that
+  file may call `store.go`, `frameFocus` or `camera.set` — a spec enforces it.
+- **Mock mode**: an `HttpInterceptorFn` plus a provider swap of `AuthService`,
+  both chosen in `main.ts`. Services and the assembly never learn which mode
+  they are in. Reach it at `http://localhost:4300/?mock=garden`
+  (`day-zero`, `outage`, `off` are the other values) — no backend, no login.
+- **Settings**: `SettingsStore` (preferences, `atlas_settings`) is read by the
+  assembly as a plain snapshot; `DeviceStore` (`atlas_device`) holds device state
+  namespaced by data source so mock ids can never be fetched against live.
+
+### Never hand-edit
+- `styles/tokens.css` and `styles/rhizome.css` — pinned copies of
+  `frontend-atlas/theme-a`; `tokens-pin.spec.ts` fails on a byte change. Re-pin
+  the prototype and re-copy instead.
+- `world/world.bodies.ts` and `chrome/overview.html.ts` — verbatim extracts of
+  the prototype. Regenerate from the pin.
+- New CSS goes in the atlas's own `styles.scss` or a component `styles:` block.
+
+### Gotchas
+- `ng test atlas` (karma, `angular.json`) is **dead** — karma/jasmine are not
+  installed. Jest via `npm test` is the only unit runner; the root
+  `tsconfig.spec.json` (types `['jest']`) is what ts-jest uses for every spec.
+- A new workspace alias needs BOTH a `tsconfig.json` paths entry and a
+  `jest.config.js` moduleNameMapper entry.
+- `noPropertyAccessFromIndexSignature` is on: `dataset['x']`, `params['y']`.
+- Jest runs in jsdom: no rAF-driven animation and no `matchMedia`. Specs that
+  call `store.go()` shim `matchMedia` to report reduced motion so the hop
+  settles synchronously.
+- Backend nulls are ABSENT (Jackson `non_null`), so every DTO field the server
+  may omit is optional and `field === null` never fires.
+- `GET /reminders` is a bare array (not a `Page`); `DELETE /reminders/{id}`
+  answers 204 with an empty body (not an `ApiResponse`).

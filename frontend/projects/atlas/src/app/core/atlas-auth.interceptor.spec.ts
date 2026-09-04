@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '@plantpal/shared-core';
 import { atlasAuthInterceptor } from './atlas-auth.interceptor';
+import { provideMockModeOff } from './mock-mode';
 
 describe('atlasAuthInterceptor (E1 — shared session)', () => {
   let http: HttpClient;
@@ -15,6 +16,7 @@ describe('atlasAuthInterceptor (E1 — shared session)', () => {
       providers: [
         provideHttpClient(withInterceptors([atlasAuthInterceptor])),
         provideHttpClientTesting(),
+        provideMockModeOff(),
         { provide: AuthService, useValue: { getToken: () => token } },
       ],
     });

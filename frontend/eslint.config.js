@@ -8,10 +8,10 @@ const angular = require('angular-eslint');
 
 module.exports = tseslint.config(
   {
-    ignores: ['projects/**/*', 'dist/**/*'],
+    ignores: ['dist/**/*', 'projects/rhizome-engine/**/*', 'projects/shared-core/**/*'],
   },
   {
-    files: ['**/*.ts'],
+    files: ['src/**/*.ts'],
     extends: [
       eslint.configs.recommended,
       ...tseslint.configs.recommended,
@@ -43,7 +43,38 @@ module.exports = tseslint.config(
     },
   },
   {
-    files: ['**/*.html'],
+    files: ['src/**/*.html'],
+    extends: [
+      ...angular.configs.templateRecommended,
+    ],
+    rules: {},
+  },
+  {
+    files: ['projects/atlas/**/*.ts'],
+    extends: [
+      eslint.configs.recommended,
+      ...tseslint.configs.recommended,
+      ...angular.configs.tsRecommended,
+    ],
+    processor: angular.processInlineTemplates,
+    rules: {
+      '@angular-eslint/component-selector': [
+        'error',
+        { type: 'element', prefix: 'rz', style: 'kebab-case' },
+      ],
+      '@angular-eslint/directive-selector': [
+        'error',
+        { type: 'attribute', prefix: 'rz', style: 'camelCase' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    files: ['projects/atlas/**/*.html'],
     extends: [
       ...angular.configs.templateRecommended,
     ],

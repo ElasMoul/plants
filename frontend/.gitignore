@@ -9,3 +9,6 @@
 /.cache/
 .vercel
 .env*
+/playwright-report/
+/test-results/
+/coverage/

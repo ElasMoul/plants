@@ -1,6 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { WorldActionsService } from '../world/world-actions.service';
+import { SettingsStore } from '../settings/settings.store';
+import { type ActiveForm, WorldActionsService } from '../world/world-actions.service';
+import { CARE_TYPES, CareType } from '../world/world.dto';
+import { WorldStore } from '../world/world.store';
+
+/** "WATERING" -> "Watering", "BEGINNER_TIP" -> "Beginner tip". */
+function careLabel(t: string): string {
+  const words = t.toLowerCase().split('_').join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 /**
  * The in-world mutation form — a sheet in the design system's own material
@@ -49,6 +58,56 @@ import { WorldActionsService } from '../world/world-actions.service';
           <p class="rz-form__note">A new plant takes a free cell on the lattice. Nothing else moves.</p>
           <div class="btn-row">
             <button class="stake" type="button" [disabled]="!nickname().trim()" (click)="submitPlant()">Plant it</button>
+            <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
+          </div>
+        } @else if (form.kind === 'add-reminder' || form.kind === 'change-schedule') {
+          <label class="rz-field"><span>Plant</span>
+            <select [ngModel]="plantId()" (ngModelChange)="plantId.set(+$event)" [disabled]="form.kind === 'change-schedule'">
+              @for (p of plants(); track p.id) { <option [value]="p.id">{{ p.nickname }}</option> }
+            </select></label>
+          <label class="rz-field"><span>Kind of care</span>
+            <select [ngModel]="careType()" (ngModelChange)="careType.set($event)">
+              @for (c of careOptions(); track c) { <option [value]="c">{{ label(c) }}</option> }
+            </select></label>
+          <label class="rz-field"><span>Repeat every (days)</span>
+            <input type="number" min="1" [ngModel]="frequencyDays()" (ngModelChange)="frequencyDays.set(+$event)" /></label>
+          <label class="rz-field"><span>First due</span>
+            <input type="date" [ngModel]="firstDue()" (ngModelChange)="firstDue.set($event)" /></label>
+          <p class="rz-form__note">{{ form.kind === 'change-schedule'
+            ? 'A new schedule replaces the old reminder — nothing else is touched.'
+            : 'A reminder belongs to one plant and one kind of care.' }}</p>
+          <div class="btn-row">
+            <button class="stake" type="button" [disabled]="!canSchedule()" (click)="submitSchedule(form)">{{ form.kind === 'change-schedule' ? 'Change it' : 'Set the reminder' }}</button>
+            <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
+          </div>
+        } @else if (form.kind === 'log-care') {
+          <label class="rz-field"><span>Plant</span>
+            <select [ngModel]="plantId()" (ngModelChange)="plantId.set(+$event)">
+              @for (p of plants(); track p.id) { <option [value]="p.id">{{ p.nickname }}</option> }
+            </select></label>
+          <label class="rz-field"><span>Kind of care</span>
+            <select [ngModel]="careType()" (ngModelChange)="careType.set($event)">
+              @for (c of careOptions(); track c) { <option [value]="c">{{ label(c) }}</option> }
+            </select></label>
+          <label class="rz-field"><span>What you noticed (optional)</span>
+            <textarea rows="2" [(ngModel)]="note" placeholder="Full soak, drained"></textarea></label>
+          <p class="rz-form__note">Logging care completes the schedule it belongs to and writes the journal entry.</p>
+          <div class="btn-row">
+            <button class="stake" type="button" [disabled]="plantId() === null" (click)="submitLogCare(form)">Log it</button>
+            <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
+          </div>
+        } @else if (form.kind === 'start-treatment') {
+          <label class="rz-field"><span>Plant</span>
+            <select [ngModel]="plantId()" (ngModelChange)="plantId.set(+$event)">
+              @for (p of plants(); track p.id) { <option [value]="p.id">{{ p.nickname }}</option> }
+            </select></label>
+          <label class="rz-field"><span>What is wrong</span>
+            <input type="text" [(ngModel)]="disease" placeholder="Root rot" /></label>
+          @if (scanId() === undefined) {
+            <p class="rz-form__note">A treatment starts from a scan — identify this plant first.</p>
+          }
+          <div class="btn-row">
+            <button class="stake" type="button" [disabled]="!disease().trim() || plantId() === null || scanId() === undefined" (click)="submitTreatment()">Start the course</button>
             <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
           </div>
         } @else {
@@ -123,6 +182,8 @@ import { WorldActionsService } from '../world/world-actions.service';
 })
 export class StakeForm {
   protected readonly actions = inject(WorldActionsService);
+  private readonly store = inject(WorldStore);
+  private readonly settings = inject(SettingsStore);
 
   readonly nickname = signal('');
   readonly species = signal('');
@@ -131,11 +192,70 @@ export class StakeForm {
   readonly files = signal<File[]>([]);
   readonly organ = signal('leaf');
   readonly context = signal('');
+  readonly plantId = signal<number | null>(null);
+  readonly careType = signal<CareType>('WATERING');
+  readonly frequencyDays = signal(7);
+  readonly firstDue = signal('');
+  readonly disease = signal('');
+
+  /** The plants this sheet can name - the board's own index. */
+  protected readonly plants = computed(() => this.store.meta()?.plantsIndex ?? []);
+  protected readonly careOptions = computed(() =>
+    this.settings.settings().care.careTypes === 'four' ? CARE_TYPES.slice(0, 4) : CARE_TYPES,
+  );
+  /** A treatment is born from an identification - no scan, no course. */
+  protected readonly scanId = computed(() => {
+    const id = this.plantId();
+    return id === null ? undefined : this.store.meta()?.scansByPlant[id];
+  });
+  protected readonly canSchedule = computed(
+    () => this.plantId() !== null && this.frequencyDays() >= 1 && !!this.firstDue(),
+  );
+
+  /** The form identity this sheet was last seeded from (opening-scoped). */
+  private seeded: ActiveForm | null = null;
+
+  constructor() {
+    // each OPENING seeds the sheet from what the stake knew — and only the opening:
+    // a board reload while the sheet is open must never wipe what the reader typed
+    effect(() => {
+      const form = this.actions.activeForm();
+      if (!form) {
+        this.seeded = null;
+        return;
+      }
+      if (form === this.seeded) return;
+      this.seeded = form;
+      if (form.kind === 'add-reminder' || form.kind === 'log-care' || form.kind === 'start-treatment') {
+        this.plantId.set(form.plantId ?? this.plants()[0]?.id ?? null);
+      }
+      if (form.kind === 'change-schedule') this.plantId.set(form.plantId);
+      if (form.kind === 'add-reminder' || form.kind === 'log-care' || form.kind === 'change-schedule') {
+        this.careType.set(form.careType ?? 'WATERING');
+      }
+      this.frequencyDays.set(
+        form.kind === 'change-schedule'
+          ? form.frequencyDays
+          : this.settings.settings().care.defaultFrequencyDays,
+      );
+      this.firstDue.set(new Date().toISOString().slice(0, 10));
+      if (form.kind === 'start-treatment') this.disease.set('');
+    });
+  }
+
+  protected label(c: string): string {
+    return careLabel(c);
+  }
 
   protected readonly title = computed(() => {
     const kind = this.actions.activeForm()?.kind;
     if (kind === 'identify') return 'Identify a plant';
-    return kind === 'add-plant' ? 'Add a plant' : 'Add a note';
+    if (kind === 'add-plant') return 'Add a plant';
+    if (kind === 'add-reminder') return 'Add a reminder';
+    if (kind === 'change-schedule') return 'Change the schedule';
+    if (kind === 'log-care') return 'Log care';
+    if (kind === 'start-treatment') return 'Start a treatment plan';
+    return 'Add a note';
   });
 
   protected onFiles(ev: Event): void {
@@ -155,6 +275,47 @@ export class StakeForm {
       location: this.location().trim() || undefined,
     });
     this.nickname.set(''); this.species.set(''); this.location.set('');
+  }
+
+  protected submitSchedule(form: { kind: string; reminderId?: number }): void {
+    const plantId = this.plantId();
+    if (plantId === null) return;
+    const req = {
+      plantId,
+      careType: this.careType(),
+      frequencyDays: this.frequencyDays(),
+      firstDueAt: new Date(`${this.firstDue()}T09:00:00`).toISOString(),
+    };
+    if (form.kind === 'change-schedule' && form.reminderId !== undefined) {
+      this.actions.changeSchedule(form.reminderId, req);
+      return;
+    }
+    this.actions.createReminder(req);
+  }
+
+  protected submitLogCare(form: { reminderId?: number }): void {
+    const plantId = this.plantId();
+    if (plantId === null) return;
+    const notes = this.note().trim() || undefined;
+    if (form.reminderId !== undefined) {
+      this.actions.completeReminder(form.reminderId, notes, 'Care logged. The camera did not move.');
+    } else {
+      this.actions.careFor(plantId, this.careType(), 'Care logged. The camera did not move.', {
+        notes,
+        direct: true,
+      });
+    }
+    this.note.set('');
+  }
+
+  protected submitTreatment(): void {
+    const plantId = this.plantId();
+    if (plantId === null) return;
+    this.actions.startTreatment({
+      plantId,
+      diseaseName: this.disease().trim(),
+      identificationId: this.scanId(),
+    });
   }
 
   protected submitNote(plantId: number): void {

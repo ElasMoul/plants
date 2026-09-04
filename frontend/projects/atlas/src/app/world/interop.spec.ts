@@ -19,6 +19,22 @@ describe('interop deep-links (E2)', () => {
     expect(classicLinkFor({ id: 'n-garden' }, base)).toBe('http://localhost:4200/plants');
   });
 
+  it('links the care-loop nodes to their classic pages', () => {
+    expect(classicLinkFor({ id: 'n-treatment-7' }, base)).toBe('http://localhost:4200/treatment/7');
+    expect(classicLinkFor({ id: 'n-treatments' }, base)).toBe('http://localhost:4200/reminders');
+    expect(classicLinkFor({ id: 'n-care' }, base)).toBe('http://localhost:4200/reminders');
+    expect(classicLinkFor({ id: 'n-journal' }, base)).toBe('http://localhost:4200/reminders');
+    expect(classicLinkFor({ id: 'n-log-2' }, base)).toBe('http://localhost:4200/plants');
+    expect(classicLinkFor({ id: 'n-scan-9' }, base)).toBe('http://localhost:4200/identify/9');
+    expect(classicLinkFor({ id: 'n-ask' }, base)).toBe('http://localhost:4200/chat');
+  });
+
+  it('respects a base the reader configured', () => {
+    expect(classicLinkFor({ id: 'n-treatment-7' }, 'https://plants.example.org')).toBe(
+      'https://plants.example.org/treatment/7',
+    );
+  });
+
   it('returns null for nodes with no classic counterpart', () => {
     expect(classicLinkFor({ id: 'n-unknown' }, base)).toBeNull();
   });

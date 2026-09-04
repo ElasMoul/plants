@@ -7,5 +7,8 @@
 export const environment = {
   production: false,
   apiUrl: '/api/v1',
+  // must equal the backend's app.web-push.public-key; empty ⇒ push refused in words
+  vapidPublicKey: '',
+  mockByDefault: false,
   classicAppUrl: 'http://localhost:4200',
 };

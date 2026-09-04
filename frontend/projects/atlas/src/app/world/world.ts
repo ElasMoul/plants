@@ -20,6 +20,22 @@ import { WorldActionsService } from './world-actions.service';
 import { Chrome } from '../chrome/chrome';
 import { NodeCard } from '../node/node-card';
 import { classicLinkFor, classicLoginLink } from './interop';
+import { SettingsStore } from '../settings/settings.store';
+import { DeviceStore } from '../settings/device.store';
+import { PreferencesClient } from '../settings/preferences.client';
+import { PushService } from '../push/push.service';
+import { MockBackend } from '../mock/mock-backend';
+import { MOCK_MODE } from '../core/mock-mode';
+import { SECTION_OF_LABEL } from '../settings/settings.model';
+import {
+  CARD_DRIFT_HTML,
+  MOTION_FOLLOW_HTML,
+  OverviewIntent,
+  PaneContext,
+  coerce,
+  renderPane,
+  routeOverviewClick,
+} from '../settings/settings-panes';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
@@ -123,7 +139,12 @@ interface VeinLine {
     </div>
 
     <!-- Overview/settings overlay — OUTSIDE #shell so it never scales with it. -->
-    <div id="overview" [innerHTML]="overviewHtml" (click)="onOverviewClick($event)"></div>
+    <div
+      id="overview"
+      [innerHTML]="overviewHtml"
+      (click)="onOverviewClick($event)"
+      (change)="onOverviewChange($event)"
+    ></div>
 
     <rz-stake-form />
   `,
@@ -135,16 +156,30 @@ export class World {
   protected readonly actions = inject(WorldActionsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly settings = inject(SettingsStore);
+  private readonly device = inject(DeviceStore);
+  private readonly prefs = inject(PreferencesClient);
+  private readonly push = inject(PushService);
+  private readonly mock = inject(MOCK_MODE, { optional: true });
+  private readonly mockBackend = inject(MockBackend);
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
-  protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
+  /** Narrow: the refresh only re-arms when the minutes themselves change. */
+  private readonly refreshMinutes = computed(
+    () => this.settings.settings().general.refreshMinutes,
+  );
+  /** The reader's own classic base (seeded from the environment) — C: settings are honoured. */
+  private readonly classicBase = computed(
+    () => this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl,
+  );
+  protected readonly signInUrl = computed(() => classicLoginLink(this.classicBase()));
 
   protected readonly focusNode = computed(() =>
     this.store.nodes().find(n => n.id === this.store.focusId()),
   );
   protected readonly focusClassicLink = computed(() => {
     const f = this.focusNode();
-    return f ? classicLinkFor(f, environment.classicAppUrl) : null;
+    return f ? classicLinkFor(f, this.classicBase()) : null;
   });
 
   protected readonly veins = computed<VeinLine[]>(() => {
@@ -164,6 +199,9 @@ export class World {
       };
     });
   });
+
+  /** The mode the overlay effect last acted on — a transition, not a value. */
+  private lastMode: 'app' | 'overview' = 'app';
 
   private motes: Mote[] = [];
   private moteRaf = 0;
@@ -187,11 +225,43 @@ export class World {
     effect(() => {
       if (this.actions.reloadRequested() > 0) this.loadLive();
     });
+    // Cancel must be able to put back exactly what was here when the overlay
+    // opened — whatever route opened it (the gear, or the account's own stake).
+    effect(() => {
+      const mode = this.store.mode();
+      if (mode === this.lastMode) return;
+      const was = this.lastMode;
+      this.lastMode = mode;
+      if (mode === 'overview') {
+        this.settings.open();
+        // The five server-backed keys are PlantPal's, not this device's: ask for
+        // them as the overlay opens, so no pane has to open on its failure state.
+        this.ensureServerPrefs();
+      } else if (was === 'overview') this.settings.save();
+    });
+    // The pane follows its section, the settings, and what PlantPal said about models.
+    effect(() => {
+      this.settings.section();
+      this.settings.settings();
+      this.settings.serverPrefs();
+      this.settings.prefsState();
+      queueMicrotask(() => this.renderSettingsPane());
+    });
+    // The periodic refresh follows its setting, and is re-armed when it changes.
+    effect(() => {
+      this.scheduleRefresh(this.refreshMinutes());
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.pollTimer) clearTimeout(this.pollTimer);
+      if (this.refreshTimer) clearInterval(this.refreshTimer);
+    });
     afterNextRender(() => {
       this.syncCentre();
       this.measureAndSettle();
       this.startMotes();
       this.startDrift();
+      this.renderSettingsPane();
+      this.labelCloseSettings();
       this.loadLive();
     });
   }
@@ -321,7 +391,15 @@ export class World {
     const stake = t.closest<HTMLElement>('.stake');
     if (stake) {
       ev.stopPropagation();
-      this.actions.dispatch(id, stake.textContent?.trim() ?? 'Action');
+      const label = stake.textContent?.trim() ?? 'Action';
+      if (stake.getAttribute('aria-disabled') === 'true') {
+        // a disabled stake still answers — in words, with the reason it is not possible
+        const reason = stake.dataset['reason'] ?? 'Nothing is due';
+        const clause = (reason[0]?.toLowerCase() ?? '') + reason.slice(1).replace(/\.$/, '');
+        this.store.say(`${label} is not possible right now — ${clause}.`);
+        return;
+      }
+      this.actions.dispatch(id, label, stake.dataset['arg']);
       return;
     }
     if (t.closest('.n__modes, .n__grip, a, button')) return;
@@ -345,15 +423,26 @@ export class World {
           } else {
             this.store.updateWorld(data); // arrivals never move the camera (C9)
           }
-          // the async identification family: poll while a scan is in flight
+          // the async families: poll while a scan or a disease description is in flight
           if (this.pollTimer) clearTimeout(this.pollTimer);
-          if (data.hasPendingScan) {
-            this.pollTimer = setTimeout(() => this.loadLive(), 8000);
+          if (data.hasPendingScan || this.store.hasPendingDescription()) {
+            const every = this.settings.settings().general.pollIntervalMs;
+            this.pollTimer = setTimeout(() => this.loadLive(), every);
           }
         },
         error: () => this.store.markError(),
       });
-    this.destroyRef.onDestroy(() => { if (this.pollTimer) clearTimeout(this.pollTimer); });
+  }
+
+  /** A quiet periodic refresh: care logged on the phone lands here without a hop, and
+   *  an arrival never moves the camera (C9). Zero minutes turns it off. */
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+  private scheduleRefresh(minutes: number): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = null;
+    if (!this.authed() || minutes <= 0) return;
+    this.refreshTimer = setInterval(() => this.loadLive(), minutes * 60_000);
   }
 
   protected onAct(nodeId: string, way: string): void {
@@ -367,29 +456,294 @@ export class World {
   protected onShellClick(ev: Event): void {
     if (this.store.mode() === 'overview') {
       ev.stopPropagation();
+      // leaving keeps what is on screen — the same as Save, and the effect above
+      // clears the snapshot so a later Cancel can never reach back past here.
+      this.settings.save();
+      this.store.persistLayout();
       this.store.mode.set('app');
     }
   }
 
-  /** Delegated wiring for the verbatim overlay markup. */
+  /** Delegated wiring for the verbatim overlay markup — one pure classifier, one switch. */
   protected onOverviewClick(ev: Event): void {
-    const t = ev.target as HTMLElement;
-    if (t.closest('#dive-back, #close-settings, #cancel-settings, #save-settings')) {
-      this.store.mode.set('app');
+    const intent = routeOverviewClick(ev.target as HTMLElement);
+    if (!intent) return;
+    ev.stopPropagation();
+    this.applyIntent(intent);
+  }
+
+  /** The free-text fields, and anything a keyboard changes rather than clicks. */
+  protected onOverviewChange(ev: Event): void {
+    const el = ev.target as HTMLInputElement | HTMLSelectElement;
+    const key = el.dataset['set'];
+    if (!key) return;
+    this.applyIntent({ kind: 'set', key, value: coerce(el.value, el.dataset['kind']) });
+  }
+
+  private applyIntent(intent: OverviewIntent): void {
+    switch (intent.kind) {
+      case 'section':
+        this.settings.section.set(intent.section);
+        return;
+      case 'set':
+        this.applyKey(intent.key, intent.value);
+        return;
+      case 'action':
+        this.runAction(intent.name);
+        return;
+      case 'ui':
+        // setUI brings the interface's own default palette with it — order matters.
+        this.store.setUI(intent.value);
+        this.settings.patch({
+          'appearance.ui': intent.value,
+          'appearance.palette': this.store.palette(),
+        });
+        this.refreshPickers();
+        return;
+      case 'palette':
+        this.store.setPalette(intent.value);
+        this.settings.set('appearance.palette', intent.value);
+        this.refreshPickers();
+        return;
+      case 'save':
+      case 'close':
+        this.settings.save();
+        // "Remember the layout" is only acted on here, so Cancel can put it back.
+        this.store.persistLayout();
+        this.store.mode.set('app');
+        return;
+      case 'cancel':
+        this.settings.cancel();
+        this.reapplyAppearance();
+        this.actions.reloadRequested.update(v => v + 1);
+        this.store.mode.set('app');
+        return;
+      case 'reset':
+        this.settings.reset();
+        this.reapplyAppearance();
+        this.actions.reloadRequested.update(v => v + 1);
+        this.store.say('Defaults restored. Your PlantPal preferences on the server are unchanged.');
+        return;
+    }
+  }
+
+  /** The five server-backed keys travel to PlantPal at once; the rest are this device's. */
+  private static readonly SERVER_KEYS: Record<string, string> = {
+    'ai.visionModelPreference': 'Vision model',
+    'ai.reasoningModelPreference': 'Reasoning model',
+    'ai.plantnetProject': 'PlantNet flora',
+    'ai.plantnetLang': 'PlantNet language',
+    'profile.businessTier': 'Garden type',
+  };
+
+  private applyKey(key: string, value: unknown): void {
+    const label = World.SERVER_KEYS[key];
+    if (label) {
+      const field = key.split('.')[1];
+      const current = this.settings.serverPrefs();
+      const body: Record<string, unknown> = { [field]: value };
+      // the classic app sends both model choices together; keep that habit
+      if (field === 'visionModelPreference' && current) {
+        body['reasoningModelPreference'] = current.reasoningModelPreference;
+      }
+      if (field === 'reasoningModelPreference' && current) {
+        body['visionModelPreference'] = current.visionModelPreference;
+      }
+      this.prefs.update(body).subscribe({
+        next: () => this.store.say(`${label} saved to PlantPal.`),
+        error: () =>
+          this.store.say(`PlantPal did not take the ${label.toLowerCase()}. Nothing changed.`),
+      });
       return;
     }
-    const iface = t.closest<HTMLElement>('.palette[data-ui]');
-    if (iface) {
-      const ui = iface.dataset['ui'] as 'sill-line' | 'glasshouse-table';
-      this.store.setUI(ui);
-      this.refreshPickers();
+    this.settings.set(key, value);
+    this.applySetting(key);
+  }
+
+  /** Keys the assembly reads are re-assembled; the timed ones re-arm themselves. */
+  private static readonly REASSEMBLE = new Set([
+    'general.keepFinished', 'general.dateStyle', 'data.stepReminders', 'reminders.snooze',
+    'treatment.pause', 'data.careLogPageSize', 'data.pageSize', 'notifications.dueWindow',
+    'integrations.showApiIds', 'profile.displayName', 'profile.units', 'profile.quietHours',
+    'integrations.openInClassic',
+  ]);
+
+  private applySetting(key: string): void {
+    if (key === 'privacy.rememberLayout') {
+      // Turning it ON writes at once; turning it OFF waits for Save, so Cancel
+      // can restore the setting AND the geography it was about to discard.
+      if (this.settings.settings().privacy.rememberLayout) this.store.persistLayout();
       return;
     }
-    const pal = t.closest<HTMLElement>('.palette[data-palette]');
-    if (pal) {
-      this.store.setPalette(pal.dataset['palette'] as string);
-      this.refreshPickers();
+    if (key === 'notifications.push') {
+      const on = this.settings.settings().notifications.push === 'on';
+      (on ? this.push.enable() : this.push.disable()).subscribe();
+      return;
     }
+    // general.pollIntervalMs is read at use; general.refreshMinutes re-arms in an effect
+    if (World.REASSEMBLE.has(key)) this.actions.reloadRequested.update(v => v + 1);
+  }
+
+  private runAction(name: string): void {
+    switch (name) {
+      case 'reload':
+        this.settings.save();
+        location.reload();
+        return;
+      case 'reset-mock':
+        this.mockBackend.reset(this.settings.settings().data.mockScenario, Date.now());
+        this.actions.reloadRequested.update(v => v + 1);
+        this.store.say('The mock garden is back at its seed.');
+        return;
+      case 'mock-fail-next':
+        this.mockBackend.failNext = true;
+        this.store.say('The next change will be refused, once.');
+        return;
+      case 'forget-device':
+        this.settings.reset();
+        this.device.clear();
+        this.store.forgetLayout();
+        this.reapplyAppearance();
+        this.actions.reloadRequested.update(v => v + 1);
+        this.store.say('This device keeps nothing about you now. Your PlantPal garden is untouched.');
+        return;
+      case 'forget-push':
+        this.push.disable().subscribe();
+        return;
+      case 'sign-out':
+        this.actions.dispatch('n-account', 'Sign out here');
+        return;
+      case 'save-plantnet': {
+        const field = document.querySelector<HTMLInputElement>(
+          '#settings .pane input[data-set="ai.plantnetProject"]',
+        );
+        if (!field) {
+          this.store.say('The flora field is not on screen — nothing was sent to PlantPal.');
+          return;
+        }
+        const lang = this.settings.serverPrefs()?.plantnetLang ?? 'en';
+        this.prefs.update({ plantnetProject: field.value, plantnetLang: lang }).subscribe({
+          next: () => this.store.say('PlantNet preferences saved to PlantPal.'),
+          error: () =>
+            this.store.say('PlantPal did not take the PlantNet preferences. Nothing changed.'),
+        });
+        return;
+      }
+      case 'reload-prefs':
+        this.prefs.read().subscribe({ error: () => undefined });
+        return;
+      default:
+        this.store.say(`“${name}” is not something PlantPal can do from here yet.`);
+    }
+  }
+
+  /** Put the chosen reading back on the document after Cancel or Reset. */
+  private reapplyAppearance(): void {
+    const look = this.settings.settings().appearance;
+    this.store.setUI(look.ui);
+    this.store.setPalette(look.palette);
+    this.refreshPickers();
+  }
+
+  /** The pinned Appearance pane, captured once and re-inserted rather than rebuilt. */
+  private capturedAppearance: string | null = null;
+
+  /** A rewrite of the pane must not move the reader: the scroll offset and the
+   *  control they just pressed are put back where they were (C: a mutation never
+   *  moves focus). Controls are identified by what they do, not by index. */
+  private paneMark(pane: HTMLElement): { top: number; sel: string | null } {
+    const active = document.activeElement as HTMLElement | null;
+    let sel: string | null = null;
+    if (active && pane.contains(active)) {
+      const set = active.dataset['set'];
+      const value = active.dataset['value'];
+      const act = active.dataset['action'];
+      if (set !== undefined && value !== undefined) {
+        sel = `[data-set="${CSS.escape(set)}"][data-value="${CSS.escape(value)}"]`;
+      } else if (set !== undefined) {
+        sel = `[data-set="${CSS.escape(set)}"]`;
+      } else if (act !== undefined) {
+        sel = `[data-action="${CSS.escape(act)}"]`;
+      }
+    }
+    return { top: pane.scrollTop, sel };
+  }
+
+  private paneRestore(pane: HTMLElement, mark: { top: number; sel: string | null }): void {
+    pane.scrollTop = mark.top;
+    if (!mark.sel) return;
+    const again = pane.querySelector<HTMLElement>(mark.sel);
+    if (again) again.focus({ preventScroll: true });
+    pane.scrollTop = mark.top;
+  }
+
+  /** Read PlantPal's own preferences once per overlay opening; a read already in
+   *  flight, or an answer already held, is left alone. */
+  private ensureServerPrefs(): void {
+    if (this.settings.prefsState() === 'reading') return;
+    if (this.settings.serverPrefs() && this.settings.prefsState() === 'idle') return;
+    this.prefs.read().subscribe({ error: () => undefined });
+  }
+
+  /** The pin's ✕ commits, exactly as Save does. The pin is never hand-edited, so
+   *  the button is told what it means here instead of carrying a stale title. */
+  private labelCloseSettings(): void {
+    const btn = document.querySelector<HTMLElement>('#close-settings');
+    if (!btn) return;
+    btn.setAttribute('title', 'Close settings and keep these changes');
+    btn.setAttribute('aria-label', 'Close settings and keep these changes');
+  }
+
+  private renderSettingsPane(): void {
+    const pane = document.querySelector<HTMLElement>('#settings .pane');
+    if (!pane) return;
+    const mark = this.paneMark(pane);
+    if (this.capturedAppearance === null) this.capturedAppearance = pane.innerHTML;
+    const section = this.settings.section();
+    for (const b of Array.from(document.querySelectorAll<HTMLElement>('#settings nav button'))) {
+      const mine = SECTION_OF_LABEL[(b.textContent ?? '').trim()];
+      if (mine === section) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    }
+    const html = renderPane(section, this.paneContext());
+    if (html === null) {
+      // Appearance is the pin's own markup: re-inserted, never rebuilt. Only the
+      // motion value becomes a control, and the drift choice joins it beneath.
+      pane.innerHTML = this.capturedAppearance;
+      const s = this.settings.settings();
+      const dl = pane.querySelector('dl.rows');
+      const dd = dl?.querySelector('.row:last-child dd');
+      if (dd) dd.innerHTML = MOTION_FOLLOW_HTML(s);
+      dl?.insertAdjacentHTML('afterend', CARD_DRIFT_HTML(s));
+      this.refreshPickers();
+      this.paneRestore(pane, mark);
+      return;
+    }
+    pane.innerHTML = html;
+    this.paneRestore(pane, mark);
+  }
+
+  private paneContext(): PaneContext {
+    const user = this.auth.getCurrentUser();
+    const times = this.store.lastSources()?.sessionTimes;
+    const name = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '';
+    return {
+      settings: this.settings.settings(),
+      prefs: this.settings.serverPrefs(),
+      prefsState: this.settings.prefsState(),
+      mock: !!this.mock?.enabled,
+      push: this.push.state(),
+      pushEndpoint: this.device.state().push?.endpoint,
+      pushSubscribedAt: this.device.state().push?.subscribedAt,
+      account: {
+        name: name || 'not signed in',
+        email: user?.email ?? 'not signed in',
+        session: this.mock?.enabled
+          ? 'the mock garden — no real session'
+          : (times?.expiresAt ?? 'this browser'),
+      },
+      vapidConfigured: !!environment.vapidPublicKey,
+    };
   }
 
   /** aria-pressed + data-for-ui visibility on the verbatim pickers. */
@@ -542,7 +896,10 @@ export class World {
       this.driftRaf = requestAnimationFrame(frame);
       if (++this.driftTick % 2) return;
       if (this.store.probeReduced() || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const still = this.store.mode() === 'overview' || this.store.dragMode();
+      const still =
+        this.store.mode() === 'overview' ||
+        this.store.dragMode() ||
+        !this.settings.settings().appearance.cardDrift;
       const focus = this.store.focusId();
       const els = (this.host.nativeElement as HTMLElement).querySelectorAll('rz-node');
       let i = 0;
