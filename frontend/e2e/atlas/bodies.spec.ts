@@ -102,6 +102,13 @@ test.describe('the care loop as it reads on the board', () => {
     // reader's control, so it is only shown once that node is the focus (C17)
     await expect(atlas.stake('n-reminders', 'Fetch this region')).toHaveCount(1);
 
+    // the course whose plan did not come back wears its own failure too — the
+    // failing ref is a PLAN id, and it must resolve back to its treatment node
+    const course = atlas.node('n-treatment-301');
+    await expect(course).toHaveAttribute('data-recap', 'Did not come back');
+    await expect(course.locator('.state--error')).toHaveCount(1);
+    await expect(course).not.toContainText('Every step is done');
+
     // every other family is still live
     await expect(atlas.node('n-garden')).toHaveAttribute('data-recap', /plants/);
     expect(await atlas.focusId()).toBe('n-garden');

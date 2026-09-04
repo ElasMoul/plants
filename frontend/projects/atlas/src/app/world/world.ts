@@ -143,14 +143,18 @@ export class World {
   private readonly refreshMinutes = computed(
     () => this.settings.settings().general.refreshMinutes,
   );
-  protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
+  /** The reader's own classic base (seeded from the environment) — C: settings are honoured. */
+  private readonly classicBase = computed(
+    () => this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl,
+  );
+  protected readonly signInUrl = computed(() => classicLoginLink(this.classicBase()));
 
   protected readonly focusNode = computed(() =>
     this.store.nodes().find(n => n.id === this.store.focusId()),
   );
   protected readonly focusClassicLink = computed(() => {
     const f = this.focusNode();
-    return f ? classicLinkFor(f, environment.classicAppUrl) : null;
+    return f ? classicLinkFor(f, this.classicBase()) : null;
   });
 
   protected readonly veins = computed<VeinLine[]>(() => {

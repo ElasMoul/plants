@@ -427,6 +427,8 @@ describe('S4 — the care loop as prototype material', () => {
       expect(n.recap).toBe('Root rot · finished');
       expect(courseBlock(n.body!)).not.toContain('data-done="false"');
       expect(n.body).toContain('as part of its story');
+      expect(n.body).toContain('One step<');
+      expect(n.body).not.toContain('One steps');
       expect(n.body).not.toContain('Mark step');
     });
 
@@ -459,6 +461,64 @@ describe('S4 — the care loop as prototype material', () => {
         'n-treatment-302',
       ]);
       expect(w.nodes.find(n => n.id === 'n-treatments-more')!.recap).toBe('+2 more');
+    });
+
+    it('disables the step stake when the only open step is not due yet', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment()],
+        plansById: {
+          201: plan([
+            step(701, 1, { enabled: false, completedAt: OVERDUE }),
+            step(703, 3, { nextDueAt: LATER }),
+          ]),
+        },
+      });
+      const b = bodyOf(w, 'n-treatment-301');
+      expect(b).toContain('aria-disabled="true"');
+      expect(b).toContain('data-reason="Nothing is due today."');
+      expect(b).not.toContain('data-arg="reminder:703"');
+      expect(b).not.toContain('Mark step 3 as done');
+    });
+
+    it('wears a failed treatment-plans fetch on the course the plan belongs to', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment()],
+        plansById: {},
+        failures: [{ family: 'treatment-plans', ref: 201, status: 503, at: NOW }],
+      });
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.state).toBe('failed');
+      expect(n.recap).toBe('Did not come back');
+      expect(n.body).toContain('the treatment plan did not come back');
+      expect(n.body).not.toContain('Every step is done');
+    });
+
+    it('never invents 0 of 0 when a course plan did not arrive', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment()],
+        plansById: {},
+      });
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.recap).toBe('Root rot · the plan did not come back');
+      expect(n.body).toContain('The steps did not come back');
+      expect(n.body).not.toContain('Every step is done');
+      expect(n.body).toContain('data-reason="The plan did not come back."');
+    });
+
+    it('says a dismissed course was dismissed, not finished', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment({ status: 'DISMISSED', completedAt: OVERDUE })],
+        plansById: { 201: plan([step(701, 1, { enabled: false, completedAt: OVERDUE })]) },
+      });
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.state).toBe('archived');
+      expect(n.recap).toBe('Root rot · dismissed');
+      expect(n.body).toContain('Dismissed');
+      expect(n.body).not.toContain('Finished');
     });
   });
 
@@ -543,6 +603,48 @@ describe('S4 — the care loop as prototype material', () => {
         if (m) said.add(m[1].trim());
       }
       expect(said.size).toBeGreaterThanOrEqual(4);
+    });
+
+    it('says care history is not fetched when the page size is zero', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        careLogsByPlant: { 1: [log(901)] },
+        settings: { ...emptySources().settings, careLogPageSize: 0 },
+      });
+      const n = w.nodes.find(x => x.id === 'n-care')!;
+      expect(n.state).toBe('empty');
+      expect(n.recap).toBe('Care history not fetched');
+      expect(n.body).toContain('turn it on in Settings');
+    });
+
+    it('says snoozing is not kept when the setting is off, and offers it when local', () => {
+      const overdue = { plants: [plant(1)], reminders: [reminder(1, { nextDueAt: OVERDUE })] };
+      const off = careWorld({
+        ...overdue,
+        settings: { ...emptySources().settings, snooze: 'off' as const },
+      });
+      expect(bodyOf(off, 'n-reminders')).toContain('Snoozing is not something PlantPal keeps yet.');
+      expect(bodyOf(off, 'n-reminders')).not.toContain('Snooze the overdue one');
+      const on = careWorld(overdue);
+      expect(bodyOf(on, 'n-reminders')).toContain('Snooze the overdue one');
+      expect(bodyOf(on, 'n-reminders')).not.toContain('Snoozing is not something');
+    });
+
+    it('never prints an API id anywhere when the reader turns them off', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        species: [{ id: 11, scientificName: 'Ficus lyrata', commonName: 'Fig' }],
+        identifications: [
+          { id: 21, status: 'COMPLETED', createdAt: NOW, plantId: 1, commonName: 'Fig',
+            species: 'Ficus lyrata', healthStatus: 'HEALTHY' },
+        ],
+        reminders: [reminder(1)],
+        careLogsByPlant: { 1: [log(901)] },
+        treatments: [treatment()],
+        plansById: { 201: plan([step(701, 1, { nextDueAt: TODAY })]) },
+        settings: { ...emptySources().settings, showApiIds: false },
+      });
+      for (const n of w.nodes) expect(n.body ?? '').not.toContain('state__id');
     });
 
     it('escapes user text in nicknames, instructions and notes', () => {

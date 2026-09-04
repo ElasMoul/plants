@@ -5,6 +5,7 @@ import { classicLoginLink } from '../world/interop';
 import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
 import { MOCK_MODE } from '../core/mock-mode';
+import { SettingsStore } from '../settings/settings.store';
 
 /** The per-focus mutation-rail entries (theme-a ACTIONS, verbatim). */
 const ACTIONS: Record<string, string[]> = {
@@ -74,7 +75,7 @@ const MM_H = 104;
       @if (authed()) {
         <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false" (click)="goIfThere('n-account')">{{ accountName() }}</button>
       } @else {
-        <a class="ch-btn" id="account" style="width:auto" [href]="signInUrl">Sign in</a>
+        <a class="ch-btn" id="account" style="width:auto" [href]="signInUrl()">Sign in</a>
       }
     </header>
 
@@ -171,7 +172,10 @@ export class Chrome {
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');
-  protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
+  private readonly settings = inject(SettingsStore);
+  protected readonly signInUrl = computed(() =>
+    classicLoginLink(this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl),
+  );
 
   protected readonly focusName = computed(
     () => this.store.nodes().find(n => n.id === this.store.focusId())?.name ?? '',

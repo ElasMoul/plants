@@ -98,6 +98,25 @@ interface Ctx {
   rateLimited: Record<number, { retryAfterSeconds: number; at: string }>;
   /** The server's own overdue count, per reminder id, from /dashboard's buckets. */
   overdueByReminder: Record<number, number>;
+  /** True when care history was fetched only for the plants this board draws. */
+  logsPartial: boolean;
+}
+
+/** The scope clause a count wears when it is not the whole garden's record. */
+function logScope(ctx: Ctx): string {
+  return ctx.logsPartial ? ' from the plants on this board' : '';
+}
+
+/** "3 entries" / "1 entry", scoped honestly when the fan-out was partial. */
+function entriesLine(ctx: Ctx): string {
+  const n = ctx.logs.length;
+  return `${n} ${n === 1 ? 'entry' : 'entries'}${logScope(ctx)}`;
+}
+
+/** "3 things logged" / "1 thing logged", scoped honestly. */
+function loggedLine(ctx: Ctx): string {
+  const n = ctx.logs.length;
+  return `${n} ${n === 1 ? 'thing' : 'things'} logged${logScope(ctx)}`;
 }
 
 /** The one sentence a due row says about itself, in this world's clock. */
@@ -133,6 +152,11 @@ function stepsOf(ctx: Ctx, t: TreatmentDto): ReminderDto[] {
   return [...(plan?.steps ?? [])].sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0) || a.id - b.id);
 }
 
+/** Did this course's plan actually arrive? A missing answer is never "0 of 0". */
+function hasPlan(ctx: Ctx, t: TreatmentDto): boolean {
+  return t.treatmentPlanId == null || ctx.plansById[t.treatmentPlanId] != null;
+}
+
 function isPaused(ctx: Ctx, t: TreatmentDto): boolean {
   return (
     ctx.settings.pause === 'local' &&
@@ -145,9 +169,9 @@ function isPaused(ctx: Ctx, t: TreatmentDto): boolean {
 function courseRecap(ctx: Ctx, t: TreatmentDto): string {
   if (t.status === 'DRAFT') return 'Draft · no plan yet';
   const steps = stepsOf(ctx, t);
-  if (t.status === 'COMPLETED' || t.status === 'DISMISSED') {
-    return `${esc(t.diseaseName)} · finished`;
-  }
+  if (t.status === 'COMPLETED') return `${esc(t.diseaseName)} · finished`;
+  if (t.status === 'DISMISSED') return `${esc(t.diseaseName)} · dismissed`;
+  if (!hasPlan(ctx, t)) return `${esc(t.diseaseName)} · the plan did not come back`;
   const done = steps.filter(s => !s.enabled).length;
   const line = `${done} of ${steps.length} done`;
   return isPaused(ctx, t) ? `paused · ${line}` : line;
@@ -274,6 +298,7 @@ function reminderHubBody(ctx: Ctx): string {
         <div class="state__head"><h4 class="state__title">What PlantPal will remind you of</h4>${stateId('action · /api/v1/reminders/**', ctx.settings)}</div>
         <p class="state__note">A reminder belongs to a plant and to a kind of care. Snoozing one moves that reminder and nothing else; it never silently reschedules the rest of your garden.</p>
         ${rows ? `<dl class="rows">${rows}</dl>` : ''}
+        ${routine.length > 6 ? `<p class="state__note">${routine.length - 6} more reminders are not listed here.</p>` : ''}
         ${snoozeNote}
         <div class="btn-row">
           <button class="stake" type="button">Add a reminder</button>
@@ -316,7 +341,7 @@ function careHubBody(ctx: Ctx): string {
 
   return (
     recapWrap(
-      off ? 'Care history not fetched' : `${logs.length} things logged`,
+      off ? 'Care history not fetched' : loggedLine(ctx),
       off
         ? undefined
         : last
@@ -357,7 +382,7 @@ function journalHubBody(ctx: Ctx, collapsed: number): string {
       </section>`;
   return (
     recapWrap(
-      logs.length === 0 ? 'Nothing written yet' : `${logs.length} entries`,
+      logs.length === 0 ? 'Nothing written yet' : entriesLine(ctx),
       logs.length === 0 ? 'A good place to start.' : 'Watering, notes and photos, newest first.',
       `Last synced ${timeLabel(ctx.now)}`,
       ['sk--row', 'sk--row'],
@@ -367,7 +392,7 @@ function journalHubBody(ctx: Ctx, collapsed: number): string {
         ? empty
         : `
       <section>
-        <h3 class="sec">${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}</h3>
+        <h3 class="sec">${entriesLine(ctx)}</h3>
         <p>${collapsed > 0 ? `${wordNumber(logs.length)} is four or more, so the same rule applies here as to species and to plants: the two most recent entries are drawn, and one node holds the other ${wordNumber(collapsed)}.` : `${wordNumber(logs.length)} is fewer than four, so every entry is drawn as its own node beside this card.`}</p>
         <div class="feed">${feed}</div>
         ${collapsed > 0 ? `<button class="hop hop--block" type="button" data-goto="n-journal-more" style="margin-top:var(--hbm-space-4)">Reach the other ${collapsed} entries <small>+${collapsed} more</small></button>` : ''}
@@ -447,6 +472,7 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
   const paused = isPaused(ctx, t);
   const nextOpen = open[0];
   const dueStep = open.find(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow));
+  const planHere = hasPlan(ctx, t);
   const limit = ctx.rateLimited[t.id];
 
   // 1 — what this is
@@ -468,10 +494,17 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
            </section>`;
 
   // 2 — the course
+  const stepReason = !planHere
+    ? 'The plan did not come back.'
+    : paused
+      ? 'The course is paused on this device.'
+      : !nextOpen
+        ? 'Every step is done.'
+        : 'Nothing is due today.';
   const stepStake =
-    paused || !nextOpen
-      ? `<button class="stake" type="button" aria-disabled="true" data-reason="${paused ? 'The course is paused on this device.' : 'Every step is done.'}">Mark today done</button>`
-      : `<button class="stake" type="button" data-arg="reminder:${nextOpen.id}">Mark today done</button>`;
+    paused || !dueStep
+      ? `<button class="stake" type="button" aria-disabled="true" data-reason="${stepReason}">Mark today done</button>`
+      : `<button class="stake" type="button" data-arg="reminder:${dueStep.id}">Mark today done</button>`;
   const pauseStake =
     ctx.settings.pause === 'local' && t.treatmentPlanId != null
       ? `<button class="stake stake--quiet" type="button" data-arg="plan:${t.treatmentPlanId}">${paused ? 'Resume this course' : 'Pause this course'}</button>`
@@ -490,7 +523,7 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
         : `<div class="btn-row"><button class="stake" type="button" data-arg="treatment:${t.id}">Craft the treatment plan</button></div>`
       : t.status === 'IN_PROGRESS'
         ? `<div class="btn-row">${stepStake}${pauseStake}<button class="stake stake--quiet" type="button" data-arg="treatment:${t.id}">Finish this course</button></div>`
-        : `<p class="state__note">Finished ${t.completedAt ? dateLabel(t.completedAt) : dateLabel(t.createdAt)}. It stays on ${esc(plantName(ctx, t.plantId))} as part of its story.</p>`;
+        : `<p class="state__note">${t.status === 'DISMISSED' ? 'Dismissed' : 'Finished'} ${t.completedAt ? dateLabel(t.completedAt) : dateLabel(t.createdAt)}. It stays on ${esc(plantName(ctx, t.plantId))} as part of its story.</p>`;
 
   const course = `
       <section class="state" data-brief-item="action:/api/v1/treatment-plans/**">
@@ -498,7 +531,7 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
         <p class="state__note">A plan is a sequence with an end, not a setting. You can start one, mark a step done, or pause it while you are away.</p>
         <dl class="rows">
           <div class="row"><dt>Running</dt><dd>${esc(t.diseaseName)} · ${courseRecap(ctx, t)}</dd></div>
-          <div class="row"><dt>Next step</dt><dd>${nextOpen ? `${due(ctx, nextOpen)} · ${esc(nextOpen.instruction ?? careLabel(nextOpen.careType))}` : 'Every step is done'}</dd></div>
+          <div class="row"><dt>Next step</dt><dd>${nextOpen ? `${due(ctx, nextOpen)} · ${esc(nextOpen.instruction ?? careLabel(nextOpen.careType))}` : planHere ? 'Every step is done' : 'Not fetched — the plan did not come back'}</dd></div>
           <div class="row"><dt>Treating</dt><dd>${linkTo(ctx.drawn, `n-plant-${t.plantId}`, esc(plantName(ctx, t.plantId)))}</dd></div>
           ${t.treatmentPlanModel ? `<div class="row"><dt>Plan crafted using</dt><dd>${esc(t.treatmentPlanModel)}</dd></div>` : ''}
         </dl>
@@ -514,12 +547,17 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
     })
     .join('');
   const markStake =
-    !paused && nextOpen
-      ? `<button class="stake" type="button" data-arg="reminder:${nextOpen.id}" aria-pressed="false" style="margin-top:var(--hbm-space-4)">Mark step ${nextOpen.stepOrder ?? 1} as done</button>`
+    !paused && dueStep
+      ? `<button class="stake" type="button" data-arg="reminder:${dueStep.id}" aria-pressed="false" style="margin-top:var(--hbm-space-4)">Mark step ${dueStep.stepOrder ?? 1} as done</button>`
       : '';
   const stepsSection = steps.length
-    ? `<section><h3 class="sec">${wordNumber(steps.length)} steps</h3><dl class="rows" data-course>${stepRows}</dl>${markStake}</section>`
-    : '';
+    ? `<section><h3 class="sec">${wordNumber(steps.length)} ${steps.length === 1 ? 'step' : 'steps'}</h3><dl class="rows" data-course>${stepRows}</dl>${markStake}</section>`
+    : planHere
+      ? ''
+      : `<section class="state state--unknown" data-brief-item="state:unknown">
+        <div class="state__head"><h4 class="state__title">The steps did not come back</h4>${stateId('state · unknown', ctx.settings)}</div>
+        <p class="state__note">PlantPal did not answer for this course's plan, so its steps are not drawn. What they are is unknown here, not empty. The course itself is kept.</p>
+      </section>`;
 
   const recapNote = t.plantNickname ?? plantName(ctx, t.plantId);
   return (
@@ -544,7 +582,7 @@ function treatmentBody(t: TreatmentDto, ctx: Ctx): string {
   );
 }
 
-function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<string>): string {
+function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<string>, settings: AssemblySettings): string {
   const rows = plantsOfSpecies
     .slice(0, 3)
     .map(p => `<div class="row"><dt>${linkTo(drawn, `n-plant-${p.id}`, esc(p.nickname))}</dt><dd>${waterLine(p)}</dd></div>`)
@@ -560,7 +598,7 @@ function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<stri
         </div>
       </div>
       <section class="state" data-brief-item="action:/api/v1/species/**">
-        <div class="state__head"><h4 class="state__title">This species</h4><span class="state__id">action · /api/v1/species/${s.id}</span></div>
+        <div class="state__head"><h4 class="state__title">This species</h4>${stateId(`action · /api/v1/species/${s.id}`, settings)}</div>
         ${rows ? `<dl class="rows">${rows}</dl>` : '<p class="state__note">None of your plants are this species yet.</p>'}
       </section>`)
   );
@@ -573,7 +611,7 @@ function scanStatusLine(i: IdentificationDto): string {
   return name;
 }
 
-function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
+function identBody(idents: IdentificationDto[], drawn: Set<string>, settings: AssemblySettings): string {
   const latest = idents[0];
   const feed = idents
     .slice(0, 4)
@@ -582,7 +620,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
   const failedPanel =
     latest && latest.status === 'FAILED'
       ? `<section class="state state--error">
-           <div class="state__head"><h4 class="state__title">The last scan did not come back</h4><span class="state__id">action · /api/v1/identifications/**</span></div>
+           <div class="state__head"><h4 class="state__title">The last scan did not come back</h4>${stateId(`action · /api/v1/identifications/**`, settings)}</div>
            <p class="state__note">Your photo is kept — nothing was lost. Retry sits here, in the node.</p>
            <div class="btn-row"><button class="stake" type="button">Try the scan again</button><button class="stake stake--quiet" type="button">Identify by hand</button></div>
          </section>`
@@ -590,7 +628,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
   const pendingPanel =
     latest && (latest.status === 'PENDING' || latest.status === 'PROCESSING')
       ? `<section class="state state--loading">
-           <div class="state__head"><h4 class="state__title">A scan is being analysed</h4><span class="state__id">data · polling</span></div>
+           <div class="state__head"><h4 class="state__title">A scan is being analysed</h4>${stateId(`data · polling`, settings)}</div>
            <p class="state__note">The answer arrives into this node — the geography holds while it does.</p>
          </section>`
       : '';
@@ -599,7 +637,7 @@ function identBody(idents: IdentificationDto[], drawn: Set<string>): string {
     full(`
       ${failedPanel}${pendingPanel}
       <section class="state" data-brief-item="action:/api/v1/identifications/**">
-        <div class="state__head"><h4 class="state__title">Your identifications</h4><span class="state__id">action · /api/v1/identifications/**</span></div>
+        <div class="state__head"><h4 class="state__title">Your identifications</h4>${stateId(`action · /api/v1/identifications/**`, settings)}</div>
         ${feed ? `<div class="feed">${feed}</div>` : '<p class="state__note">Photograph a plant and the answer lands here.</p>'}
         <div class="btn-row"><button class="stake" type="button">Identify a plant</button></div>
       </section>`)
@@ -611,7 +649,7 @@ function linkTo(drawn: Set<string>, id: string, label: string): string {
   return drawn.has(id) ? `<a class="doc-link" href="#${id}" data-goto="${id}">${label}</a>` : label;
 }
 
-function scanBody(i: IdentificationDto, drawn: Set<string>): string {
+function scanBody(i: IdentificationDto, drawn: Set<string>, settings: AssemblySettings): string {
   const name = esc(i.commonName ?? i.species ?? 'Unknown plant');
   const plantNode = i.plantId != null ? `n-plant-${i.plantId}` : null;
   const plantRow = plantNode
@@ -621,7 +659,7 @@ function scanBody(i: IdentificationDto, drawn: Set<string>): string {
     recapWrap(scanStatusLine(i), esc(i.createdAt.slice(0, 10))) +
     full(`
       <section class="state" data-brief-item="action:/api/v1/identifications/**">
-        <div class="state__head"><h4 class="state__title">This scan</h4><span class="state__id">action · /api/v1/identifications/${i.id}</span></div>
+        <div class="state__head"><h4 class="state__title">This scan</h4>${stateId(`action · /api/v1/identifications/${i.id}`, settings)}</div>
         <dl class="rows">
           <div class="row"><dt>Answer</dt><dd>${name}</dd></div>
           ${i.species ? `<div class="row"><dt>Species</dt><dd>${esc(i.species)}</dd></div>` : ''}
@@ -644,24 +682,29 @@ function gardenBody(plants: PlantDto[], drawn: Set<string>, ctx: Ctx): string {
     recapWrap(`${plants.length} plants`, undefined, `Last synced ${timeLabel(ctx.now)} · watering counts may be stale`, ['sk--sub', 'sk--row', 'sk--row']) +
     full(`
       <section class="state" data-brief-item="action:/api/v1/plants/**">
-        <div class="state__head"><h4 class="state__title">Your plants</h4><span class="state__id">action · /api/v1/plants/**</span></div>
+        <div class="state__head"><h4 class="state__title">Your plants</h4>${stateId(`action · /api/v1/plants/**`, ctx.settings)}</div>
         ${rows ? `<dl class="rows">${rows}</dl>` : '<p class="state__note">No plants yet — add the first one.</p>'}
         <div class="btn-row"><button class="stake" type="button">Add a plant</button></div>
       </section>`)
   );
 }
 
-function accountBody(user: WorldSources['user']): string {
+function accountBody(user: WorldSources['user'], now: string, settings: AssemblySettings): string {
   const who = user ? `${esc(user.firstName)} ${esc(user.lastName)}` : 'Signed in';
   return (
-    recapWrap(user ? esc(user.email) : 'Your session') +
+    recapWrap(
+      user ? esc(user.email) : 'Your session',
+      undefined,
+      `Session read ${timeLabel(now)}`,
+      ['sk--sub', 'sk--row', 'sk--row'],
+    ) +
     full(`
       <section class="state" data-brief-item="action:POST /api/v1/auth/login">
-        <div class="state__head"><h4 class="state__title">Signing in</h4><span class="state__id">action · POST /api/v1/auth/login</span></div>
+        <div class="state__head"><h4 class="state__title">Signing in</h4>${stateId(`action · POST /api/v1/auth/login`, settings)}</div>
         <p class="state__note">Sign-in lives on the classic PlantPal page — the session it issues is the one this atlas is using now.</p>
       </section>
       <section class="state" data-brief-item="action:/api/v1/users/**">
-        <div class="state__head"><h4 class="state__title">You, as PlantPal holds you</h4><span class="state__id">action · /api/v1/users/**</span></div>
+        <div class="state__head"><h4 class="state__title">You, as PlantPal holds you</h4>${stateId(`action · /api/v1/users/**`, settings)}</div>
         <dl class="rows">
           <div class="row"><dt>Name</dt><dd>${who}</dd></div>
           ${user ? `<div class="row"><dt>Email</dt><dd class="v mono">${esc(user.email)}</dd></div>` : ''}
@@ -670,33 +713,33 @@ function accountBody(user: WorldSources['user']): string {
   );
 }
 
-function platformBody(): string {
+function platformBody(settings: AssemblySettings): string {
   return (
     recapWrap('Health · feeds') +
     full(`
       <section class="state" data-brief-item="action:\`app.health\`">
-        <div class="state__head"><h4 class="state__title">Health check</h4><span class="state__id">action · app.health</span></div>
+        <div class="state__head"><h4 class="state__title">Health check</h4>${stateId(`action · app.health`, settings)}</div>
         <p class="state__note">The backend behind this world. A check runs end-to-end and reports here.</p>
         <div class="btn-row"><button class="stake stake--quiet" type="button">Check health again</button></div>
       </section>
       <section class="state state--unknown" data-brief-item="data:dimension.event">
-        <div class="state__head"><h4 class="state__title">Dimension events</h4><span class="state__id">data · dimension.event</span></div>
+        <div class="state__head"><h4 class="state__title">Dimension events</h4>${stateId(`data · dimension.event`, settings)}</div>
         <p class="state__note">Not fetched yet — the platform feed lands in a later round.</p>
       </section>
       <section class="state state--unknown" data-brief-item="data:state.event">
-        <div class="state__head"><h4 class="state__title">State events</h4><span class="state__id">data · state.event</span></div>
+        <div class="state__head"><h4 class="state__title">State events</h4>${stateId(`data · state.event`, settings)}</div>
         <p class="state__note">Not fetched yet.</p>
       </section>`)
   );
 }
 
 /** A deferred-family node body (coverage-scope: rounds 2/3). */
-function deferredBody(title: string, id: string, note: string): string {
+function deferredBody(title: string, id: string, note: string, settings: AssemblySettings): string {
   return (
     recapWrap('Coming with the care loop') +
     full(`
       <section class="state state--empty" data-brief-item="action:${id}">
-        <div class="state__head"><h4 class="state__title">${title}</h4><span class="state__id">action · ${id}</span></div>
+        <div class="state__head"><h4 class="state__title">${title}</h4>${stateId(`action · ${id}`, settings)}</div>
         <div class="empty-plot"><span aria-hidden="true">◌</span></div>
         <p class="state__note">${note}</p>
       </section>`)
@@ -704,12 +747,13 @@ function deferredBody(title: string, id: string, note: string): string {
 }
 
 /** Which node wears a family's failure — degradation is per-node material (C25). */
-const FAILURE_NODE: Record<string, string> = {
-  reminders: 'n-reminders',
-  dashboard: 'n-today',
-  care: 'n-care',
-  treatments: 'n-treatments',
-  users: 'n-account',
+const FAILURE_NODE: Record<string, string[]> = {
+  reminders: ['n-reminders'],
+  dashboard: ['n-today'],
+  // the journal is built from the same care rows — an outage is not an empty plot
+  care: ['n-care', 'n-journal'],
+  treatments: ['n-treatments'],
+  users: ['n-account'],
 };
 
 /** A spoken noun for each family — a slug never belongs in a sentence. */
@@ -726,19 +770,28 @@ function failureName(f: FamilyFailure): string {
   return FAILURE_NAME[f.family] ?? f.family;
 }
 
-function failureNodeId(f: FamilyFailure): string | null {
-  if (f.family === 'treatment-plans') return f.ref != null ? `n-treatment-${f.ref}` : null;
-  return FAILURE_NODE[f.family] ?? null;
+/**
+ * Which nodes wear a family's failure. `treatment-plans` is stamped with the PLAN
+ * id, not the treatment id — resolve it back through the treatments, or the outage
+ * lands on a node that cannot exist and is silently swallowed.
+ */
+function failureNodeIds(f: FamilyFailure, treatments: TreatmentDto[]): string[] {
+  if (f.family === 'treatment-plans') {
+    if (f.ref == null) return [];
+    const t = treatments.find(x => x.treatmentPlanId === f.ref);
+    return t ? [`n-treatment-${t.id}`] : [];
+  }
+  return FAILURE_NODE[f.family] ?? [];
 }
 
 /** The failure, written inside the node it belongs to: fact, time, fate, ways on. */
-function failureBody(f: FamilyFailure, extraWay: boolean): string {
+function failureBody(f: FamilyFailure, extraWay: boolean, settings: AssemblySettings): string {
   const note = `PlantPal answered with ${f.status} at ${timeLabel(f.at)}. Everything already drawn is kept; nothing moved.`;
   return (
     recapWrap('Did not come back', esc(f.message ?? undefined)) +
     full(`
       <section class="state state--error" data-brief-item="state:error">
-        <div class="state__head"><h4 class="state__title">${esc(failureName(f))} did not come back</h4><span class="state__id">state · error</span></div>
+        <div class="state__head"><h4 class="state__title">${esc(failureName(f))} did not come back</h4>${stateId(`state · error`, settings)}</div>
         <p class="state__note">${note}</p>
         <div class="btn-row"><button class="stake" type="button">Fetch this region</button>${
           extraWay ? '<button class="stake stake--quiet" type="button">Count again</button>' : ''
@@ -857,6 +910,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     snoozed: sources.snoozed,
     rateLimited: sources.rateLimited,
     overdueByReminder,
+    logsPartial: Object.keys(sources.careLogsByPlant).length < plants.length,
   };
 
   const rankedTreatments = [...sources.treatments].sort(
@@ -884,24 +938,24 @@ export function assembleWorld(sources: WorldSources): WorldData {
     recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants, drawn, ctx) });
 
   add({ id: 'n-account', glyph: '◉', kind: 'platform', kindLabel: 'Account', name: user ? `${user.firstName}'s account` : 'Your account',
-    recap: user ? user.email : 'Signed in', body: accountBody(user) });
+    recap: user ? user.email : 'Signed in', body: accountBody(user, sources.now, sources.settings) });
   link('n-account', 'n-garden');
 
   add({ id: 'n-platform', glyph: '◈', kind: 'platform', kindLabel: 'Platform', name: 'Platform link',
-    recap: 'Health · 2 feeds', body: platformBody() });
+    recap: 'Health · 2 feeds', body: platformBody(sources.settings) });
   link('n-account', 'n-platform');
 
   add({ id: 'n-ident', glyph: '◎', kind: 'platform', kindLabel: 'Identification', name: 'Identification',
     recap: latestScan[0] ? `Last scan · ${latestScan[0].status.toLowerCase()}` : 'No scans yet',
     state: latestScan[0]?.status === 'FAILED' ? 'failed' : undefined,
-    body: identBody(latestScan, drawn) });
+    body: identBody(latestScan, drawn, sources.settings) });
   link('n-garden', 'n-ident');
 
   add({ id: 'n-species', glyph: '❋', kind: 'collection', kindLabel: 'Collection', name: 'Species',
     recap: `${species.length} species`, state: species.length === 0 ? 'empty' : undefined,
     body: recapWrap(`${species.length} species`) + full(`
       <section class="state" data-brief-item="action:/api/v1/species/**">
-        <div class="state__head"><h4 class="state__title">The species index</h4><span class="state__id">action · /api/v1/species/**</span></div>
+        <div class="state__head"><h4 class="state__title">The species index</h4>${stateId('action · /api/v1/species/**', sources.settings)}</div>
         <p class="state__note">Everything you have identified or added by hand. A species is a reference thing — nothing here can be watered.</p>
         <div class="btn-row"><button class="stake" type="button">Add a species</button></div>
       </section>`) });
@@ -927,11 +981,11 @@ export function assembleWorld(sources: WorldSources): WorldData {
   }
 
   // each scan is a node of its own (the classic scan-detail modal, as geography)
-  emitCollapsed(drawnScans.length === latestScan.length ? latestScan : latestScan, 'n-ident', {
+  emitCollapsed(latestScan, 'n-ident', {
     kind: 'platform', kindLabel: 'Scan', aggregateId: 'n-scans-more', aggregateName: 'more scans',
     toNode: i => ({ id: `n-scan-${i.id}`, glyph: '◎', kind: 'platform', kindLabel: 'Scan',
       name: i.commonName ?? i.species ?? `Scan #${i.id}`, recap: `${i.status.toLowerCase()} · ${i.createdAt.slice(0, 10)}`,
-      state: i.status === 'FAILED' ? 'failed' : undefined, body: scanBody(i, drawn) }),
+      state: i.status === 'FAILED' ? 'failed' : undefined, body: scanBody(i, drawn, sources.settings) }),
   }, add, link);
   // a scan with a plant in the garden veins to it (identify → plant path)
   for (const i of drawnScans) {
@@ -941,12 +995,12 @@ export function assembleWorld(sources: WorldSources): WorldData {
   // the remaining classic pages, as nodes (chat + home dashboard + treatments)
   add({ id: 'n-ask', glyph: '✎', kind: 'guide', kindLabel: 'Companion', name: 'Ask PlantPal',
     recap: 'Coming soon', state: 'empty',
-    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.') });
+    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.', sources.settings) });
   link('n-garden', 'n-ask');
 
   add({ id: 'n-today', glyph: '◷', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
     recap: 'Counts land in round 3', state: 'empty',
-    body: deferredBody("Today's summary", '/api/v1/dashboard/**', 'Counts land in round 3 — the reminders they count are already on this board.') });
+    body: deferredBody("Today's summary", '/api/v1/dashboard/**', 'Counts land in round 3 — the reminders they count are already on this board.', sources.settings) });
   link('n-garden', 'n-today');
   link('n-today', 'n-reminders');
 
@@ -962,13 +1016,13 @@ export function assembleWorld(sources: WorldSources): WorldData {
   link('n-garden', 'n-reminders');
 
   add({ id: 'n-care', glyph: '☂', kind: 'guide', kindLabel: 'Guide', name: 'Care',
-    recap: sources.settings.careLogPageSize === 0 ? 'Care history not fetched' : `${logs.length} things logged`,
+    recap: sources.settings.careLogPageSize === 0 ? 'Care history not fetched' : loggedLine(ctx),
     state: sources.settings.careLogPageSize === 0 ? 'empty' : undefined,
     body: careHubBody(ctx) });
   link('n-garden', 'n-care');
 
   add({ id: 'n-journal', glyph: '▤', kind: 'journal', kindLabel: 'Journal', name: 'Journal',
-    recap: logs.length === 0 ? 'Nothing written yet' : `${logs.length} entries`,
+    recap: logs.length === 0 ? 'Nothing written yet' : entriesLine(ctx),
     state: logs.length === 0 ? 'empty' : undefined,
     body: journalHubBody(ctx, collapsedLogs) });
   link('n-garden', 'n-journal');
@@ -1029,7 +1083,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     kind: 'species', kindLabel: 'Species', aggregateId: 'n-species-more', aggregateName: 'more species',
     toNode: s => ({ id: `n-species-${s.id}`, glyph: '♣', kind: 'species', kindLabel: 'Species',
       name: s.commonName ?? s.scientificName, recap: `${bySpecies(s).length} of your plants`,
-      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s), drawn) }),
+      recapNote: s.commonName ? s.scientificName : undefined, body: speciesBody(s, bySpecies(s), drawn, sources.settings) }),
   }, add, link);
   // vein each drawn species to its drawn plants (cross-entity traversal)
   for (const s of rankedSpecies.slice(0, DENSITY_CAP - 1 < rankedSpecies.length ? 2 : rankedSpecies.length)) {
@@ -1042,19 +1096,20 @@ export function assembleWorld(sources: WorldSources): WorldData {
 
   // a family that did not come back wears its own failure — the rest stays live
   for (const f of sources.failures) {
-    const id = failureNodeId(f);
-    const node = id ? nodes.find(n => n.id === id) : undefined;
-    if (!node || !id) continue;
-    const extraWay = id === 'n-today';
-    node.state = 'failed';
-    node.recap = 'Did not come back';
-    node.failure = {
-      fact: `${failureName(f)} did not come back (${f.status}).`,
-      time: timeLabel(f.at),
-      dataNote: 'Everything already drawn is kept; nothing moved.',
-      waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
-    };
-    node.body = failureBody(f, extraWay);
+    for (const id of failureNodeIds(f, sources.treatments)) {
+      const node = nodes.find(n => n.id === id);
+      if (!node) continue;
+      const extraWay = id === 'n-today';
+      node.state = 'failed';
+      node.recap = 'Did not come back';
+      node.failure = {
+        fact: `${failureName(f)} did not come back (${f.status}).`,
+        time: timeLabel(f.at),
+        dataNote: 'Everything already drawn is kept; nothing moved.',
+        waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
+      };
+      node.body = failureBody(f, extraWay, sources.settings);
+    }
   }
 
   layoutCells(nodes, edges, 'n-garden', sources.priorCells);
