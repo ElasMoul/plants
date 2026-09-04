@@ -122,6 +122,8 @@ interface VeinLine {
                 [mode]="store.modeOf(n.id)"
                 [pending]="store.isPending(n.id)"
                 [streamingTurn]="streamFor(n.id)"
+                [chatThreadKey]="chatThreadKeyFor(n.id)"
+                [chatTurnsKept]="chatTurnsKept()"
                 [chatTurns]="chatTurnsFor(n.id)"
                 [chatFailure]="chatFailureFor(n.id)"
                 [chatExpanded]="chatExpandedFor(n.id)"
@@ -176,7 +178,10 @@ export class World {
     const s = this.chat.streaming();
     return s ? { question: s.question, text: s.text } : null;
   });
-  private readonly askThread = computed(() => this.chat.threads()[0] ?? null);
+  /** The thread the companion is wearing — the one asked in or last failed, not
+   *  merely the newest, so an answer never lands on another thread's feed. */
+  private readonly askKey = computed(() => this.chat.activeKey());
+  private readonly askThread = computed(() => this.chat.thread(this.askKey()) ?? null);
 
   protected streamFor(id: string): { question: string; text: string } | null {
     return id === 'n-ask' ? this.streamingTurn() : null;
@@ -186,13 +191,21 @@ export class World {
     return id === 'n-ask' ? (this.askThread()?.turns ?? []) : [];
   }
 
+  protected readonly chatTurnsKept = computed(
+    () => this.settings.settings().data.chatTurnsKept,
+  );
+
+  protected chatThreadKeyFor(id: string): string | null {
+    return id === 'n-ask' ? this.askKey() : null;
+  }
+
   protected chatFailureFor(id: string): ChatFailure | null {
     if (id !== 'n-ask') return null;
-    return this.chat.failure(this.askThread()?.key ?? 'garden') ?? null;
+    return this.chat.failure(this.askKey()) ?? null;
   }
 
   protected chatExpandedFor(id: string): boolean {
-    return id === 'n-ask' && this.chat.isExpanded(this.askThread()?.key ?? 'garden');
+    return id === 'n-ask' && this.chat.isExpanded(this.askKey());
   }
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());

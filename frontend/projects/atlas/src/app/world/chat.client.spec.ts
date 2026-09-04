@@ -105,6 +105,18 @@ describe('ChatClient', () => {
     expect(client.history(turns)).toHaveLength(10);
   });
 
+  it('never hands a truncated half-sentence back as the model’s own answer', () => {
+    const { client, settings } = setup();
+    settings.set('ai.chatHistoryTurns', 5);
+    const cut = { ...turn(2), reply: 'the low leaves are', outcome: 'truncated' as const };
+    expect(client.history([turn(1), cut, turn(3)])).toEqual([
+      { role: 'user', content: 'q1' },
+      { role: 'assistant', content: 'a1' },
+      { role: 'user', content: 'q3' },
+      { role: 'assistant', content: 'a3' },
+    ]);
+  });
+
   it('sends no plant when the reader asked for no plant context', () => {
     const { client, http, settings } = setup();
     settings.set('ai.chatPlantContext', 'never');

@@ -163,7 +163,10 @@ describe('Rhizome constitution gate (F2)', () => {
     });
   });
 
-  describe('C2 — the companion is a reading node (n-ask)', () => {
+  // The pinned prototype material n-ask is measured against — a fidelity guard on
+  // world.bodies.ts, not coverage of askBody(): the assembled body's own behaviour
+  // is asserted in constitution-live.spec.ts and world.assembly.spec.ts.
+  describe('C2 — the companion is a reading node (n-ask): the pinned prototype', () => {
     const ask = NODE_BODIES['n-ask'];
 
     it('keeps the prototype material the assembly is measured against', () => {

@@ -69,12 +69,16 @@ export class ChatClient {
     return this.settings.get('ai.chatPlantContext') === 'never' ? undefined : plantId;
   }
 
-  /** The tail of the thread, flattened oldest-first into user/assistant pairs. */
+  /**
+   * The tail of the thread, flattened oldest-first into user/assistant pairs.
+   * Only answered turns travel: a truncated half-sentence must never be handed
+   * back to the model as its own prior answer.
+   */
   history(turns: ChatTurnDto[]): ChatMessageDto[] {
     const kept = Number(this.settings.get('ai.chatHistoryTurns')) || 0;
     if (kept <= 0) return [];
     const out: ChatMessageDto[] = [];
-    for (const turn of turns.slice(-kept)) {
+    for (const turn of turns.filter(t => t.outcome === 'answered').slice(-kept)) {
       out.push({ role: 'user', content: turn.question });
       out.push({ role: 'assistant', content: turn.reply });
     }

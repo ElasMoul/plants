@@ -130,11 +130,12 @@ export class NodeCard {
     // re-assembly is what moves a card, and an answer arriving must move nothing.
     effect(() => {
       const turn = this.streamingTurn();
+      const key = this.chatThreadKey();
       const turns = this.chatTurns();
       const failure = this.chatFailure();
       const expanded = this.chatExpanded();
       this.node();
-      queueMicrotask(() => this.paintChat(turn, turns, failure, expanded));
+      queueMicrotask(() => this.paintChat(turn, key, turns, failure, expanded));
     });
   }
 
@@ -149,6 +150,11 @@ export class NodeCard {
   readonly pending = input<boolean>(false);
   /** The answer being written into this card's feed, if one is. */
   readonly streamingTurn = input<StreamingTurn | null>(null);
+  /** Which thread the live material belongs to. When it is not the thread the
+   *  body drew, the feed is repainted from row zero rather than appended to. */
+  readonly chatThreadKey = input<string | null>(null);
+  /** How many turns stand unfolded — the reader's data.chatTurnsKept. */
+  readonly chatTurnsKept = input<number>(0);
   /** Every turn of the thread this card shows — the tail beyond what the body
    *  already drew is painted in place, so a finished answer needs no reload. */
   readonly chatTurns = input<ChatTurnDto[]>([]);
@@ -185,6 +191,7 @@ export class NodeCard {
    */
   private paintChat(
     turn: StreamingTurn | null,
+    threadKey: string | null,
     turns: ChatTurnDto[],
     failure: ChatFailure | null,
     expanded: boolean,
@@ -203,18 +210,28 @@ export class NodeCard {
       panel.hidden = !copy;
     }
     if (!feed) return;
-    // "Read the whole thread": the same feed, widened. No node, no route, no camera.
-    for (const row of Array.from(feed.querySelectorAll<HTMLElement>('[data-extra]'))) {
-      row.hidden = !expanded;
-    }
     const toggle = Array.from(root.querySelectorAll<HTMLElement>('.stake--quiet')).find(b =>
       /^(Read the whole thread|Show just the recent turns)$/.test(b.textContent?.trim() ?? ''),
     );
     if (toggle) toggle.textContent = expanded ? 'Show just the recent turns' : 'Read the whole thread';
     const q = feed.querySelector<HTMLElement>('[data-streaming-q]');
     const a = feed.querySelector<HTMLElement>('[data-streaming]');
-    // the turns this body did not draw, drawn here in the same material
-    const already = Number(feed.dataset['threadRendered'] ?? '0');
+    // The turns this body did not draw, drawn here in the same material. A turn
+    // is matched by the thread it belongs to, never by count alone: asking about
+    // a different subject makes a different thread, and slicing one thread's rows
+    // by another's length loses the answer entirely.
+    const rendered = feed.dataset['thread'] ?? 'garden';
+    const switched = threadKey != null && threadKey !== rendered;
+    if (switched) {
+      // the body is wearing another thread's history — take it off, and draw this
+      // one from row zero
+      for (const row of Array.from(feed.querySelectorAll<HTMLElement>('.feed__row'))) {
+        if (row !== q && row !== a) row.remove();
+      }
+      feed.dataset['thread'] = threadKey;
+      feed.dataset['threadRendered'] = '0';
+    }
+    const already = switched ? 0 : Number(feed.dataset['threadRendered'] ?? '0');
     for (const late of Array.from(feed.querySelectorAll('[data-late]'))) late.remove();
     for (const t of turns.slice(already)) {
       const when = t.askedAt.slice(11, 16);
@@ -238,6 +255,22 @@ export class NodeCard {
         else feed.append(row);
       }
     }
+    // "Read the whole thread": the same feed, widened. No node, no route, no
+    // camera. The fold is recomputed over every row the feed now holds, so a turn
+    // committed in this session folds exactly as an assembled one does — but only
+    // where the toggle stands, so nothing can be hidden with no way to unfold it.
+    const kept = Math.max(0, this.chatTurnsKept());
+    const pairs = Array.from(feed.querySelectorAll<HTMLElement>('.feed__row')).filter(
+      r => r !== q && r !== a,
+    );
+    const total = Math.max(turns.length, Math.ceil(pairs.length / 2));
+    const hiddenBefore = toggle ? (kept === 0 ? total : Math.max(0, total - kept)) : 0;
+    pairs.forEach((row, i) => {
+      const hide = Math.floor(i / 2) < hiddenBefore && !expanded;
+      if (Math.floor(i / 2) < hiddenBefore) row.setAttribute('data-extra', '');
+      else row.removeAttribute('data-extra');
+      row.hidden = hide;
+    });
     if (!q || !a) return;
     const qVal = q.querySelector<HTMLElement>('.feed__val');
     const aVal = a.querySelector<HTMLElement>('.feed__val');

@@ -78,6 +78,13 @@ export class WorldActionsService {
   /** The currently open form, if any. */
   readonly activeForm = signal<ActiveForm | null>(null);
 
+  constructor() {
+    // A data-source or scenario switch stops the answer being written, for the
+    // same reason focus leaving does: it would otherwise commit into the new
+    // source's threads.
+    this.chat.onAbort(() => this.cancelAsk());
+  }
+
   /** Bumped when a mutation succeeded and the world should re-assemble. */
   readonly reloadRequested = signal(0);
 
@@ -257,7 +264,8 @@ export class WorldActionsService {
     if (/^read the whole thread$|^show just the recent turns$/.test(l)) {
       // a focus-only widening of the same feed: no node, no route, no camera, and
       // nothing asked of the server
-      const key = this.chat.threads()[0]?.key ?? 'garden';
+      // the thread the pressed card is actually showing — not merely the newest
+      const key = this.chat.activeKey();
       this.chat.toggleExpanded(key);
       this.store.say(
         this.chat.isExpanded(key)
@@ -326,7 +334,10 @@ export class WorldActionsService {
     this.askingKey = key;
     this.chat.begin(key, text, context.plantId);
     const askedAt = new Date().toISOString();
-    this.asking = this.chatClient
+    // captured into a local first: at zero latency the whole stream can arrive
+    // synchronously inside subscribe(), and assigning afterwards would resurrect
+    // a finished ask as a live one
+    const sub = this.chatClient
       .ask({ question: text, plantId: context.plantId, history: this.chat.turns(key) })
       .subscribe({
         next: event => {
@@ -361,6 +372,7 @@ export class WorldActionsService {
           this.store.say('The answer is on the companion. The camera did not move.');
         },
       });
+    if (this.askingKey === key) this.asking = sub;
   }
 
   /** Stops the answer being written, keeping whatever of it already arrived. */

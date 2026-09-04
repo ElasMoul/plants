@@ -35,8 +35,14 @@ export class ChatStore {
   private readonly threadsByKey = signal<Record<string, ChatThreadDto>>({});
   /** The source these threads were loaded for, so a switch reloads rather than mixes. */
   private loadedFor: DataSource | null = null;
+  /** What to do with an answer in flight when the ground moves under it. */
+  private abortHandler: (() => void) | null = null;
 
   readonly streaming = signal<StreamingAsk | null>(null);
+  /** The thread the reader last asked in, or that last failed — the one the
+   *  companion's card is wearing. Never "the newest thread": with more than one
+   *  thread those diverge, and the answer would land on the wrong feed. */
+  private readonly lastTouched = signal<string | null>(null);
   readonly failures = signal<Record<string, ChatFailure>>({});
   readonly expanded = signal<Record<string, boolean>>({});
 
@@ -45,9 +51,31 @@ export class ChatStore {
     Object.values(this.threadsByKey()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
   );
 
+  /** The thread the companion's live material belongs to. */
+  readonly activeKey = computed<string>(
+    () => this.streaming()?.key ?? this.lastTouched() ?? this.threads()[0]?.key ?? 'garden',
+  );
+
+  /**
+   * Registers what must happen to an answer still being written when the ground
+   * under it changes. A source switch cannot leave a stream running: it would
+   * commit into the new source's threads, which is exactly what the namespacing
+   * exists to prevent.
+   */
+  onAbort(fn: () => void): void {
+    this.abortHandler = fn;
+  }
+
   /** Reads the stored threads for a source; call once per source, on boot. */
   load(source: DataSource): void {
+    // stop (and keep) whatever was being written for the OLD source first, while
+    // `loadedFor` still names it, so the partial is persisted where it belongs
+    if (this.streaming()) {
+      this.abortHandler?.();
+      this.streaming.set(null);
+    }
     this.loadedFor = source;
+    this.lastTouched.set(null);
     if (this.settings.get('ai.chatThreads') !== 'device') {
       // The reader asked for threads not to outlive the page, so what a previous
       // 'device' run wrote is removed rather than left to resurface on a switch back.
@@ -74,6 +102,7 @@ export class ChatStore {
     context: { plantId?: number; plantName?: string } = {},
   ): void {
     const key = threadKey(context.plantId ?? turn.plantId);
+    this.lastTouched.set(key);
     const existing = this.threadsByKey()[key];
     const next: ChatThreadDto = {
       key,
@@ -98,6 +127,7 @@ export class ChatStore {
   // ---------- the answer in flight ----------
 
   begin(key: string, question: string, plantId?: number): void {
+    this.lastTouched.set(key);
     this.streaming.set({ key, question, text: '', plantId });
     const failures = { ...this.failures() };
     delete failures[key];
@@ -118,6 +148,7 @@ export class ChatStore {
   }
 
   fail(key: string, failure: ChatFailure): void {
+    this.lastTouched.set(key);
     this.failures.set({ ...this.failures(), [key]: failure });
   }
 

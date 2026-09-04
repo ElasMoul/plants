@@ -162,6 +162,12 @@ export class MockBackend {
     this.reset(mode?.scenario ?? 'garden', Date.now());
   }
 
+  /** How many asks this session has actually made of the mock chat route — the
+   *  only way a walk can prove an offline press sent nothing. */
+  get askCount(): number {
+    return this.asks;
+  }
+
   get state(): MockSeed {
     return this.seed;
   }

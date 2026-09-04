@@ -124,9 +124,13 @@ function careLabel(t: string): string {
               </select></label>
           } @else {
             <p class="rz-form__note">{{ askPlantId() === null ? 'Asking about the whole garden.' : 'Asking about ' + askName() + '.' }}</p>
-            <div class="btn-row">
-              <button class="stake stake--quiet" type="button" (click)="askPlantId.set(askPlantId() === null ? (form.plantId ?? null) : null)">{{ askPlantId() === null ? 'Ask about ' + askName() + ' instead' : 'Ask about the whole garden instead' }}</button>
-            </div>
+            @if (form.plantId !== undefined && form.plantId !== null) {
+              <!-- the quiet swap only stands where a real plant was resolved:
+                   a toggle that names no plant and moves nothing is not an offer -->
+              <div class="btn-row">
+                <button class="stake stake--quiet" type="button" (click)="askPlantId.set(askPlantId() === null ? form.plantId : null)">{{ askPlantId() === null ? 'Ask about ' + askName() + ' instead' : 'Ask about the whole garden instead' }}</button>
+              </div>
+            }
           }
           <p class="rz-form__note">It reads your garden and answers here, on the companion — it never changes anything itself.</p>
           <div class="btn-row">

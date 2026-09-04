@@ -28,6 +28,31 @@ function turn(n: number, plantId?: number): ChatTurnDto {
 describe('ChatStore', () => {
   beforeEach(() => localStorage.clear());
 
+  it('wears the thread asked in, not merely the newest one', () => {
+    const { chat } = make();
+    chat.load('mock');
+    chat.append(turn(9), { plantId: 3 });
+    chat.append(turn(10));
+    // 'garden' is newest, but the reader is asking about the plant again
+    chat.begin('plant:3', 'and now?', 3);
+    expect(chat.activeKey()).toBe('plant:3');
+    chat.end();
+    expect(chat.activeKey()).toBe('plant:3');
+    chat.fail('garden', { kind: 'offline', retryAfterSeconds: null });
+    expect(chat.activeKey()).toBe('garden');
+  });
+
+  it('stops an answer in flight when the ground moves under it', () => {
+    const { chat } = make();
+    let aborted = 0;
+    chat.onAbort(() => aborted++);
+    chat.load('mock');
+    chat.begin('garden', 'who are you?');
+    chat.load('live');
+    expect(aborted).toBe(1);
+    expect(chat.streaming()).toBeNull();
+  });
+
   it('keys a thread by its plant, or by the garden', () => {
     expect(threadKey()).toBe('garden');
     expect(threadKey(4)).toBe('plant:4');

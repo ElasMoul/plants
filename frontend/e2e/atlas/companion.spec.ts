@@ -127,6 +127,12 @@ test.describe('the companion answers in its own card and moves nothing', () => {
     // the partial is kept as a turn — it is not dropped, and nothing is retried
     await expect(atlas.node('n-ask')).toContainText('why are the low leaves going?');
     await expect(atlas.node('n-ask').locator('[data-streaming]')).toBeHidden();
+    // and it is kept as what it is: truncated, with the ask offered again
+    await page.reload();
+    await page.locator('rz-node#n-treatments').waitFor();
+    await openAsk(page, atlas);
+    await expect(atlas.node('n-ask')).toContainText('stopped part-way');
+    await expect(atlas.stake('n-ask', 'Ask it again')).toBeVisible();
   });
 
   test('reading the whole thread widens the same feed and opens nothing', async ({ page }) => {
@@ -137,7 +143,8 @@ test.describe('the companion answers in its own card and moves nothing', () => {
     for (const q of ['who are you?', 'how often should I water?', 'why the yellow leaves?', 'what is due?']) {
       await ask(page, atlas, q);
     }
-    // the thread is kept on this device, so the next board folds it
+    // the fold and its stake are assembled material: this body was built with an
+    // empty thread, so it carries no toggle — the next board is where it stands
     await page.reload();
     await page.locator('rz-node#n-treatments').waitFor();
     await openAsk(page, atlas);
@@ -170,13 +177,16 @@ test.describe('the companion answers in its own card and moves nothing', () => {
     await atlas.goto('garden');
     await openAsk(page, atlas);
     await atlas.probe('offline').click();
-    const asked = atlas.apiRequests.length;
+    // the mock answers in memory, so the network log cannot prove this: count the
+    // asks the backend itself served instead
+    const asked = await atlas.mockAsks();
 
     await atlas.stake('n-ask', 'Ask something').click();
 
     await expect(atlas.live()).toContainText('queued');
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
-    expect(atlas.apiRequests.length).toBe(asked);
+    expect(await atlas.mockAsks()).toBe(asked);
+    expect(atlas.apiRequests.length).toBe(0);
     await atlas.probe('offline').click();
   });
 
