@@ -19,6 +19,7 @@ import {
   TargetMap,
   travelCamera,
 } from '@plantpal/rhizome-engine';
+import { NODE_BODIES } from './world.bodies';
 import { FIXTURE_WORLD } from './world.fixture';
 import { WorldData, WorldNode } from './world.model';
 import { WorldStore } from './world.store';
@@ -145,6 +146,20 @@ describe('Rhizome constitution gate (F2)', () => {
       store.go('n-office');
       store.go('n-garden'); // backtrack
       expect(store.path()).toEqual([start, 'n-garden']);
+    });
+  });
+
+  describe('C17 / C19 — controls live only in the full body', () => {
+    it('never places a course row or a step stake before the full body', () => {
+      const bodies = Object.entries(NODE_BODIES).filter(([, html]) => html.includes('n__full'));
+      expect(bodies.length).toBeGreaterThan(0);
+      for (const [id, html] of bodies) {
+        const full = html.indexOf('n__full');
+        const stake = html.indexOf('class="stake');
+        const rows = html.indexOf('<dl class="rows"');
+        expect({ id, stakeBeforeFull: stake > -1 && stake < full }).toEqual({ id, stakeBeforeFull: false });
+        expect({ id, rowsBeforeFull: rows > -1 && rows < full }).toEqual({ id, rowsBeforeFull: false });
+      }
     });
   });
 

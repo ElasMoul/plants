@@ -31,10 +31,11 @@ type Fetched<T> = { ok: T; fail?: undefined } | { ok?: undefined; fail: FamilyFa
 
 
 /**
- * Assembles the world from the live backend: the round-1 spine (plants, species,
- * identifications) plus the care loop — reminders, the dashboard, preferences, the
- * active treatments of each treated plant, their plans, and the care history of the
- * plants that are drawn.
+ * Assembles the world from the backend behind PlantPal — live, or the in-memory
+ * mock garden, which answers on the same HTTP seam so nothing here knows which.
+ * Rounds 1 to 3: the spine (plants, species, identifications) plus the care loop —
+ * reminders, the dashboard, preferences, the active treatments of each treated
+ * plant, their plans, and the care history of the plants that are drawn.
  *
  * Every family is fetched under its own tolerance: one endpoint answering 503 marks
  * that family failed and the rest of the board still arrives live, because

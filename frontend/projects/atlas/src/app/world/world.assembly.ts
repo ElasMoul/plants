@@ -1093,7 +1093,8 @@ function platformBody(settings: AssemblySettings): string {
   );
 }
 
-/** A deferred-family node body (coverage-scope: rounds 2/3). */
+/** A node body for a family the atlas does not cover yet (currently: the chat
+ *  companion). It names what is missing rather than drawing an empty card. */
 function deferredBody(title: string, id: string, note: string, settings: AssemblySettings): string {
   return (
     recapWrap('Coming with the care loop') +
@@ -1229,10 +1230,12 @@ function buildMeta(sources: WorldSources): WorldMeta {
 // ── the assembly ─────────────────────────────────────────────────────────────
 
 /**
- * Assemble the world from live PlantPal data — the round-1 spine of the
- * mission's coverage scope: plants, species, identifications (async), auth,
- * platform. Deterministic in its inputs: stable ids, density collapse, BFS cell
- * layout (C7). Deferred families render as honest deferred panels, never blanks.
+ * Assemble the world from live PlantPal data — rounds 1 to 3 of the mission's
+ * coverage scope: the spine (plants, species, identifications, auth, platform),
+ * the care loop (reminders, care journal, treatment courses, plant vitals) and
+ * the dashboard, notifications and account. Deterministic in its inputs: stable
+ * ids, density collapse, BFS cell layout with prior-cell allocation (C7/C8).
+ * A family PlantPal has no endpoint for says so in its own words, never blank.
  */
 export function assembleWorld(sources: WorldSources): WorldData {
   const { plants, species, identifications, user } = sources;

@@ -85,9 +85,29 @@ export class AtlasPage {
     return this.page.locator('#settings .pane');
   }
 
-  /** A reviewer probe: 'slow' | 'offline' | 'reduced'. */
+  /** A reviewer probe: 'slow' | 'offline' | 'reduced' (the motion one is #p-motion). */
   probe(name: 'slow' | 'offline' | 'reduced'): Locator {
-    return this.page.locator(`#p-${name}`);
+    return this.page.locator(name === 'reduced' ? '#p-motion' : `#p-${name}`);
+  }
+
+  /** Every node's left/top in the plane — the geometry a law says must not move. */
+  positions(): Promise<Record<string, string>> {
+    return this.page.locator('rz-node').evaluateAll(els =>
+      Object.fromEntries(
+        els.map(e => {
+          const s = (e as HTMLElement).style;
+          return [e.id, `${s.left}|${s.top}`];
+        }),
+      ),
+    );
+  }
+
+  /** The in-memory backend's whole state — so a walk can prove nothing was written. */
+  mockState(): Promise<string> {
+    return this.page.evaluate(() => {
+      const b = (window as unknown as { __atlasMock?: { state?: unknown } }).__atlasMock;
+      return JSON.stringify(b?.state ?? null);
+    });
   }
 
   topbarSub(): Locator {

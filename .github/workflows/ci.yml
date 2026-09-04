@@ -111,6 +111,17 @@ jobs:
         env:
           CI: true
 
+      - name: Upload E2E report (atlas)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       # E2E (classic, Playwright) — disabled until tests are stabilised
       # - name: Install Playwright browsers
       #   working-directory: frontend
