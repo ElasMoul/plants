@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { AuthService } from '@plantpal/shared-core';
 import { environment } from '../../environments/environment';
-import { classicLoginLink } from '../world/interop';
+import { classicLinkFor, classicLoginLink } from '../world/interop';
 import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
 import { MOCK_MODE } from '../core/mock-mode';
@@ -118,7 +118,12 @@ const MM_H = 104;
           >→ {{ n.name }} <small>{{ n.recap }}</small></button>
         }
       </div>
-      <span class="chrome__foot"><button class="ch-btn" type="button" id="show-all" (click)="onShowAll()">Show all connections</button></span>
+      <span class="chrome__foot">
+        <button class="ch-btn" type="button" id="show-all" (click)="onShowAll()">Show all connections</button>
+        @if (classicLink(); as link) {
+          <a class="ch-btn" id="open-classic" [href]="link" target="_blank" rel="noopener">Open in PlantPal ↗</a>
+        }
+      </span>
     </aside>
 
     <div id="atlas" class="chrome">
@@ -162,12 +167,14 @@ const MM_H = 104;
       <button class="ch-btn ch-btn--square" type="button" title="Help">?</button>
     </p>
 
+    @if (probesShown()) {
     <div id="probe" class="chrome">
       <span class="chrome__title">Show this screen</span>
       <button class="ch-btn" type="button" id="p-slow" [attr.aria-pressed]="store.probeSlow()" (click)="toggleSlow()">Slow (≥10s)</button>
       <button class="ch-btn" type="button" id="p-offline" [attr.aria-pressed]="store.probeOffline()" (click)="toggleOffline()">Offline</button>
       <button class="ch-btn" type="button" id="p-motion" [attr.aria-pressed]="store.probeReduced()" (click)="toggleReduced()">Reduced motion</button>
     </div>
+    }
   `,
 })
 export class Chrome {
@@ -178,9 +185,29 @@ export class Chrome {
   protected readonly mock = inject(MOCK_MODE, { optional: true });
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
-  protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');
+  protected readonly accountName = computed(
+    () =>
+      this.settings.settings().profile.displayName ||
+      this.auth.getCurrentUser()?.firstName ||
+      'Account',
+  );
   private readonly settings = inject(SettingsStore);
   private readonly device = inject(DeviceStore);
+  /** Reviewer furniture: shown unless this reader asked for a quieter board. */
+  protected readonly probesShown = computed(
+    () => this.settings.settings().advanced.probes === 'show',
+  );
+  /** Interop, never a stake and never a hop: chrome, and only when asked for. */
+  protected readonly classicLink = computed(() => {
+    if (this.settings.settings().integrations.openInClassic !== 'show') return null;
+    const focus = this.store.nodes().find(n => n.id === this.store.focusId());
+    return focus
+      ? classicLinkFor(
+          focus,
+          this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl,
+        )
+      : null;
+  });
   protected readonly signInUrl = computed(() =>
     classicLoginLink(this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl),
   );
@@ -269,6 +296,10 @@ export class Chrome {
       document.body.dataset['net'] = this.store.probeOffline() ? 'offline' : 'online';
       if (this.store.probeReduced()) document.body.dataset['motion'] = 'reduced';
       else delete document.body.dataset['motion'];
+      // the `action · /api/v1/…` lines are the atlas being the API's brief — optional
+      document.body.dataset['apiIds'] = this.settings.settings().integrations.showApiIds
+        ? 'on'
+        : 'off';
     });
   }
 
@@ -288,6 +319,8 @@ export class Chrome {
 
   protected openSettings(ev: Event): void {
     ev.stopPropagation(); // the opening click must not reach #shell's click-to-exit
+    // Cancel must be able to put back exactly what was here when it opened.
+    this.settings.open();
     this.store.mode.set('overview');
   }
 

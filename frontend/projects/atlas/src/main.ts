@@ -2,6 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { consumeSessionHandoff } from '@plantpal/shared-core';
 import { appConfigFor } from './app/app.config';
 import { resolveMockMode } from './app/core/mock-mode';
+import { applyBootAppearance } from './app/settings/settings.store';
 import { environment } from './environments/environment';
 import { App } from './app/app';
 
@@ -10,6 +11,10 @@ import { App } from './app/app';
 // first AuthService read already sees the signed-in session, and the fragment is
 // scrubbed before anything renders.
 consumeSessionHandoff();
+
+// The remembered interface and palette are painted on <html> before the first
+// node renders — index.html's defaults would otherwise flash first.
+applyBootAppearance();
 
 // Resolved HERE, in main's body — a module-level constant would run before the
 // handoff above.

@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { anchorPosition } from '@plantpal/rhizome-engine';
-import { WorldStore } from './world.store';
+import { LAYOUT_KEY, WorldStore } from './world.store';
+import { SETTINGS_KEY } from '../settings/settings.model';
+import type { WorldData, WorldNode } from './world.model';
 
 describe('WorldStore (C4 — engine ↔ Angular wiring)', () => {
   let store: WorldStore;
@@ -110,5 +112,128 @@ describe('WorldStore (C4 — engine ↔ Angular wiring)', () => {
       expect(cam.k).toBeCloseTo(0.8, 6);
       expect(cam.x + at.x * cam.k).toBeCloseTo(500, 6);
     });
+  });
+});
+
+describe('WorldStore (S7 — the store reads its settings)', () => {
+  function node(id: string, col: number, row: number): WorldNode {
+    return {
+      id, cell: { col, row }, kind: 'guide', kindLabel: 'Guide', glyph: '◷',
+      name: id, recap: 'two words',
+    };
+  }
+  const world: WorldData = {
+    nodes: [node('n-garden', 2, 2), node('n-today', 2, 3)],
+    edges: [['n-garden', 'n-today']],
+    initialFocus: 'n-garden',
+  };
+
+  function make(settings: Record<string, unknown> = {}, layout?: unknown): WorldStore {
+    localStorage.clear();
+    if (Object.keys(settings).length) localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    if (layout) localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    return TestBed.inject(WorldStore);
+  }
+
+  beforeEach(() => {
+    // the system asks for reduced motion throughout this block
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true, configurable: true,
+      value: (query: string) => ({
+        matches: true, media: query, onchange: null,
+        addListener: () => undefined, removeListener: () => undefined,
+        addEventListener: () => undefined, removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    });
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    localStorage.clear();
+  });
+
+  it('clears the announcement after the configured delay, and never when it is zero', () => {
+    const store = make();
+    store.say('Watered Office Fig.');
+    jest.advanceTimersByTime(1799);
+    expect(store.announcement()).toBe('Watered Office Fig.');
+    // the system asks for reduced motion, so the sentence is given 2600ms to be read
+    jest.advanceTimersByTime(799);
+    expect(store.announcement()).toBe('Watered Office Fig.');
+    jest.advanceTimersByTime(2);
+    expect(store.announcement()).toBe('');
+
+    const keeps = make({ general: { announceMs: 0 } });
+    keeps.say('Kept.');
+    jest.advanceTimersByTime(60_000);
+    expect(keeps.announcement()).toBe('Kept.');
+  });
+
+  it('ignores the system reduced-motion setting when told not to follow it', () => {
+    const store = make({ appearance: { followSystemMotion: false } });
+    store.say('Watered Office Fig.');
+    // not following the system: the plain 1800ms applies, not the 2600ms reading time
+    jest.advanceTimersByTime(1800);
+    expect(store.announcement()).toBe('');
+  });
+
+  it('opens on Today when that is what the reader asked for and it exists', () => {
+    expect(make().focusId()).not.toBe('n-today');
+    const today = make({ general: { initialFocus: 'today' } });
+    today.setWorld(world);
+    expect(today.focusId()).toBe('n-today');
+
+    const garden = make({ general: { initialFocus: 'today' } });
+    garden.setWorld({ ...world, nodes: [node('n-garden', 2, 2)], edges: [] });
+    expect(garden.focusId()).toBe('n-garden'); // nothing is faked when Today is not there
+  });
+
+  it('keeps the layout only while remembering is allowed, and seeds it back', () => {
+    const store = make();
+    store.setWorld(world);
+    store.setOffset('n-today', { x: 12, y: -8 });
+    store.setModeFor('n-today', 'min');
+    jest.advanceTimersByTime(250);
+    const kept = JSON.parse(localStorage.getItem(LAYOUT_KEY) as string);
+    expect(kept.offsets['n-today']).toEqual({ x: 12, y: -8 });
+    expect(kept.modes['n-today']).toBe('min');
+    expect(kept.cells['n-today']).toEqual({ col: 2, row: 3 });
+
+    // a fresh session comes back to what it left
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const next = TestBed.inject(WorldStore);
+    expect(next.offsets()['n-today']).toEqual({ x: 12, y: -8 });
+    expect(next.modeOf('n-today')).toBe('min');
+
+    const forgetful = make({ privacy: { rememberLayout: false } }, { offsets: { 'n-x': { x: 1, y: 1 } } });
+    expect(forgetful.offsets()).toEqual({});
+    forgetful.setOffset('n-garden', { x: 4, y: 4 });
+    jest.advanceTimersByTime(250);
+    expect(localStorage.getItem(LAYOUT_KEY)).toBeNull();
+  });
+
+  it('cellsSnapshot keeps a cell the board has not drawn this time', () => {
+    const store = make({}, { cells: { 'n-gone': { col: 9, row: 9 } }, offsets: {}, modes: {} });
+    store.setWorld(world);
+    const snap = store.cellsSnapshot();
+    expect(snap['n-gone']).toEqual({ col: 9, row: 9 });
+    expect(snap['n-today']).toEqual({ col: 2, row: 3 });
+  });
+
+  it('holds the hubs of THIS board pending, or the pinned set when asked', () => {
+    const hubs = make();
+    hubs.setWorld(world);
+    hubs.probeSlow.set(true);
+    expect(hubs.isPending('n-today')).toBe(true);
+    expect(hubs.isPending('n-species-more')).toBe(false);
+
+    const pinned = make({ advanced: { slowNodes: 'fixture' } });
+    pinned.probeSlow.set(true);
+    expect(pinned.isPending('n-species-more')).toBe(true);
+    expect(pinned.isPending('n-today')).toBe(false);
   });
 });

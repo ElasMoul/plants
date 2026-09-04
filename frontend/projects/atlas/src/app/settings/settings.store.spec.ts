@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { SettingsStore } from './settings.store';
+import { applyBootAppearance, SettingsStore } from './settings.store';
 import { DEFAULT_SETTINGS, SETTINGS_KEY } from './settings.model';
 
 function make(): SettingsStore {
@@ -90,5 +90,36 @@ describe('SettingsStore', () => {
     expect(() => s.set('care.askForNotes', true)).not.toThrow();
     expect(s.get('care.askForNotes')).toBe(true);
     setItem.mockRestore();
+  });
+
+  describe('applyBootAppearance', () => {
+    afterEach(() => {
+      document.documentElement.setAttribute('data-ui', 'sill-line');
+      document.documentElement.setAttribute('data-palette', 'first-light');
+    });
+
+    it('paints the remembered reading onto the document before anything renders', () => {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({ appearance: { ui: 'glasshouse-table', palette: 'late-bench' } }),
+      );
+      applyBootAppearance();
+      expect(document.documentElement.getAttribute('data-ui')).toBe('glasshouse-table');
+      expect(document.documentElement.getAttribute('data-palette')).toBe('late-bench');
+    });
+
+    it('leaves the page markup alone when nothing was ever stored', () => {
+      document.documentElement.setAttribute('data-ui', 'glasshouse-table');
+      applyBootAppearance();
+      expect(document.documentElement.getAttribute('data-ui')).toBe('glasshouse-table');
+    });
+
+    it('does not throw when storage is unreadable', () => {
+      const getItem = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked');
+      });
+      expect(() => applyBootAppearance()).not.toThrow();
+      getItem.mockRestore();
+    });
   });
 });

@@ -20,6 +20,20 @@ function read(): string | null {
 }
 
 /**
+ * Paint the remembered interface and palette onto <html> BEFORE the first node
+ * renders, so a stored glasshouse-table never flashes as a sill line first.
+ * index.html carries the defaults; this only overwrites them when a choice was
+ * actually stored. Never throws — a blocked storage simply keeps the defaults.
+ */
+export function applyBootAppearance(doc: Document = document): void {
+  const stored = read();
+  if (!stored) return;
+  const s = parseSettings(stored);
+  doc.documentElement.setAttribute('data-ui', s.appearance.ui);
+  doc.documentElement.setAttribute('data-palette', s.appearance.palette);
+}
+
+/**
  * The single home for atlas preferences. Settings apply live; Cancel restores the
  * snapshot taken when the overlay opened; Save keeps them; Reset applies the
  * defaults. Server-backed preferences are held beside them (serverPrefs) and are

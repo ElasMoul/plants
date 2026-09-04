@@ -1,4 +1,4 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import {
   Adjacency,
   anchorPosition,
@@ -19,6 +19,8 @@ import {
   TargetMap,
   travelCamera,
 } from '@plantpal/rhizome-engine';
+import { DeviceStore } from '../settings/device.store';
+import { SettingsStore } from '../settings/settings.store';
 import { timeLabel } from './dates';
 import type { WorldSources } from './world.dto';
 import { FIXTURE_WORLD } from './world.fixture';
@@ -39,8 +41,58 @@ const RANK_SIZE: Record<RankName, Size> = {
 /** Initial camera scale — the focus and its neighbourhood fill the frame. */
 const INITIAL_K = 1;
 
+export const LAYOUT_KEY = 'atlas_layout';
+
+/** What "keep where I put things" actually keeps. */
+export interface StoredLayout {
+  cells: Record<string, { col: number; row: number }>;
+  offsets: Record<string, Point>;
+  modes: Record<string, 'min' | 'auto' | 'full'>;
+}
+
+function readLayout(): string | null {
+  try {
+    return localStorage.getItem(LAYOUT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function parseLayout(raw: string | null): StoredLayout {
+  const empty: StoredLayout = { cells: {}, offsets: {}, modes: {} };
+  if (!raw) return empty;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return empty;
+  }
+  if (!parsed || typeof parsed !== 'object') return empty;
+  const r = parsed as Record<string, unknown>;
+  const out: StoredLayout = { cells: {}, offsets: {}, modes: {} };
+  for (const [id, v] of Object.entries((r['cells'] ?? {}) as Record<string, unknown>)) {
+    const c = v as { col?: unknown; row?: unknown };
+    if (typeof c?.col === 'number' && typeof c?.row === 'number') out.cells[id] = { col: c.col, row: c.row };
+  }
+  for (const [id, v] of Object.entries((r['offsets'] ?? {}) as Record<string, unknown>)) {
+    const p = v as { x?: unknown; y?: unknown };
+    if (typeof p?.x === 'number' && typeof p?.y === 'number') out.offsets[id] = { x: p.x, y: p.y };
+  }
+  for (const [id, v] of Object.entries((r['modes'] ?? {}) as Record<string, unknown>)) {
+    if (v === 'min' || v === 'auto' || v === 'full') out.modes[id] = v;
+  }
+  return out;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorldStore {
+  private readonly settings = inject(SettingsStore);
+  private readonly device = inject(DeviceStore);
+  /** What the last session kept, when it was allowed to keep anything. */
+  private readonly storedLayout: StoredLayout = this.settings.settings().privacy.rememberLayout
+    ? parseLayout(readLayout())
+    : { cells: {}, offsets: {}, modes: {} };
+
   private readonly data = signal<WorldData>(FIXTURE_WORLD);
 
   readonly nodes = computed<WorldNode[]>(() => this.data().nodes);
@@ -165,6 +217,7 @@ export class WorldStore {
 
   setOffset(id: string, offset: Point): void {
     this.offsets.update(o => ({ ...o, [id]: offset }));
+    this.persistLayout();
   }
 
   hasOffset(id: string): boolean {
@@ -209,20 +262,34 @@ export class WorldStore {
     if (p.length > 1) this.go(p[p.length - 2]);
   }
 
-  /** The five nodes the slow probe holds "still arriving" (theme-a SLOW_NODES). */
-  private static readonly SLOW_NODES = new Set([
+  /** The pinned prototype's own set — ids that only exist on the fixture board. */
+  private static readonly FIXTURE_SLOW = [
     'n-garden', 'n-garden-more', 'n-platform', 'n-journal', 'n-species-more',
-  ]);
+  ];
+  /** The hubs of a live board, so the slow probe is not inert on real data. */
+  private static readonly HUB_SLOW = [
+    'n-garden', 'n-garden-more', 'n-platform', 'n-journal', 'n-reminders', 'n-treatments', 'n-today',
+  ];
+
+  /** Which nodes the slow probe holds "still arriving" (Settings · Advanced). */
+  readonly slowNodes = computed(
+    () =>
+      new Set(
+        this.settings.settings().advanced.slowNodes === 'fixture'
+          ? WorldStore.FIXTURE_SLOW
+          : WorldStore.HUB_SLOW,
+      ),
+  );
 
   isPending(id: string): boolean {
-    if (this.probeSlow() && WorldStore.SLOW_NODES.has(id)) return true;
+    if (this.probeSlow() && this.slowNodes().has(id)) return true;
     return this.nodeById()[id]?.state === 'loading';
   }
 
   /** Where every node sits right now — fed back into the next layout so an existing
    *  node keeps its cell and a new one takes a free one (C8). */
   cellsSnapshot(): Record<string, { col: number; row: number }> {
-    const out: Record<string, { col: number; row: number }> = {};
+    const out: Record<string, { col: number; row: number }> = { ...this.storedLayout.cells };
     for (const n of this.nodes()) out[n.id] = { col: n.cell.col, row: n.cell.row };
     return out;
   }
@@ -241,9 +308,18 @@ export class WorldStore {
     return chain.length ? chain.length - 1 : -1;
   }
 
-  /** Chrome-originated announcement (say()). */
+  /** Chrome-originated announcement (say()). Clears itself after the configured
+   *  delay — zero keeps the last sentence, reduced motion is given longer to read. */
+  private announceTimer: ReturnType<typeof setTimeout> | null = null;
+
   say(message: string): void {
     this.announcement.set(message);
+    if (this.announceTimer) clearTimeout(this.announceTimer);
+    this.announceTimer = null;
+    const ms = this.settings.settings().general.announceMs;
+    if (ms <= 0) return;
+    const wait = this.prefersReducedMotion() ? Math.max(ms, 2600) : ms;
+    this.announceTimer = setTimeout(() => this.announcement.set(''), wait);
   }
 
   /** Fit the whole world in view: extent = lattice ∪ live positions, padded. */
@@ -274,6 +350,7 @@ export class WorldStore {
 
   setModeFor(id: string, mode: 'min' | 'auto' | 'full'): void {
     this.modes.update(m => ({ ...m, [id]: mode }));
+    this.persistLayout();
     this.layoutEpoch.update(v => v + 1); // a card that grew must not land on a neighbour
   }
 
@@ -298,11 +375,26 @@ export class WorldStore {
    */
   setWorld(data: WorldData): void {
     this.data.set(data);
-    this.focusId.set(data.initialFocus);
-    this.path.set([data.initialFocus]);
+    const focus = this.initialFocusFor(data);
+    this.focusId.set(focus);
+    this.path.set([focus]);
     this.rendered.set(this.targets());
     this.loadState.set('ready');
+    this.persistLayout();
     this.frameFocus();
+  }
+
+  /** Where the world opens (Settings · General): the garden, what is due, or
+   *  the place this device last remembered — each only when it really exists. */
+  private initialFocusFor(data: WorldData): string {
+    const has = (id: string | undefined): id is string => !!id && data.nodes.some(n => n.id === id);
+    const s = this.settings.settings();
+    if (s.general.initialFocus === 'today' && has('n-today')) return 'n-today';
+    if (s.general.initialFocus === 'last' && s.privacy.rememberLastFocus) {
+      const last = this.device.state().lastFocus;
+      if (has(last)) return last;
+    }
+    return data.initialFocus;
   }
 
   /**
@@ -321,6 +413,7 @@ export class WorldStore {
     }
     this.rendered.set(this.targets());
     this.loadState.set('ready');
+    this.persistLayout();
   }
 
   /** Neighbours of the current focus with their nodes, for the Navigate-to rail. */
@@ -379,8 +472,52 @@ export class WorldStore {
   }
 
   constructor() {
+    // The remembered reading is re-applied so the interface's pitch is re-read
+    // (applyBootAppearance only painted the attributes). Cells never change.
+    const look = this.settings.settings().appearance;
+    this.setUI(look.ui);
+    this.setPalette(look.palette);
+    // Kept positions and size pins come back before the first frame.
+    this.offsets.set({ ...this.storedLayout.offsets });
+    this.modes.set({ ...this.storedLayout.modes });
     // Idle: what we draw is the settled clearance layout.
     this.rendered.set(this.targets());
+  }
+
+  /**
+   * Persist cells, dragged offsets and size pins — but only while the reader
+   * allows it; turning the setting off removes the key rather than freezing it.
+   */
+  private layoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  persistLayout(): void {
+    if (!this.settings.settings().privacy.rememberLayout) {
+      this.forgetLayout();
+      return;
+    }
+    if (this.layoutTimer) clearTimeout(this.layoutTimer);
+    this.layoutTimer = setTimeout(() => {
+      const payload: StoredLayout = {
+        cells: this.cellsSnapshot(),
+        offsets: this.offsets(),
+        modes: this.modes(),
+      };
+      try {
+        localStorage.setItem(LAYOUT_KEY, JSON.stringify(payload));
+      } catch {
+        /* storage is a convenience, never a requirement */
+      }
+    }, 250);
+  }
+
+  forgetLayout(): void {
+    if (this.layoutTimer) clearTimeout(this.layoutTimer);
+    this.layoutTimer = null;
+    try {
+      localStorage.removeItem(LAYOUT_KEY);
+    } catch {
+      /* storage is a convenience, never a requirement */
+    }
   }
 
   /**
@@ -397,6 +534,7 @@ export class WorldStore {
     if (chain.length < 2) return; // unreachable — nothing is faked
 
     this.focusId.set(id); // recomputes ranks + targets
+    if (this.settings.settings().privacy.rememberLastFocus) this.device.setLastFocus(id);
     // crumbs: truncate on backtrack, else extend (never grows a loop)
     this.path.update(p => {
       const at = p.indexOf(id);
@@ -452,7 +590,8 @@ export class WorldStore {
   }
 
   private prefersReducedMotion(): boolean {
-    if (this.probeReduced()) return true;
+    if (this.probeReduced()) return true; // the probe always wins
+    if (!this.settings.settings().appearance.followSystemMotion) return false;
     return (
       typeof matchMedia !== 'undefined' &&
       matchMedia('(prefers-reduced-motion: reduce)').matches
