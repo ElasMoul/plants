@@ -240,6 +240,20 @@ const FAILURE_NODE: Record<string, string> = {
   users: 'n-account',
 };
 
+/** A spoken noun for each family — a slug never belongs in a sentence. */
+const FAILURE_NAME: Record<string, string> = {
+  reminders: 'your reminders',
+  dashboard: "today's count",
+  care: 'your care history',
+  treatments: 'the treatments',
+  users: 'your account',
+  'treatment-plans': 'the treatment plan',
+};
+
+function failureName(f: FamilyFailure): string {
+  return FAILURE_NAME[f.family] ?? f.family;
+}
+
 function failureNodeId(f: FamilyFailure): string | null {
   if (f.family === 'treatment-plans') return f.ref != null ? `n-treatment-${f.ref}` : null;
   return FAILURE_NODE[f.family] ?? null;
@@ -252,7 +266,7 @@ function failureBody(f: FamilyFailure, extraWay: boolean): string {
     recapWrap('Did not come back', esc(f.message ?? undefined)) +
     full(`
       <section class="state state--error" data-brief-item="state:error">
-        <div class="state__head"><h4 class="state__title">The ${esc(f.family)} did not come back</h4><span class="state__id">state · error</span></div>
+        <div class="state__head"><h4 class="state__title">${esc(failureName(f))} did not come back</h4><span class="state__id">state · error</span></div>
         <p class="state__note">${note}</p>
         <div class="btn-row"><button class="stake" type="button">Fetch this region</button>${
           extraWay ? '<button class="stake stake--quiet" type="button">Count again</button>' : ''
@@ -308,8 +322,13 @@ function buildMeta(sources: WorldSources): WorldMeta {
     })),
     treatmentsIndex,
     scansByPlant,
+    // only an explicitly pending description on a course still running is worth
+    // polling for — a finished or dismissed course will never write one again
     hasPendingDescription: treatments.some(
-      t => (t.descriptionStatus ?? 'PENDING') === 'PENDING' && t.status !== 'COMPLETED',
+      t =>
+        t.descriptionStatus === 'PENDING' &&
+        t.status !== 'COMPLETED' &&
+        t.status !== 'DISMISSED',
     ),
     failures,
   };
@@ -462,7 +481,7 @@ export function assembleWorld(sources: WorldSources): WorldData {
     node.state = 'failed';
     node.recap = 'Did not come back';
     node.failure = {
-      fact: `The ${f.family} did not come back (${f.status}).`,
+      fact: `${failureName(f)} did not come back (${f.status}).`,
       time: timeLabel(f.at),
       dataNote: 'Everything already drawn is kept; nothing moved.',
       waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
@@ -479,6 +498,16 @@ export function assembleWorld(sources: WorldSources): WorldData {
     latestFailedScanId,
     meta: buildMeta(sources),
   };
+}
+
+/**
+ * The plants the board actually draws, under the density rule — the single
+ * source for both the geography and the loader's care-history fan-out, so a
+ * request is never spent on a plant folded into "+N more".
+ */
+export function drawnPlantsOf(plants: PlantDto[]): PlantDto[] {
+  const ranked = [...plants].sort(plantByOwed);
+  return ranked.length < DENSITY_CAP ? ranked : ranked.slice(0, 2);
 }
 
 export function plantByOwed(a: PlantDto, b: PlantDto): number {

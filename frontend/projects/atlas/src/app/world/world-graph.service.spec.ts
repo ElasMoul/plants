@@ -119,4 +119,115 @@ describe('WorldGraphService (S3 — the round-2/3 loader)', () => {
     expect(http.match(r => r.url.includes('active-treatments'))).toHaveLength(0);
     expect(http.match(r => r.url.includes('treatment-plans'))).toHaveLength(0);
   });
+
+  it('asks for care history only for the plants the density rule draws', () => {
+    const many = [1, 2, 3, 4].map(id => ({ ...PLAIN_PLANT, id, nickname: `Plant ${id}`, nextWaterDays: id }));
+    service.load().subscribe();
+
+    http.expectOne('/api/v1/plants?size=50').flush(ok(page(many)));
+    http.expectOne('/api/v1/species/mine?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/identifications?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/reminders').flush(ok([]));
+    http.expectOne('/api/v1/dashboard').flush(ok({ healthSummary: { healthy: 4, issues: 0, unknown: 0 }, overdueReminders: [], todayReminders: [], healthTrends: [], recentScans: [], plantCount: 4, speciesCount: 0 }));
+    http.expectOne('/api/v1/users/me/preferences').flush(ok({}));
+
+    // four plants collapse to two drawn cards — and to two care calls
+    const care = http.match(r => r.url.includes('/care/plant/'));
+    expect(care.map(r => r.request.url)).toEqual(['/api/v1/care/plant/1', '/api/v1/care/plant/2']);
+    for (const r of care) r.flush(ok(page([])));
+  });
+
+  it('re-reads a remembered course only when the active list no longer returns it', () => {
+    service.load().subscribe();
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([TREATMENT]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/treatment-plans/201').flush(ok(PLAN));
+    // it was returned live, so it is not also fetched by id
+    expect(http.match(r => r.url === '/api/v1/treatments/301')).toHaveLength(0);
+
+    // second load: the course has finished, so it leaves /active-treatments
+    let result: WorldData | undefined;
+    service.load().subscribe(w => (result = w));
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/treatments/301').flush(ok({ ...TREATMENT, status: 'COMPLETED', descriptionStatus: 'READY' }));
+    http.expectOne('/api/v1/treatment-plans/201').flush(ok(PLAN));
+
+    expect(result!.meta!.treatmentsIndex[301]).toEqual(expect.objectContaining({ status: 'COMPLETED' }));
+    // a finished course polls for nothing
+    expect(result!.meta!.hasPendingDescription).toBe(false);
+  });
+
+  it('forgets a remembered course the backend no longer has, and names any other failure', () => {
+    service.load().subscribe();
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([TREATMENT]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/treatment-plans/201').flush(ok(PLAN));
+
+    // a 503 on the remembered read is a named fact, not a silent disappearance
+    let result: WorldData | undefined;
+    service.load().subscribe(w => (result = w));
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/treatments/301').flush({ success: false }, { status: 503, statusText: 'Service Unavailable' });
+    expect(result!.meta!.failures.map(f => [f.family, f.status])).toEqual([['treatments', 503]]);
+
+    // a 404 forgets it, so the next load stops asking
+    service.load().subscribe();
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/treatments/301').flush({ success: false }, { status: 404, statusText: 'Not Found' });
+
+    service.load().subscribe();
+    flushStageOne();
+    http.expectOne('/api/v1/plants/1/active-treatments').flush(ok([]));
+    http.expectOne('/api/v1/care/plant/1?size=5').flush(ok(page([])));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    expect(http.match(r => r.url === '/api/v1/treatments/301')).toHaveLength(0);
+  });
+
+  it('keeps a reminder that stopped, and lets a failed reminders family say nothing about it', () => {
+    const second = { ...REMINDER, id: 602 };
+    service.load().subscribe();
+    http.expectOne('/api/v1/plants?size=50').flush(ok(page([PLAIN_PLANT])));
+    http.expectOne('/api/v1/species/mine?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/identifications?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/reminders').flush(ok([REMINDER, second]));
+    http.expectOne('/api/v1/dashboard').flush(ok({ healthSummary: { healthy: 1, issues: 0, unknown: 0 }, overdueReminders: [], todayReminders: [], healthTrends: [], recentScans: [], plantCount: 1, speciesCount: 0 }));
+    http.expectOne('/api/v1/users/me/preferences').flush(ok({}));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    expect(service.lastSources()!.stoppedReminders).toEqual([]);
+
+    // 602 left the list — it stopped, and stays readable
+    service.load().subscribe();
+    http.expectOne('/api/v1/plants?size=50').flush(ok(page([PLAIN_PLANT])));
+    http.expectOne('/api/v1/species/mine?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/identifications?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/reminders').flush(ok([REMINDER]));
+    http.expectOne('/api/v1/dashboard').flush(ok({ healthSummary: { healthy: 1, issues: 0, unknown: 0 }, overdueReminders: [], todayReminders: [], healthTrends: [], recentScans: [], plantCount: 1, speciesCount: 0 }));
+    http.expectOne('/api/v1/users/me/preferences').flush(ok({}));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    expect(service.lastSources()!.stoppedReminders.map(r => r.id)).toEqual([602]);
+
+    // the family fails: no reminder is declared stopped on the strength of silence
+    service.load().subscribe();
+    http.expectOne('/api/v1/plants?size=50').flush(ok(page([PLAIN_PLANT])));
+    http.expectOne('/api/v1/species/mine?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/identifications?size=50').flush(ok(page([])));
+    http.expectOne('/api/v1/reminders').flush({ success: false }, { status: 503, statusText: 'Service Unavailable' });
+    http.expectOne('/api/v1/dashboard').flush(ok({ healthSummary: { healthy: 1, issues: 0, unknown: 0 }, overdueReminders: [], todayReminders: [], healthTrends: [], recentScans: [], plantCount: 1, speciesCount: 0 }));
+    http.expectOne('/api/v1/users/me/preferences').flush(ok({}));
+    http.expectOne('/api/v1/care/plant/2?size=5').flush(ok(page([])));
+    expect(service.lastSources()!.stoppedReminders.map(r => r.id)).toEqual([602]);
+  });
 });

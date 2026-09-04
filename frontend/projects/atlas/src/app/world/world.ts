@@ -139,6 +139,10 @@ export class World {
   private readonly settings = inject(SettingsStore);
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
+  /** Narrow: the refresh only re-arms when the minutes themselves change. */
+  private readonly refreshMinutes = computed(
+    () => this.settings.settings().general.refreshMinutes,
+  );
   protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
 
   protected readonly focusNode = computed(() =>
@@ -191,7 +195,7 @@ export class World {
     });
     // The periodic refresh follows its setting, and is re-armed when it changes.
     effect(() => {
-      this.scheduleRefresh(this.settings.settings().general.refreshMinutes);
+      this.scheduleRefresh(this.refreshMinutes());
     });
     this.destroyRef.onDestroy(() => {
       if (this.pollTimer) clearTimeout(this.pollTimer);

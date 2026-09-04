@@ -173,6 +173,21 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
       expect(w.meta!.hasPendingDescription).toBe(true);
       expect(w.meta!.treatmentsIndex[301].plantId).toBe(1);
     });
+
+    it('polls for no description a course will never write', () => {
+      const base = { id: 301, plantId: 1, diseaseName: 'Root rot', createdAt: '2026-09-01T09:00:00Z' };
+      // no status at all is not a promise of one arriving
+      expect(
+        assembleWorld(sources({ treatments: [{ ...base, status: 'IN_PROGRESS' }] })).meta!
+          .hasPendingDescription,
+      ).toBe(false);
+      // a dismissed course is finished, pending or not
+      expect(
+        assembleWorld(
+          sources({ treatments: [{ ...base, status: 'DISMISSED', descriptionStatus: 'PENDING' }] }),
+        ).meta!.hasPendingDescription,
+      ).toBe(false);
+    });
   });
 
   describe('insertion stability (C8)', () => {

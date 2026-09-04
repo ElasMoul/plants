@@ -5,7 +5,7 @@ import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { MOCK_MODE } from '../core/mock-mode';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
-import { assembleWorld, plantByOwed } from './world.assembly';
+import { assembleWorld, drawnPlantsOf } from './world.assembly';
 import {
   CareLogDto,
   DashboardDto,
@@ -26,8 +26,6 @@ import { WorldStore } from './world.store';
 /** A family's fetch, wrapped so its failure cannot take the rest of the world down. */
 type Fetched<T> = { ok: T; fail?: undefined } | { ok?: undefined; fail: FamilyFailure };
 
-/** How many plants get a care-history fan-out — only the ones actually drawn. */
-const CARE_LOG_PLANTS = 3;
 
 /**
  * Assembles the world from the live backend: the round-1 spine (plants, species,
@@ -129,11 +127,15 @@ export class WorldGraphService {
         const preferences = collect(stage1.preferences, null as UserPreferencesDto | null);
         const plants = stage1.plants;
 
-        // a reminder that left the list stopped — keep the last row we saw of it
-        const live = new Set(reminders.map(r => r.id));
-        for (const r of this.lastReminders) if (!live.has(r.id)) this.stoppedReminders.set(r.id, r);
-        for (const id of live) this.stoppedReminders.delete(id);
-        this.lastReminders = reminders;
+        // a reminder that left the list stopped — keep the last row we saw of it.
+        // A family that did not answer says nothing about what stopped, so a failed
+        // fetch leaves this memory untouched (only n-reminders wears the failure, C25).
+        if (!stage1.reminders.fail) {
+          const live = new Set(reminders.map(r => r.id));
+          for (const r of this.lastReminders) if (!live.has(r.id)) this.stoppedReminders.set(r.id, r);
+          for (const id of live) this.stoppedReminders.delete(id);
+          this.lastReminders = reminders;
+        }
 
         const treated = plants.filter(p => p.activeTreatmentId != null);
         const active$ = treated.map(p =>
@@ -145,21 +147,7 @@ export class WorldGraphService {
           ),
         );
 
-        const known =
-          settings.general.keepFinished === 'session'
-            ? this.device.care(source).knownTreatmentIds
-            : [];
-        const remembered$ = known.map(id =>
-          this.http.get<ApiResponse<TreatmentDto>>(`${this.base}/treatments/${id}`).pipe(
-            map(r => r.data as TreatmentDto | null),
-            catchError((err: HttpErrorResponse) => {
-              if (err.status === 404) this.device.forgetTreatment(source, id);
-              return of(null);
-            }),
-          ),
-        );
-
-        const rankedPlants = [...plants].sort(plantByOwed).slice(0, CARE_LOG_PLANTS);
+        const rankedPlants = drawnPlantsOf(plants);
         const careSize = settings.data.careLogPageSize;
         const care$ =
           careSize > 0
@@ -178,7 +166,6 @@ export class WorldGraphService {
 
         return forkJoin({
           active: active$.length ? forkJoin(active$) : of([]),
-          remembered: remembered$.length ? forkJoin(remembered$) : of([]),
           care: care$.length ? forkJoin(care$) : of([]),
         }).pipe(
           switchMap(stage2 => {
@@ -189,9 +176,32 @@ export class WorldGraphService {
                 this.device.rememberTreatment(source, t.id);
               }
             }
-            for (const t of stage2.remembered) {
-              if (t && !treatments.some(x => x.id === t.id)) treatments.push(t);
-            }
+
+            // a remembered course is fetched by id only when /active-treatments did
+            // NOT return it — a finished course stays readable for the session
+            const known =
+              settings.general.keepFinished === 'session'
+                ? this.device.care(source).knownTreatmentIds
+                : [];
+            const missing = known.filter(id => !treatments.some(t => t.id === id));
+            const remembered$ = missing.map(id =>
+              this.fam(
+                'treatments',
+                this.http.get<ApiResponse<TreatmentDto>>(`${this.base}/treatments/${id}`).pipe(
+                  map(r => r.data as TreatmentDto | null),
+                ),
+                id,
+              ).pipe(
+                map(f => {
+                  // a course the backend no longer has is forgotten, not mourned
+                  if (f.fail?.status === 404) {
+                    this.device.forgetTreatment(source, id);
+                    return { ok: null } as Fetched<TreatmentDto | null>;
+                  }
+                  return f;
+                }),
+              ),
+            );
 
             const careLogsByPlant: Record<number, CareLogDto[]> = {};
             for (const f of stage2.care) {
@@ -199,25 +209,34 @@ export class WorldGraphService {
               if (got) careLogsByPlant[got.plantId] = got.logs;
             }
 
-            const planIds = [
-              ...new Set(
-                treatments
-                  .map(t => t.treatmentPlanId)
-                  .filter((id): id is number => typeof id === 'number'),
-              ),
-            ];
-            const plans$ = planIds.map(id =>
-              this.fam(
-                'treatment-plans',
-                this.http
-                  .get<ApiResponse<TreatmentPlanDto>>(`${this.base}/treatment-plans/${id}`)
-                  .pipe(map(r => r.data)),
-                id,
-              ),
-            );
+            return (
+              remembered$.length ? forkJoin(remembered$) : of([] as Fetched<TreatmentDto | null>[])
+            ).pipe(
+              switchMap(fetchedRemembered => {
+                for (const f of fetchedRemembered) {
+                  const t = collect(f, null as TreatmentDto | null);
+                  if (t && !treatments.some(x => x.id === t.id)) treatments.push(t);
+                }
 
-            return (plans$.length ? forkJoin(plans$) : of([])).pipe(
-              map(fetchedPlans => {
+                const planIds = [
+                  ...new Set(
+                    treatments
+                      .map(t => t.treatmentPlanId)
+                      .filter((id): id is number => typeof id === 'number'),
+                  ),
+                ];
+                const plans$ = planIds.map(id =>
+                  this.fam(
+                    'treatment-plans',
+                    this.http
+                      .get<ApiResponse<TreatmentPlanDto>>(`${this.base}/treatment-plans/${id}`)
+                      .pipe(map(r => r.data)),
+                    id,
+                  ),
+                );
+
+                return (plans$.length ? forkJoin(plans$) : of([])).pipe(
+                  map(fetchedPlans => {
                 const plansById: Record<number, TreatmentPlanDto> = {};
                 for (const f of fetchedPlans) {
                   const plan = collect(f, null as TreatmentPlanDto | null);
@@ -249,6 +268,8 @@ export class WorldGraphService {
                 this.lastSources.set(sources);
                 this.assembled = true;
                 return assembleWorld(sources);
+                  }),
+                );
               }),
             );
           }),
