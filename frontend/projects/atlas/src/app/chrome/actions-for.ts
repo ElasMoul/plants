@@ -35,6 +35,7 @@ export const FIXTURE_ACTIONS: Record<string, string[]> = {
  * reach a real endpoint or an honest device-local behaviour: Reschedule, Abandon
  * plan, Dismiss this problem, Mark as resolved, Log a symptom, Save to my notes
  * and Mark all read have no server counterpart and are never offered on a live id.
+ * Add note needs a plant to write onto, so it is offered only on a plant id.
  */
 export function actionsFor(
   focusId: string,
@@ -71,13 +72,13 @@ export function actionsFor(
     return ['Mark today done', ...pause, 'Finish this course'];
   }
 
-  if (/^n-log-/.test(focusId)) return ['Add note'];
+  if (/^n-log-/.test(focusId)) return ['Log a watering'];
   if (/^n-scan-/.test(focusId)) return ['Try the scan again'];
   if (/^n-species-\d+$/.test(focusId)) return ['Add a species by hand'];
 
   switch (focusId) {
     case 'n-garden':
-      return ['Add new plant', 'Water all', 'Add note'];
+      return ['Add new plant', 'Water all'];
     case 'n-garden-more':
       return ['Add new plant'];
     case 'n-reminders':
@@ -85,7 +86,8 @@ export function actionsFor(
     case 'n-care':
       return ['Log a watering', 'Add a reminder'];
     case 'n-journal':
-      return ['Add note'];
+    case 'n-journal-more':
+      return ['Log a watering'];
     case 'n-treatments':
     case 'n-treatments-more':
     case 'n-problems':
@@ -102,6 +104,7 @@ export function actionsFor(
     case 'n-ask':
       return [];
     default:
-      return FIXTURE_ACTIONS[focusId] ?? [];
+      // a live id we do not know offers nothing rather than inheriting a fixture label
+      return [];
   }
 }

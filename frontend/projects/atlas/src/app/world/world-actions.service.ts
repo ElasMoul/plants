@@ -321,7 +321,10 @@ export class WorldActionsService {
     );
     // forkJoin over an empty array never emits — the guard above keeps it non-empty
     (calls.length ? forkJoin(calls) : of([])).subscribe({
-      next: () => this.settled(`Watered ${list.length} plants. The camera did not move.`),
+      next: () =>
+        this.settled(
+          `Watered ${list.length} ${list.length === 1 ? 'plant' : 'plants'}. The camera did not move.`,
+        ),
       error: () => this.store.say('Some of those could not be recorded — the board keeps what it knows.'),
     });
   }

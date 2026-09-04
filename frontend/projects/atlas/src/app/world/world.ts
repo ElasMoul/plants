@@ -342,7 +342,9 @@ export class World {
       const label = stake.textContent?.trim() ?? 'Action';
       if (stake.getAttribute('aria-disabled') === 'true') {
         // a disabled stake still answers — in words, with the reason it is not possible
-        this.store.say(`${label} is not possible right now — ${stake.dataset['reason'] ?? 'nothing is due'}`);
+        const reason = stake.dataset['reason'] ?? 'Nothing is due';
+        const clause = (reason[0]?.toLowerCase() ?? '') + reason.slice(1).replace(/\.$/, '');
+        this.store.say(`${label} is not possible right now — ${clause}.`);
         return;
       }
       this.actions.dispatch(id, label, stake.dataset['arg']);

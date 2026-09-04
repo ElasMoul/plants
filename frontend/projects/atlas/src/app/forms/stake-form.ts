@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SettingsStore } from '../settings/settings.store';
-import { WorldActionsService } from '../world/world-actions.service';
+import { type ActiveForm, WorldActionsService } from '../world/world-actions.service';
 import { CARE_TYPES, CareType } from '../world/world.dto';
 import { WorldStore } from '../world/world.store';
 
@@ -212,11 +212,20 @@ export class StakeForm {
     () => this.plantId() !== null && this.frequencyDays() >= 1 && !!this.firstDue(),
   );
 
+  /** The form identity this sheet was last seeded from (opening-scoped). */
+  private seeded: ActiveForm | null = null;
+
   constructor() {
-    // each opening seeds the sheet from what the stake knew
+    // each OPENING seeds the sheet from what the stake knew — and only the opening:
+    // a board reload while the sheet is open must never wipe what the reader typed
     effect(() => {
       const form = this.actions.activeForm();
-      if (!form) return;
+      if (!form) {
+        this.seeded = null;
+        return;
+      }
+      if (form === this.seeded) return;
+      this.seeded = form;
       if (form.kind === 'add-reminder' || form.kind === 'log-care' || form.kind === 'start-treatment') {
         this.plantId.set(form.plantId ?? this.plants()[0]?.id ?? null);
       }

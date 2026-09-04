@@ -101,7 +101,17 @@ jobs:
         working-directory: frontend
         run: npm test
 
-      # E2E (Playwright) — disabled until tests are stabilised
+      - name: Install Playwright chromium (atlas E2E)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (atlas)
+        working-directory: frontend
+        run: npm run e2e:atlas
+        env:
+          CI: true
+
+      # E2E (classic, Playwright) — disabled until tests are stabilised
       # - name: Install Playwright browsers
       #   working-directory: frontend
       #   run: npx playwright install --with-deps chromium webkit

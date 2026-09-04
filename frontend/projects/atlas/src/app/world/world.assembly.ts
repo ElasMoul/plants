@@ -244,6 +244,7 @@ function plantBody(p: PlantDto, ctx: Ctx): string {
         <div class="btn-row">
           <button class="stake" type="button" data-arg="plant:${p.id}">Log a watering</button>
           ${water ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${water.id}">Change the schedule</button>` : ''}
+          ${water ? `<button class="stake stake--quiet" type="button" data-arg="reminder:${water.id}">Stop this reminder</button>` : ''}
         </div>
       </section>`)
   );

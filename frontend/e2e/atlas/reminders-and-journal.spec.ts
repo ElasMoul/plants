@@ -42,7 +42,7 @@ test.describe('reminders and the journal, pressed', () => {
     await atlas.navTo('Journal').click();
     await opened(atlas, 'n-journal');
     expect(await atlas.focusId()).toBe('n-journal');
-    await expect(atlas.railAction('Add note')).toBeVisible();
+    await expect(atlas.railAction('Log a watering')).toBeVisible();
   });
 
   test('logging a watering from the care hub opens the sheet and records it', async ({ page }) => {

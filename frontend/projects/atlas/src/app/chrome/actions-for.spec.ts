@@ -80,13 +80,19 @@ describe('actionsFor — the Actions rail', () => {
   });
 
   it('the hubs get their own live verbs', () => {
-    expect(actionsFor('n-garden', meta(), S)).toEqual(['Add new plant', 'Water all', 'Add note']);
+    expect(actionsFor('n-garden', meta(), S)).toEqual(['Add new plant', 'Water all']);
     expect(actionsFor('n-care', meta(), S)).toEqual(['Log a watering', 'Add a reminder']);
-    expect(actionsFor('n-journal', meta(), S)).toEqual(['Add note']);
-    expect(actionsFor('n-log-9', meta(), S)).toEqual(['Add note']);
+    expect(actionsFor('n-journal', meta(), S)).toEqual(['Log a watering']);
+    expect(actionsFor('n-journal-more', meta(), S)).toEqual(['Log a watering']);
+    expect(actionsFor('n-log-9', meta(), S)).toEqual(['Log a watering']);
     expect(actionsFor('n-treatments', meta(), S)).toEqual(['Start a treatment plan']);
     expect(actionsFor('n-scan-5', meta(), S)).toEqual(['Try the scan again']);
     expect(actionsFor('n-species-3', meta(), S)).toEqual(['Add a species by hand']);
+  });
+
+  it('an unknown live id inherits nothing from the fixture map', () => {
+    expect(actionsFor('n-treatment', meta(), S)).toEqual([]);
+    expect(actionsFor('n-fig', meta(), S)).toEqual([]);
   });
 
   it('leaves Today, the account and the ask node without a rail', () => {
