@@ -1,11 +1,12 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { forkJoin, Observable, of } from 'rxjs';
-import { API_BASE_URL, ApiResponse } from '@plantpal/shared-core';
+import { API_BASE_URL, ApiResponse, AuthService } from '@plantpal/shared-core';
 import { MOCK_MODE } from '../core/mock-mode';
 import { DataSource, DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
 import type { CareLogDto, CareType, ReminderDto, TreatmentDto } from './world.dto';
+import { classicLoginLink } from './interop';
 import { WorldStore } from './world.store';
 
 /** An open in-world form (design-system material). */
@@ -54,6 +55,7 @@ export class WorldActionsService {
   private readonly settings = inject(SettingsStore);
   private readonly device = inject(DeviceStore);
   private readonly mock = inject(MOCK_MODE, { optional: true });
+  private readonly auth = inject(AuthService);
 
   /** The currently open form, if any. */
   readonly activeForm = signal<ActiveForm | null>(null);
@@ -212,6 +214,32 @@ export class WorldActionsService {
       this.activeForm.set({ kind: 'identify' });
       return;
     }
+    // -- round 3: the day, the knocks and the account -------------------------
+    if (/^mark all read$/.test(l)) {
+      this.markAllRead();
+      return;
+    }
+    if (/^edit your details$/.test(l)) {
+      this.settings.section.set('profile');
+      this.store.mode.set('overview');
+      this.store.say('Your details are on this device — Settings · Profile.');
+      return;
+    }
+    if (/^export everything$/.test(l)) {
+      this.exportEverything();
+      return;
+    }
+    if (/^sign out here$/.test(l)) {
+      this.signOut();
+      return;
+    }
+    if (/^sign in on another device$/.test(l)) {
+      this.store.say(
+        `Sign in at ${classicLoginLink(this.classicBase())} — the session hands itself into the atlas.`,
+      );
+      return;
+    }
+
     if (/^fetch this region$|^count again$/.test(l)) {
       this.store.say('Fetching the region. Nothing else moves while it arrives.');
       this.reloadRequested.update(v => v + 1);
@@ -535,6 +563,48 @@ export class WorldActionsService {
       next: () => this.store.say(`Backend answered in ${Math.round(performance.now() - t0)}ms · UP.`),
       error: () => this.store.say('The backend did not answer. The board keeps what it already knows.'),
     });
+  }
+
+  // ── round 3: the day, the knocks and the account ───────────────────────────
+
+  /** An acknowledgement PlantPal has no home for — it stays on this device. */
+  markAllRead(): void {
+    this.settings.set('notifications.seenAt', new Date().toISOString());
+    this.store.say('Marked read on this device. Nothing moved.');
+    this.reloadRequested.update(v => v + 1);
+  }
+
+  /** Your own data, on your own device: what this atlas holds, as one JSON file. */
+  exportEverything(): void {
+    const sources = this.store.lastSources();
+    if (!sources) {
+      this.store.say('Nothing has been fetched yet — there is nothing to export.');
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(sources, null, 2)], { type: 'application/json' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plantpal-atlas-${stamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.store.say('Exported what this atlas holds — the file is in your downloads.');
+  }
+
+  /** The mock garden has no session to end, and says so rather than pretending. */
+  signOut(): void {
+    if (this.mock?.enabled) {
+      this.store.say('This is the mock garden — there is no session to end.');
+      return;
+    }
+    this.auth.logout();
+    window.location.assign(classicLoginLink(this.classicBase()));
+  }
+
+  private classicBase(): string {
+    return this.settings.settings().integrations.classicAppUrl;
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────────

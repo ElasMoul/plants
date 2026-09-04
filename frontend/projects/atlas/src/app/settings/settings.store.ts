@@ -111,6 +111,8 @@ export class SettingsStore {
       quietHours: s.profile.quietHours,
       openInClassic: s.integrations.openInClassic,
       showApiIds: s.integrations.showApiIds,
+      seenAt: s.notifications.seenAt,
+      bellCounts: s.notifications.bellCounts,
     };
   }
 

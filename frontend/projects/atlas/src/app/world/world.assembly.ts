@@ -1,6 +1,7 @@
 import { buildAdjacency, Edge, rank } from '@plantpal/rhizome-engine';
 import {
   agoLabel,
+  becameDueAt,
   careLabel,
   dateLabel,
   daysUntil,
@@ -13,13 +14,16 @@ import {
   AssemblySettings,
   CareLogDto,
   Cell,
+  DashboardDto,
   FamilyFailure,
   IdentificationDto,
   PlantDto,
+  PushState,
   ReminderDto,
   SpeciesDto,
   TreatmentDto,
   TreatmentPlanDto,
+  UserPreferencesDto,
   WorldSources,
 } from './world.dto';
 import { NodeKind, WorldData, WorldMeta, WorldNode } from './world.model';
@@ -100,6 +104,11 @@ interface Ctx {
   overdueByReminder: Record<number, number>;
   /** True when care history was fetched only for the plants this board draws. */
   logsPartial: boolean;
+  /** Where this device stands with push knocks — a readout, never a promise. */
+  push: PushState;
+  /** The server's own count, when it answered. */
+  dashboard: DashboardDto | null;
+  speciesCount: number;
 }
 
 /** The scope clause a count wears when it is not the whole garden's record. */
@@ -308,8 +317,65 @@ function reminderHubBody(ctx: Ctx): string {
           ${snoozeStake}
         </div>
       </section>
+      ${notificationsSection(ctx)}
       ${routine.length === 0 ? emptyPanel : ''}`)
   );
+}
+
+/** Awake, routine and due — what a knock would be about. */
+function dueAwake(ctx: Ctx): ReminderDto[] {
+  return routineReminders(ctx).filter(
+    r => !isSnoozed(ctx, r) && isDue(r.nextDueAt, ctx.now, ctx.settings.dueWindow),
+  );
+}
+
+/** Due since the reader last said they had seen it — the count the bell wears. */
+function unreadOf(ctx: Ctx): number {
+  const seen = ctx.settings.seenAt ? Date.parse(ctx.settings.seenAt) : null;
+  return dueAwake(ctx).filter(
+    r => seen == null || becameDueAt(r.nextDueAt, ctx.settings.dueWindow) > seen,
+  ).length;
+}
+
+const PUSH_ROW: Record<PushState, string> = {
+  on: 'On · this device',
+  off: 'Off · enable in Settings · Notifications',
+  blocked: 'Blocked by the browser',
+  unsupported: 'Not supported in this browser',
+  unconfigured: 'Not configured on this server',
+};
+
+/**
+ * How a reminder reaches you — the verbatim panel, told about this device. A
+ * reminder is the thing and a knock is the knock: every row here can read off
+ * while every reminder on the card above stays on.
+ */
+function notificationsSection(ctx: Ctx): string {
+  const quiet = ctx.settings.quietHours !== 'off';
+  const push =
+    ctx.push === 'on' ? `${PUSH_ROW.on}${quiet ? ' · not during quiet hours' : ''}` : PUSH_ROW[ctx.push];
+  const knocks = dueAwake(ctx).length;
+  const unread = unreadOf(ctx);
+  const first = dueAwake(ctx)[0];
+  const vein =
+    first && ctx.drawn.has(`n-plant-${first.plantId}`)
+      ? ` — see the vein to ${linkTo(ctx.drawn, `n-plant-${first.plantId}`, esc(first.plantNickname ?? `Plant ${first.plantId}`))}`
+      : '';
+  return `
+      <section class="state" data-brief-item="action:/api/v1/notifications/**">
+        <div class="state__head"><h4 class="state__title">How it reaches you</h4>${stateId('action · /api/v1/notifications/**', ctx.settings)}</div>
+        <p class="state__note">A reminder is the thing; a notification is the knock. They are separate on purpose — you can keep every reminder and turn every knock off.</p>
+        <dl class="rows" data-notifications>
+          <div class="row"><dt>Push</dt><dd>${push}</dd></div>
+          <div class="row"><dt>Daily knock</dt><dd>Every day at 08:00, PlantPal's clock · ${wordNumber(knocks).toLowerCase()} would knock today</dd></div>
+          <div class="row"><dt>Email</dt><dd>Not offered by PlantPal</dd></div>
+          <div class="row"><dt>Unread</dt><dd>${unread}</dd></div>
+        </dl>
+        <p class="state__note">An arrival never moves the camera. It lights the node it concerns and waits${vein}.</p>
+        <div class="btn-row">
+          <button class="stake stake--quiet" type="button"${unread === 0 ? ' aria-disabled="true"' : ''}>Mark all read</button>
+        </div>
+      </section>`;
 }
 
 function careHubBody(ctx: Ctx): string {
@@ -692,26 +758,288 @@ function gardenBody(plants: PlantDto[], drawn: Set<string>, ctx: Ctx): string {
   );
 }
 
-function accountBody(user: WorldSources['user'], now: string, settings: AssemblySettings): string {
-  const who = user ? `${esc(user.firstName)} ${esc(user.lastName)}` : 'Signed in';
+// -- Today: a count, not a feed ----------------------------------------------
+
+/** One line of the day's work: a kind of care, the plant it is about, how late. */
+interface TodayRow {
+  careType: string;
+  plantId: number;
+  plantNickname?: string;
+  /** Whole days late; 0 means today. */
+  overdue: number;
+}
+
+function todayRowOf(r: ReminderDto, ctx: Ctx, serverOverdue?: number): TodayRow {
+  const late =
+    serverOverdue != null
+      ? serverOverdue
+      : Math.max(0, -daysUntil(r.nextDueAt, ctx.now, ctx.settings.dueWindow));
+  return { careType: r.careType, plantId: r.plantId, plantNickname: r.plantNickname, overdue: late };
+}
+
+/** Steps belong to their course, not to the day's list (data.stepReminders). */
+function countable(ctx: Ctx, r: ReminderDto): boolean {
+  return (
+    r.enabled &&
+    !isSnoozed(ctx, r) &&
+    (ctx.settings.stepReminders === 'also-in-reminders' || r.treatmentPlanId == null)
+  );
+}
+
+/**
+ * The day's rows, and where they were counted. The dashboard's buckets are the
+ * server's own day (daysOverdue precomputed in its clock); under 'rolling-24h',
+ * or when the dashboard did not answer, the same rows are counted here from the
+ * reminders -- and the card says which, rather than going blank.
+ */
+function todayCount(ctx: Ctx): {
+  overdue: TodayRow[];
+  today: TodayRow[];
+  source: 'server' | 'client';
+} {
+  if (ctx.dashboard && ctx.settings.dueWindow === 'server-day') {
+    return {
+      overdue: ctx.dashboard.overdueReminders
+        .filter(r => countable(ctx, r))
+        .map(r => todayRowOf(r, ctx, r.daysOverdue ?? 1)),
+      today: ctx.dashboard.todayReminders
+        .filter(r => countable(ctx, r))
+        .map(r => todayRowOf(r, ctx, 0)),
+      source: 'server',
+    };
+  }
+  const rows = routineReminders(ctx)
+    .filter(r => !isSnoozed(ctx, r) && isDue(r.nextDueAt, ctx.now, ctx.settings.dueWindow))
+    .map(r => todayRowOf(r, ctx));
+  return {
+    overdue: rows.filter(r => r.overdue > 0),
+    today: rows.filter(r => r.overdue === 0),
+    source: 'client',
+  };
+}
+
+/** How far into a running course you are, when one of its steps is due today. */
+function courseDay(ctx: Ctx, t: TreatmentDto): string | null {
+  if (t.status !== 'IN_PROGRESS' || isPaused(ctx, t)) return null;
+  const steps = stepsOf(ctx, t);
+  const open = steps.filter(s => s.enabled);
+  if (!open.some(s => isDue(s.nextDueAt, ctx.now, ctx.settings.dueWindow))) return null;
+  const started = t.startedAt ?? t.createdAt;
+  const elapsed = Math.max(0, -daysUntil(started, ctx.now, 'server-day'));
+  const lastDue = steps.length ? steps[steps.length - 1].nextDueAt : ctx.now;
+  const remaining = Math.max(0, daysUntil(lastDue, ctx.now, 'server-day'));
+  return `day ${elapsed + 1} of ${elapsed + remaining + 1}`;
+}
+
+/** The rows themselves -- every name a door into the plant or the course. */
+function todayRowsHtml(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const all = [...count.overdue, ...count.today];
+  const shown = all.slice(0, 6);
+  const rows = shown
+    .map(
+      r =>
+        `<div class="row"><dt>${careLabel(r.careType)}</dt><dd>${linkTo(
+          ctx.drawn,
+          `n-plant-${r.plantId}`,
+          esc(r.plantNickname ?? plantName(ctx, r.plantId)),
+        )} · ${
+          r.overdue > 0 ? `${r.overdue} ${r.overdue === 1 ? 'day' : 'days'} overdue` : 'today'
+        }</dd></div>`,
+    )
+    .join('');
+  const more =
+    all.length > shown.length
+      ? `<div class="row"><dt>And ${all.length - shown.length} more</dt><dd>${linkTo(ctx.drawn, 'n-reminders', 'Reminders')}</dd></div>`
+      : '';
+  const courses = ctx.treatments
+    .map(t => ({ t, day: courseDay(ctx, t) }))
+    .filter((x): x is { t: TreatmentDto; day: string } => x.day !== null)
+    .map(
+      x =>
+        `<div class="row"><dt>Check on</dt><dd>${linkTo(
+          ctx.drawn,
+          `n-treatment-${x.t.id}`,
+          esc(x.t.diseaseName),
+        )} · ${x.day}</dd></div>`,
+    )
+    .join('');
+  return rows + more + courses;
+}
+
+/** What the garden is, under the day's work: a count of health, not a feed. */
+function gardenSummarySection(ctx: Ctx): string {
+  const d = ctx.dashboard;
+  const healthy = d
+    ? d.healthSummary.healthy
+    : ctx.plants.filter(p => p.healthStatus === 'HEALTHY').length;
+  const issues = d
+    ? d.healthSummary.issues
+    : ctx.plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').length;
+  const unknown = d
+    ? d.healthSummary.unknown
+    : ctx.plants.filter(p => p.healthStatus !== 'HEALTHY' && p.healthStatus !== 'ISSUES_DETECTED')
+        .length;
+  const plants = d ? d.plantCount : ctx.plants.length;
+  const species = d ? d.speciesCount : ctx.speciesCount;
+  const feed = (d?.healthTrends ?? [])
+    .filter(t => t.trend !== 'STABLE')
+    .map(
+      t =>
+        `<div class="feed__row"><span class="feed__when">${esc(t.plantNickname)}</span><span class="feed__val">${
+          t.trend === 'IMPROVING' ? 'Improving' : 'Getting worse'
+        }</span></div>`,
+    )
+    .join('');
+  return `
+      <section>
+        <h3 class="sec">Your garden</h3>
+        <dl class="rows">
+          <div class="row"><dt>Plants</dt><dd class="v mono">${plants}</dd></div>
+          <div class="row"><dt>Healthy</dt><dd class="v mono">${healthy}</dd></div>
+          <div class="row"><dt>Needs attention</dt><dd class="v mono">${issues}</dd></div>
+          <div class="row"><dt>Unknown</dt><dd class="v mono">${unknown}</dd></div>
+          <div class="row"><dt>Species</dt><dd class="v mono">${species}</dd></div>
+        </dl>
+        ${feed ? `<div class="feed">${feed}</div>` : ''}
+      </section>`;
+}
+
+/** The day's own panel -- reused verbatim under a failure, so a count is never lost. */
+function todaySummarySection(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const rows = todayRowsHtml(ctx, count);
+  const counted =
+    count.source === 'server'
+      ? ''
+      : `<div class="row"><dt>Counted from reminders</dt><dd>${
+          ctx.dashboard ? 'your due window is a rolling 24 hours' : 'the dashboard did not come back'
+        }</dd></div>`;
+  return `
+      <section class="state" data-brief-item="action:/api/v1/dashboard/**">
+        <div class="state__head"><h4 class="state__title">Today's summary</h4>${stateId('action · /api/v1/dashboard/**', ctx.settings)}</div>
+        <p class="state__note">A count, not a feed. Every line here is a door: pressing one travels to the plant it is about, and the plant is already drawn beside this card, so you can see where you are going before you go.</p>
+        ${rows || counted ? `<dl class="rows" data-today>${rows}${counted}</dl>` : '<p class="state__note">Nothing is due and nothing is late.</p>'}
+        <p class="state__note">Counts move; nothing on the plane moves with them (C9).</p>
+      </section>`;
+}
+
+/** The day-zero board's Today: a real zero, never a sample. */
+function todayEmptySection(ctx: Ctx): string {
+  return `
+      <section class="state state--empty" data-brief-item="state:empty">
+        <div class="state__head"><h4 class="state__title">Nothing to do today</h4>${stateId('state · empty', ctx.settings)}</div>
+        <div class="empty-plot"><span class="glyph" aria-hidden="true">◌</span>
+        <p class="state__note">No plants yet — the first one you add lands beside this card.</p></div>
+      </section>`;
+}
+
+/** The count, its rows and the garden under it. Today carries no stake (prototype). */
+function todayBody(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
+  const dayZero = ctx.plants.length === 0;
+  const line =
+    count.today.length + count.overdue.length === 0
+      ? 'Nothing due · nothing overdue'
+      : `<span class="tag tag--watch">${count.today.length} due</span> ${count.overdue.length} overdue`;
+  const note = `${ctx.settings.displayName ? `${esc(ctx.settings.displayName)} · ` : ''}What your garden wants from you before this evening.`;
+  const stale =
+    count.source === 'server'
+      ? `Counted ${timeLabel(ctx.now)} · from PlantPal's own day`
+      : `Counted ${timeLabel(ctx.now)} · counted here, from your reminders`;
+  return (
+    recapWrap(line, note, stale, ['sk--sub', 'sk--row', 'sk--row']) +
+    full(
+      `${dayZero ? todayEmptySection(ctx) : todaySummarySection(ctx, count)}${gardenSummarySection(ctx)}`,
+    )
+  );
+}
+
+/** The gardener's word for a model choice -- never the enum. */
+const MODEL_LABELS: Record<string, string> = {
+  GITHUB_GPT4O: 'GPT-4o',
+  GITHUB_GPT41: 'GPT-4.1',
+  GITHUB_O4_MINI: 'o4-mini',
+  GITHUB_GPT41_MINI: 'GPT-4.1 mini',
+  DEEPSEEK_R1: 'DeepSeek-R1',
+  OLLAMA_GEMMA3: 'Gemma 3, on this machine',
+  OLLAMA_LLAVA: 'Gemma 3, on this machine',
+  PLANTNET: 'PlantNet',
+  ANTHROPIC_CLAUDE: 'Claude',
+};
+
+function modelLabel(value: string | undefined): string {
+  if (!value) return 'Not fetched — try again';
+  return MODEL_LABELS[value] ?? value;
+}
+
+/** "Since 08:41 · this device" -- or the plain truth when there is no token to read. */
+function sessionRows(session: WorldSources['sessionTimes'], settings: AssemblySettings): string {
+  if (session?.mock) {
+    return `
+          <div class="row"><dt>This session</dt><dd>mock session</dd></div>
+          <div class="row"><dt>Expires</dt><dd>mock session</dd></div>`;
+  }
+  const since = session?.issuedAt ? `Since ${timeLabel(session.issuedAt)} · this device` : 'This device';
+  const until = session?.expiresAt ? timeLabel(session.expiresAt) : 'Not stated in the token';
+  void settings;
+  return `
+          <div class="row"><dt>This session</dt><dd>${since}</dd></div>
+          <div class="row"><dt>Expires</dt><dd>${until}</dd></div>`;
+}
+
+/**
+ * The account, as PlantPal holds you: the session it issued, and the fields it
+ * actually keeps. Display name, units and quiet hours have no server field --
+ * they live on this device and the settings pane says so.
+ */
+function accountBody(
+  user: WorldSources['user'],
+  prefs: UserPreferencesDto | null,
+  session: WorldSources['sessionTimes'],
+  now: string,
+  settings: AssemblySettings,
+): string {
+  const missing = 'Not fetched — try again';
+  const name = settings.displayName || user?.firstName || '';
+  const quiet = settings.quietHours === 'off' ? 'Off' : settings.quietHours.replace('-', ' – ');
+  const stale = session?.mock
+    ? 'Read from the mock session'
+    : session?.expiresAt
+      ? `Session read ${timeLabel(now)} · valid until ${timeLabel(session.expiresAt)}`
+      : `Session read ${timeLabel(now)}`;
   return (
     recapWrap(
       user ? esc(user.email) : 'Your session',
       undefined,
-      `Session read ${timeLabel(now)}`,
+      stale,
       ['sk--sub', 'sk--row', 'sk--row'],
     ) +
     full(`
       <section class="state" data-brief-item="action:POST /api/v1/auth/login">
         <div class="state__head"><h4 class="state__title">Signing in</h4>${stateId(`action · POST /api/v1/auth/login`, settings)}</div>
         <p class="state__note">Sign-in lives on the classic PlantPal page — the session it issues is the one this atlas is using now.</p>
+        <dl class="rows">${sessionRows(session, settings)}
+        </dl>
+        <div class="btn-row">
+          <button class="stake" type="button">Sign in on another device</button>
+          <button class="stake stake--quiet" type="button">Sign out here</button>
+        </div>
       </section>
       <section class="state" data-brief-item="action:/api/v1/users/**">
         <div class="state__head"><h4 class="state__title">You, as PlantPal holds you</h4>${stateId(`action · /api/v1/users/**`, settings)}</div>
-        <dl class="rows">
-          <div class="row"><dt>Name</dt><dd>${who}</dd></div>
-          ${user ? `<div class="row"><dt>Email</dt><dd class="v mono">${esc(user.email)}</dd></div>` : ''}
+        <p class="state__note">Your name, your email, your units and your quiet hours. If a field is not on this list, PlantPal is not keeping it — the first three live on this device only.</p>
+        <dl class="rows" data-account>
+          <div class="row"><dt>Display name</dt><dd>${name ? esc(name) : 'Not set on this device'}</dd></div>
+          <div class="row"><dt>Email</dt><dd class="v mono">${user ? esc(user.email) : missing}</dd></div>
+          <div class="row"><dt>Units</dt><dd>${settings.units === 'metric' ? 'Metric · °C' : 'Imperial · °F'}</dd></div>
+          <div class="row"><dt>Quiet hours</dt><dd>${quiet}</dd></div>
+          <div class="row"><dt>Garden type</dt><dd>${prefs ? (prefs.businessTier ? 'Business or professional' : 'Home garden') : missing}</dd></div>
+          <div class="row"><dt>Vision model</dt><dd>${modelLabel(prefs?.visionModelPreference)}</dd></div>
+          <div class="row"><dt>Reasoning model</dt><dd>${modelLabel(prefs?.reasoningModelPreference)}</dd></div>
+          <div class="row"><dt>PlantNet</dt><dd>${prefs ? `${esc(prefs.plantnetProject ?? 'all')} · ${esc(prefs.plantnetLang ?? 'en')}` : missing}</dd></div>
         </dl>
+        <div class="btn-row">
+          <button class="stake" type="button">Edit your details</button>
+          <button class="stake stake--quiet" type="button">Export everything</button>
+        </div>
       </section>`)
   );
 }
@@ -788,7 +1116,12 @@ function failureNodeIds(f: FamilyFailure, treatments: TreatmentDto[]): string[] 
 }
 
 /** The failure, written inside the node it belongs to: fact, time, fate, ways on. */
-function failureBody(f: FamilyFailure, extraWay: boolean, settings: AssemblySettings): string {
+function failureBody(
+  f: FamilyFailure,
+  extraWay: boolean,
+  settings: AssemblySettings,
+  appendix = '',
+): string {
   const note = `PlantPal answered with ${f.status} at ${timeLabel(f.at)}. Everything already drawn is kept; nothing moved.`;
   return (
     recapWrap('Did not come back', esc(f.message ?? undefined)) +
@@ -799,7 +1132,8 @@ function failureBody(f: FamilyFailure, extraWay: boolean, settings: AssemblySett
         <div class="btn-row"><button class="stake" type="button">Fetch this region</button>${
           extraWay ? '<button class="stake stake--quiet" type="button">Count again</button>' : ''
         }</div>
-      </section>`)
+      </section>
+      ${appendix}`)
   );
 }
 
@@ -813,6 +1147,7 @@ function buildMeta(sources: WorldSources): WorldMeta {
       id: r.id,
       nextDueAt: r.nextDueAt,
       plantId: r.plantId,
+      treatmentPlanId: r.treatmentPlanId,
       label: r.plantNickname
         ? `${careLabel(r.careType)} · ${r.plantNickname}`
         : careLabel(r.careType),
@@ -913,6 +1248,9 @@ export function assembleWorld(sources: WorldSources): WorldData {
     snoozed: sources.snoozed,
     rateLimited: sources.rateLimited,
     overdueByReminder,
+    push: sources.push,
+    dashboard: sources.dashboard,
+    speciesCount: species.length,
     logsPartial: Object.keys(sources.careLogsByPlant).length < plants.length,
   };
 
@@ -941,7 +1279,8 @@ export function assembleWorld(sources: WorldSources): WorldData {
     recap: `${plants.length} plants · ${needWater} need water`, body: gardenBody(plants, drawn, ctx) });
 
   add({ id: 'n-account', glyph: '◉', kind: 'platform', kindLabel: 'Account', name: user ? `${user.firstName}'s account` : 'Your account',
-    recap: user ? user.email : 'Signed in', body: accountBody(user, sources.now, sources.settings) });
+    recap: user ? user.email : 'Signed in',
+    body: accountBody(user, sources.preferences, sources.sessionTimes, sources.now, sources.settings) });
   link('n-account', 'n-garden');
 
   add({ id: 'n-platform', glyph: '◈', kind: 'platform', kindLabel: 'Platform', name: 'Platform link',
@@ -1001,9 +1340,13 @@ export function assembleWorld(sources: WorldSources): WorldData {
     body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.', sources.settings) });
   link('n-garden', 'n-ask');
 
+  const today = todayCount(ctx);
+  const dueNow = today.today.length;
+  const lateNow = today.overdue.length;
   add({ id: 'n-today', glyph: '◷', kind: 'guide', kindLabel: 'Dashboard', name: 'Today',
-    recap: 'Counts land in round 3', state: 'empty',
-    body: deferredBody("Today's summary", '/api/v1/dashboard/**', 'Counts land in round 3 — the reminders they count are already on this board.', sources.settings) });
+    recap: dueNow + lateNow === 0 ? 'Nothing due · nothing overdue' : `${dueNow} due · ${lateNow} overdue`,
+    state: plants.length === 0 ? 'empty' : undefined,
+    body: todayBody(ctx, today) });
   link('n-garden', 'n-today');
   link('n-today', 'n-reminders');
 
@@ -1111,7 +1454,14 @@ export function assembleWorld(sources: WorldSources): WorldData {
         dataNote: 'Everything already drawn is kept; nothing moved.',
         waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
       };
-      node.body = failureBody(f, extraWay, sources.settings);
+      node.body = failureBody(
+        f,
+        extraWay,
+        sources.settings,
+        // a count that did not come back is still countable here: the rows stay,
+        // under the sentence that names where they were counted (C25, never blank)
+        extraWay ? todaySummarySection(ctx, todayCount({ ...ctx, dashboard: null })) : '',
+      );
     }
   }
 

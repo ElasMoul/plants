@@ -41,6 +41,17 @@ export function daysUntil(iso: string, nowIso: string, rule: DueWindow = 'server
   return Math.round((startOfDay(t) - startOfDay(now)) / DAY_MS);
 }
 
+/**
+ * The instant a reminder BECAME due, which is what an acknowledgement measures
+ * against: under 'server-day' that is the start of its due day (the bucket it
+ * lands in), under 'rolling-24h' it is the moment itself.
+ */
+export function becameDueAt(iso: string, rule: DueWindow = 'server-day'): number {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return 0;
+  return rule === 'server-day' ? startOfDay(t) : t;
+}
+
 /** Due means due now or already past — never "due soon". */
 export function isDue(iso: string, nowIso: string, rule: DueWindow = 'server-day'): boolean {
   return daysUntil(iso, nowIso, rule) <= 0;

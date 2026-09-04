@@ -51,3 +51,27 @@ export function classicLinkFor(node: Pick<WorldNode, 'id'>, base: string): strin
 export function classicLoginLink(base: string): string {
   return `${base}/login`;
 }
+
+/**
+ * When this session began and when it lapses, read from the JWT the classic app
+ * issued. Purely local: a malformed or non-JWT token yields nothing rather than a
+ * guess, and nothing here validates the signature — the server does that.
+ */
+export function sessionTimes(
+  token: string | null | undefined,
+): { issuedAt?: string; expiresAt?: string } | undefined {
+  const part = token?.split('.')[1];
+  if (!part) return undefined;
+  try {
+    const padded = (part + '='.repeat((4 - (part.length % 4)) % 4))
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const claims = JSON.parse(atob(padded)) as { iat?: number; exp?: number };
+    const out: { issuedAt?: string; expiresAt?: string } = {};
+    if (typeof claims.iat === 'number') out.issuedAt = new Date(claims.iat * 1000).toISOString();
+    if (typeof claims.exp === 'number') out.expiresAt = new Date(claims.exp * 1000).toISOString();
+    return out.issuedAt || out.expiresAt ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}

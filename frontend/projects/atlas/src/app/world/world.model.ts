@@ -69,7 +69,14 @@ export interface WorldMeta {
   /** The instant this world was assembled from — every "when" word is measured from it. */
   syncedAt: string;
   reminders: ReminderDto[];
-  dueReminders: { id: number; nextDueAt: string; plantId: number; label: string }[];
+  dueReminders: {
+    id: number;
+    nextDueAt: string;
+    plantId: number;
+    label: string;
+    /** Set when this row is a treatment step, so the bell can leave it to its course. */
+    treatmentPlanId?: number;
+  }[];
   plantsIndex: { id: number; nickname: string; lastScanId?: number }[];
   treatmentsIndex: Record<
     number,

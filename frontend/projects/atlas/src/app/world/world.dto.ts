@@ -216,6 +216,10 @@ export interface AssemblySettings {
   quietHours: string;
   openInClassic: 'hide' | 'show';
   showApiIds: boolean;
+  /** The device-local acknowledgement 'Mark all read' wrote, if any. */
+  seenAt: string | null;
+  /** What the bell counts — the notifications panel names it in the node's words. */
+  bellCounts: 'due' | 'overdue' | 'none';
 }
 
 export type PushState = 'on' | 'off' | 'blocked' | 'unsupported' | 'unconfigured';
@@ -256,7 +260,7 @@ export interface WorldSources {
   stoppedReminders: ReminderDto[];
   rateLimited: Record<number, { retryAfterSeconds: number; at: string }>;
   push: PushState;
-  sessionTimes?: { issuedAt?: string; expiresAt?: string };
+  sessionTimes?: { issuedAt?: string; expiresAt?: string; mock?: boolean };
 }
 
 export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
@@ -272,6 +276,8 @@ export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
   quietHours: '21:00-07:30',
   openInClassic: 'hide',
   showApiIds: true,
+  seenAt: null,
+  bellCounts: 'due',
 };
 
 /** Every field defaulted, so a caller only states what it is testing. */

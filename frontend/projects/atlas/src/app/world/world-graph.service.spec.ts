@@ -34,7 +34,7 @@ describe('WorldGraphService (S3 — the round-2/3 loader)', () => {
         provideMockModeOff(),
         provideHttpClientTesting(),
         ...provideSharedCore({ apiBaseUrl: '/api/v1' }),
-        { provide: AuthService, useValue: { getCurrentUser: () => ({ firstName: 'Mo', lastName: 'El', email: 'mo@x.dev', id: 1, status: 'ACTIVE' }) } },
+        { provide: AuthService, useValue: { getCurrentUser: () => ({ firstName: 'Mo', lastName: 'El', email: 'mo@x.dev', id: 1, status: 'ACTIVE' }), getToken: () => null } },
       ],
     });
     service = TestBed.inject(WorldGraphService);

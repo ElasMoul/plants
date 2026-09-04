@@ -6,7 +6,39 @@ import { WorldActionsService } from '../world/world-actions.service';
 import { WorldStore } from '../world/world.store';
 import { MOCK_MODE } from '../core/mock-mode';
 import { SettingsStore } from '../settings/settings.store';
+import { DeviceStore } from '../settings/device.store';
+import { becameDueAt, withinQuietHours } from '../world/dates';
+import type { AtlasSettings } from '../settings/settings.model';
+import type { WorldMeta } from '../world/world.model';
 import { actionsFor } from './actions-for';
+
+/**
+ * What the bell counts, as a pure function of what the loader learned. Never a
+ * feed and never a guess: due reminders (or only the late ones), minus the ones
+ * snoozed on this device, minus everything already due when the reader last said
+ * they had seen it, and silent inside quiet hours. Treatment steps belong to
+ * their course, so they only count when the reader asked for them in the list.
+ */
+export function bellCountFor(
+  meta: WorldMeta | undefined,
+  settings: AtlasSettings,
+  snoozed: Record<number, string>,
+  nowIso: string,
+): number {
+  if (settings.notifications.bellCounts === 'none') return 0;
+  if (withinQuietHours(nowIso, settings.profile.quietHours)) return 0;
+  const now = Date.parse(nowIso);
+  const seen = settings.notifications.seenAt ? Date.parse(settings.notifications.seenAt) : null;
+  return (meta?.dueReminders ?? []).filter(r => {
+    if (settings.data.stepReminders !== 'also-in-reminders' && r.treatmentPlanId != null) return false;
+    const until = snoozed[r.id];
+    if (until != null && Date.parse(until) > now) return false;
+    if (seen != null && becameDueAt(r.nextDueAt, settings.notifications.dueWindow) <= seen) return false;
+    // the rows are already the due ones; "overdue" narrows to the ones past their moment
+    if (settings.notifications.bellCounts === 'overdue') return Date.parse(r.nextDueAt) < now;
+    return true;
+  }).length;
+}
 
 const MM_W = 208;
 const MM_H = 104;
@@ -23,7 +55,7 @@ const MM_H = 104;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div id="offline-bar" role="status">
-      <span>Offline · showing the world as it was at 09:12 · changes will be queued</span>
+      <span>Offline · showing the world as it was at {{ store.readAtLabel() }} · changes will be queued</span>
     </div>
 
     <header id="topbar" class="chrome">
@@ -45,7 +77,7 @@ const MM_H = 104;
         <input id="search" type="search" placeholder="Search…" aria-label="Search the network" (keydown.enter)="onSearch($event)" />
       </div>
       <button class="ch-btn" id="bell" type="button" style="width:auto" (click)="onBell()">
-        Notifications <span class="ch-count">2</span>
+        Notifications @if (bellCount() > 0) {<span class="ch-count">{{ bellCount() }}</span>}
       </button>
       @if (authed()) {
         <button class="ch-btn" id="account" type="button" style="width:auto" aria-expanded="false" (click)="goIfThere('n-account')">{{ accountName() }}</button>
@@ -148,8 +180,19 @@ export class Chrome {
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly accountName = computed(() => this.auth.getCurrentUser()?.firstName ?? 'Account');
   private readonly settings = inject(SettingsStore);
+  private readonly device = inject(DeviceStore);
   protected readonly signInUrl = computed(() =>
     classicLoginLink(this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl),
+  );
+
+  /** The arrival's own count — recomputed whenever the loader learns something new. */
+  protected readonly bellCount = computed(() =>
+    bellCountFor(
+      this.store.meta(),
+      this.settings.settings(),
+      this.device.care(this.mock?.enabled ? 'mock' : 'live').snoozed,
+      this.store.meta()?.syncedAt ?? new Date().toISOString(),
+    ),
   );
 
   protected readonly focusName = computed(
@@ -259,9 +302,28 @@ export class Chrome {
     this.goIfThere(has('n-journal') ? 'n-journal' : 'n-care');
   }
 
+  /**
+   * An arrival: the count and the distance are spoken FIRST, then the same go()
+   * a card click uses — nothing on the way opens and nothing else moves (C16/C21).
+   */
   protected onBell(): void {
-    this.store.say('Travelling to Reminders.');
-    this.store.go('n-reminders');
+    const target = this.settings.settings().notifications.bellTarget;
+    const hops = this.store.distanceTo(target);
+    if (hops < 0) {
+      this.store.say('That place is not on this board yet.');
+      return;
+    }
+    const n = this.bellCount();
+    if (hops === 0) {
+      this.store.say(`${n} due. You are already there.`);
+      return;
+    }
+    this.store.say(
+      `${n} due, ${hops} vein${hops === 1 ? '' : 's'} from here. Crossing the veins to get there; nothing on the way opens.`,
+    );
+    // the travel sentence replaces this one in the same change-detection pass, so
+    // the arrival is given a tick of its own — the distance is really spoken first
+    setTimeout(() => this.store.go(target), 0);
   }
 
   protected onAction(a: string): void {

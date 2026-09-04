@@ -1,6 +1,7 @@
 import { assembleWorld } from './world.assembly';
 import {
   CareLogDto,
+  DashboardDto,
   emptySources,
   IdentificationDto,
   PlantDto,
@@ -96,9 +97,10 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
   });
 
   describe('deferred families + problems', () => {
-    it('leaves only the round-3 families deferred', () => {
+    it('leaves only the companion deferred — the day is real now', () => {
       const w = assembleWorld(sources());
-      expect(w.nodes.find(n => n.id === 'n-today')!.body).toContain('Counts land in round 3');
+      expect(w.nodes.find(n => n.id === 'n-today')!.body).toContain("Today's summary");
+      expect(w.nodes.find(n => n.id === 'n-today')!.body).not.toContain('round 3');
       expect(w.nodes.find(n => n.id === 'n-ask')!.state).toBe('empty');
     });
     it('adds a Problems node only when plants need attention', () => {
@@ -660,6 +662,208 @@ describe('S4 — the care loop as prototype material', () => {
         expect(bodyOf(w, id)).not.toContain('<img');
         expect(bodyOf(w, id)).toContain('&lt;img');
       }
+    });
+  });
+});
+
+describe('S6 — the day, the knocks and the account', () => {
+  const world = (over: Partial<WorldSources> = {}) =>
+    assembleWorld(sources({ now: NOW, plants: [], species: [], identifications: [], ...over }));
+
+  const dashboard = (over: Partial<DashboardDto> = {}): DashboardDto => ({
+    healthSummary: { healthy: 1, issues: 1, unknown: 0 },
+    overdueReminders: [],
+    todayReminders: [],
+    healthTrends: [],
+    recentScans: [],
+    plantCount: 2,
+    speciesCount: 1,
+    ...over,
+  });
+
+  describe('Today — a count, not a feed', () => {
+    it('takes its rows from the dashboard buckets under server-day', () => {
+      const w = world({
+        plants: [plant(1, { nickname: 'Office Fig' }), plant(2, { nickname: 'Studio Fig' })],
+        reminders: [reminder(1, { nextDueAt: LATER })],
+        dashboard: dashboard({
+          overdueReminders: [{ ...reminder(601, { plantNickname: 'Office Fig' }), daysOverdue: 2 }],
+          todayReminders: [
+            { ...reminder(602, { plantId: 2, plantNickname: 'Studio Fig', nextDueAt: TODAY }) },
+          ],
+        }),
+      });
+      const today = w.nodes.find(n => n.id === 'n-today')!;
+      expect(today.recap).toBe('1 due · 1 overdue');
+      const b = bodyOf(w, 'n-today');
+      expect(wordsOf(b)).toContain('Office Fig · 2 days overdue');
+      expect(wordsOf(b)).toContain('Studio Fig · today');
+      expect(b).toContain("from PlantPal's own day");
+      expect(b).not.toContain('the dashboard did not come back');
+      // every name is a door
+      expect(b).toContain('data-goto="n-plant-1"');
+    });
+
+    it('counts here under a rolling 24-hour window, and says so', () => {
+      const w = world({
+        plants: [plant(1)],
+        reminders: [reminder(601, { nextDueAt: OVERDUE })],
+        dashboard: dashboard({ overdueReminders: [], todayReminders: [] }),
+        settings: { ...emptySources().settings, dueWindow: 'rolling-24h' },
+      });
+      expect(w.nodes.find(n => n.id === 'n-today')!.recap).toBe('0 due · 1 overdue');
+      expect(bodyOf(w, 'n-today')).toContain('your due window is a rolling 24 hours');
+    });
+
+    it('leaves treatment steps to their course and names the course itself', () => {
+      const w = world({
+        plants: [plant(1)],
+        reminders: [step(702, 2, { nextDueAt: TODAY })],
+        treatments: [treatment()],
+        plansById: { 201: plan([step(701, 1, { enabled: false }), step(702, 2, { nextDueAt: TODAY })]) },
+        dashboard: dashboard({
+          todayReminders: [{ ...step(702, 2, { nextDueAt: TODAY }) }],
+        }),
+      });
+      const b = bodyOf(w, 'n-today');
+      expect(w.nodes.find(n => n.id === 'n-today')!.recap).toBe('Nothing due · nothing overdue');
+      expect(wordsOf(b)).toMatch(/Check on Root rot · day \d+ of \d+/);
+    });
+
+    it('carries no stake at all (the prototype gives Today none)', () => {
+      const w = world({ plants: [plant(1)], dashboard: dashboard() });
+      expect(bodyOf(w, 'n-today')).not.toContain('class="stake"');
+      expect(bodyOf(w, 'n-today')).not.toContain('stake--quiet');
+    });
+
+    it('falls back to rows counted here when the dashboard did not come back', () => {
+      const w = world({
+        plants: [plant(1)],
+        reminders: [reminder(601, { nextDueAt: OVERDUE })],
+        failures: [{ family: 'dashboard', status: 503, at: NOW, message: 'Service unavailable' }],
+      });
+      const today = w.nodes.find(n => n.id === 'n-today')!;
+      expect(today.state).toBe('failed');
+      const b = bodyOf(w, 'n-today');
+      expect(b).toContain('state--error');
+      expect(b).toContain('Count again');
+      // the count survives its own outage
+      expect(wordsOf(b)).toContain('the dashboard did not come back');
+      expect(wordsOf(b)).toContain('2 days overdue');
+    });
+
+    it('prints a real zero on a day-zero garden', () => {
+      const w = world({});
+      const today = w.nodes.find(n => n.id === 'n-today')!;
+      expect(today.state).toBe('empty');
+      expect(today.recap).toBe('Nothing due · nothing overdue');
+      expect(bodyOf(w, 'n-today')).toContain('Nothing to do today');
+      expect(bodyOf(w, 'n-today')).toContain('No plants yet');
+    });
+  });
+
+  describe('the notifications panel', () => {
+    const notifWorld = (over: Partial<WorldSources> = {}) =>
+      world({
+        plants: [plant(1)],
+        reminders: [reminder(601, { nextDueAt: OVERDUE }), reminder(602, { nextDueAt: TODAY })],
+        ...over,
+      });
+
+    it('reads the push state of this device', () => {
+      expect(bodyOf(notifWorld(), 'n-reminders')).toContain('Off · enable in Settings · Notifications');
+      expect(bodyOf(notifWorld({ push: 'on' }), 'n-reminders')).toContain(
+        'On · this device · not during quiet hours',
+      );
+      expect(bodyOf(notifWorld({ push: 'unconfigured' }), 'n-reminders')).toContain(
+        'Not configured on this server',
+      );
+      expect(bodyOf(notifWorld({ push: 'blocked' }), 'n-reminders')).toContain(
+        'Blocked by the browser',
+      );
+    });
+
+    it('drops the quiet-hours clause when quiet hours are off', () => {
+      const b = bodyOf(
+        notifWorld({ push: 'on', settings: { ...emptySources().settings, quietHours: 'off' } }),
+        'n-reminders',
+      );
+      expect(b).toContain('On · this device');
+      expect(b).not.toContain('not during quiet hours');
+    });
+
+    it('counts unread against the seen mark and leaves snoozed rows out', () => {
+      const rows = (w: ReturnType<typeof assembleWorld>) => {
+        const b = bodyOf(w, 'n-reminders');
+        const i = b.indexOf('data-notifications');
+        return b.slice(i, b.indexOf('</dl>', i));
+      };
+      expect(rows(notifWorld())).toContain('<dt>Unread</dt><dd>2</dd>');
+      // seen after the overdue one became due: only the later one is unread
+      const seen = notifWorld({
+        settings: { ...emptySources().settings, seenAt: '2026-09-02T00:00:00Z' },
+      });
+      expect(rows(seen)).toContain('<dt>Unread</dt><dd>1</dd>');
+      const snoozed = notifWorld({ snoozed: { 601: '2026-09-04T09:00:00Z' } });
+      expect(rows(snoozed)).toContain('<dt>Unread</dt><dd>1</dd>');
+      // nothing to acknowledge is said in the markup, not by hiding the stake
+      const quiet = world({ plants: [plant(1)], reminders: [reminder(601, { nextDueAt: LATER })] });
+      expect(bodyOf(quiet, 'n-reminders')).toContain('aria-disabled="true"');
+    });
+
+    it('never offers an email digest PlantPal does not send', () => {
+      expect(bodyOf(notifWorld(), 'n-reminders')).toContain('Not offered by PlantPal');
+    });
+  });
+
+  describe('the account', () => {
+    const user = { firstName: 'Sam', lastName: 'Okafor', email: 'sam@example.org' };
+    const prefs = {
+      aiModelPreference: 'GITHUB_GPT4O',
+      visionModelPreference: 'GITHUB_GPT4O',
+      reasoningModelPreference: 'DEEPSEEK_R1',
+      plantnetProject: 'all',
+      plantnetLang: 'en',
+      businessTier: false,
+    } as WorldSources['preferences'];
+
+    it('shows the server preferences in the gardener\'s words', () => {
+      const b = bodyOf(world({ user, preferences: prefs }), 'n-account');
+      expect(wordsOf(b)).toContain('Vision model GPT-4o');
+      expect(wordsOf(b)).toContain('Reasoning model DeepSeek-R1');
+      expect(wordsOf(b)).toContain('PlantNet all · en');
+      expect(wordsOf(b)).toContain('Garden type Home garden');
+      expect(b).toContain('sam@example.org');
+    });
+
+    it('says a users family that did not come back rather than inventing a value', () => {
+      const b = bodyOf(world({ user, preferences: null }), 'n-account');
+      expect(wordsOf(b)).toContain('Vision model Not fetched — try again');
+      expect(wordsOf(b)).toContain('Garden type Not fetched — try again');
+    });
+
+    it('prints the device-local profile fields and the session window', () => {
+      const b = bodyOf(
+        world({
+          user,
+          preferences: prefs,
+          sessionTimes: { issuedAt: '2026-09-03T08:41:00Z', expiresAt: '2026-09-03T18:40:00Z' },
+          settings: { ...emptySources().settings, displayName: 'Sammy', units: 'imperial' },
+        }),
+        'n-account',
+      );
+      expect(wordsOf(b)).toContain('Display name Sammy');
+      expect(wordsOf(b)).toContain('Imperial · °F');
+      expect(wordsOf(b)).toContain('Quiet hours 21:00 – 07:30');
+      expect(b).toContain('Sign out here');
+      expect(b).toContain('Export everything');
+      expect(wordsOf(b)).toMatch(/This session Since \d\d:\d\d · this device/);
+    });
+
+    it('is honest that a mock session is a mock session', () => {
+      const b = bodyOf(world({ user, sessionTimes: { mock: true } }), 'n-account');
+      expect(wordsOf(b)).toContain('This session mock session');
+      expect(b).not.toContain('valid until');
     });
   });
 });

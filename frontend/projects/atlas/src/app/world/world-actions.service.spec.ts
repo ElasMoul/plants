@@ -2,11 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideSharedCore } from '@plantpal/shared-core';
-import { provideMockModeOff } from '../core/mock-mode';
+import { MOCK_MODE, provideMockModeOff } from '../core/mock-mode';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
 import { WorldActionsService } from './world-actions.service';
-import type { ReminderDto } from './world.dto';
+import { emptySources, type ReminderDto } from './world.dto';
 import type { WorldMeta } from './world.model';
 import { WorldStore } from './world.store';
 
@@ -418,4 +418,88 @@ describe('WorldActionsService (H6 — every button works as intended)', () => {
     expect(store.focusId()).toBe(focus);
     expect(store.camera()).toEqual(camera);
   });
+
+  // ── round 3: the day, the knocks and the account ───────────────────────────
+
+  describe('S6 — the account and the acknowledgement', () => {
+    it('"Mark all read" writes the seen mark on this device and asks for nothing', () => {
+      actions.dispatch('n-reminders', 'Mark all read');
+      http.expectNone(() => true);
+      const seen = settings.get('notifications.seenAt') as string;
+      expect(Date.parse(seen)).toBeGreaterThan(0);
+      expect(store.announcement()).toBe('Marked read on this device. Nothing moved.');
+      expect(actions.reloadRequested()).toBe(1);
+    });
+
+    it('"Edit your details" opens the profile pane rather than pretending to be a form', () => {
+      actions.dispatch('n-account', 'Edit your details');
+      expect(settings.section()).toBe('profile');
+      expect(store.mode()).toBe('overview');
+      expect(actions.activeForm()).toBeNull();
+    });
+
+    it('"Export everything" builds a file out of what this atlas holds', () => {
+      const created: Blob[] = [];
+      // jsdom has no object-URL plumbing; the export only needs the two calls
+      const urls = URL as unknown as Record<string, unknown>;
+      urls['createObjectURL'] ??= () => 'blob:atlas';
+      urls['revokeObjectURL'] ??= () => undefined;
+      const create = jest
+        .spyOn(URL, 'createObjectURL')
+        .mockImplementation((b: Blob | MediaSource) => {
+          created.push(b as Blob);
+          return 'blob:atlas';
+        });
+      const revoke = jest.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      const clicked: string[] = [];
+      const click = jest
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(function (this: HTMLAnchorElement) {
+          clicked.push(this.download);
+        });
+
+      store.lastSources.set(emptySources({ now: '2026-09-03T09:12:00Z' }));
+      actions.dispatch('n-account', 'Export everything');
+
+      expect(created).toHaveLength(1);
+      expect(created[0].type).toBe('application/json');
+      expect(clicked[0]).toMatch(/^plantpal-atlas-\d{4}-\d{2}-\d{2}\.json$/);
+      expect(store.announcement()).toContain('the file is in your downloads');
+      create.mockRestore();
+      revoke.mockRestore();
+      click.mockRestore();
+    });
+
+    it('refuses to export a board that has not been fetched yet', () => {
+      actions.dispatch('n-account', 'Export everything');
+      expect(store.announcement()).toContain('there is nothing to export');
+    });
+
+    it('"Sign out here" in the mock garden only announces — there is no session to end', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: MOCK_MODE, useValue: { enabled: true, scenario: 'garden', latencyMs: 0 } },
+          ...provideSharedCore({ apiBaseUrl: '/api/v1' }),
+        ],
+      });
+      const mockActions = TestBed.inject(WorldActionsService);
+      const mockStore = TestBed.inject(WorldStore);
+      const mockHttp = TestBed.inject(HttpTestingController);
+      mockActions.dispatch('n-account', 'Sign out here');
+      expect(mockStore.announcement()).toBe(
+        'This is the mock garden — there is no session to end.',
+      );
+      mockHttp.verify();
+    });
+
+    it('"Sign in on another device" names the door instead of opening it', () => {
+      actions.dispatch('n-account', 'Sign in on another device');
+      expect(store.announcement()).toContain('/login');
+      expect(store.announcement()).toContain('hands itself into the atlas');
+    });
+  });
+
 });

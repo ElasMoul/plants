@@ -19,6 +19,8 @@ import {
   TargetMap,
   travelCamera,
 } from '@plantpal/rhizome-engine';
+import { timeLabel } from './dates';
+import type { WorldSources } from './world.dto';
 import { FIXTURE_WORLD } from './world.fixture';
 import { NodeKind, WorldData, WorldNode } from './world.model';
 
@@ -223,6 +225,14 @@ export class WorldStore {
     const out: Record<string, { col: number; row: number }> = {};
     for (const n of this.nodes()) out[n.id] = { col: n.cell.col, row: n.cell.row };
     return out;
+  }
+
+  /** The raw sources the last load assembled from — read by the account's export. */
+  readonly lastSources = signal<WorldSources | null>(null);
+
+  /** The wall-clock moment this board was last true — the offline bar's own fact. */
+  readAtLabel(): string {
+    return timeLabel(this.data().meta?.syncedAt ?? new Date().toISOString());
   }
 
   /** Veins between here and there — the number an arrival announces before travelling. */

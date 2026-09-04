@@ -3,9 +3,11 @@ import { inject, Injectable, signal } from '@angular/core';
 import { API_BASE_URL, ApiResponse, AuthService, PageResponse } from '@plantpal/shared-core';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { MOCK_MODE } from '../core/mock-mode';
+import { PushService } from '../push/push.service';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
 import { WorldActionsService } from './world-actions.service';
+import { sessionTimes } from './interop';
 import { assembleWorld, drawnPlantsOf } from './world.assembly';
 import {
   CareLogDto,
@@ -49,6 +51,8 @@ export class WorldGraphService {
   /** AI limits are learned by the action that hit one; the node says so on reload. */
   private readonly actions = inject(WorldActionsService);
   private readonly mock = inject(MOCK_MODE, { optional: true });
+  /** Where this device stands with push knocks — a readout the account/reminders wear. */
+  private readonly push = inject(PushService);
 
   /** The last sources assembled — read by the account node's export. */
   readonly lastSources = signal<WorldSources | null>(null);
@@ -267,9 +271,13 @@ export class WorldGraphService {
                   snoozed: local.snoozed,
                   stoppedReminders: [...this.stoppedReminders.values()],
                   rateLimited: this.actions.rateLimited(),
-                  push: 'off', // the real push state arrives with PushService
+                  push: this.push.state(),
+                  sessionTimes: this.mock?.enabled
+                    ? { mock: true }
+                    : sessionTimes(this.auth.getToken()),
                 });
                 this.lastSources.set(sources);
+                this.store.lastSources.set(sources);
                 this.assembled = true;
                 return assembleWorld(sources);
                   }),
