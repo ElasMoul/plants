@@ -240,6 +240,27 @@ describe('WorldActionsService (H6 — every button works as intended)', () => {
     expect(actions.reloadRequested()).toBe(1);
   });
 
+  it('announces a course step as a step, and a routine schedule as scheduled again', () => {
+    withMeta();
+    actions.dispatch('n-treatment-301', 'Mark step 2 as done', 'reminder:702');
+    http.expectOne('/api/v1/care/done').flush(ok({ id: 3 }));
+    expect(store.announcement()).toBe('Step marked done. The camera did not move.');
+
+    // the same stake on the reminders hub finishes a watering, not a course step
+    actions.dispatch('n-reminders', 'Done', 'reminder:601');
+    http.expectOne('/api/v1/care/done').flush(ok({ id: 4 }));
+    expect(store.announcement()).toBe('Marked done. The next one is scheduled. The camera did not move.');
+  });
+
+  // with Settings · Care listing steps among the reminders, the hub's own Done
+  // stake can name a course step — the reminder itself decides the words
+  it('a course step listed on the reminders hub is still announced as a step', () => {
+    withMeta();
+    actions.dispatch('n-reminders', 'Done', 'reminder:702');
+    http.expectOne('/api/v1/care/done').flush(ok({ id: 5 }));
+    expect(store.announcement()).toBe('Step marked done. The camera did not move.');
+  });
+
   it('Mark today done resolves the first open step from the meta index', () => {
     withMeta();
     actions.dispatch('n-treatment-301', 'Mark today done');

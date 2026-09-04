@@ -1568,9 +1568,14 @@ function emitCollapsed<T>(
  *
  * With `prior` cells given, insertion stability becomes real (C8): a node already on
  * the board keeps the exact cell it had, and a new node takes the first free row of
- * its own depth column — "a new node takes a free cell, nothing else moves" then
- * holds across reloads, not only within one. With `prior` absent or empty the
- * centred algorithm runs unchanged, so the shipped geography is untouched.
+ * its own depth column — where free means free of every remembered cell, not only of
+ * the ones this world happens to draw. A family that density-collapses (2 + "+N more")
+ * drops nodes off the board while the device still remembers where they sat; seating a
+ * newcomer on one of those cells is how the entry that comes back later loses the cell
+ * it kept, so a remembered cell is reserved for its own node whether or not this world
+ * draws it. "A new node takes a free cell, nothing else moves" then holds across
+ * reloads, not only within one. With `prior` absent or empty the centred algorithm runs
+ * unchanged, so the shipped geography is untouched.
  */
 export function layoutCells(
   nodes: DraftNode[],
@@ -1592,14 +1597,22 @@ export function layoutCells(
   if (prior && Object.keys(prior).length > 0) {
     const taken = new Map<number, Set<number>>();
     const rowsOf = (col: number) => taken.get(col) ?? taken.set(col, new Set()).get(col)!;
-    for (const [, layer] of byDepth) {
-      for (const id of layer) {
-        const kept = prior[id];
-        if (!kept) continue;
-        cellFor[id] = { col: kept.col, row: kept.row };
-        rowsOf(kept.col).add(kept.row);
-      }
+    // Every remembered cell is reserved before a single node is seated: a cell
+    // belongs to the node that holds it even in a reload that does not draw it.
+    for (const kept of Object.values(prior)) rowsOf(kept.col).add(kept.row);
+    // 1. every node the device remembers keeps its exact cell — drawn or parked.
+    const heldBy = new Map<string, string>();
+    for (const id of [...ids].sort()) {
+      const kept = prior[id];
+      if (!kept) continue;
+      const at = `${kept.col},${kept.row}`;
+      // a map written before this rule could stack two ids on one cell; the first
+      // by id keeps it and the other is seated as a newcomer, never hidden under it
+      if (heldBy.has(at)) continue;
+      heldBy.set(at, id);
+      cellFor[id] = { col: kept.col, row: kept.row };
     }
+    // 2. a new node takes the first free row of its own depth column.
     for (const [d, layer] of byDepth) {
       const col = 2 * d;
       for (const id of [...layer].sort()) {

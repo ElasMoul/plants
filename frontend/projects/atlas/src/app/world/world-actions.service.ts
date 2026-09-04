@@ -99,7 +99,17 @@ export class WorldActionsService {
         this.store.say('Nothing is due on this course today.');
         return;
       }
-      this.completeReminder(id, undefined, 'Step marked done. The camera did not move.');
+      // a course step is finished for good; a routine schedule rolls forward, and
+      // the announcement says which of the two just happened
+      const step =
+        ref?.kind !== 'reminder' || /^n-treatment-/.test(nodeId) || this.isCourseStep(id);
+      this.completeReminder(
+        id,
+        undefined,
+        step
+          ? 'Step marked done. The camera did not move.'
+          : 'Marked done. The next one is scheduled. The camera did not move.',
+      );
       return;
     }
     if (/^water plant$/.test(l)) {
@@ -654,6 +664,13 @@ export class WorldActionsService {
   private planIdOf(nodeId: string): number | undefined {
     const t = this.treatmentIdOf(nodeId);
     return t == null ? undefined : this.store.meta()?.treatmentsIndex[t]?.planId;
+  }
+
+  /** Whether this reminder is a step of a treatment course rather than a routine
+   *  schedule — the board knows it by the plan it belongs to (a step never recurs). */
+  private isCourseStep(id: number): boolean {
+    const r = (this.store.meta()?.reminders ?? []).find(x => x.id === id);
+    return r == null ? false : r.treatmentPlanId != null || r.stepOrder != null;
   }
 
   /** The first open step of the course this node is (the rail has no data-arg). */

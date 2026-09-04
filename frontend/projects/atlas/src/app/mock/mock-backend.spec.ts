@@ -159,7 +159,7 @@ describe('MockBackend (S1 — the in-memory PlantPal)', () => {
     const reply = b.handle('PUT', '/users/me/preferences', { businessTier: true });
     expect(reply.status).toBe(200);
     expect(data(reply)['businessTier']).toBe(true);
-    expect(data(reply)['reasoningModelPreference']).toBe('DEEPSEEK_R1');
+    expect(data(reply)['reasoningModelPreference']).toBe('ANTHROPIC_CLAUDE');
   });
 
   it('an unrouted path answers 404 with a loud message', () => {

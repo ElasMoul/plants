@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { AuthService } from '@plantpal/shared-core';
 import { environment } from '../../environments/environment';
 import { classicLinkFor, classicLoginLink } from '../world/interop';
@@ -212,7 +220,15 @@ export class Chrome {
     classicLoginLink(this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl),
   );
 
-  /** The arrival's own count — recomputed whenever the loader learns something new. */
+  /** The bell's own clock, moved once a minute. A computed only re-reads the wall
+   *  clock when something it depends on changes, so without this the count keeps
+   *  answering for the instant of the last sync: quiet hours would never begin or
+   *  end and a lapsed snooze would never come back without a reload. Nothing here
+   *  animates — chrome still carries no tick (C14). */
+  private readonly minute = signal(Date.now());
+
+  /** The arrival's own count — recomputed when the loader learns something new,
+   *  and on the minute, so it is always the count for now. */
   protected readonly bellCount = computed(() =>
     bellCountFor(
       this.store.meta(),
@@ -220,7 +236,7 @@ export class Chrome {
       this.device.care(this.mock?.enabled ? 'mock' : 'live').snoozed,
       // Quiet hours and a lapsed snooze are read against now, never against the
       // instant of the last sync — otherwise neither ever begins or ends.
-      new Date().toISOString(),
+      new Date(this.minute()).toISOString(),
     ),
   );
 
@@ -290,6 +306,8 @@ export class Chrome {
   });
 
   constructor() {
+    const clock = setInterval(() => this.minute.set(Date.now()), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
     // Probes are body-level material states — rhizome.css keys off these attrs.
     effect(() => {
       document.body.dataset['mode'] = this.store.mode();

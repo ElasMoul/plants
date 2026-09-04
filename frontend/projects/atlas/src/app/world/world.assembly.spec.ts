@@ -1,6 +1,8 @@
+import { anchorPosition } from '@plantpal/rhizome-engine';
 import { assembleWorld } from './world.assembly';
 import {
   CareLogDto,
+  Cell,
   DashboardDto,
   emptySources,
   IdentificationDto,
@@ -34,6 +36,26 @@ function sources(over: Partial<WorldSources> = {}): WorldSources {
 }
 
 const idsOf = (w: ReturnType<typeof assembleWorld>) => w.nodes.map(n => n.id);
+
+/** What the device remembers after a board was drawn (the store's cells snapshot). */
+const cellsOf = (w: ReturnType<typeof assembleWorld>): Record<string, Cell> =>
+  Object.fromEntries(w.nodes.map(n => [n.id, n.cell]));
+const logIdsOf = (w: ReturnType<typeof assembleWorld>) =>
+  w.nodes.filter(n => /^n-log-/.test(n.id)).map(n => n.id).sort();
+
+function careLog(id: number, performedAt: string): CareLogDto {
+  return { id, plantId: 1, plantNickname: 'Plant 1', careType: 'WATERING', performedAt };
+}
+const THREE_LOGS = [
+  careLog(901, '2026-08-25T08:00:00Z'),
+  careLog(902, '2026-08-28T08:00:00Z'),
+  careLog(903, '2026-09-01T08:00:00Z'),
+];
+/** One plant and its care history — the journal alone, so cells are readable. */
+const journalWorld = (logs: CareLogDto[], priorCells?: Record<string, Cell>) =>
+  assembleWorld(
+    sources({ plants: [plant(1)], species: [], identifications: [], careLogsByPlant: { 1: logs }, priorCells }),
+  );
 
 describe('assembleWorld (H5 — the live round-1 spine)', () => {
   it('builds the garden hub as the initial focus with the spine nodes', () => {
@@ -225,6 +247,55 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
       const takenInItsColumn = before.nodes.filter(n => n.cell.col === fresh.cell.col).map(n => n.cell.row);
       expect(takenInItsColumn.length).toBeGreaterThan(0);
       expect(takenInItsColumn).not.toContain(fresh.cell.row);
+    });
+
+    /**
+     * The care loop's own C8 case: pressing Done writes a care log, and the fourth
+     * entry collapses the journal to two entries + "+N more". The entries that stay
+     * keep their exact cells, and neither the new entry nor the aggregate may take a
+     * cell the device still remembers for an entry this board stopped drawing — that
+     * cell belongs to that entry, and seating a newcomer on it is how the entry loses
+     * its cell on a later reload.
+     */
+    it('keeps every journal cell when a fourth care log collapses the family', () => {
+      const before = journalWorld(THREE_LOGS);
+      expect(logIdsOf(before)).toEqual(['n-log-901', 'n-log-902', 'n-log-903']);
+      const priorCells = cellsOf(before);
+
+      const after = journalWorld([...THREE_LOGS, careLog(904, '2026-09-03T09:00:00Z')], priorCells);
+      expect(logIdsOf(after)).toEqual(['n-log-903', 'n-log-904']);
+      expect(after.nodes.find(n => n.id === 'n-journal-more')!.recap).toBe('+2 more');
+
+      // every node on both boards keeps its exact cell — and its geography with it
+      for (const n of before.nodes) {
+        const moved = after.nodes.find(x => x.id === n.id);
+        if (!moved) continue;
+        expect({ id: n.id, cell: moved.cell }).toEqual({ id: n.id, cell: n.cell });
+        expect(anchorPosition(moved)).toEqual(anchorPosition(n));
+      }
+      // and nothing newly drawn sits on a cell remembered for another node
+      const heldBy = new Map(Object.entries(priorCells).map(([id, c]) => [`${c.col},${c.row}`, id]));
+      for (const n of after.nodes) {
+        const holder = heldBy.get(`${n.cell.col},${n.cell.row}`) ?? n.id;
+        expect({ id: n.id, holder }).toEqual({ id: n.id, holder: n.id });
+      }
+      // one cell, one node
+      expect(new Set(after.nodes.map(n => `${n.cell.col},${n.cell.row}`)).size).toBe(after.nodes.length);
+    });
+
+    it('keeps the entry aggregate on its own cell as the journal keeps growing', () => {
+      const four = [...THREE_LOGS, careLog(904, '2026-09-03T09:00:00Z')];
+      const collapsed = journalWorld(four, cellsOf(journalWorld(THREE_LOGS)));
+      const priorCells = cellsOf(collapsed);
+
+      const grown = journalWorld([...four, careLog(905, '2026-09-03T10:00:00Z')], priorCells);
+      expect(grown.nodes.find(n => n.id === 'n-journal-more')!.cell).toEqual(
+        collapsed.nodes.find(n => n.id === 'n-journal-more')!.cell,
+      );
+      expect(grown.nodes.find(n => n.id === 'n-log-904')!.cell).toEqual(
+        collapsed.nodes.find(n => n.id === 'n-log-904')!.cell,
+      );
+      expect(new Set(grown.nodes.map(n => `${n.cell.col},${n.cell.row}`)).size).toBe(grown.nodes.length);
     });
   });
 

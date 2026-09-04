@@ -323,16 +323,21 @@ function garden(now: number): MockSeed {
   };
 }
 
+/**
+ * What a fresh account carries since 2026-08-24, when GitHub Models was retired
+ * upstream: both menus default to Claude, which production keys, and the older
+ * options stay in the availability maps — the server does not gate them.
+ */
 function defaultPreferences(): MockPreferences {
   return {
     aiModelPreference: 'GITHUB_GPT4O',
-    visionModelPreference: 'GITHUB_GPT4O',
-    reasoningModelPreference: 'DEEPSEEK_R1',
+    visionModelPreference: 'ANTHROPIC_CLAUDE',
+    reasoningModelPreference: 'ANTHROPIC_CLAUDE',
     visionModelAvailability: {
-      GITHUB_GPT4O: true, GITHUB_GPT41: true, OLLAMA_GEMMA3: true, PLANTNET: true, ANTHROPIC_CLAUDE: false,
+      GITHUB_GPT4O: true, GITHUB_GPT41: true, OLLAMA_GEMMA3: true, PLANTNET: true, ANTHROPIC_CLAUDE: true,
     },
     reasoningModelAvailability: {
-      DEEPSEEK_R1: true, GITHUB_O4_MINI: true, GITHUB_GPT41_MINI: true, OLLAMA_GEMMA3: true, ANTHROPIC_CLAUDE: false,
+      DEEPSEEK_R1: true, GITHUB_O4_MINI: true, GITHUB_GPT41_MINI: true, OLLAMA_GEMMA3: true, ANTHROPIC_CLAUDE: true,
     },
     plantnetProject: 'all',
     plantnetLang: 'en',
