@@ -102,6 +102,10 @@ export function actionsFor(
     case 'n-today':
     case 'n-account':
     case 'n-ask':
+      // n-ask's rail is empty BY DESIGN, exactly as the prototype's ACTIONS map
+      // has it: the companion's two stakes ("Ask something", "Read the whole
+      // thread") live in the card's own body, because neither is a mutation of
+      // the garden. An empty rail is the fidelity, not an omission — leave it.
       return [];
     default:
       // a live id we do not know offers nothing rather than inheriting a fixture label

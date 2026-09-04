@@ -13,6 +13,8 @@ import {
 import {
   AssemblySettings,
   CareLogDto,
+  ChatFailure,
+  ChatThreadDto,
   Cell,
   DashboardDto,
   FamilyFailure,
@@ -27,6 +29,7 @@ import {
   UserPreferencesDto,
   WorldSources,
 } from './world.dto';
+import { askFailureCopy } from './ask-copy';
 import { NodeKind, WorldData, WorldMeta, WorldNode } from './world.model';
 
 /** A collection with this many members or more collapses to 2 + "+N more" (C4/density). */
@@ -1093,16 +1096,110 @@ function platformBody(settings: AssemblySettings): string {
   );
 }
 
-/** A node body for a family the atlas does not cover yet (currently: the chat
- *  companion). It names what is missing rather than drawing an empty card. */
-function deferredBody(title: string, id: string, note: string, settings: AssemblySettings): string {
+// ── the companion (n-ask) ────────────────────────────────────────────────────
+
+/**
+ * The thread this node is about: the newest-touched one. A plant's thread names
+ * that plant, the garden's names the garden — the two shapes threadKey() makes.
+ */
+export function newestThread(sources: WorldSources): ChatThreadDto | undefined {
+  return [...(sources.chatThreads ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+}
+
+/** "the Office Fig" / "your garden" — the wording pair the recap and title share. */
+function askSubject(thread: ChatThreadDto | undefined, plants: PlantDto[]): string {
+  if (!thread || thread.plantId == null) return 'your garden';
+  const named = plants.find(p => p.id === thread.plantId)?.nickname ?? thread.plantName;
+  return named ? esc(named) : 'this plant';
+}
+
+/** The recap: what this companion is about, in its own voice. */
+function askRecap(sources: WorldSources, plants: PlantDto[]): string {
+  return `Ask about ${askSubject(newestThread(sources), plants)}`;
+}
+
+/**
+ * The panel that wears why an ask did not answer — always in the body, hidden
+ * until there is something to say, so the card can wear a failure that arrives
+ * later without the world being re-assembled around it (an answer, or its
+ * absence, must never move the camera).
+ */
+function askFailurePanel(failure: ChatFailure | undefined, settings: AssemblySettings): string {
+  const copy = failure ? askFailureCopy(failure) : { title: '', note: '' };
+  return `<section class="state state--error" data-chat-failure${failure ? '' : ' hidden'}>
+        <div class="state__head"><h4 class="state__title" data-chat-failure-title>${esc(copy.title)}</h4>${stateId('state · error', settings)}</div>
+        <p class="state__note" data-chat-failure-note>${esc(copy.note)}</p>
+      </section>`;
+}
+
+/** One turn, as the prototype's two feed rows: what you asked, what it answered. */
+function askRows(
+  turn: { askedAt: string; question: string; reply: string },
+  extra: boolean,
+): string {
+  const when = timeLabel(turn.askedAt);
+  const attr = extra ? ' data-extra hidden' : '';
   return (
-    recapWrap('Not on this board yet') +
+    `<div class="feed__row"${attr}><span class="feed__when">${when}</span><span>you</span><span class="feed__val">${esc(turn.question)}</span></div>` +
+    `<div class="feed__row"${attr}><span class="feed__when">${when}</span><span>PlantPal</span><span class="feed__val">${esc(turn.reply)}</span></div>`
+  );
+}
+
+/**
+ * The companion's own card — the prototype's n-ask, holding the thread the atlas
+ * keeps (the server keeps none). It reads the garden and never writes to it, so
+ * nothing here is an exit and nothing here is a mutation: the two stakes open a
+ * sheet and widen this same feed. The answer being written lands in the two
+ * reserved rows (data-streaming), which the card fills in place — no
+ * re-assembly, no layout epoch, no camera.
+ */
+function askBody(sources: WorldSources, plants: PlantDto[]): string {
+  const settings = sources.settings;
+  const thread = newestThread(sources);
+  const turns = thread?.turns ?? [];
+  const subject = askSubject(thread, plants);
+  const kept = Math.max(0, settings.chatTurnsKept);
+  const expanded = thread ? (sources.chatExpanded ?? {})[thread.key] === true : false;
+  const hiddenBefore = kept === 0 ? turns.length : Math.max(0, turns.length - kept);
+  const rows = turns.map((t, i) => askRows(t, !expanded && i < hiddenBefore)).join('');
+  // the answer in flight has its rows waiting for it, at their own height, so a
+  // token can never change what the card measures
+  const streamRows =
+    '<div class="feed__row" data-streaming-q hidden><span class="feed__when">now</span><span>you</span><span class="feed__val"></span></div>' +
+    '<div class="feed__row" data-streaming hidden><span class="feed__when">now</span><span>PlantPal</span><span class="feed__val" style="min-height:2.4em"></span></div>';
+  // the count the card needs to know which turns it must paint itself: a turn
+  // committed after this body was built is appended in place, never by a reload
+  const feed = `<div class="feed" data-thread="${esc(thread?.key ?? 'garden')}" data-thread-rendered="${turns.length}">${rows}${streamRows}</div>`;
+  const last = turns[turns.length - 1];
+  const truncated =
+    last?.outcome === 'truncated'
+      ? `<p class="state__note">The answer stopped part-way — ask again when you like.</p>
+        <div class="btn-row"><button class="stake stake--quiet" type="button">Ask it again</button></div>`
+      : '';
+  const readWhole =
+    kept > 0 && turns.length > kept
+      ? `<button class="stake stake--quiet" type="button">${expanded ? 'Show just the recent turns' : 'Read the whole thread'}</button>`
+      : '';
+  const empty =
+    turns.length === 0
+      ? '<p class="state__note">Nothing asked yet. Ask a question and both what you asked and what it answered stay here.</p>'
+      : '';
+  const failure = (sources.chatFailures ?? {})[thread?.key ?? 'garden'];
+  return (
+    recapWrap(
+      `Ask about ${subject}`,
+      'The knowledgeable friend, not the botanist.',
+      `Answers use your garden as it stood at ${timeLabel(sources.now)}`,
+      ['sk--sub', 'sk--line', 'sk--line is-short'],
+    ) +
     full(`
-      <section class="state state--empty" data-brief-item="action:${id}">
-        <div class="state__head"><h4 class="state__title">${title}</h4>${stateId(`action · ${id}`, settings)}</div>
-        <div class="empty-plot"><span aria-hidden="true">◌</span></div>
-        <p class="state__note">${note}</p>
+      ${askFailurePanel(failure, settings)}
+      <section class="state" data-brief-item="action:/api/v1/chat/**" data-component="card-action-api-v1-chat">
+        <div class="state__head"><h4 class="state__title">Ask about ${subject}</h4>${stateId('action · /api/v1/chat/**', settings)}</div>
+        <p class="state__note">A conversation, kept per plant, so it starts already knowing which one you mean. It reads your garden; it never writes to it — anything it suggests arrives as a proposal you press, over on the plant itself.</p>
+        ${empty}${feed}${truncated}
+        <div class="btn-row"><button class="stake" type="button">Ask something</button>${readWhole}</div>
+        <p class="state__note">If it is not sure, it says so. It would rather be honest than confident.</p>
       </section>`)
   );
 }
@@ -1369,9 +1466,14 @@ export function assembleWorld(sources: WorldSources): WorldData {
 
   // the remaining classic pages, as nodes (chat + home dashboard + treatments)
   add({ id: 'n-ask', glyph: '✎', kind: 'guide', kindLabel: 'Companion', name: 'Ask PlantPal',
-    recap: 'Coming soon', state: 'empty',
-    body: deferredBody('Ask PlantPal', '/api/v1/chat/**', 'The companion arrives in a later round — it will answer about the plants on this board.', sources.settings) });
+    recap: askRecap(sources, plants), state: newestThread(sources)?.turns.length ? undefined : 'empty',
+    body: askBody(sources, plants) });
   link('n-garden', 'n-ask');
+  // the companion veins to every plant it actually holds a thread about, and only
+  // to the ones this board draws — a vein never points at a node that is not here
+  for (const t of sources.chatThreads ?? []) {
+    if (t.plantId != null && drawn.has(`n-plant-${t.plantId}`)) link('n-ask', `n-plant-${t.plantId}`);
+  }
 
   const today = todayCount(ctx);
   const dueNow = today.today.length;

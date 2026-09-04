@@ -36,6 +36,8 @@ import {
   renderPane,
   routeOverviewClick,
 } from '../settings/settings-panes';
+import { ChatStore } from './chat.store';
+import type { ChatFailure, ChatTurnDto } from './world.dto';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
@@ -119,6 +121,10 @@ interface VeinLine {
                 [expanding]="store.expandingId() === n.id"
                 [mode]="store.modeOf(n.id)"
                 [pending]="store.isPending(n.id)"
+                [streamingTurn]="streamFor(n.id)"
+                [chatTurns]="chatTurnsFor(n.id)"
+                [chatFailure]="chatFailureFor(n.id)"
+                [chatExpanded]="chatExpandedFor(n.id)"
                 [style.left.px]="store.positionOf(n.id).x"
                 [style.top.px]="store.positionOf(n.id).y"
                 (click)="onCardClick(n.id, $event)"
@@ -162,6 +168,32 @@ export class World {
   private readonly push = inject(PushService);
   private readonly mock = inject(MOCK_MODE, { optional: true });
   private readonly mockBackend = inject(MockBackend);
+  private readonly chat = inject(ChatStore);
+
+  /** The companion's live material — read only by n-ask's own card (C15: an
+   *  answer arriving dirties one OnPush view and nothing else). */
+  private readonly streamingTurn = computed(() => {
+    const s = this.chat.streaming();
+    return s ? { question: s.question, text: s.text } : null;
+  });
+  private readonly askThread = computed(() => this.chat.threads()[0] ?? null);
+
+  protected streamFor(id: string): { question: string; text: string } | null {
+    return id === 'n-ask' ? this.streamingTurn() : null;
+  }
+
+  protected chatTurnsFor(id: string): ChatTurnDto[] {
+    return id === 'n-ask' ? (this.askThread()?.turns ?? []) : [];
+  }
+
+  protected chatFailureFor(id: string): ChatFailure | null {
+    if (id !== 'n-ask') return null;
+    return this.chat.failure(this.askThread()?.key ?? 'garden') ?? null;
+  }
+
+  protected chatExpandedFor(id: string): boolean {
+    return id === 'n-ask' && this.chat.isExpanded(this.askThread()?.key ?? 'garden');
+  }
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   /** Narrow: the refresh only re-arms when the minutes themselves change. */
@@ -220,6 +252,13 @@ export class World {
       if (focus && !travelling) {
         requestAnimationFrame(() => this.measureAndSettle());
       }
+    });
+    // Focus leaving the companion (and the plant its thread belongs to) stops the
+    // answer being written — the partial is kept as a turn, never silently dropped.
+    effect(() => this.actions.noteFocus(this.store.focusId()));
+    // A source or scenario switch, and going offline, stop it for the same reason.
+    effect(() => {
+      if (this.store.probeOffline()) this.actions.cancelAsk();
     });
     // A successful mutation re-assembles the world (a new node takes a free cell).
     effect(() => {

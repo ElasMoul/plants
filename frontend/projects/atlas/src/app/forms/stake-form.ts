@@ -110,6 +110,29 @@ function careLabel(t: string): string {
             <button class="stake" type="button" [disabled]="!disease().trim() || plantId() === null || scanId() === undefined" (click)="submitTreatment()">Start the course</button>
             <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
           </div>
+        } @else if (form.kind === 'ask') {
+          <label class="rz-field"><span>Your question</span>
+            <textarea rows="4" maxlength="2000" [(ngModel)]="question" placeholder="Why are the low leaves going?"></textarea></label>
+          @if (remaining() <= 200) {
+            <p class="rz-form__note">{{ remaining() }} characters left of the two thousand one question can carry.</p>
+          }
+          @if (chooses()) {
+            <label class="rz-field"><span>About</span>
+              <select [ngModel]="askPlantId()" (ngModelChange)="askPlantId.set($event === 'garden' ? null : +$event)">
+                <option value="garden">The whole garden</option>
+                @for (p of plants(); track p.id) { <option [value]="p.id">{{ p.nickname }}</option> }
+              </select></label>
+          } @else {
+            <p class="rz-form__note">{{ askPlantId() === null ? 'Asking about the whole garden.' : 'Asking about ' + askName() + '.' }}</p>
+            <div class="btn-row">
+              <button class="stake stake--quiet" type="button" (click)="askPlantId.set(askPlantId() === null ? (form.plantId ?? null) : null)">{{ askPlantId() === null ? 'Ask about ' + askName() + ' instead' : 'Ask about the whole garden instead' }}</button>
+            </div>
+          }
+          <p class="rz-form__note">It reads your garden and answers here, on the companion — it never changes anything itself.</p>
+          <div class="btn-row">
+            <button class="stake" type="button" [disabled]="!question().trim()" (click)="submitAsk()">Ask it</button>
+            <button class="stake stake--quiet" type="button" (click)="actions.activeForm.set(null)">Cancel</button>
+          </div>
         } @else {
           <label class="rz-field"><span>Note for {{ form.plantName }}</span>
             <textarea rows="4" [(ngModel)]="note" placeholder="What did you notice?"></textarea></label>
@@ -197,6 +220,24 @@ export class StakeForm {
   readonly frequencyDays = signal(7);
   readonly firstDue = signal('');
   readonly disease = signal('');
+  readonly question = signal('');
+  /** Which plant the question is about — null is the whole garden. */
+  readonly askPlantId = signal<number | null>(null);
+
+  /** How many characters are left of the server's own @Size(max = 2000). */
+  protected readonly remaining = computed(() => 2000 - this.question().length);
+  /** The reader asked to choose the plant on every ask (ai.chatPlantContext). */
+  protected readonly chooses = computed(
+    () => this.settings.settings().ai.chatPlantContext === 'ask',
+  );
+  protected readonly askName = computed(() => {
+    const id = this.askPlantId();
+    const form = this.actions.activeForm();
+    const named = form?.kind === 'ask' ? form.plantName : undefined;
+    return (
+      (id === null ? named : this.plants().find(p => p.id === id)?.nickname) ?? named ?? 'this plant'
+    );
+  });
 
   /** The plants this sheet can name - the board's own index. */
   protected readonly plants = computed(() => this.store.meta()?.plantsIndex ?? []);
@@ -240,6 +281,10 @@ export class StakeForm {
       );
       this.firstDue.set(new Date().toISOString().slice(0, 10));
       if (form.kind === 'start-treatment') this.disease.set('');
+      if (form.kind === 'ask') {
+        this.question.set(form.question ?? '');
+        this.askPlantId.set(form.plantId ?? null);
+      }
     });
   }
 
@@ -255,6 +300,7 @@ export class StakeForm {
     if (kind === 'change-schedule') return 'Change the schedule';
     if (kind === 'log-care') return 'Log care';
     if (kind === 'start-treatment') return 'Start a treatment plan';
+    if (kind === 'ask') return 'Ask PlantPal';
     return 'Add a note';
   });
 
@@ -316,6 +362,15 @@ export class StakeForm {
       diseaseName: this.disease().trim(),
       identificationId: this.scanId(),
     });
+  }
+
+  protected submitAsk(): void {
+    const id = this.askPlantId();
+    this.actions.ask(this.question().trim(), {
+      plantId: id ?? undefined,
+      plantName: id === null ? undefined : this.askName(),
+    });
+    this.question.set('');
   }
 
   protected submitNote(plantId: number): void {

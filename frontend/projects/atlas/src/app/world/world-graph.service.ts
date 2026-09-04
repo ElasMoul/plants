@@ -6,6 +6,7 @@ import { MOCK_MODE } from '../core/mock-mode';
 import { PushService } from '../push/push.service';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
+import { ChatStore } from './chat.store';
 import { WorldActionsService } from './world-actions.service';
 import { sessionTimes } from './interop';
 import { assembleWorld, drawnPlantsOf } from './world.assembly';
@@ -54,6 +55,9 @@ export class WorldGraphService {
   private readonly mock = inject(MOCK_MODE, { optional: true });
   /** Where this device stands with push knocks — a readout the account/reminders wear. */
   private readonly push = inject(PushService);
+  /** The companion's threads. Deliberately NOT a stage-1 fetch: chat has no GET,
+   *  the thread is the atlas's own, and an ask is never made on the reader's behalf. */
+  private readonly chat = inject(ChatStore);
 
   /** The last sources assembled — read by the account node's export. */
   readonly lastSources = signal<WorldSources | null>(null);
@@ -88,8 +92,16 @@ export class WorldGraphService {
     );
   }
 
+  /** The source (and thread policy) the chat slice was last read for. */
+  private chatLoadedFor: string | null = null;
+
   load(): Observable<WorldData> {
     const settings = this.settings.settings();
+    const chatKey = `${this.source}|${settings.ai.chatThreads}`;
+    if (this.chatLoadedFor !== chatKey) {
+      this.chatLoadedFor = chatKey;
+      this.chat.load(this.source);
+    }
     const page = { params: { size: String(settings.data.pageSize) } };
     const source = this.source;
 
@@ -273,6 +285,9 @@ export class WorldGraphService {
                   stoppedReminders: [...this.stoppedReminders.values()],
                   rateLimited: this.actions.rateLimited(),
                   push: this.push.state(),
+                  chatThreads: this.chat.threads(),
+                  chatFailures: this.chat.failures(),
+                  chatExpanded: this.chat.expanded(),
                   sessionTimes: this.mock?.enabled
                     ? { mock: true }
                     : sessionTimes(this.auth.getToken()),

@@ -311,3 +311,35 @@ and the node id set are byte-identical afterwards.
 - The atlas production bundle is 536 kB against a 500 kB budget (a warning, not
   an error) — worth a budget review or a trim before the atlas ships publicly.
 - Not yet merged: `atlas/R2-care-loop` → `dev`.
+
+## Session — 2026-09-04 · Atlas round 4, the companion (`atlas/R4-chat`, slice C2)
+
+**What shipped.** `n-ask` stopped being a deferred stub and became the
+prototype's Companion card: recap + its own staleness line, the thread as a
+`.feed` inside `full()`, the two body stakes, veins to the plants it holds
+threads about, and per-node panels for 429 / 503 / offline / a stream that
+stopped part-way. Asking opens the existing stake sheet with a new `ask` kind;
+the answer streams into two rows the body reserved for it, painted by
+`NodeCard` — never through `updateWorld`, `reloadRequested` or `layoutEpoch`,
+so the camera, the focus and every cell are byte-identical across an answer.
+Slice C1 (contract, `ChatClient`, `SseParser`, mock routes, six settings)
+landed before it on the same branch.
+
+**Decisions worth keeping.** The companion reads and never writes, so no
+pressable proposal lives in it and its action rail stays empty (comment in
+`chrome/actions-for.ts`). "Read the whole thread" is a focus-only widening of
+the same feed — no node, no route, no camera. A partial answer is committed as
+a `truncated` turn rather than dropped, and nothing is ever retried
+automatically. Chat's 429 carries no `retryAfterSeconds`, so the copy never
+names a wait it was not given, and the server's Ollama-specific 503 sentence is
+never surfaced.
+
+**Gates.** `npm test` (516), `build:atlas:prod`, `typecheck:engine`, `lint`,
+and the atlas Playwright suite including the new `e2e/atlas/companion.spec.ts`
+(answer, streaming, abort, read-whole-thread, day zero, offline, chat outage,
+no network in mock mode).
+
+**Note for the next session.** `rhizome.css` sets `.feed__row { display: grid }`,
+which beats the browser's own `[hidden]` rule; the atlas's `styles.scss` now
+restores `[hidden]` for feed rows. Threads live in `DeviceStore`, namespaced by
+source, capped by `data.chatThreadsKept` and 20 turns per thread.

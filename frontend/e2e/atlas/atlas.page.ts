@@ -110,6 +110,18 @@ export class AtlasPage {
     });
   }
 
+  /** The one in-world sheet, while the ask kind is open. */
+  askSheet(): Locator {
+    return this.page.locator('.rz-form');
+  }
+
+  /** How many rows the node's feed is actually showing. */
+  async feedRows(nodeId: string): Promise<number> {
+    return this.node(nodeId)
+      .locator('.feed .feed__row:not([hidden])')
+      .count();
+  }
+
   topbarSub(): Locator {
     return this.page.locator('#topbar .sub');
   }

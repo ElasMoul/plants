@@ -285,6 +285,12 @@ export interface WorldSources {
   stoppedReminders: ReminderDto[];
   rateLimited: Record<number, { retryAfterSeconds: number; at: string }>;
   push: PushState;
+  /** The companion's own threads — the atlas keeps them, the server keeps none. */
+  chatThreads?: ChatThreadDto[];
+  /** Why the last ask on a thread did not answer, keyed by thread key. */
+  chatFailures?: Record<string, ChatFailure>;
+  /** Which threads the reader asked to read whole ("Read the whole thread"). */
+  chatExpanded?: Record<string, boolean>;
   sessionTimes?: { issuedAt?: string; expiresAt?: string; mock?: boolean };
 }
 
@@ -328,6 +334,9 @@ export function emptySources(over: Partial<WorldSources> = {}): WorldSources {
     stoppedReminders: [],
     rateLimited: {},
     push: 'off',
+    chatThreads: [],
+    chatFailures: {},
+    chatExpanded: {},
     ...over,
   };
 }
