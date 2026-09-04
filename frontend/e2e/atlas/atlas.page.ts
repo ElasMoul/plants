@@ -22,6 +22,9 @@ export class AtlasPage {
 
   async goto(scenario: MockScenario = 'garden'): Promise<void> {
     await this.page.goto(`/?mock=${scenario}`);
+    // the fixture board paints first; `n-treatments` exists only on an assembled
+    // live board, so waiting for it is waiting for the mock garden itself
+    await this.page.locator('rz-node#n-treatments').waitFor();
     await this.page.locator('rz-node[data-focus="true"]').first().waitFor();
   }
 

@@ -1,5 +1,15 @@
 import { assembleWorld } from './world.assembly';
-import { emptySources, IdentificationDto, PlantDto, SpeciesDto, WorldSources } from './world.dto';
+import {
+  CareLogDto,
+  emptySources,
+  IdentificationDto,
+  PlantDto,
+  ReminderDto,
+  SpeciesDto,
+  TreatmentDto,
+  TreatmentPlanDto,
+  WorldSources,
+} from './world.dto';
 
 function plant(id: number, over: Partial<PlantDto> = {}): PlantDto {
   return { id, nickname: `Plant ${id}`, species: 'Ficus lyrata', commonName: 'Fig', nextWaterDays: 5, healthStatus: 'HEALTHY', ...over };
@@ -86,10 +96,10 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
   });
 
   describe('deferred families + problems', () => {
-    it('renders reminders/care as honest deferred empty panels', () => {
+    it('leaves only the round-3 families deferred', () => {
       const w = assembleWorld(sources());
-      expect(w.nodes.find(n => n.id === 'n-reminders')!.state).toBe('empty');
-      expect(w.nodes.find(n => n.id === 'n-care')!.body).toContain('state--empty');
+      expect(w.nodes.find(n => n.id === 'n-today')!.body).toContain('Counts land in round 3');
+      expect(w.nodes.find(n => n.id === 'n-ask')!.state).toBe('empty');
     });
     it('adds a Problems node only when plants need attention', () => {
       expect(idsOf(assembleWorld(sources())).includes('n-problems')).toBe(false);
@@ -131,7 +141,7 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
       expect(n.body).toContain('nothing moved');
       expect(n.failure!.waysForward).toEqual(['Fetch this region']);
       // the rest of the board is untouched — degradation is per-node material
-      expect(w.nodes.find(x => x.id === 'n-care')!.state).toBe('empty');
+      expect(w.nodes.find(x => x.id === 'n-care')!.state).toBeUndefined();
       expect(w.nodes.find(x => x.id === 'n-garden')!.state).toBeUndefined();
     });
 
@@ -219,6 +229,335 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
   describe('determinism (C7)', () => {
     it('produces identical output for identical input', () => {
       expect(assembleWorld(sources())).toEqual(assembleWorld(sources()));
+    });
+  });
+});
+
+// ── S4: the care loop as prototype material ─────────────────────────────────
+
+const NOW = '2026-09-03T09:12:00Z';
+const TODAY = '2026-09-03T18:00:00Z';
+const OVERDUE = '2026-09-01T08:00:00Z';
+const LATER = '2026-09-08T08:00:00Z';
+
+function reminder(id: number, over: Partial<ReminderDto> = {}): ReminderDto {
+  return {
+    id, plantId: 1, plantNickname: 'Plant 1', careType: 'WATERING', frequencyDays: 7,
+    nextDueAt: LATER, enabled: true, recurring: true, ...over,
+  };
+}
+function step(id: number, stepOrder: number, over: Partial<ReminderDto> = {}): ReminderDto {
+  return reminder(id, {
+    careType: 'PEST', frequencyDays: 0, recurring: false, treatmentPlanId: 201,
+    treatmentPlanTitle: 'Root rot', stepOrder, instruction: `Step ${stepOrder}`, ...over,
+  });
+}
+function plan(steps: ReminderDto[], over: Partial<TreatmentPlanDto> = {}): TreatmentPlanDto {
+  return { id: 201, plantId: 1, title: 'Root rot', status: 'ACTIVE', createdAt: NOW, steps, ...over };
+}
+function treatment(over: Partial<TreatmentDto> = {}): TreatmentDto {
+  return {
+    id: 301, plantId: 1, plantNickname: 'Plant 1', diseaseName: 'Root rot', status: 'IN_PROGRESS',
+    descriptionStatus: 'READY', diseaseDescription: 'A soil-borne rot.',
+    diseaseDescriptionModel: 'ANTHROPIC_CLAUDE', treatmentPlanId: 201, createdAt: NOW,
+    startedAt: OVERDUE, ...over,
+  };
+}
+function log(id: number, over: Partial<CareLogDto> = {}): CareLogDto {
+  return { id, plantId: 1, plantNickname: 'Plant 1', careType: 'WATERING', performedAt: OVERDUE, ...over };
+}
+
+const bodyOf = (w: ReturnType<typeof assembleWorld>, id: string) =>
+  w.nodes.find(n => n.id === id)!.body ?? '';
+/** The visible words of a body — the voice laws bind copy, not class names. */
+const wordsOf = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+/** The block a `[data-course]` list occupies, so its contents can be examined. */
+function courseBlock(html: string): string {
+  const i = html.indexOf('data-course');
+  return i < 0 ? '' : html.slice(i, html.indexOf('</dl>', i));
+}
+function vitalsBlock(html: string): string {
+  const i = html.indexOf('data-vitals');
+  return i < 0 ? '' : html.slice(i, html.indexOf('</dl>', i));
+}
+
+describe('S4 — the care loop as prototype material', () => {
+  const careWorld = (over: Partial<WorldSources> = {}) =>
+    assembleWorld(sources({ now: NOW, plants: [], species: [], identifications: [], ...over }));
+
+  describe('the reminders hub', () => {
+    it('lists routine reminders most overdue first and links drawn plants', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        reminders: [
+          reminder(1, { nextDueAt: TODAY, plantId: 2, plantNickname: 'Plant 2' }),
+          reminder(2, { nextDueAt: OVERDUE, careType: 'PRUNING' }),
+        ],
+      });
+      const b = bodyOf(w, 'n-reminders');
+      expect(b.indexOf('Prune')).toBeLessThan(b.indexOf('Water ·'));
+      expect(b).toContain('Overdue 2 days');
+      expect(b).toMatch(/Today, \d\d:\d\d/);
+      expect(b).toContain('data-goto="n-plant-1"');
+      expect(w.nodes.find(n => n.id === 'n-reminders')!.recap).toBe('1 due today');
+    });
+
+    it('keeps reminders as rows — never nodes — and caps the list at six', () => {
+      const many = Array.from({ length: 9 }, (_, i) => reminder(i + 1, { nextDueAt: LATER }));
+      const w = careWorld({ reminders: many });
+      expect(w.nodes.filter(n => /^n-reminder-/.test(n.id))).toHaveLength(0);
+      expect(bodyOf(w, 'n-reminders').match(/data-arg="reminder:/g) ?? []).toHaveLength(6);
+    });
+
+    it('keeps step reminders out of the hub unless the setting allows them', () => {
+      const rs = [reminder(1), step(701, 1)];
+      expect(bodyOf(careWorld({ reminders: rs }), 'n-reminders')).not.toContain('Pest check');
+      const on = careWorld({
+        reminders: rs,
+        settings: { ...emptySources().settings, stepReminders: 'also-in-reminders' },
+      });
+      expect(bodyOf(on, 'n-reminders')).toContain('Pest check');
+    });
+
+    it('renders the verbatim empty plot when nothing is scheduled', () => {
+      const w = careWorld();
+      expect(w.nodes.find(n => n.id === 'n-reminders')!.state).toBe('empty');
+      const b = bodyOf(w, 'n-reminders');
+      expect(b).toContain('state--empty');
+      expect(b).toContain('This is an empty plot with room in it, not a failure');
+    });
+
+    it('says a snoozed reminder is snoozed on this device', () => {
+      const w = careWorld({
+        reminders: [reminder(1, { nextDueAt: OVERDUE })],
+        snoozed: { 1: '2026-09-04T09:00:00Z' },
+      });
+      const b = bodyOf(w, 'n-reminders');
+      expect(b).toContain('Snoozed until tomorrow · on this device');
+      expect(b).not.toContain('data-arg="reminder:1"');
+      expect(w.nodes.find(n => n.id === 'n-reminders')!.recap).toBe('Nothing due today');
+    });
+  });
+
+  describe('a course', () => {
+    const running = (over: Partial<TreatmentDto> = {}, pausedIds: number[] = []) =>
+      careWorld({
+        plants: [plant(1)],
+        treatments: [treatment(over)],
+        plansById: {
+          201: plan([
+            step(701, 1, { enabled: false, completedAt: OVERDUE }),
+            step(702, 2, { nextDueAt: TODAY }),
+            step(703, 3, { nextDueAt: LATER }),
+          ]),
+        },
+        paused: pausedIds,
+      });
+
+    it('marks done rows, marks at most one row due, and names the first open step', () => {
+      const b = bodyOf(running(), 'n-treatment-301');
+      const course = courseBlock(b);
+      expect(course).toContain('data-step-id="701" data-done="true"');
+      expect(course.match(/data-due="true"/g) ?? []).toHaveLength(1);
+      expect(course).toContain('data-step-id="702" data-done="false" data-due="true"');
+      expect(b).toContain('Mark step 2 as done');
+      expect(b).toContain('data-arg="reminder:702"');
+      expect(b).toContain('Three steps');
+    });
+
+    it('disables the step stake and says paused when the course is paused here', () => {
+      const w = running({}, [201]);
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.recap).toBe('paused · 1 of 3 done');
+      expect(n.body).toContain('aria-disabled="true"');
+      expect(n.body).toContain('data-paused="true"');
+      expect(n.body).not.toContain('Mark step 2 as done');
+      expect(n.body).toContain('Resume this course');
+    });
+
+    it('offers a draft the way to craft its plan', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment({ status: 'DRAFT', treatmentPlanId: undefined })],
+      });
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.recap).toBe('Draft · no plan yet');
+      expect(n.body).toContain('Craft the treatment plan');
+    });
+
+    it('renders a rate-limited draft as a first-class state with the minutes', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment({ status: 'DRAFT', treatmentPlanId: undefined })],
+        rateLimited: { 301: { retryAfterSeconds: 900, at: NOW } },
+      });
+      const b = bodyOf(w, 'n-treatment-301');
+      expect(b).toContain('You have used today');
+      expect(b).toContain('They come back in 15 minutes');
+      expect(b).toContain('Add the steps by hand');
+      expect(b).not.toContain('Craft the treatment plan');
+    });
+
+    it('offers a failed write-up a retry and a model-free way on', () => {
+      const b = bodyOf(
+        running({ descriptionStatus: 'FAILED', diseaseDescription: undefined }),
+        'n-treatment-301',
+      );
+      expect(b).toContain('The write-up did not come back');
+      expect(b).toContain('Write it up again');
+      expect(b).toContain('data-goto="n-care"');
+    });
+
+    it('is a loading node while its description is still being written', () => {
+      const w = running({ descriptionStatus: 'PENDING', diseaseDescription: undefined });
+      expect(w.nodes.find(x => x.id === 'n-treatment-301')!.state).toBe('loading');
+      expect(bodyOf(w, 'n-treatment-301')).toContain('Still describing this disease');
+    });
+
+    it('keeps a finished course readable and archived, every row done', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [treatment({ status: 'COMPLETED', completedAt: OVERDUE })],
+        plansById: {
+          201: plan([step(701, 1, { enabled: false, completedAt: OVERDUE })], { status: 'COMPLETED' }),
+        },
+      });
+      const n = w.nodes.find(x => x.id === 'n-treatment-301')!;
+      expect(n.state).toBe('archived');
+      expect(n.recap).toBe('Root rot · finished');
+      expect(courseBlock(n.body!)).not.toContain('data-done="false"');
+      expect(n.body).toContain('as part of its story');
+      expect(n.body).not.toContain('Mark step');
+    });
+
+    it('holds no exit inside its course — a step is a mutation', () => {
+      const w = running();
+      for (const n of w.nodes) {
+        const course = courseBlock(n.body ?? '');
+        expect(course).not.toContain('<a');
+        expect(course).not.toContain('data-goto');
+        expect(course).not.toContain('hop');
+      }
+    });
+
+    it('recaps the treatments hub and collapses courses at four or more', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        treatments: [
+          treatment(),
+          treatment({ id: 302, status: 'DRAFT', treatmentPlanId: undefined }),
+          treatment({ id: 303, status: 'DRAFT', treatmentPlanId: undefined }),
+          treatment({ id: 304, status: 'COMPLETED', treatmentPlanId: undefined }),
+        ],
+        plansById: { 201: plan([step(701, 1, { nextDueAt: TODAY })]) },
+      });
+      expect(w.nodes.find(n => n.id === 'n-treatments')!.recap).toBe(
+        '1 running · 2 waiting for a plan',
+      );
+      expect(w.nodes.filter(n => /^n-treatment-\d+$/.test(n.id)).map(n => n.id)).toEqual([
+        'n-treatment-301',
+        'n-treatment-302',
+      ]);
+      expect(w.nodes.find(n => n.id === 'n-treatments-more')!.recap).toBe('+2 more');
+    });
+  });
+
+  describe('the journal', () => {
+    it('draws entries as nodes linked to their plants and collapses at four', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        careLogsByPlant: {
+          1: [log(901), log(902, { performedAt: TODAY }), log(903), log(904, { careType: 'PRUNING' })],
+        },
+      });
+      expect(w.nodes.find(n => n.id === 'n-journal')!.recap).toBe('4 entries');
+      expect(w.nodes.filter(n => /^n-log-/.test(n.id)).map(n => n.id)).toEqual([
+        'n-log-902',
+        'n-log-904',
+      ]);
+      expect(w.nodes.find(n => n.id === 'n-journal-more')!.recap).toBe('+2 more');
+      expect(w.edges).toEqual(expect.arrayContaining([['n-log-902', 'n-plant-1']]));
+    });
+
+    it('says the journal is empty in its own words', () => {
+      const w = careWorld();
+      expect(w.nodes.find(n => n.id === 'n-journal')!.state).toBe('empty');
+      expect(bodyOf(w, 'n-journal')).toContain('Nothing written yet · a good place to start');
+    });
+  });
+
+  describe('a plant', () => {
+    const world = () =>
+      careWorld({
+        plants: [plant(1, { location: 'Office' })],
+        reminders: [reminder(1, { nextDueAt: OVERDUE })],
+        careLogsByPlant: { 1: [log(901, { performedAt: OVERDUE })] },
+        treatments: [treatment()],
+        plansById: { 201: plan([step(701, 1, { nextDueAt: TODAY })]) },
+      });
+
+    it('reads its vitals — course and last watering included — and holds no control', () => {
+      const vitals = vitalsBlock(bodyOf(world(), 'n-plant-1'));
+      expect(vitals).toContain('Course');
+      expect(vitals).toContain('data-goto="n-treatment-301"');
+      expect(vitals).toContain('Watered');
+      expect(vitals).toContain('2 days ago');
+      expect(vitals).toContain('Overdue 2 days');
+      expect(vitals).not.toContain('<button');
+    });
+
+    it('writes a missing answer as missing on an unscanned plant', () => {
+      const w = careWorld({ plants: [plant(1, { healthStatus: undefined, nextWaterDays: null })] });
+      const n = w.nodes.find(x => x.id === 'n-plant-1')!;
+      expect(n.state).toBe('unknown');
+      expect(vitalsBlock(n.body!)).toContain('tag--unknown');
+      expect(n.body).toContain('Set a watering schedule');
+    });
+  });
+
+  describe('the voice', () => {
+    it('never says loading, please wait, or a bare ellipsis', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        reminders: [reminder(1)],
+        treatments: [treatment({ descriptionStatus: 'PENDING', diseaseDescription: undefined })],
+        plansById: { 201: plan([step(701, 1)]) },
+        careLogsByPlant: { 1: [log(901)] },
+      });
+      for (const n of w.nodes) {
+        const words = wordsOf(n.body ?? '');
+        expect(words).not.toMatch(/loading|please wait|Something went wrong/i);
+        expect(words).not.toContain('…');
+      }
+    });
+
+    it('gives each hub its own staleness sentence', () => {
+      const w = careWorld({
+        plants: [plant(1)],
+        reminders: [reminder(1)],
+        careLogsByPlant: { 1: [log(901)] },
+      });
+      const said = new Set<string>();
+      for (const n of w.nodes) {
+        const m = /class="staleness">.*?<\/span>\s*([^<]+)</.exec(n.body ?? '');
+        if (m) said.add(m[1].trim());
+      }
+      expect(said.size).toBeGreaterThanOrEqual(4);
+    });
+
+    it('escapes user text in nicknames, instructions and notes', () => {
+      const evil = '<img src=x onerror=alert(1)>';
+      const w = careWorld({
+        plants: [plant(1, { nickname: evil })],
+        reminders: [reminder(1, { plantNickname: evil })],
+        careLogsByPlant: { 1: [log(901, { notes: evil, plantNickname: evil })] },
+        treatments: [treatment({ diseaseName: evil })],
+        plansById: { 201: plan([step(701, 1, { instruction: evil })]) },
+      });
+      for (const id of ['n-reminders', 'n-care', 'n-journal', 'n-treatment-301', 'n-plant-1']) {
+        expect(bodyOf(w, id)).not.toContain('<img');
+        expect(bodyOf(w, id)).toContain('&lt;img');
+      }
     });
   });
 });

@@ -12,6 +12,12 @@ export function classicLinkFor(node: Pick<WorldNode, 'id'>, base: string): strin
   if (plant) return at(`/plants/${plant[1]}`);
   if (/^n-species-\d+$/.test(node.id)) return at('/garden');
 
+  const treatment = /^n-treatment-(\d+)$/.exec(node.id);
+  if (treatment) return at(`/treatment/${treatment[1]}`);
+  const scan = /^n-scan-(\d+)$/.exec(node.id);
+  if (scan) return at(`/identify/${scan[1]}`);
+  if (/^n-log-\d+$/.test(node.id)) return at('/plants');
+
   switch (node.id) {
     case 'n-garden':
     case 'n-garden-more':
@@ -20,9 +26,17 @@ export function classicLinkFor(node: Pick<WorldNode, 'id'>, base: string): strin
     case 'n-species-more':
       return at('/garden');
     case 'n-reminders':
+    case 'n-care':
+    case 'n-journal':
+    case 'n-journal-more':
+    case 'n-treatments':
+    case 'n-treatments-more':
       return at('/reminders');
     case 'n-ident':
+    case 'n-scans-more':
       return at('/identify');
+    case 'n-ask':
+      return at('/chat');
     case 'n-today':
     case 'n-account':
       return at('/home');
