@@ -124,6 +124,8 @@ export class SettingsStore {
       pause: s.treatment.pause,
       keepFinished: s.general.keepFinished,
       careLogPageSize: s.data.careLogPageSize,
+      chatTurnsKept: s.data.chatTurnsKept,
+      chatThreadsKept: s.data.chatThreadsKept,
       displayName: s.profile.displayName,
       units: s.profile.units,
       quietHours: s.profile.quietHours,

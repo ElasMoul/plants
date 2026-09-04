@@ -1025,4 +1025,94 @@ describe('S6 — the day, the knocks and the account', () => {
       expect(b).not.toContain('valid until');
     });
   });
+
+  describe('n-ask — the companion (C2)', () => {
+    const turn = (id: string, askedAt: string, question: string, reply: string, outcome: 'answered' | 'truncated' = 'answered') =>
+      ({ id, askedAt, question, reply, outcome }) as const;
+    const thread = (turns: ReturnType<typeof turn>[], over: Partial<{ key: string; plantId: number; plantName: string }> = {}) => ({
+      key: over.key ?? 'garden',
+      plantId: over.plantId,
+      plantName: over.plantName,
+      turns: [...turns],
+      updatedAt: turns[turns.length - 1]?.askedAt ?? '2026-09-03T09:00:00Z',
+    });
+
+    it('wears the prototype material: recap, its own staleness, the state panel and both stakes', () => {
+      const b = bodyOf(world(), 'n-ask');
+      expect(b).toContain('<p class="n__recap-line">Ask about your garden</p>');
+      expect(b).toContain('The knowledgeable friend, not the botanist.');
+      expect(b).toContain('Answers use your garden as it stood at');
+      expect(b).toContain('data-brief-item="action:/api/v1/chat/**"');
+      expect(b).toContain('data-component="card-action-api-v1-chat"');
+      expect(b).toContain('<span class="state__id">action · /api/v1/chat/**</span>');
+      expect(b).toContain('It reads your garden; it never writes to it');
+      expect(b).toContain('If it is not sure, it says so. It would rather be honest than confident.');
+      expect(b).toContain('>Ask something<');
+      // no exit anywhere in the companion: it reads, it never travels
+      expect(b).not.toContain('data-goto');
+    });
+
+    it('prints a real zero with no thread, and invents no plant', () => {
+      const w = world({ plants: [], species: [], identifications: [] });
+      const ask = w.nodes.find(n => n.id === 'n-ask');
+      expect(ask?.state).toBe('empty');
+      expect(ask?.recap).toBe('Ask about your garden');
+      expect(ask?.body).toContain('Nothing asked yet.');
+      expect(ask?.body).not.toContain('Plant 1');
+    });
+
+    it('draws the thread as feed rows and names the plant it is about', () => {
+      const t = thread([turn('t1', '2026-09-03T09:06:00Z', 'why are the low leaves going?', 'draught, most likely')], {
+        key: 'plant:1',
+        plantId: 1,
+        plantName: 'Plant 1',
+      });
+      const w = world({ plants: [plant(1)], chatThreads: [t] });
+      const b = bodyOf(w, 'n-ask');
+      expect(w.nodes.find(n => n.id === 'n-ask')?.recap).toBe('Ask about Plant 1');
+      expect(b).toContain('<span>you</span><span class="feed__val">why are the low leaves going?</span>');
+      expect(b).toContain('<span>PlantPal</span><span class="feed__val">draught, most likely</span>');
+      // and the companion veins to the plant it holds a thread about
+      expect(w.edges.some(([a, c]) => (a === 'n-ask' && c === 'n-plant-1') || (a === 'n-plant-1' && c === 'n-ask'))).toBe(true);
+    });
+
+    it('hides the turns beyond data.chatTurnsKept until the thread is read whole', () => {
+      const turns = [1, 2, 3, 4].map(i => turn(`t${i}`, `2026-09-03T09:0${i}:00Z`, `q${i}`, `a${i}`));
+      const kept = { ...emptySources().settings, chatTurnsKept: 2 };
+      const folded = bodyOf(world({ chatThreads: [thread(turns)], settings: kept }), 'n-ask');
+      expect((folded.match(/data-extra/g) ?? []).length).toBe(4); // two folded turns
+      expect(folded).toContain('>Read the whole thread<');
+      const open = bodyOf(
+        world({ chatThreads: [thread(turns)], settings: kept, chatExpanded: { garden: true } }),
+        'n-ask',
+      );
+      expect(open).not.toContain('data-extra hidden');
+      expect(open).toContain('>Show just the recent turns<');
+    });
+
+    it('names no wait a 429 did not give, and never the server’s Ollama sentence', () => {
+      const b = bodyOf(
+        world({ chatThreads: [thread([])], chatFailures: { garden: { kind: 'rate-limited', retryAfterSeconds: null } } }),
+        'n-ask',
+      );
+      expect(b).toContain('You have asked as much as the hour allows');
+      expect(b).toContain('it lifts within the hour');
+      expect(b).not.toMatch(/\d+ minutes/);
+      const down = bodyOf(
+        world({ chatThreads: [thread([])], chatFailures: { garden: { kind: 'unavailable', retryAfterSeconds: null } } }),
+        'n-ask',
+      );
+      expect(down).toContain('The companion cannot reach its thinking right now');
+      expect(down).not.toMatch(/ollama/i);
+    });
+
+    it('says a truncated answer is truncated rather than pretending it finished', () => {
+      const b = bodyOf(
+        world({ chatThreads: [thread([turn('t1', '2026-09-03T09:06:00Z', 'q', 'half an ans', 'truncated')])] }),
+        'n-ask',
+      );
+      expect(b).toContain('The answer stopped part-way — ask again when you like.');
+      expect(b).toContain('>Ask it again<');
+    });
+  });
 });

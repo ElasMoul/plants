@@ -1,4 +1,13 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpEventType,
+  HttpResponse,
+  provideHttpClient,
+  withInterceptors,
+  type HttpDownloadProgressEvent,
+  type HttpEvent,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideSharedCore } from '@plantpal/shared-core';
@@ -6,6 +15,7 @@ import { MOCK_MODE, MockMode } from '../core/mock-mode';
 import { mockApiInterceptor } from './mock-api.interceptor';
 
 function configure(mode: MockMode) {
+  TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(withInterceptors([mockApiInterceptor])),
@@ -55,5 +65,69 @@ describe('mockApiInterceptor (S1 — the only seam)', () => {
     expect(arrived).toBe(true);
     TestBed.inject(HttpTestingController).verify();
     jest.useRealTimers();
+  });
+});
+
+describe('mockApiInterceptor — the chat stream', () => {
+  function ask(latencyMs: number) {
+    configure({ enabled: true, scenario: 'garden', latencyMs });
+    const events: HttpEvent<string>[] = [];
+    const sub = TestBed.inject(HttpClient)
+      .post('/api/v1/chat/stream', { message: 'how often should I water?' }, {
+        observe: 'events',
+        responseType: 'text',
+        reportProgress: true,
+      })
+      .subscribe(e => events.push(e));
+    return { events, sub };
+  }
+
+  it('emits progress events with a growing partialText, then the response', () => {
+    const { events } = ask(0);
+    expect(events[0].type).toBe(HttpEventType.Sent);
+    const progress = events.filter(
+      (e): e is HttpDownloadProgressEvent => e.type === HttpEventType.DownloadProgress,
+    );
+    expect(progress.length).toBeGreaterThan(1);
+    const lengths = progress.map(e => (e.partialText ?? '').length);
+    expect([...lengths].sort((a, b) => a - b)).toEqual(lengths);
+    const last = events[events.length - 1];
+    expect(last.type).toBe(HttpEventType.Response);
+    expect((last as HttpResponse<string>).body).toBe(progress[progress.length - 1].partialText);
+    expect((last as HttpResponse<string>).body).toContain('data:');
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('spaces the tokens over the configured latency and stops when unsubscribed', () => {
+    jest.useFakeTimers();
+    const { events, sub } = ask(1500);
+    expect(events).toHaveLength(1);
+    jest.advanceTimersByTime(1600);
+    const before = events.length;
+    expect(before).toBeGreaterThan(1);
+    sub.unsubscribe();
+    jest.advanceTimersByTime(5000);
+    expect(events).toHaveLength(before);
+    jest.useRealTimers();
+  });
+
+  it('leaves a non-streaming chat post on the single-response path', () => {
+    configure({ enabled: true, scenario: 'garden', latencyMs: 0 });
+    let body: { data: { reply: string } } | undefined;
+    TestBed.inject(HttpClient)
+      .post<{ data: { reply: string } }>('/api/v1/chat', { message: 'water?' })
+      .subscribe(r => (body = r));
+    expect(typeof body!.data.reply).toBe('string');
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('passes a chat stream straight through in live mode', () => {
+    configure({ enabled: false, scenario: 'garden', latencyMs: 0 });
+    TestBed.inject(HttpClient)
+      .post('/api/v1/chat/stream', {}, { observe: 'events', responseType: 'text', reportProgress: true })
+      .subscribe();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/v1/chat/stream').flush('data:hi\n\n');
+    http.verify();
   });
 });

@@ -536,3 +536,86 @@ describe('Rhizome constitution over the assembled world (I7)', () => {
     });
   });
 });
+
+describe('C2 — the companion, over the assembled world', () => {
+  const TURNS = [1, 2, 3, 4].map(i => ({
+    id: `t${i}`,
+    askedAt: `2026-09-04T09:0${i}:00.000Z`,
+    question: `question ${i}`,
+    reply: `answer ${i}`,
+    outcome: 'answered' as const,
+  }));
+  const THREAD = {
+    key: 'garden',
+    turns: TURNS,
+    updatedAt: TURNS[TURNS.length - 1].askedAt,
+  };
+  const withThread = assembleWorld({ ...gardenSources(), chatThreads: [THREAD] });
+  const ask = (world: WorldData): string =>
+    world.nodes.find(n => n.id === 'n-ask')?.body ?? '';
+
+  it('says its own staleness, and says when it is not sure', () => {
+    const body = ask(withThread);
+    expect(body).toMatch(/<div class="staleness">.*Answers use your garden as it stood at \d\d:\d\d/);
+    expect(body).toContain('If it is not sure, it says so. It would rather be honest than confident.');
+  });
+
+  it('never says loading, never a bare ellipsis, never something went wrong', () => {
+    const text = allText(withThread);
+    expect(text).not.toMatch(/\bloading\b/i);
+    expect(text).not.toMatch(/something went wrong/i);
+    expect(text.replace(/&hellip;/g, '…')).not.toMatch(/[a-z]…/);
+  });
+
+  it('keeps its stakes in the focused body and never puts an exit in a feed row', () => {
+    const body = ask(withThread);
+    const full = body.indexOf('n__full');
+    for (const s of stakesIn(body)) expect({ label: s.label, inFull: s.at > full }).toEqual({ label: s.label, inFull: true });
+    const rows = body.match(/<div class="feed__row"[\s\S]*?<\/div>/g) ?? [];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(/<a |data-goto|class="hop/.test(row)).toBe(false);
+    // the companion reads the garden: nothing in it is a mutation, and nothing an exit
+    expect(stakesIn(body).map(s => s.label).sort()).toEqual(['Ask something', 'Read the whole thread']);
+  });
+
+  it('gives the companion an empty action rail — its stakes are body-only', () => {
+    const settings = TestBed.inject(SettingsStore);
+    expect(actionsFor('n-ask', WORLD.meta, settings.settings())).toEqual([]);
+  });
+
+  it('day zero prints a real zero and invents no plant', () => {
+    const body = ask(DAY_ZERO);
+    expect(body).toContain('Nothing asked yet.');
+    expect(body).toContain('Ask about your garden');
+    expect(body).not.toMatch(/Office Fig|Studio Fig/);
+  });
+
+  it('wears a chat failure as its own material — no overlay, no second dialog', () => {
+    const failed = assembleWorld({
+      ...gardenSources(),
+      chatThreads: [THREAD],
+      chatFailures: { garden: { kind: 'unavailable', retryAfterSeconds: null } },
+    });
+    const body = ask(failed);
+    expect(body).toContain('The companion cannot reach its thinking right now');
+    expect(body).not.toMatch(/ollama/i);
+    expect(body).not.toMatch(/role="dialog"/);
+    // and no other node on the board says anything about it
+    for (const n of failed.nodes) {
+      if (n.id === 'n-ask') continue;
+      expect(n.body ?? '').not.toMatch(/cannot reach its thinking/);
+    }
+  });
+
+  it('never reaches for fetch or EventSource anywhere in the chat code', () => {
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    for (const file of ['chat.client.ts', 'chat.store.ts', 'sse-parse.ts', 'ask-copy.ts']) {
+      const src = (readFileSync(join(__dirname, file), 'utf8') as string)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      expect({ file, usesFetch: /\bfetch\s*\(/.test(src) }).toEqual({ file, usesFetch: false });
+      expect({ file, usesEventSource: /EventSource/.test(src) }).toEqual({ file, usesEventSource: false });
+    }
+  });
+});

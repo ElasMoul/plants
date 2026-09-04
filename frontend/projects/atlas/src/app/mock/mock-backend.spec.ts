@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockModeOff } from '../core/mock-mode';
 import { derivePlant } from './mock.dataset';
-import { MockBackend, MockReply } from './mock-backend';
+import { MOCK_CHAT_LIMIT, MockBackend, MockReply } from './mock-backend';
 
 const NOW = Date.parse('2026-09-03T09:12:00Z');
 const DAY = 86400000;
@@ -196,5 +196,87 @@ describe('MockBackend (S1 — the in-memory PlantPal)', () => {
     for (const [method, path] of paths) {
       expect([path, hasNull(b.handle(method, path, null).body)]).toEqual([path, false]);
     }
+  });
+});
+
+describe('MockBackend — the companion', () => {
+  let b: MockBackend;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+    TestBed.configureTestingModule({ providers: [provideMockModeOff()] });
+    b = TestBed.inject(MockBackend);
+    b.reset('garden', NOW);
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('answers the buffered endpoint in the envelope', () => {
+    const reply = b.handle('POST', '/chat', { message: 'how often should I water?' });
+    expect(reply.status).toBe(200);
+    expect(typeof data(reply)['reply']).toBe('string');
+  });
+
+  it('answers the stream endpoint as the same reply, cut into tokens', () => {
+    b.reset('garden', NOW);
+    const buffered = data(b.handle('POST', '/chat', { message: 'water?' }))['reply'] as string;
+    b.reset('garden', NOW);
+    const streamed = (b.handle('POST', '/chat/stream', { message: 'water?' }).body as { stream: string[] }).stream;
+    expect(streamed.join('')).toBe(buffered);
+    expect(streamed.length).toBeGreaterThan(1);
+  });
+
+  it('gives a byte-identical reply for the same seed and question', () => {
+    const once = data(b.handle('POST', '/chat', { message: 'why are the low leaves going?', plantId: 2 }))['reply'];
+    b.reset('garden', NOW);
+    const twice = data(b.handle('POST', '/chat', { message: 'why are the low leaves going?', plantId: 2 }))['reply'];
+    expect(twice).toBe(once);
+  });
+
+  it('prints a real zero on day zero and invents no plant', () => {
+    b.reset('day-zero', NOW);
+    const reply = data(b.handle('POST', '/chat', { message: 'what is due today?' }))['reply'] as string;
+    expect(reply).toContain('Your garden is empty here');
+    expect(reply).not.toContain('Monstera');
+  });
+
+  it('says when it is not sure rather than guessing', () => {
+    const reply = data(b.handle('POST', '/chat', { message: 'what is the capital of Chad?' }))['reply'] as string;
+    expect(reply).toContain('not sure');
+  });
+
+  it('refuses a blank or over-long message the way the server does', () => {
+    expect(b.handle('POST', '/chat', { message: '   ' }).status).toBe(400);
+    const long = b.handle('POST', '/chat', { message: 'x'.repeat(2001) });
+    expect(long.status).toBe(400);
+    expect(message(long)).toBe('message: Message must be at most 2000 characters');
+  });
+
+  it('404s a plant that is not the caller own', () => {
+    expect(b.handle('POST', '/chat', { message: 'hello', plantId: 999 }).status).toBe(404);
+  });
+
+  it('refuses the eleventh ask, and names no wait it cannot know', () => {
+    for (let i = 0; i < MOCK_CHAT_LIMIT; i++) {
+      expect(b.handle('POST', '/chat', { message: 'water?' }).status).toBe(200);
+    }
+    const refused = b.handle('POST', '/chat', { message: 'water?' });
+    expect(refused.status).toBe(429);
+    expect(message(refused)).toBe('Chat rate limit reached \u2014 try again later');
+    expect((refused.body as Record<string, unknown>)['retryAfterSeconds']).toBeUndefined();
+    b.reset('garden', NOW);
+    expect(b.handle('POST', '/chat', { message: 'water?' }).status).toBe(200);
+  });
+
+  it('refuses both chat endpoints while the family is out', () => {
+    b.reset('outage', NOW);
+    expect(b.handle('POST', '/chat', { message: 'water?' }).status).toBe(503);
+    expect(b.handle('POST', '/chat/stream', { message: 'water?' }).status).toBe(503);
+  });
+
+  it('honours the next-change-fails stake', () => {
+    b.failNext = true;
+    expect(b.handle('POST', '/chat', { message: 'water?' }).status).toBe(503);
+    expect(b.handle('POST', '/chat', { message: 'water?' }).status).toBe(200);
   });
 });

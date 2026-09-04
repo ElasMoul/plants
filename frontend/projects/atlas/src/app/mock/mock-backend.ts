@@ -4,6 +4,8 @@ import { environment } from '../../environments/environment';
 import type { DashboardDto } from '../world/world.dto';
 import {
   buildMockSeed,
+  chatReply,
+  chatTokens,
   derivePlant,
   MockCareLog,
   MockReminder,
@@ -80,6 +82,22 @@ export function notFound(message: string): MockHttpError {
 export function badRequest(message: string): MockHttpError {
   return new MockHttpError(400, message);
 }
+/** Chat's 429 carries no retryAfterSeconds — the real one is a plain PlantPalException. */
+export function tooManyAsks(): MockHttpError {
+  return new MockHttpError(429, 'Chat rate limit reached — try again later');
+}
+
+/** The mock's own chat rate limit, matching app.rate-limit.chat-messages-per-hour. */
+export const MOCK_CHAT_LIMIT = 10;
+
+/** A streamed reply, carried to the interceptor which frames it as SSE events. */
+export interface MockChatStream {
+  stream: string[];
+}
+
+export function isChatStream(body: unknown): body is MockChatStream {
+  return !!body && typeof body === 'object' && Array.isArray((body as MockChatStream).stream);
+}
 
 /**
  * The server's completion cascade: a recurring reminder moves forward, a step
@@ -134,11 +152,20 @@ export class MockBackend {
   /** Set by the Advanced pane's "Make the next change fail" stake (mock only). */
   failNext = false;
 
+  /** Asks made this session, against MOCK_CHAT_LIMIT. */
+  private asks = 0;
+
   private readonly routes: Route[] = this.buildRoutes();
 
   constructor() {
     const mode = inject(MOCK_MODE, { optional: true });
     this.reset(mode?.scenario ?? 'garden', Date.now());
+  }
+
+  /** How many asks this session has actually made of the mock chat route — the
+   *  only way a walk can prove an offline press sent nothing. */
+  get askCount(): number {
+    return this.asks;
   }
 
   get state(): MockSeed {
@@ -150,6 +177,7 @@ export class MockBackend {
     this.ticks['identifications'] = 2;
     this.ticks['treatment:302'] = 2;
     this.failNext = false;
+    this.asks = 0;
     if (!environment.production && typeof window !== 'undefined') {
       (window as unknown as { __atlasMock?: unknown }).__atlasMock = this;
     }
@@ -520,6 +548,20 @@ export class MockBackend {
         },
       },
 
+      // --- chat (the companion reads the garden; it never writes to it) ---
+      {
+        method: 'POST', re: /^\/chat$/, run: (_m, b) => ({
+          status: 200,
+          body: envelope({ reply: this.ask(b) }),
+        }),
+      },
+      {
+        method: 'POST', re: /^\/chat\/stream$/, run: (_m, b) => ({
+          status: 200,
+          body: { stream: chatTokens(this.ask(b)) } satisfies MockChatStream,
+        }),
+      },
+
       // --- dashboard, notifications, preferences ---
       { method: 'GET', re: /^\/dashboard$/, run: () => ({ status: 200, body: envelope(this.dashboard()) }) },
       {
@@ -544,6 +586,25 @@ export class MockBackend {
         },
       },
     ];
+  }
+
+  /**
+   * One ask, validated exactly as the server validates it: the message is
+   * required and capped, an unknown plant is a 404, and the eleventh ask of the
+   * session is refused.
+   */
+  private ask(body: unknown): string {
+    const req = (body ?? {}) as { message?: unknown; plantId?: unknown };
+    const message = typeof req.message === 'string' ? req.message.trim() : '';
+    if (!message) throw badRequest('message: Message must not be blank');
+    if (message.length > 2000) throw badRequest('message: Message must be at most 2000 characters');
+    const plantId = typeof req.plantId === 'number' ? req.plantId : undefined;
+    if (plantId !== undefined && !this.seed.plants.some(p => p.id === plantId && p.status === 'ACTIVE')) {
+      throw notFound(`Plant not found with id: ${plantId}`);
+    }
+    if (this.asks >= MOCK_CHAT_LIMIT) throw tooManyAsks();
+    this.asks++;
+    return chatReply(this.seed, message, Date.now(), plantId);
   }
 
   private activeTreatments(plantId: number): MockTreatment[] {

@@ -163,6 +163,27 @@ describe('Rhizome constitution gate (F2)', () => {
     });
   });
 
+  // The pinned prototype material n-ask is measured against — a fidelity guard on
+  // world.bodies.ts, not coverage of askBody(): the assembled body's own behaviour
+  // is asserted in constitution-live.spec.ts and world.assembly.spec.ts.
+  describe('C2 — the companion is a reading node (n-ask): the pinned prototype', () => {
+    const ask = NODE_BODIES['n-ask'];
+
+    it('keeps the prototype material the assembly is measured against', () => {
+      expect(ask).toContain('The knowledgeable friend, not the botanist.');
+      expect(ask).toContain('Answers use your garden as it stood at');
+      expect(ask).toContain('data-component="card-action-api-v1-chat"');
+      expect(ask).toContain('action · /api/v1/chat/**');
+      expect(ask).toContain('It reads your garden; it never writes to it');
+      expect(ask).toContain('If it is not sure, it says so. It would rather be honest than confident.');
+    });
+
+    it('has no exit in it at all — it reads the garden, it never travels', () => {
+      expect(ask).not.toContain('data-goto');
+      expect(ask).not.toContain('doc-link');
+    });
+  });
+
   describe('C10 / C11 / C21 — the camera travels along the vein polyline', () => {
     it('every sampled camera centre lies on the route for representative hops', () => {
       const centre = { x: 640, y: 360 };

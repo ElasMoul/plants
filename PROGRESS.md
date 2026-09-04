@@ -239,3 +239,9 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none (mission cae942ee coverage-gate round 2/3 report is a design-studio concern, not a vault delta)
 - Session: 2026-09-03/04 atlas R2/R3 care loop + mock garden + settings (workflow-orchestrated, S0-S8)
+
+- State: Atlas chat companion (/api/v1/chat/** — the coverage scope's last family bar plantnet) built on `atlas/R4-chat` off dev: n-ask is a real Companion body in the prototype material (feed of turns, "Ask something" opens the existing in-world sheet with a textarea, "Read the whole thread"), per-plant or garden-wide threads kept on device (namespaced by data source), streaming via POST /chat/stream consumed through HttpClient with an own SSE parser (auth interceptor applies; abort on new question / focus change / offline commits a 'truncated' turn), buffered POST /chat as the alternative, 429/503/offline as in-node panels, mock backend serves both endpoints with a deterministic faked token stream; six settings keys (ai.chatTransport, ai.chatHistoryTurns, ai.chatPlantContext, ai.chatThreads, data.chatTurnsKept, data.chatThreadsKept). Gates: 519 jest, 44 atlas e2e, lint/typecheck/both prod builds (atlas 567 kB) -- status: done, PR to dev pending merge.
+- Next step: merge the PR into dev; /api/v1/plantnet/** remains the only deferred family (external-quota detail behind identifications); critic minors recorded for a later pass: thread-identity keying (assembly vs ChatStore.activeKey), mock chatReply uses wall clock for due counts, truncated-turn stake appears on next assembly.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-04 atlas chat companion (workflow-orchestrated, C1-C2)

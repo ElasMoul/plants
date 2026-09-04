@@ -1,8 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RankName } from '@plantpal/rhizome-engine';
+import { askFailureCopy } from '../world/ask-copy';
+import type { ChatFailure, ChatTurnDto } from '../world/world.dto';
 import { NodeState, WorldNode } from '../world/world.model';
 import { NODE_BODIES } from '../world/world.bodies';
+
+/** The answer being written right now, as this card should show it. */
+export interface StreamingTurn {
+  question: string;
+  text: string;
+}
 
 /** A card's size pin: MIN (summary), AUTO (follow focus), FULL (pinned open). */
 export type NodeMode = 'min' | 'auto' | 'full';
@@ -105,6 +122,22 @@ export type NodeMode = 'min' | 'auto' | 'full';
 })
 export class NodeCard {
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly host = inject(ElementRef<HTMLElement>);
+
+  constructor() {
+    // The answer in flight is painted into the two rows the body already reserved
+    // for it (data-streaming-q / data-streaming), never by re-rendering the body:
+    // re-assembly is what moves a card, and an answer arriving must move nothing.
+    effect(() => {
+      const turn = this.streamingTurn();
+      const key = this.chatThreadKey();
+      const turns = this.chatTurns();
+      const failure = this.chatFailure();
+      const expanded = this.chatExpanded();
+      this.node();
+      queueMicrotask(() => this.paintChat(turn, key, turns, failure, expanded));
+    });
+  }
 
   readonly node = input.required<WorldNode>();
   readonly rank = input.required<RankName>();
@@ -115,6 +148,20 @@ export class NodeCard {
   readonly mode = input<NodeMode>('auto');
   /** Data outstanding (slow probe / live loading) — shows the .pending block. */
   readonly pending = input<boolean>(false);
+  /** The answer being written into this card's feed, if one is. */
+  readonly streamingTurn = input<StreamingTurn | null>(null);
+  /** Which thread the live material belongs to. When it is not the thread the
+   *  body drew, the feed is repainted from row zero rather than appended to. */
+  readonly chatThreadKey = input<string | null>(null);
+  /** How many turns stand unfolded — the reader's data.chatTurnsKept. */
+  readonly chatTurnsKept = input<number>(0);
+  /** Every turn of the thread this card shows — the tail beyond what the body
+   *  already drew is painted in place, so a finished answer needs no reload. */
+  readonly chatTurns = input<ChatTurnDto[]>([]);
+  /** Why the last ask did not answer, if it did not. */
+  readonly chatFailure = input<ChatFailure | null>(null);
+  /** Whether the reader asked to read the whole thread rather than its tail. */
+  readonly chatExpanded = input<boolean>(false);
 
   readonly act = output<string>();
   readonly setMode = output<NodeMode>();
@@ -135,6 +182,103 @@ export class NodeCard {
     if (m === 'full') return 'full';
     return this.focus() ? 'full' : 'recap';
   });
+
+  /**
+   * Paint the companion's live material into the rows and the panel the body
+   * already reserved for it: the answer being written, the turns committed since
+   * this body was built, and why an ask did not answer. Text and one pair of rows
+   * per late turn — the card's own material, never a re-assembly of the world.
+   */
+  private paintChat(
+    turn: StreamingTurn | null,
+    threadKey: string | null,
+    turns: ChatTurnDto[],
+    failure: ChatFailure | null,
+    expanded: boolean,
+  ): void {
+    const root = this.host.nativeElement as HTMLElement;
+    const feed = root.querySelector<HTMLElement>('.feed[data-thread-rendered]');
+    const panel = root.querySelector<HTMLElement>('[data-chat-failure]');
+    if (panel) {
+      const copy = failure ? askFailureCopy(failure) : null;
+      const title = panel.querySelector<HTMLElement>('[data-chat-failure-title]');
+      const note = panel.querySelector<HTMLElement>('[data-chat-failure-note]');
+      if (copy) {
+        if (title) title.textContent = copy.title;
+        if (note) note.textContent = copy.note;
+      }
+      panel.hidden = !copy;
+    }
+    if (!feed) return;
+    const toggle = Array.from(root.querySelectorAll<HTMLElement>('.stake--quiet')).find(b =>
+      /^(Read the whole thread|Show just the recent turns)$/.test(b.textContent?.trim() ?? ''),
+    );
+    if (toggle) toggle.textContent = expanded ? 'Show just the recent turns' : 'Read the whole thread';
+    const q = feed.querySelector<HTMLElement>('[data-streaming-q]');
+    const a = feed.querySelector<HTMLElement>('[data-streaming]');
+    // The turns this body did not draw, drawn here in the same material. A turn
+    // is matched by the thread it belongs to, never by count alone: asking about
+    // a different subject makes a different thread, and slicing one thread's rows
+    // by another's length loses the answer entirely.
+    const rendered = feed.dataset['thread'] ?? 'garden';
+    const switched = threadKey != null && threadKey !== rendered;
+    if (switched) {
+      // the body is wearing another thread's history — take it off, and draw this
+      // one from row zero
+      for (const row of Array.from(feed.querySelectorAll<HTMLElement>('.feed__row'))) {
+        if (row !== q && row !== a) row.remove();
+      }
+      feed.dataset['thread'] = threadKey;
+      feed.dataset['threadRendered'] = '0';
+    }
+    const already = switched ? 0 : Number(feed.dataset['threadRendered'] ?? '0');
+    for (const late of Array.from(feed.querySelectorAll('[data-late]'))) late.remove();
+    for (const t of turns.slice(already)) {
+      const when = t.askedAt.slice(11, 16);
+      for (const [who, text] of [
+        ['you', t.question],
+        ['PlantPal', t.reply],
+      ] as const) {
+        const row = document.createElement('div');
+        row.className = 'feed__row';
+        row.setAttribute('data-late', '');
+        const w = document.createElement('span');
+        w.className = 'feed__when';
+        w.textContent = when;
+        const s = document.createElement('span');
+        s.textContent = who;
+        const v = document.createElement('span');
+        v.className = 'feed__val';
+        v.textContent = text;
+        row.append(w, s, v);
+        if (q) feed.insertBefore(row, q);
+        else feed.append(row);
+      }
+    }
+    // "Read the whole thread": the same feed, widened. No node, no route, no
+    // camera. The fold is recomputed over every row the feed now holds, so a turn
+    // committed in this session folds exactly as an assembled one does — but only
+    // where the toggle stands, so nothing can be hidden with no way to unfold it.
+    const kept = Math.max(0, this.chatTurnsKept());
+    const pairs = Array.from(feed.querySelectorAll<HTMLElement>('.feed__row')).filter(
+      r => r !== q && r !== a,
+    );
+    const total = Math.max(turns.length, Math.ceil(pairs.length / 2));
+    const hiddenBefore = toggle ? (kept === 0 ? total : Math.max(0, total - kept)) : 0;
+    pairs.forEach((row, i) => {
+      const hide = Math.floor(i / 2) < hiddenBefore && !expanded;
+      if (Math.floor(i / 2) < hiddenBefore) row.setAttribute('data-extra', '');
+      else row.removeAttribute('data-extra');
+      row.hidden = hide;
+    });
+    if (!q || !a) return;
+    const qVal = q.querySelector<HTMLElement>('.feed__val');
+    const aVal = a.querySelector<HTMLElement>('.feed__val');
+    if (qVal) qVal.textContent = turn ? turn.question : '';
+    if (aVal) aVal.textContent = turn ? turn.text : '';
+    q.hidden = !turn;
+    a.hidden = !turn;
+  }
 
   readonly ariaLabel = computed(() => {
     const n = this.node();

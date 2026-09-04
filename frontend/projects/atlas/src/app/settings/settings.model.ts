@@ -63,6 +63,8 @@ export interface AtlasSettings {
     mockLatencyMs: number;
     pageSize: number;
     careLogPageSize: number;
+    chatTurnsKept: number;
+    chatThreadsKept: number;
   };
   profile: {
     displayName: string;
@@ -83,7 +85,13 @@ export interface AtlasSettings {
     cardDrift: boolean;
   };
   /** Device-side AI choices; the server-backed ai.* keys live in serverPrefs. */
-  ai: { craftPlanOnStart: boolean };
+  ai: {
+    craftPlanOnStart: boolean;
+    chatTransport: 'stream' | 'buffered';
+    chatHistoryTurns: number;
+    chatPlantContext: 'focused' | 'ask' | 'never';
+    chatThreads: 'device' | 'session';
+  };
   privacy: { rememberLayout: boolean; rememberLastFocus: boolean };
   integrations: { classicAppUrl: string; openInClassic: 'hide' | 'show'; showApiIds: boolean };
   advanced: { probes: 'show' | 'hide'; slowNodes: 'hubs' | 'fixture' };
@@ -115,6 +123,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     mockLatencyMs: DEFAULT_MOCK_LATENCY_MS,
     pageSize: 50,
     careLogPageSize: 5,
+    chatTurnsKept: 3,
+    chatThreadsKept: 8,
   },
   profile: { displayName: '', units: 'metric', quietHours: '21:00-07:30' },
   notifications: {
@@ -125,7 +135,13 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     seenAt: null,
   },
   appearance: { ui: 'sill-line', palette: 'first-light', followSystemMotion: true, cardDrift: true },
-  ai: { craftPlanOnStart: false },
+  ai: {
+    craftPlanOnStart: false,
+    chatTransport: 'stream',
+    chatHistoryTurns: 5,
+    chatPlantContext: 'focused',
+    chatThreads: 'device',
+  },
   privacy: { rememberLayout: true, rememberLastFocus: false },
   integrations: {
     classicAppUrl: environment.classicAppUrl,
@@ -175,6 +191,8 @@ export const ALLOWED: Record<string, Record<string, Rule>> = {
     mockLatencyMs: [0, 300, 1500, 12000],
     pageSize: [20, 50, 100],
     careLogPageSize: [0, 3, 5, 10],
+    chatTurnsKept: [0, 3, 10],
+    chatThreadsKept: [3, 8, 20],
   },
   profile: {
     displayName: 'string',
@@ -194,7 +212,13 @@ export const ALLOWED: Record<string, Record<string, Rule>> = {
     followSystemMotion: 'boolean',
     cardDrift: 'boolean',
   },
-  ai: { craftPlanOnStart: 'boolean' },
+  ai: {
+    craftPlanOnStart: 'boolean',
+    chatTransport: ['stream', 'buffered'],
+    chatHistoryTurns: [0, 2, 5],
+    chatPlantContext: ['focused', 'ask', 'never'],
+    chatThreads: ['device', 'session'],
+  },
   privacy: { rememberLayout: 'boolean', rememberLastFocus: 'boolean' },
   integrations: {
     classicAppUrl: 'url',

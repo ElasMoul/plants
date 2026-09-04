@@ -36,6 +36,8 @@ import {
   renderPane,
   routeOverviewClick,
 } from '../settings/settings-panes';
+import { ChatStore } from './chat.store';
+import type { ChatFailure, ChatTurnDto } from './world.dto';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
@@ -119,6 +121,12 @@ interface VeinLine {
                 [expanding]="store.expandingId() === n.id"
                 [mode]="store.modeOf(n.id)"
                 [pending]="store.isPending(n.id)"
+                [streamingTurn]="streamFor(n.id)"
+                [chatThreadKey]="chatThreadKeyFor(n.id)"
+                [chatTurnsKept]="chatTurnsKept()"
+                [chatTurns]="chatTurnsFor(n.id)"
+                [chatFailure]="chatFailureFor(n.id)"
+                [chatExpanded]="chatExpandedFor(n.id)"
                 [style.left.px]="store.positionOf(n.id).x"
                 [style.top.px]="store.positionOf(n.id).y"
                 (click)="onCardClick(n.id, $event)"
@@ -162,6 +170,43 @@ export class World {
   private readonly push = inject(PushService);
   private readonly mock = inject(MOCK_MODE, { optional: true });
   private readonly mockBackend = inject(MockBackend);
+  private readonly chat = inject(ChatStore);
+
+  /** The companion's live material — read only by n-ask's own card (C15: an
+   *  answer arriving dirties one OnPush view and nothing else). */
+  private readonly streamingTurn = computed(() => {
+    const s = this.chat.streaming();
+    return s ? { question: s.question, text: s.text } : null;
+  });
+  /** The thread the companion is wearing — the one asked in or last failed, not
+   *  merely the newest, so an answer never lands on another thread's feed. */
+  private readonly askKey = computed(() => this.chat.activeKey());
+  private readonly askThread = computed(() => this.chat.thread(this.askKey()) ?? null);
+
+  protected streamFor(id: string): { question: string; text: string } | null {
+    return id === 'n-ask' ? this.streamingTurn() : null;
+  }
+
+  protected chatTurnsFor(id: string): ChatTurnDto[] {
+    return id === 'n-ask' ? (this.askThread()?.turns ?? []) : [];
+  }
+
+  protected readonly chatTurnsKept = computed(
+    () => this.settings.settings().data.chatTurnsKept,
+  );
+
+  protected chatThreadKeyFor(id: string): string | null {
+    return id === 'n-ask' ? this.askKey() : null;
+  }
+
+  protected chatFailureFor(id: string): ChatFailure | null {
+    if (id !== 'n-ask') return null;
+    return this.chat.failure(this.askKey()) ?? null;
+  }
+
+  protected chatExpandedFor(id: string): boolean {
+    return id === 'n-ask' && this.chat.isExpanded(this.askKey());
+  }
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   /** Narrow: the refresh only re-arms when the minutes themselves change. */
@@ -220,6 +265,13 @@ export class World {
       if (focus && !travelling) {
         requestAnimationFrame(() => this.measureAndSettle());
       }
+    });
+    // Focus leaving the companion (and the plant its thread belongs to) stops the
+    // answer being written — the partial is kept as a turn, never silently dropped.
+    effect(() => this.actions.noteFocus(this.store.focusId()));
+    // A source or scenario switch, and going offline, stop it for the same reason.
+    effect(() => {
+      if (this.store.probeOffline()) this.actions.cancelAsk();
     });
     // A successful mutation re-assembles the world (a new node takes a free cell).
     effect(() => {

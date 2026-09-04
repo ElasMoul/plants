@@ -1,12 +1,22 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
-import { forkJoin, Observable, of } from 'rxjs';
+import { forkJoin, Observable, of, type Subscription } from 'rxjs';
 import { API_BASE_URL, ApiResponse, AuthService } from '@plantpal/shared-core';
 import { environment } from '../../environments/environment';
 import { MOCK_MODE } from '../core/mock-mode';
 import { DataSource, DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
-import type { CareLogDto, CareType, ReminderDto, TreatmentDto } from './world.dto';
+import { askFailureLine } from './ask-copy';
+import { ChatClient } from './chat.client';
+import { ChatStore } from './chat.store';
+import type {
+  CareLogDto,
+  CareType,
+  ChatOutcome,
+  ReminderDto,
+  TreatmentDto,
+} from './world.dto';
+import { threadKey } from './world.dto';
 import { classicLoginLink } from './interop';
 import { WorldStore } from './world.store';
 
@@ -31,7 +41,8 @@ export type ActiveForm =
       careType: CareType;
       frequencyDays: number;
     }
-  | { kind: 'start-treatment'; plantId?: number; plantName?: string; identificationId?: number };
+  | { kind: 'start-treatment'; plantId?: number; plantName?: string; identificationId?: number }
+  | { kind: 'ask'; threadKey: string; question?: string; plantId?: number; plantName?: string };
 
 /** `data-arg="reminder:701"` — the one convention every stake uses to name its row. */
 export interface StakeRef {
@@ -57,9 +68,22 @@ export class WorldActionsService {
   private readonly device = inject(DeviceStore);
   private readonly mock = inject(MOCK_MODE, { optional: true });
   private readonly auth = inject(AuthService);
+  private readonly chat = inject(ChatStore);
+  private readonly chatClient = inject(ChatClient);
+
+  /** The ask being written right now, and the thread it belongs to. */
+  private asking: Subscription | null = null;
+  private askingKey: string | null = null;
 
   /** The currently open form, if any. */
   readonly activeForm = signal<ActiveForm | null>(null);
+
+  constructor() {
+    // A data-source or scenario switch stops the answer being written, for the
+    // same reason focus leaving does: it would otherwise commit into the new
+    // source's threads.
+    this.chat.onAbort(() => this.cancelAsk());
+  }
 
   /** Bumped when a mutation succeeded and the world should re-assemble. */
   readonly reloadRequested = signal(0);
@@ -225,6 +249,32 @@ export class WorldActionsService {
       this.activeForm.set({ kind: 'identify' });
       return;
     }
+    // ── the companion (it reads the garden; it never writes to it) ────────────
+    if (/^ask something$|^ask about this plant$|^ask it again$|^ask plantpal$/.test(l)) {
+      const context = this.askContext(nodeId, ref);
+      const key = threadKey(context.plantId);
+      this.activeForm.set({
+        kind: 'ask',
+        threadKey: key,
+        question: l === 'ask it again' ? this.lastQuestion(key) : undefined,
+        ...context,
+      });
+      return;
+    }
+    if (/^read the whole thread$|^show just the recent turns$/.test(l)) {
+      // a focus-only widening of the same feed: no node, no route, no camera, and
+      // nothing asked of the server
+      // the thread the pressed card is actually showing — not merely the newest
+      const key = this.chat.activeKey();
+      this.chat.toggleExpanded(key);
+      this.store.say(
+        this.chat.isExpanded(key)
+          ? 'The whole thread is on the card. Nothing moved.'
+          : 'Back to the recent turns. Nothing moved.',
+      );
+      return;
+    }
+
     // -- round 3: the day, the knocks and the account -------------------------
     if (/^mark all read$/.test(l)) {
       this.markAllRead();
@@ -257,6 +307,138 @@ export class WorldActionsService {
       return;
     }
     this.store.say(`“${label}” is not something PlantPal can do from here yet.`);
+  }
+
+  // ── the companion ───────────────────────────────────────────────────────────
+
+  /**
+   * Ask the companion. The answer arrives into the ChatStore alone: nothing here
+   * calls updateWorld, bumps reloadRequested or touches a size pin, because an
+   * answer arriving must never move the camera or the focus.
+   *
+   * A new ask cancels the one before it. Nothing is ever retried automatically —
+   * a retry is a question the reader did not ask.
+   */
+  ask(question: string, context: { plantId?: number; plantName?: string } = {}): void {
+    const text = question.trim();
+    if (!text) return;
+    const key = threadKey(context.plantId);
+    if (this.store.probeOffline()) {
+      this.activeForm.set(null);
+      this.chat.fail(key, { kind: 'offline', retryAfterSeconds: null });
+      this.store.say('Offline: the question is held here. Ask again when you are back.');
+      return;
+    }
+    this.activeForm.set(null);
+    this.cancelAsk();
+    this.askingKey = key;
+    this.chat.begin(key, text, context.plantId);
+    const askedAt = new Date().toISOString();
+    // captured into a local first: at zero latency the whole stream can arrive
+    // synchronously inside subscribe(), and assigning afterwards would resurrect
+    // a finished ask as a live one
+    const sub = this.chatClient
+      .ask({ question: text, plantId: context.plantId, history: this.chat.turns(key) })
+      .subscribe({
+        next: event => {
+          if (event.kind === 'token') {
+            this.chat.token(event.text);
+            return;
+          }
+          if (event.kind === 'failed') {
+            const partial = this.chat.end();
+            this.asking = null;
+            this.askingKey = null;
+            if (partial.trim()) {
+              // bytes already flushed: the wire cannot tell a broken stream from a
+              // short answer, so the partial is kept as what it is, not as an error
+              this.commitTurn(key, askedAt, text, partial, 'truncated', context);
+              this.store.say('The answer stopped part-way. It is kept as it stands.');
+              return;
+            }
+            this.chat.fail(key, event.failure);
+            this.store.say(askFailureLine(event.failure));
+            return;
+          }
+          const reply = this.chat.end();
+          this.asking = null;
+          this.askingKey = null;
+          if (!reply.trim()) {
+            this.chat.fail(key, { kind: 'unknown', retryAfterSeconds: null });
+            this.store.say('No answer came back. Nothing moved.');
+            return;
+          }
+          this.commitTurn(key, askedAt, text, reply, 'answered', context);
+          this.store.say('The answer is on the companion. The camera did not move.');
+        },
+      });
+    if (this.askingKey === key) this.asking = sub;
+  }
+
+  /** Stops the answer being written, keeping whatever of it already arrived. */
+  cancelAsk(reason?: string): void {
+    const sub = this.asking;
+    const key = this.askingKey;
+    this.asking = null;
+    this.askingKey = null;
+    if (!sub) return;
+    sub.unsubscribe();
+    const streaming = this.chat.streaming();
+    const partial = this.chat.end();
+    if (key && streaming && partial.trim()) {
+      this.commitTurn(key, new Date().toISOString(), streaming.question, partial, 'truncated', {
+        plantId: streaming.plantId,
+      });
+    }
+    if (reason) this.store.say(reason);
+  }
+
+  /** Focus left the companion (and the plant its thread belongs to) — stop writing. */
+  noteFocus(focusId: string | null): void {
+    if (!this.asking) return;
+    const key = this.askingKey;
+    const plantNode = key && key.startsWith('plant:') ? `n-plant-${key.slice(6)}` : null;
+    if (focusId === 'n-ask' || (plantNode && focusId === plantNode)) return;
+    this.cancelAsk('The answer stopped part-way — you moved on. It is kept as it stands.');
+  }
+
+  private commitTurn(
+    key: string,
+    askedAt: string,
+    question: string,
+    reply: string,
+    outcome: ChatOutcome,
+    context: { plantId?: number; plantName?: string },
+  ): void {
+    this.chat.append(
+      {
+        id: `${key}-${askedAt}`,
+        askedAt,
+        question,
+        reply,
+        plantId: context.plantId,
+        outcome,
+      },
+      context,
+    );
+  }
+
+  /** Which plant a question is about, as the reader's own setting decides. */
+  private askContext(
+    nodeId: string,
+    ref: StakeRef | null,
+  ): { plantId?: number; plantName?: string } {
+    const mode = this.settings.settings().ai.chatPlantContext;
+    if (mode === 'never') return {};
+    if (mode === 'ask') return {};
+    const id = this.plantIdOf(nodeId, ref);
+    return id === undefined ? {} : { plantId: id, plantName: this.plantName(id) };
+  }
+
+  /** The last thing asked on a thread — what "Ask it again" starts from. */
+  private lastQuestion(key: string): string | undefined {
+    const turns = this.chat.turns(key);
+    return turns[turns.length - 1]?.question;
   }
 
   // ── reminders and care ──────────────────────────────────────────────────────

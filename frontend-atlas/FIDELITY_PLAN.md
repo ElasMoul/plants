@@ -282,6 +282,42 @@ Appearance is restored before first paint; layout persists under
   (classic **and** atlas, `rz` prefix), `npm test`, `playwright install
   chromium`, `e2e:atlas` — uploading `playwright-screenshots` on any outcome.
 
+### I8 — Chat (the companion, C1/C2)
+
+`n-ask` is no longer deferred: it is the prototype's Companion card, holding a
+conversation the atlas itself keeps.
+
+- **Covered.** Both chat endpoints (`POST /api/v1/chat`, `POST /api/v1/chat/stream`),
+  the thread (client-held — the server keeps none), plant-scoped and garden-wide
+  asks, the 429 / 503 / 400 / 404 / 402 / offline states as per-node material, a
+  stream that stops part-way committed as a `truncated` turn, and the mock
+  garden answering the whole family in memory (deterministic replies, the same
+  ten-asks-an-hour limit, and the `outage` scenario refusing chat).
+- **Transport.** `HttpClient` with `observe:'events' / responseType:'text' /
+  reportProgress:true` — never `EventSource` (it cannot carry the Bearer header
+  `atlas-auth.interceptor` attaches, so it would 401 live) and never `fetch`
+  (it would bypass both interceptors and break mock mode's no-network promise).
+  A unit assertion greps the chat sources for both. The atlas owns its SSE
+  parser (`sse-parse.ts`), which re-inserts the newline between consecutive
+  `data:` lines of one event — the classic frontend drops it.
+- **Streaming never touches the world graph.** Tokens land in one `ChatStore`
+  signal; the focused card paints them into two rows the body reserved up front
+  (`data-streaming-q` / `data-streaming`). No `updateWorld`, no
+  `reloadRequested`, no `layoutEpoch` — that chain ends in `frameFocus()`, and
+  an answer arriving must never move the camera.
+- **The companion reads, never writes.** A reply may name a suggestion in words;
+  the stake that performs it lives on the plant node. So `n-ask`'s action rail
+  stays empty (as the prototype's ACTIONS map has it) and its two stakes —
+  "Ask something", "Read the whole thread" — live in the body alone.
+- **Settings** (no tenth section; the nine are pinned): `ai.chatTransport`,
+  `ai.chatHistoryTurns`, `ai.chatPlantContext`, `ai.chatThreads` in AI
+  Preferences; `data.chatTurnsKept`, `data.chatThreadsKept` in Data & Sync.
+- **Deferred still.** PlantNet, chat-side proposals that write, and any
+  server-side thread. Streaming is genuinely per-token only on the Ollama path —
+  under the gateway or Anthropic one giant token arrives, which is why
+  `ai.chatTransport: 'buffered'` is the honest choice for a production backend
+  and the pane note says so.
+
 ## Standing decisions (2026-09)
 
 Recorded so a later contributor does not "improve" them back.

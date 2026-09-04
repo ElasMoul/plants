@@ -52,3 +52,14 @@ body[data-api-ids="off"] .state__id { display: none; }
   gap: var(--vs-gutter-tight);
   margin-block: var(--vs-gutter-tight);
 }
+
+/* The companion reserves the rows the answer is written into and the panel that
+   wears why an ask did not answer, both hidden until there is something to say.
+   rhizome.css sets `display: grid` on `.feed__row` and `.state`, which has the
+   same specificity as the browser's own `[hidden]` rule and comes later, so a
+   hidden one would still be drawn. This restores the attribute's meaning for the
+   two shapes the companion reserves. */
+.feed__row[hidden],
+.state[hidden] {
+  display: none;
+}

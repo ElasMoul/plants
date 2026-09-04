@@ -62,10 +62,15 @@ describe('buildMockSeed (S1 — the mock garden dataset)', () => {
     expect(zero.treatmentPlans).toEqual([]);
   });
 
-  it('outage marks reminders, dashboard and treatment-plans/201 as failing', () => {
+  it('outage marks reminders, dashboard, treatment-plans/201 and chat as failing', () => {
     const outage = buildMockSeed('outage', NOW);
     expect(outage.plants).toHaveLength(6);
     const failing = outage.failing.map(f => `${f.method} ${f.re.source}`);
-    expect(failing).toEqual(['GET ^\\/reminders$', 'GET ^\\/dashboard$', 'GET ^\\/treatment-plans\\/201$']);
+    expect(failing).toEqual([
+      'GET ^\\/reminders$',
+      'GET ^\\/dashboard$',
+      'GET ^\\/treatment-plans\\/201$',
+      'POST ^\\/chat(\\/stream)?$',
+    ]);
   });
 });

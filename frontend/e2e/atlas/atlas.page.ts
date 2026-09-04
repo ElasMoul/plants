@@ -110,6 +110,27 @@ export class AtlasPage {
     });
   }
 
+  /** Asks the in-memory backend has actually served — mock mode makes no network
+   *  request, so this is what proves a press did or did not ask anything. */
+  mockAsks(): Promise<number> {
+    return this.page.evaluate(() => {
+      const b = (window as unknown as { __atlasMock?: { askCount?: number } }).__atlasMock;
+      return b?.askCount ?? -1;
+    });
+  }
+
+  /** The one in-world sheet, while the ask kind is open. */
+  askSheet(): Locator {
+    return this.page.locator('.rz-form');
+  }
+
+  /** How many rows the node's feed is actually showing. */
+  async feedRows(nodeId: string): Promise<number> {
+    return this.node(nodeId)
+      .locator('.feed .feed__row:not([hidden])')
+      .count();
+  }
+
   topbarSub(): Locator {
     return this.page.locator('#topbar .sub');
   }

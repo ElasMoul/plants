@@ -5,6 +5,7 @@ import { provideSharedCore } from '@plantpal/shared-core';
 import { MOCK_MODE, provideMockModeOff } from '../core/mock-mode';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
+import { ChatStore } from './chat.store';
 import { WorldActionsService } from './world-actions.service';
 import { emptySources, type ReminderDto } from './world.dto';
 import type { WorldMeta } from './world.model';
@@ -523,4 +524,93 @@ describe('WorldActionsService (H6 — every button works as intended)', () => {
     });
   });
 
+});
+
+describe('WorldActionsService — the companion (C2)', () => {
+  let actions: WorldActionsService;
+  let store: WorldStore;
+  let settings: SettingsStore;
+  let chat: ChatStore;
+  let http: HttpTestingController;
+
+  const ok = (data: unknown = {}) => ({ success: true, message: '', timestamp: '', data });
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideMockModeOff(), ...provideSharedCore({ apiBaseUrl: '/api/v1' })],
+    });
+    actions = TestBed.inject(WorldActionsService);
+    store = TestBed.inject(WorldStore);
+    settings = TestBed.inject(SettingsStore);
+    chat = TestBed.inject(ChatStore);
+    http = TestBed.inject(HttpTestingController);
+    settings.set('ai.chatTransport', 'buffered');
+    chat.load('live');
+  });
+
+  afterEach(() => {
+    http.verify();
+    localStorage.clear();
+  });
+
+  it('"Ask something" opens the ask sheet and sends nothing yet', () => {
+    actions.dispatch('n-ask', 'Ask something');
+    expect(actions.activeForm()).toEqual({ kind: 'ask', threadKey: 'garden' });
+  });
+
+  it('an ask commits the answer as a turn without asking for a reload', () => {
+    const before = actions.reloadRequested();
+    actions.ask('why are the low leaves going?');
+    const req = http.expectOne('/api/v1/chat');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.message).toBe('why are the low leaves going?');
+    req.flush(ok({ reply: 'draught, most likely' }));
+    expect(chat.turns('garden').map(t => [t.question, t.reply, t.outcome])).toEqual([
+      ['why are the low leaves going?', 'draught, most likely', 'answered'],
+    ]);
+    expect(chat.streaming()).toBeNull();
+    expect(actions.reloadRequested()).toBe(before);
+    expect(actions.activeForm()).toBeNull();
+  });
+
+  it('a 429 is remembered on the thread, with no wait it was not given', () => {
+    actions.ask('again?');
+    http.expectOne('/api/v1/chat').flush(
+      { success: false, message: 'Chat rate limit reached — try again later', errorCode: 429 },
+      { status: 429, statusText: 'Too Many Requests' },
+    );
+    expect(chat.failure('garden')).toEqual({ kind: 'rate-limited', retryAfterSeconds: null });
+    expect(chat.turns('garden')).toEqual([]);
+  });
+
+  it('refuses the press while offline and makes no request', () => {
+    store.probeOffline.set(true);
+    actions.dispatch('n-ask', 'Ask something');
+    expect(actions.activeForm()).toBeNull();
+    expect(store.announcement()).toMatch(/queued/i);
+    store.probeOffline.set(false);
+  });
+
+  it('"Read the whole thread" widens the feed and moves nothing', () => {
+    const focus = store.focusId();
+    actions.dispatch('n-ask', 'Read the whole thread');
+    expect(chat.isExpanded('garden')).toBe(true);
+    expect(store.focusId()).toBe(focus);
+    expect(actions.reloadRequested()).toBe(0);
+    actions.dispatch('n-ask', 'Show just the recent turns');
+    expect(chat.isExpanded('garden')).toBe(false);
+  });
+
+  it('keeps a cancelled answer as a truncated turn and retries nothing', () => {
+    settings.set('ai.chatTransport', 'stream');
+    actions.ask('how much water?');
+    const req = http.expectOne('/api/v1/chat/stream');
+    chat.token('as much as');
+    actions.cancelAsk();
+    // the subscription is gone — the request itself was cancelled, not just ignored
+    expect(req.cancelled).toBe(true);
+    expect(chat.turns('garden').map(t => t.outcome)).toEqual(['truncated']);
+    expect(chat.streaming()).toBeNull();
+  });
 });

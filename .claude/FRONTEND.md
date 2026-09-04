@@ -333,7 +333,10 @@ settings/                    settings.model.ts, settings.store.ts (atlas_setting
 push/                        push.service.ts (permission, push-sw.js, PushManager, /notifications/subscribe)
 world/                       world-graph.service (loader), world-actions.service (every stake),
                              world.assembly (sources -> board), world.store (camera/focus/layout),
-                             world.dto, world.model, dates.ts, interop.ts, world.bodies.ts, world.fixture.ts
+                             world.dto, world.model, dates.ts, interop.ts, world.bodies.ts, world.fixture.ts,
+                             chat.client.ts (the one /chat seam), chat.store.ts (threads + the answer
+                             in flight), sse-parse.ts (own SSE parser), ask-copy.ts (companion voice
+                             for a failed ask); n-ask's body is askBody() in world.assembly.ts
 chrome/                      chrome.ts (all fixed furniture), actions-for.ts (the rail), overview.html.ts
 node/                        node-card.ts
 forms/                       stake-form.ts (the one in-world sheet)
