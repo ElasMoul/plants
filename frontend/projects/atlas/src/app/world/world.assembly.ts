@@ -20,6 +20,7 @@ import {
   PlantDto,
   PushState,
   ReminderDto,
+  ReminderSummaryDto,
   SpeciesDto,
   TreatmentDto,
   TreatmentPlanDto,
@@ -367,7 +368,7 @@ function notificationsSection(ctx: Ctx): string {
         <p class="state__note">A reminder is the thing; a notification is the knock. They are separate on purpose — you can keep every reminder and turn every knock off.</p>
         <dl class="rows" data-notifications>
           <div class="row"><dt>Push</dt><dd>${push}</dd></div>
-          <div class="row"><dt>Daily knock</dt><dd>Every day at 08:00, PlantPal's clock · ${wordNumber(knocks).toLowerCase()} would knock today</dd></div>
+          <div class="row"><dt>Daily knock</dt><dd>Every day at 08:00, PlantPal's clock · ${knocks} would knock today</dd></div>
           <div class="row"><dt>Email</dt><dd>Not offered by PlantPal</dd></div>
           <div class="row"><dt>Unread</dt><dd>${unread}</dd></div>
         </dl>
@@ -777,6 +778,26 @@ function todayRowOf(r: ReminderDto, ctx: Ctx, serverOverdue?: number): TodayRow 
   return { careType: r.careType, plantId: r.plantId, plantNickname: r.plantNickname, overdue: late };
 }
 
+/**
+ * A dashboard bucket row, made whole. The server sends a narrow summary keyed by
+ * reminderId; enabled/treatmentPlanId live on GET /reminders, so we join by id
+ * and fall back to "enabled" when the reminder is not among the ones we hold.
+ */
+function resolveSummary(ctx: Ctx, s: ReminderSummaryDto): ReminderDto {
+  const id = s.reminderId ?? s.id;
+  const known = id != null ? ctx.reminders.find(r => r.id === id) : undefined;
+  return {
+    ...(known ?? {}),
+    ...s,
+    id: id ?? -1,
+    plantId: s.plantId,
+    careType: s.careType,
+    nextDueAt: s.nextDueAt,
+    enabled: s.enabled ?? known?.enabled ?? true,
+    treatmentPlanId: s.treatmentPlanId ?? known?.treatmentPlanId,
+  } as ReminderDto;
+}
+
 /** Steps belong to their course, not to the day's list (data.stepReminders). */
 function countable(ctx: Ctx, r: ReminderDto): boolean {
   return (
@@ -800,9 +821,12 @@ function todayCount(ctx: Ctx): {
   if (ctx.dashboard && ctx.settings.dueWindow === 'server-day') {
     return {
       overdue: ctx.dashboard.overdueReminders
-        .filter(r => countable(ctx, r))
-        .map(r => todayRowOf(r, ctx, r.daysOverdue ?? 1)),
+        .map(s => ({ s, r: resolveSummary(ctx, s) }))
+        .filter(x => countable(ctx, x.r))
+        // no server count: work the lateness out from the due date rather than invent one
+        .map(x => todayRowOf(x.r, ctx, x.s.daysOverdue ?? undefined)),
       today: ctx.dashboard.todayReminders
+        .map(s => resolveSummary(ctx, s))
         .filter(r => countable(ctx, r))
         .map(r => todayRowOf(r, ctx, 0)),
       source: 'server',
@@ -869,18 +893,23 @@ function todayRowsHtml(ctx: Ctx, count: ReturnType<typeof todayCount>): string {
 /** What the garden is, under the day's work: a count of health, not a feed. */
 function gardenSummarySection(ctx: Ctx): string {
   const d = ctx.dashboard;
-  const healthy = d
-    ? d.healthSummary.healthy
-    : ctx.plants.filter(p => p.healthStatus === 'HEALTHY').length;
-  const issues = d
-    ? d.healthSummary.issues
-    : ctx.plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').length;
-  const unknown = d
-    ? d.healthSummary.unknown
-    : ctx.plants.filter(p => p.healthStatus !== 'HEALTHY' && p.healthStatus !== 'ISSUES_DETECTED')
-        .length;
-  const plants = d ? d.plantCount : ctx.plants.length;
-  const species = d ? d.speciesCount : ctx.speciesCount;
+  // the server and the mock name these fields differently, and the server sends
+  // no plantCount at all — take a number where there is one, count here otherwise
+  const num = (...vs: (number | undefined)[]): number | undefined =>
+    vs.find(v => typeof v === 'number');
+  const hs = d?.healthSummary;
+  const healthy =
+    num(hs?.healthy, hs?.healthyCount) ??
+    ctx.plants.filter(p => p.healthStatus === 'HEALTHY').length;
+  const issues =
+    num(hs?.issues, hs?.issuesCount) ??
+    ctx.plants.filter(p => p.healthStatus === 'ISSUES_DETECTED').length;
+  const unknown =
+    num(hs?.unknown, hs?.unknownCount) ??
+    ctx.plants.filter(p => p.healthStatus !== 'HEALTHY' && p.healthStatus !== 'ISSUES_DETECTED')
+      .length;
+  const plants = num(d?.plantCount, hs?.totalPlants) ?? ctx.plants.length;
+  const species = num(d?.speciesCount) ?? ctx.speciesCount;
   const feed = (d?.healthTrends ?? [])
     .filter(t => t.trend !== 'STABLE')
     .map(
@@ -1229,7 +1258,8 @@ export function assembleWorld(sources: WorldSources): WorldData {
     ...(sources.dashboard?.overdueReminders ?? []),
     ...(sources.dashboard?.todayReminders ?? []),
   ]) {
-    if (r.daysOverdue != null) overdueByReminder[r.id] = r.daysOverdue;
+    const id = r.reminderId ?? r.id;
+    if (r.daysOverdue != null && id != null) overdueByReminder[id] = r.daysOverdue;
   }
   const logs = Object.values(sources.careLogsByPlant)
     .flat()

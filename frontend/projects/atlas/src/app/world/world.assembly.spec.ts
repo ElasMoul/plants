@@ -704,6 +704,88 @@ describe('S6 — the day, the knocks and the account', () => {
       expect(b).toContain('data-goto="n-plant-1"');
     });
 
+    it('reads the buckets in the shape the server actually sends', () => {
+      // ReminderSummaryDto.java: reminderId, plantId, plantNickname, careType,
+      // nextDueAt, daysOverdue — no id, no enabled, no treatmentPlanId
+      const w = world({
+        plants: [plant(1, { nickname: 'Office Fig' }), plant(2, { nickname: 'Studio Fig' })],
+        reminders: [],
+        dashboard: dashboard({
+          healthSummary: { healthyCount: 1, issuesCount: 1, unknownCount: 0, totalPlants: 2 },
+          plantCount: undefined,
+          overdueReminders: [
+            {
+              reminderId: 601, plantId: 1, plantNickname: 'Office Fig',
+              careType: 'WATERING', nextDueAt: OVERDUE, daysOverdue: 2,
+            },
+          ],
+          todayReminders: [
+            {
+              reminderId: 602, plantId: 2, plantNickname: 'Studio Fig',
+              careType: 'WATERING', nextDueAt: TODAY,
+            },
+          ],
+        }),
+      });
+      expect(w.nodes.find(n => n.id === 'n-today')!.recap).toBe('1 due · 1 overdue');
+      const b = wordsOf(bodyOf(w, 'n-today'));
+      expect(b).toContain('Office Fig · 2 days overdue');
+      expect(b).toContain('Studio Fig · today');
+      const garden = wordsOf(bodyOf(w, 'n-today'));
+      expect(garden).not.toContain('undefined');
+      expect(garden).toContain('Plants 2');
+      expect(garden).toContain('Healthy 1');
+      expect(garden).toContain('Needs attention 1');
+      expect(garden).toContain('Unknown 0');
+    });
+
+    it('works the lateness out itself when the server sent no count', () => {
+      const w = world({
+        plants: [plant(1, { nickname: 'Office Fig' })],
+        dashboard: dashboard({
+          overdueReminders: [
+            {
+              reminderId: 601, plantId: 1, plantNickname: 'Office Fig',
+              careType: 'WATERING', nextDueAt: OVERDUE,
+            },
+          ],
+        }),
+      });
+      expect(wordsOf(bodyOf(w, 'n-today'))).toContain('Office Fig · 2 days overdue');
+    });
+
+    it('leaves a snoozed dashboard row out of the day', () => {
+      const w = world({
+        plants: [plant(1, { nickname: 'Office Fig' })],
+        reminders: [reminder(601, { nextDueAt: OVERDUE })],
+        snoozed: { 601: LATER },
+        dashboard: dashboard({
+          overdueReminders: [
+            {
+              reminderId: 601, plantId: 1, plantNickname: 'Office Fig',
+              careType: 'WATERING', nextDueAt: OVERDUE, daysOverdue: 2,
+            },
+          ],
+        }),
+      });
+      expect(w.nodes.find(n => n.id === 'n-today')!.recap).toBe('Nothing due · nothing overdue');
+    });
+
+    it('draws six rows and sends the rest to Reminders', () => {
+      const rows = Array.from({ length: 8 }, (_, i) => ({
+        reminderId: 700 + i, plantId: 1, plantNickname: 'Office Fig',
+        careType: 'WATERING', nextDueAt: TODAY,
+      }));
+      const w = world({
+        plants: [plant(1, { nickname: 'Office Fig' })],
+        reminders: [reminder(601, { nextDueAt: LATER })],
+        dashboard: dashboard({ todayReminders: rows }),
+      });
+      const b = bodyOf(w, 'n-today');
+      expect(wordsOf(b)).toContain('And 2 more Reminders');
+      expect((b.match(/data-goto="n-plant-1"/g) ?? []).length).toBe(6);
+    });
+
     it('counts here under a rolling 24-hour window, and says so', () => {
       const w = world({
         plants: [plant(1)],
@@ -790,6 +872,12 @@ describe('S6 — the day, the knocks and the account', () => {
       );
       expect(b).toContain('On · this device');
       expect(b).not.toContain('not during quiet hours');
+    });
+
+    it('says how many would knock today as a numeral', () => {
+      expect(wordsOf(bodyOf(notifWorld(), 'n-reminders'))).toContain(
+        "Every day at 08:00, PlantPal's clock · 2 would knock today",
+      );
     });
 
     it('counts unread against the seen mark and leaves snoozed rows out', () => {

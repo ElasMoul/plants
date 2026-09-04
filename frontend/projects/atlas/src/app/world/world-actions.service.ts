@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { forkJoin, Observable, of } from 'rxjs';
 import { API_BASE_URL, ApiResponse, AuthService } from '@plantpal/shared-core';
+import { environment } from '../../environments/environment';
 import { MOCK_MODE } from '../core/mock-mode';
 import { DataSource, DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
@@ -588,8 +589,13 @@ export class WorldActionsService {
     const a = document.createElement('a');
     a.href = url;
     a.download = `plantpal-atlas-${stamp}.json`;
+    // in the document, and the url outlives the click — some browsers hand the
+    // blob to the download manager on a later task
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     this.store.say('Exported what this atlas holds — the file is in your downloads.');
   }
 
@@ -604,7 +610,7 @@ export class WorldActionsService {
   }
 
   private classicBase(): string {
-    return this.settings.settings().integrations.classicAppUrl;
+    return this.settings.settings().integrations.classicAppUrl || environment.classicAppUrl;
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────────

@@ -131,14 +131,34 @@ export interface TreatmentDto {
   completedAt?: string;
 }
 
+/**
+ * The garden's health count. The server (HealthSummaryDto.java) sends
+ * healthyCount/issuesCount/unknownCount/totalPlants; the mock backend sends the
+ * short names. Both are optional here and read defensively at the call site.
+ */
 export interface HealthSummaryDto {
-  healthy: number;
-  issues: number;
-  unknown: number;
+  healthy?: number;
+  issues?: number;
+  unknown?: number;
+  healthyCount?: number;
+  issuesCount?: number;
+  unknownCount?: number;
+  totalPlants?: number;
 }
 
-/** A dashboard reminder — a ReminderDto with the server's precomputed overdue count. */
-export interface ReminderSummaryDto extends ReminderDto {
+/**
+ * A dashboard reminder. The server's ReminderSummaryDto carries only
+ * reminderId/plantId/plantNickname/plantPhotoUrl/careType/nextDueAt/daysOverdue
+ * — no id, enabled or treatmentPlanId — so everything else is optional and is
+ * resolved by joining against GET /reminders.
+ */
+export interface ReminderSummaryDto extends Partial<ReminderDto> {
+  reminderId?: number;
+  plantId: number;
+  plantNickname?: string;
+  plantPhotoUrl?: string;
+  careType: string;
+  nextDueAt: string;
   daysOverdue?: number;
 }
 
@@ -164,7 +184,8 @@ export interface DashboardDto {
   todayReminders: ReminderSummaryDto[];
   healthTrends: PlantHealthTrendDto[];
   recentScans: RecentScanDto[];
-  plantCount: number;
+  /** Not sent by the server's DashboardResponse — fall back to the plants we hold. */
+  plantCount?: number;
   speciesCount: number;
 }
 
