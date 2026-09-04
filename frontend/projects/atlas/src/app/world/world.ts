@@ -20,6 +20,7 @@ import { WorldActionsService } from './world-actions.service';
 import { Chrome } from '../chrome/chrome';
 import { NodeCard } from '../node/node-card';
 import { classicLinkFor, classicLoginLink } from './interop';
+import { SettingsStore } from '../settings/settings.store';
 import { WorldGraphService } from './world-graph.service';
 import { WorldStore } from './world.store';
 
@@ -135,6 +136,7 @@ export class World {
   protected readonly actions = inject(WorldActionsService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly settings = inject(SettingsStore);
 
   protected readonly authed = computed(() => this.auth.isLoggedIn());
   protected readonly signInUrl = classicLoginLink(environment.classicAppUrl);
@@ -186,6 +188,14 @@ export class World {
     // A successful mutation re-assembles the world (a new node takes a free cell).
     effect(() => {
       if (this.actions.reloadRequested() > 0) this.loadLive();
+    });
+    // The periodic refresh follows its setting, and is re-armed when it changes.
+    effect(() => {
+      this.scheduleRefresh(this.settings.settings().general.refreshMinutes);
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.pollTimer) clearTimeout(this.pollTimer);
+      if (this.refreshTimer) clearInterval(this.refreshTimer);
     });
     afterNextRender(() => {
       this.syncCentre();
@@ -345,15 +355,26 @@ export class World {
           } else {
             this.store.updateWorld(data); // arrivals never move the camera (C9)
           }
-          // the async identification family: poll while a scan is in flight
+          // the async families: poll while a scan or a disease description is in flight
           if (this.pollTimer) clearTimeout(this.pollTimer);
-          if (data.hasPendingScan) {
-            this.pollTimer = setTimeout(() => this.loadLive(), 8000);
+          if (data.hasPendingScan || this.store.hasPendingDescription()) {
+            const every = this.settings.settings().general.pollIntervalMs;
+            this.pollTimer = setTimeout(() => this.loadLive(), every);
           }
         },
         error: () => this.store.markError(),
       });
-    this.destroyRef.onDestroy(() => { if (this.pollTimer) clearTimeout(this.pollTimer); });
+  }
+
+  /** A quiet periodic refresh: care logged on the phone lands here without a hop, and
+   *  an arrival never moves the camera (C9). Zero minutes turns it off. */
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+  private scheduleRefresh(minutes: number): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = null;
+    if (!this.authed() || minutes <= 0) return;
+    this.refreshTimer = setInterval(() => this.loadLive(), minutes * 60_000);
   }
 
   protected onAct(nodeId: string, way: string): void {

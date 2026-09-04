@@ -84,6 +84,22 @@ describe('WorldStore (C4 — engine ↔ Angular wiring)', () => {
     });
   });
 
+  describe('the board as the loader reads it back', () => {
+    it('cellsSnapshot returns every node\u2019s cell', () => {
+      const snap = store.cellsSnapshot();
+      const nodes = store.nodes();
+      expect(Object.keys(snap)).toHaveLength(nodes.length);
+      for (const n of nodes) expect(snap[n.id]).toEqual({ col: n.cell.col, row: n.cell.row });
+    });
+
+    it('distanceTo counts veins and answers minus one when unreachable', () => {
+      expect(store.distanceTo('n-fig')).toBe(0);
+      expect(store.distanceTo('n-garden')).toBe(1);
+      expect(store.distanceTo('n-office')).toBe(2);
+      expect(store.distanceTo('nowhere-at-all')).toBe(-1);
+    });
+  });
+
   describe('camera framing', () => {
     it('zoomBy keeps the focus framed and clamps scale', () => {
       store.setScreenCentre({ x: 500, y: 300 });

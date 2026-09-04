@@ -13,7 +13,7 @@ function ident(id: number, status = 'COMPLETED', over: Partial<IdentificationDto
 
 function sources(over: Partial<WorldSources> = {}): WorldSources {
   return emptySources({
-    now: '2026-09-04T09:00:00.000Z',
+    now: '2026-09-03T09:12:00Z',
     plants: [plant(1), plant(2), plant(3)],
     species: [species(1), species(2)],
     identifications: [ident(1)],
@@ -116,6 +116,88 @@ describe('assembleWorld (H5 — the live round-1 spine)', () => {
       for (const id of ['n-ask', 'n-today', 'n-treatments']) {
         expect(w.nodes.some(n => n.id === id)).toBe(true);
       }
+    });
+  });
+
+  describe('per-family failure (C25)', () => {
+    it('renders a family failure as a failed state inside its own hub', () => {
+      const w = assembleWorld(
+        sources({ failures: [{ family: 'reminders', status: 503, at: '2026-09-03T09:12:00Z' }] }),
+      );
+      const n = w.nodes.find(x => x.id === 'n-reminders')!;
+      expect(n.state).toBe('failed');
+      expect(n.body).toContain('state--error');
+      expect(n.body).toContain('Fetch this region');
+      expect(n.body).toContain('nothing moved');
+      expect(n.failure!.waysForward).toEqual(['Fetch this region']);
+      // the rest of the board is untouched — degradation is per-node material
+      expect(w.nodes.find(x => x.id === 'n-care')!.state).toBe('empty');
+      expect(w.nodes.find(x => x.id === 'n-garden')!.state).toBeUndefined();
+    });
+
+    it('offers the dashboard a second way through', () => {
+      const w = assembleWorld(
+        sources({ failures: [{ family: 'dashboard', status: 500, at: '2026-09-03T09:12:00Z' }] }),
+      );
+      const n = w.nodes.find(x => x.id === 'n-today')!;
+      expect(n.failure!.waysForward).toEqual(['Fetch this region', 'Count again']);
+      expect(n.body).toContain('Count again');
+    });
+  });
+
+  describe('meta — the loader facts beside the board', () => {
+    it('lists every plant and every due reminder', () => {
+      const w = assembleWorld(
+        sources({
+          plants: [plant(1), plant(2)],
+          reminders: [
+            { id: 601, plantId: 1, plantNickname: 'Plant 1', careType: 'WATERING', frequencyDays: 7, nextDueAt: '2026-09-01T08:00:00Z', enabled: true, recurring: true },
+            { id: 602, plantId: 2, plantNickname: 'Plant 2', careType: 'FERTILIZING', frequencyDays: 30, nextDueAt: '2026-10-20T08:00:00Z', enabled: true, recurring: true },
+          ],
+        }),
+      );
+      expect(w.meta!.syncedAt).toBe('2026-09-03T09:12:00Z');
+      expect(w.meta!.plantsIndex.map(p => p.id)).toEqual([1, 2]);
+      expect(w.meta!.dueReminders).toEqual([
+        { id: 601, plantId: 1, nextDueAt: '2026-09-01T08:00:00Z', label: 'Water · Plant 1' },
+      ]);
+      expect(w.meta!.hasPendingDescription).toBe(false);
+    });
+
+    it('flags a disease description still being written', () => {
+      const w = assembleWorld(
+        sources({
+          treatments: [{ id: 301, plantId: 1, diseaseName: 'Root rot', status: 'DRAFT', descriptionStatus: 'PENDING', createdAt: '2026-09-01T09:00:00Z' }],
+        }),
+      );
+      expect(w.meta!.hasPendingDescription).toBe(true);
+      expect(w.meta!.treatmentsIndex[301].plantId).toBe(1);
+    });
+  });
+
+  describe('insertion stability (C8)', () => {
+    it('is identical to the centred layout when no prior cells are given', () => {
+      const cells = Object.fromEntries(assembleWorld(sources()).nodes.map(n => [n.id, n.cell]));
+      expect(cells['n-garden']).toEqual({ col: 0, row: 6 });
+      expect(Object.fromEntries(assembleWorld(sources()).nodes.map(n => [n.id, n.cell]))).toEqual(cells);
+    });
+
+    it('keeps every prior cell and gives a new node a free one', () => {
+      const before = assembleWorld(sources());
+      const priorCells = Object.fromEntries(before.nodes.map(n => [n.id, n.cell]));
+      const after = assembleWorld(
+        sources({ plants: [plant(1), plant(2), plant(3)], species: [species(1), species(2), species(3)], priorCells }),
+      );
+      for (const n of before.nodes) {
+        const moved = after.nodes.find(x => x.id === n.id);
+        if (moved) expect(moved.cell).toEqual(n.cell);
+      }
+      const fresh = after.nodes.find(n => n.id === 'n-species-3')!;
+      expect(priorCells[fresh.id]).toBeUndefined();
+      // the free cell it took was not occupied before, in its own column
+      const takenInItsColumn = before.nodes.filter(n => n.cell.col === fresh.cell.col).map(n => n.cell.row);
+      expect(takenInItsColumn.length).toBeGreaterThan(0);
+      expect(takenInItsColumn).not.toContain(fresh.cell.row);
     });
   });
 

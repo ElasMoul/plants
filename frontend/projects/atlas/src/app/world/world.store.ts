@@ -44,6 +44,10 @@ export class WorldStore {
   readonly nodes = computed<WorldNode[]>(() => this.data().nodes);
   /** From the live assembly (undefined on the fixture). */
   readonly latestFailedScanId = computed(() => this.data().latestFailedScanId);
+  /** Loader facts beside the board — reminders, due rows, treatment index (C9 reads). */
+  readonly meta = computed(() => this.data().meta);
+  /** A disease description is still being written — polled like a pending scan. */
+  readonly hasPendingDescription = computed(() => !!this.data().meta?.hasPendingDescription);
   readonly edges = computed(() => this.data().edges);
   readonly order = computed<string[]>(() => this.nodes().map(n => n.id));
   private readonly adjacency = computed<Adjacency>(() => buildAdjacency(this.edges(), this.order()));
@@ -211,6 +215,20 @@ export class WorldStore {
   isPending(id: string): boolean {
     if (this.probeSlow() && WorldStore.SLOW_NODES.has(id)) return true;
     return this.nodeById()[id]?.state === 'loading';
+  }
+
+  /** Where every node sits right now — fed back into the next layout so an existing
+   *  node keeps its cell and a new one takes a free one (C8). */
+  cellsSnapshot(): Record<string, { col: number; row: number }> {
+    const out: Record<string, { col: number; row: number }> = {};
+    for (const n of this.nodes()) out[n.id] = { col: n.cell.col, row: n.cell.row };
+    return out;
+  }
+
+  /** Veins between here and there — the number an arrival announces before travelling. */
+  distanceTo(id: string): number {
+    const chain = shortestPath(this.focusId(), id, this.adjacency());
+    return chain.length ? chain.length - 1 : -1;
   }
 
   /** Chrome-originated announcement (say()). */

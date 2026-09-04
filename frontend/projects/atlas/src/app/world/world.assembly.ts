@@ -1,6 +1,14 @@
 import { buildAdjacency, Edge, rank } from '@plantpal/rhizome-engine';
-import { IdentificationDto, PlantDto, SpeciesDto, WorldSources } from './world.dto';
-import { NodeKind, WorldData, WorldNode } from './world.model';
+import { careLabel, isDue, timeLabel } from './dates';
+import {
+  Cell,
+  FamilyFailure,
+  IdentificationDto,
+  PlantDto,
+  SpeciesDto,
+  WorldSources,
+} from './world.dto';
+import { NodeKind, WorldData, WorldMeta, WorldNode } from './world.model';
 
 /** A collection with this many members or more collapses to 2 + "+N more" (C4/density). */
 const DENSITY_CAP = 4;
@@ -89,7 +97,7 @@ function speciesBody(s: SpeciesDto, plantsOfSpecies: PlantDto[], drawn: Set<stri
 function scanStatusLine(i: IdentificationDto): string {
   const name = esc(i.commonName ?? i.species ?? 'Unknown');
   if (i.status === 'FAILED') return `<span class="tag tag--ailing">Failed</span>`;
-  if (i.status === 'PENDING' || i.status === 'PROCESSING') return `<span class="tag tag--watch">Analysing…</span>`;
+  if (i.status === 'PENDING' || i.status === 'PROCESSING') return `<span class="tag tag--watch">Still identifying</span>`;
   return name;
 }
 
@@ -221,6 +229,90 @@ function deferredBody(title: string, id: string, note: string): string {
         <p class="state__note">${note}</p>
       </section>`)
   );
+}
+
+/** Which node wears a family's failure — degradation is per-node material (C25). */
+const FAILURE_NODE: Record<string, string> = {
+  reminders: 'n-reminders',
+  dashboard: 'n-today',
+  care: 'n-care',
+  treatments: 'n-treatments',
+  users: 'n-account',
+};
+
+function failureNodeId(f: FamilyFailure): string | null {
+  if (f.family === 'treatment-plans') return f.ref != null ? `n-treatment-${f.ref}` : null;
+  return FAILURE_NODE[f.family] ?? null;
+}
+
+/** The failure, written inside the node it belongs to: fact, time, fate, ways on. */
+function failureBody(f: FamilyFailure, extraWay: boolean): string {
+  const note = `PlantPal answered with ${f.status} at ${timeLabel(f.at)}. Everything already drawn is kept; nothing moved.`;
+  return (
+    recapWrap('Did not come back', esc(f.message ?? undefined)) +
+    full(`
+      <section class="state state--error" data-brief-item="state:error">
+        <div class="state__head"><h4 class="state__title">The ${esc(f.family)} did not come back</h4><span class="state__id">state · error</span></div>
+        <p class="state__note">${note}</p>
+        <div class="btn-row"><button class="stake" type="button">Fetch this region</button>${
+          extraWay ? '<button class="stake stake--quiet" type="button">Count again</button>' : ''
+        }</div>
+      </section>`)
+  );
+}
+
+/** Loader facts beside the board — never rendered, read by the chrome and actions. */
+function buildMeta(sources: WorldSources): WorldMeta {
+  const { now, reminders, plants, identifications, treatments, plansById, paused, failures } =
+    sources;
+  const dueReminders = reminders
+    .filter(r => r.enabled && isDue(r.nextDueAt, now, sources.settings.dueWindow))
+    .map(r => ({
+      id: r.id,
+      nextDueAt: r.nextDueAt,
+      plantId: r.plantId,
+      label: r.plantNickname
+        ? `${careLabel(r.careType)} · ${r.plantNickname}`
+        : careLabel(r.careType),
+    }));
+
+  const scansByPlant: Record<number, number> = {};
+  for (const i of [...identifications].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    if (i.plantId != null) scansByPlant[i.plantId] = i.id;
+  }
+
+  const treatmentsIndex: WorldMeta['treatmentsIndex'] = {};
+  for (const t of treatments) {
+    const plan = t.treatmentPlanId != null ? plansById[t.treatmentPlanId] : undefined;
+    const nextStep = plan?.steps
+      .filter(st => st.enabled)
+      .sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0))[0];
+    treatmentsIndex[t.id] = {
+      plantId: t.plantId,
+      status: t.status,
+      planId: t.treatmentPlanId ?? undefined,
+      nextStepId: nextStep?.id,
+      nextStepOrder: nextStep?.stepOrder,
+      paused: t.treatmentPlanId != null && paused.includes(t.treatmentPlanId),
+    };
+  }
+
+  return {
+    syncedAt: now,
+    reminders,
+    dueReminders,
+    plantsIndex: plants.map(p => ({
+      id: p.id,
+      nickname: p.nickname,
+      lastScanId: p.lastScanId ?? scansByPlant[p.id],
+    })),
+    treatmentsIndex,
+    scansByPlant,
+    hasPendingDescription: treatments.some(
+      t => (t.descriptionStatus ?? 'PENDING') === 'PENDING' && t.status !== 'COMPLETED',
+    ),
+    failures,
+  };
 }
 
 // ── the assembly ─────────────────────────────────────────────────────────────
@@ -361,11 +453,35 @@ export function assembleWorld(sources: WorldSources): WorldData {
     }
   }
 
-  layoutCells(nodes, edges, 'n-garden');
-  return { nodes: nodes as WorldNode[], edges, initialFocus: 'n-garden', hasPendingScan, latestFailedScanId };
+  // a family that did not come back wears its own failure — the rest stays live
+  for (const f of sources.failures) {
+    const id = failureNodeId(f);
+    const node = id ? nodes.find(n => n.id === id) : undefined;
+    if (!node || !id) continue;
+    const extraWay = id === 'n-today';
+    node.state = 'failed';
+    node.recap = 'Did not come back';
+    node.failure = {
+      fact: `The ${f.family} did not come back (${f.status}).`,
+      time: timeLabel(f.at),
+      dataNote: 'Everything already drawn is kept; nothing moved.',
+      waysForward: extraWay ? ['Fetch this region', 'Count again'] : ['Fetch this region'],
+    };
+    node.body = failureBody(f, extraWay);
+  }
+
+  layoutCells(nodes, edges, 'n-garden', sources.priorCells);
+  return {
+    nodes: nodes as WorldNode[],
+    edges,
+    initialFocus: 'n-garden',
+    hasPendingScan,
+    latestFailedScanId,
+    meta: buildMeta(sources),
+  };
 }
 
-function plantByOwed(a: PlantDto, b: PlantDto): number {
+export function plantByOwed(a: PlantDto, b: PlantDto): number {
   const score = (p: PlantDto) => (p.healthStatus === 'ISSUES_DETECTED' ? -1000 : 0) + (p.nextWaterDays ?? 99);
   return score(a) - score(b) || a.id - b.id;
 }
@@ -411,8 +527,19 @@ function emitCollapsed<T>(
 /**
  * Deterministic cell layout: breadth-first from the root; col = 2 × depth, rows
  * centred per layer. Same graph → same cells (C7). Unreachable nodes are parked.
+ *
+ * With `prior` cells given, insertion stability becomes real (C8): a node already on
+ * the board keeps the exact cell it had, and a new node takes the first free row of
+ * its own depth column — "a new node takes a free cell, nothing else moves" then
+ * holds across reloads, not only within one. With `prior` absent or empty the
+ * centred algorithm runs unchanged, so the shipped geography is untouched.
  */
-export function layoutCells(nodes: DraftNode[], edges: Edge[], rootId: string): void {
+export function layoutCells(
+  nodes: DraftNode[],
+  edges: Edge[],
+  rootId: string,
+  prior?: Record<string, Cell>,
+): void {
   const ids = nodes.map(n => n.id);
   const adjacency = buildAdjacency(edges, ids);
   const depth = rank(rootId, adjacency);
@@ -424,12 +551,39 @@ export function layoutCells(nodes: DraftNode[], edges: Edge[], rootId: string): 
     (byDepth.get(d) ?? byDepth.set(d, []).get(d)!).push(id);
   }
   const cellFor: Record<string, WorldNode['cell']> = {};
-  for (const [d, layer] of byDepth) {
-    layer.sort();
-    const mid = Math.floor((layer.length - 1) / 2);
-    layer.forEach((id, i) => {
-      cellFor[id] = { col: 2 * d, row: CENTER_ROW + i - mid };
-    });
+  if (prior && Object.keys(prior).length > 0) {
+    const taken = new Map<number, Set<number>>();
+    const rowsOf = (col: number) => taken.get(col) ?? taken.set(col, new Set()).get(col)!;
+    for (const [, layer] of byDepth) {
+      for (const id of layer) {
+        const kept = prior[id];
+        if (!kept) continue;
+        cellFor[id] = { col: kept.col, row: kept.row };
+        rowsOf(kept.col).add(kept.row);
+      }
+    }
+    for (const [d, layer] of byDepth) {
+      const col = 2 * d;
+      for (const id of [...layer].sort()) {
+        if (cellFor[id]) continue;
+        const rows = rowsOf(col);
+        let row = CENTER_ROW;
+        for (let step = 0; rows.has(row); step++) {
+          const spread = Math.floor(step / 2) + 1;
+          row = step % 2 === 0 ? CENTER_ROW - spread : CENTER_ROW + spread;
+        }
+        cellFor[id] = { col, row };
+        rows.add(row);
+      }
+    }
+  } else {
+    for (const [d, layer] of byDepth) {
+      layer.sort();
+      const mid = Math.floor((layer.length - 1) / 2);
+      layer.forEach((id, i) => {
+        cellFor[id] = { col: 2 * d, row: CENTER_ROW + i - mid };
+      });
+    }
   }
   let parked = 0;
   for (const n of nodes) {

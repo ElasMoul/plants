@@ -1,4 +1,5 @@
 import { Cell, Edge } from '@plantpal/rhizome-engine';
+import type { FamilyFailure, ReminderDto } from './world.dto';
 
 /** The kind of thing a node is — drives its signature colour (--vs-kind-*). */
 export type NodeKind =
@@ -21,7 +22,8 @@ export type NodeState =
   | 'loading' // data outstanding — show the node's own skeleton, no spinner
   | 'empty' // nothing here yet — dashed, offers a way to begin
   | 'unknown' // unfetched region — dashed, traversable, a real way to fetch it
-  | 'failed'; // a load failed — name the fact, time, and two ways forward
+  | 'failed' // a load failed — name the fact, time, and two ways forward
+  | 'archived'; // a stopped or finished thing that stays readable — never a removal
 
 /** A failure drawn inside the node it belongs to (C25). */
 export interface NodeFailure {
@@ -58,6 +60,35 @@ export interface WorldNode {
   /** World-level: an async identification is still in flight (drives polling). */
 }
 
+/**
+ * What the loader learned, beside the drawn nodes: the raw care-loop rows the
+ * chrome and the actions need (a bell count, a distance, a step id) without
+ * re-parsing generated HTML. Never rendered directly.
+ */
+export interface WorldMeta {
+  /** The instant this world was assembled from — every "when" word is measured from it. */
+  syncedAt: string;
+  reminders: ReminderDto[];
+  dueReminders: { id: number; nextDueAt: string; plantId: number; label: string }[];
+  plantsIndex: { id: number; nickname: string; lastScanId?: number }[];
+  treatmentsIndex: Record<
+    number,
+    {
+      plantId: number;
+      status: string;
+      planId?: number;
+      nextStepId?: number;
+      nextStepOrder?: number;
+      paused: boolean;
+    }
+  >;
+  /** plant id → its most recent identification id. */
+  scansByPlant: Record<number, number>;
+  /** A disease description is still being written (drives polling, like a scan). */
+  hasPendingDescription: boolean;
+  failures: FamilyFailure[];
+}
+
 export interface WorldData {
   /** True while an identification is PENDING/PROCESSING (client polls). */
   hasPendingScan?: boolean;
@@ -67,4 +98,6 @@ export interface WorldData {
   edges: Edge[];
   /** The node the camera starts on. */
   initialFocus: string;
+  /** Loader facts beside the board (undefined on the fixture). */
+  meta?: WorldMeta;
 }
