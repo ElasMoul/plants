@@ -113,6 +113,19 @@ export function MOTION_FOLLOW_HTML(s: AtlasSettings): string {
   );
 }
 
+/** The photographs the garden already holds, on the plate of the thing they are of. */
+export function PHOTOS_HTML(s: AtlasSettings): string {
+  return `<h3 class="sec" style="margin-top:var(--hbm-space-5)">Appearance · photographs</h3>${note(
+    'A plant and a scan can wear the photograph you took of it, in the plate its card already draws. Turned off, the drawn specimen stands in its place — the card is the same size either way, so nothing on the board moves when you change this.',
+  )}${yesNo(
+    'Photographs on plates',
+    'appearance.photos',
+    s.appearance.photos,
+    'Show the photograph',
+    'Draw the specimen',
+  )}`;
+}
+
 /** Appended beneath the pinned motion rows; the drift is decoration, and optional. */
 export function CARD_DRIFT_HTML(s: AtlasSettings): string {
   return `<h3 class="sec" style="margin-top:var(--hbm-space-5)">Appearance · card drift</h3>${note(
@@ -127,7 +140,7 @@ export function CARD_DRIFT_HTML(s: AtlasSettings): string {
 }
 
 export function MOTION_CONTROLS_HTML(s: AtlasSettings): string {
-  return MOTION_FOLLOW_HTML(s) + CARD_DRIFT_HTML(s);
+  return MOTION_FOLLOW_HTML(s) + CARD_DRIFT_HTML(s) + PHOTOS_HTML(s);
 }
 
 const FOCUS_OPTIONS: Option[] = [

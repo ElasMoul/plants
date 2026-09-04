@@ -320,6 +320,22 @@ conversation the atlas itself keeps.
 
 ## Standing decisions (2026-09)
 
+**Photographs on plates (PP-095).** The pinned prototype loads nothing external
+— every specimen is drawn from tokens — but a real garden has photographs in it,
+and the owner asked for them. Decision: the photograph fills the plate the card
+already draws (`.plate__specimen[data-photo]`, `background-size: cover`), and the
+drawn specimen is the fallback for every other case: no photo, photographs turned
+off, or an image that will not load. The plate is the same fixed 3/4 box either
+way, so a picture arriving or failing never resizes a card and never moves the
+board (C9). Two cards carry one: a plant wears its own photo, a scan wears the
+photograph that was scanned. Species keep the drawn specimen — a species is a
+reference, not a specimen you own. The thumb stays a glyph, never an image, as
+the prototype pins it. Only a URL this app serves may enter the CSS `url()` —
+our own `/photos/**` path or the mock's inline base64 image; anything else is
+treated as no photo, so nothing can break out of the declaration. Parametrable
+as `appearance.photos` (default on), and changing it re-assembles the drawn
+cards in place rather than waiting for the next load.
+
 Recorded so a later contributor does not "improve" them back.
 
 1. **A course is the prototype's `dl.rows`, not `ol.rz-course`.** The normative

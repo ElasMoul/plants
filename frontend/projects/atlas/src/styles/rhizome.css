@@ -546,6 +546,22 @@ body[data-mode="overview"] #world { pointer-events: none; }
   position: relative;
   overflow: hidden;
 }
+/* A photograph the garden already holds fills the plate when there is one and
+   Settings · Appearance · photographs is on. The drawn specimen below is the
+   fallback for every other case — no photo, photos off, or an image that will
+   not load — and the box is the same 3/4 either way, so the card never resizes
+   and the board never moves (C9). The drawn leaf is dropped when a real
+   photograph is present so nothing is painted over the picture. */
+.plate__specimen[data-photo] {
+  background-color: var(--vs-void);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.plate__specimen[data-photo]::after {
+  content: none;
+}
+
 /* Drawn from tokens. Nothing external loads, anywhere on this page. */
 .plate__specimen::after {
   content: "";
