@@ -132,6 +132,15 @@ describe('settings panes (S7)', () => {
     expect(el.querySelector('[data-set="ai.visionModelPreference"]')).toBeNull();
   });
 
+  it('never asserts a garden type PlantPal has not said', () => {
+    const reading = dom(renderPane('profile', ctx({ prefs: null, prefsState: 'reading' })) as string);
+    expect(reading.querySelector('[data-set="profile.businessTier"]')).toBeNull();
+    const failed = dom(renderPane('profile', ctx({ prefs: null, prefsState: 'failed' })) as string);
+    expect(failed.querySelector('[data-set="profile.businessTier"]')).toBeNull();
+    // and the account's own exit stays reachable in every state
+    expect(failed.querySelector('[data-action="sign-out"]')).not.toBeNull();
+  });
+
   it('shows the mock controls only in the mock garden', () => {
     const live = renderPane('data', ctx({ mock: false })) as string;
     expect(live).not.toContain('data.mockScenario');
@@ -141,6 +150,10 @@ describe('settings panes (S7)', () => {
     expect(dom(mock).querySelector('[data-action="reset-mock"]')).not.toBeNull();
     expect(dom(renderPane('advanced', ctx({ mock: false })) as string)
       .querySelector('[data-action="mock-fail-next"]')).toBeNull();
+    // "make the next change fail" lives in Advanced, and only there
+    expect(dom(mock).querySelector('[data-action="mock-fail-next"]')).toBeNull();
+    expect(dom(renderPane('advanced', ctx({ mock: true })) as string)
+      .querySelector('[data-action="mock-fail-next"]')).not.toBeNull();
   });
 
   it('offers the constitution parameters as rows with no control at all', () => {

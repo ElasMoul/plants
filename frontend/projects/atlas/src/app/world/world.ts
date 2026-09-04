@@ -200,6 +200,9 @@ export class World {
     });
   });
 
+  /** The mode the overlay effect last acted on — a transition, not a value. */
+  private lastMode: 'app' | 'overview' = 'app';
+
   private motes: Mote[] = [];
   private moteRaf = 0;
 
@@ -221,6 +224,16 @@ export class World {
     // A successful mutation re-assembles the world (a new node takes a free cell).
     effect(() => {
       if (this.actions.reloadRequested() > 0) this.loadLive();
+    });
+    // Cancel must be able to put back exactly what was here when the overlay
+    // opened — whatever route opened it (the gear, or the account's own stake).
+    effect(() => {
+      const mode = this.store.mode();
+      if (mode === this.lastMode) return;
+      const was = this.lastMode;
+      this.lastMode = mode;
+      if (mode === 'overview') this.settings.open();
+      else if (was === 'overview') this.settings.save();
     });
     // The pane follows its section, the settings, and what PlantPal said about models.
     effect(() => {
@@ -438,6 +451,10 @@ export class World {
   protected onShellClick(ev: Event): void {
     if (this.store.mode() === 'overview') {
       ev.stopPropagation();
+      // leaving keeps what is on screen — the same as Save, and the effect above
+      // clears the snapshot so a later Cancel can never reach back past here.
+      this.settings.save();
+      this.store.persistLayout();
       this.store.mode.set('app');
     }
   }
@@ -486,6 +503,8 @@ export class World {
       case 'save':
       case 'close':
         this.settings.save();
+        // "Remember the layout" is only acted on here, so Cancel can put it back.
+        this.store.persistLayout();
         this.store.mode.set('app');
         return;
       case 'cancel':
@@ -546,7 +565,9 @@ export class World {
 
   private applySetting(key: string): void {
     if (key === 'privacy.rememberLayout') {
-      this.store.persistLayout();
+      // Turning it ON writes at once; turning it OFF waits for Save, so Cancel
+      // can restore the setting AND the geography it was about to discard.
+      if (this.settings.settings().privacy.rememberLayout) this.store.persistLayout();
       return;
     }
     if (key === 'notifications.push') {
@@ -591,8 +612,12 @@ export class World {
         const field = document.querySelector<HTMLInputElement>(
           '#settings .pane input[data-set="ai.plantnetProject"]',
         );
+        if (!field) {
+          this.store.say('The flora field is not on screen — nothing was sent to PlantPal.');
+          return;
+        }
         const lang = this.settings.serverPrefs()?.plantnetLang ?? 'en';
-        this.prefs.update({ plantnetProject: field?.value ?? 'all', plantnetLang: lang }).subscribe({
+        this.prefs.update({ plantnetProject: field.value, plantnetLang: lang }).subscribe({
           next: () => this.store.say('PlantNet preferences saved to PlantPal.'),
           error: () =>
             this.store.say('PlantPal did not take the PlantNet preferences. Nothing changed.'),
@@ -618,9 +643,39 @@ export class World {
   /** The pinned Appearance pane, captured once and re-inserted rather than rebuilt. */
   private capturedAppearance: string | null = null;
 
+  /** A rewrite of the pane must not move the reader: the scroll offset and the
+   *  control they just pressed are put back where they were (C: a mutation never
+   *  moves focus). Controls are identified by what they do, not by index. */
+  private paneMark(pane: HTMLElement): { top: number; sel: string | null } {
+    const active = document.activeElement as HTMLElement | null;
+    let sel: string | null = null;
+    if (active && pane.contains(active)) {
+      const set = active.dataset['set'];
+      const value = active.dataset['value'];
+      const act = active.dataset['action'];
+      if (set !== undefined && value !== undefined) {
+        sel = `[data-set="${CSS.escape(set)}"][data-value="${CSS.escape(value)}"]`;
+      } else if (set !== undefined) {
+        sel = `[data-set="${CSS.escape(set)}"]`;
+      } else if (act !== undefined) {
+        sel = `[data-action="${CSS.escape(act)}"]`;
+      }
+    }
+    return { top: pane.scrollTop, sel };
+  }
+
+  private paneRestore(pane: HTMLElement, mark: { top: number; sel: string | null }): void {
+    pane.scrollTop = mark.top;
+    if (!mark.sel) return;
+    const again = pane.querySelector<HTMLElement>(mark.sel);
+    if (again) again.focus({ preventScroll: true });
+    pane.scrollTop = mark.top;
+  }
+
   private renderSettingsPane(): void {
     const pane = document.querySelector<HTMLElement>('#settings .pane');
     if (!pane) return;
+    const mark = this.paneMark(pane);
     if (this.capturedAppearance === null) this.capturedAppearance = pane.innerHTML;
     const section = this.settings.section();
     for (const b of Array.from(document.querySelectorAll<HTMLElement>('#settings nav button'))) {
@@ -639,9 +694,11 @@ export class World {
       if (dd) dd.innerHTML = MOTION_FOLLOW_HTML(s);
       dl?.insertAdjacentHTML('afterend', CARD_DRIFT_HTML(s));
       this.refreshPickers();
+      this.paneRestore(pane, mark);
       return;
     }
     pane.innerHTML = html;
+    this.paneRestore(pane, mark);
   }
 
   private paneContext(): PaneContext {

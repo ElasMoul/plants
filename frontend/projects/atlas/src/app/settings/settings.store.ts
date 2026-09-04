@@ -105,8 +105,12 @@ export class SettingsStore {
     this.persist(this.settings());
   }
 
+  /** Defaults, and the snapshot goes with them — a Cancel after a deliberate
+   *  reset (or after "forget everything on this device") must not resurrect what
+   *  was just discarded. */
   reset(): void {
     this.restore(DEFAULT_SETTINGS);
+    this.openSnapshot = null;
   }
 
   /** A plain object (JSON round-trip equal) so the assembly stays a pure function. */

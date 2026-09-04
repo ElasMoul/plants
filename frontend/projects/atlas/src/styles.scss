@@ -44,3 +44,11 @@ rz-chrome { display: contents; }
   padding: 6px 8px;
 }
 body[data-api-ids="off"] .state__id { display: none; }
+
+/* Degradation material inside a settings pane: .n__skel is hidden outside a node
+   card, so the pane reveals its own copy while PlantPal is being asked. */
+#settings .pane .n__skel {
+  display: grid;
+  gap: var(--vs-gutter-tight);
+  margin-block: var(--vs-gutter-tight);
+}

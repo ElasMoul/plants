@@ -241,12 +241,22 @@ function profilePane(s: AtlasSettings, ctx: PaneContext): string {
 
       ${sec('Profile · garden type')}
       ${note('This one is PlantPal’s, not this device’s. Saved to PlantPal at once — Cancel does not undo it.')}
-      ${picker('Garden type', 'profile.businessTier', !!ctx.prefs?.businessTier, [
-        { value: false, name: 'Home garden' },
-        { value: true, name: 'Business or professional' },
-      ])}
+      ${
+        ctx.prefs
+          ? gardenTypePicker(ctx.prefs.businessTier)
+          : ctx.prefsState === 'reading'
+            ? note('PlantPal is being asked which garden type it has for you.')
+            : note('PlantPal did not say which garden type it has for you. Your choice is unchanged; this atlas simply could not read it.')
+      }
 
       <div class="btn-row">${action('sign-out', 'Sign out here')}</div>`;
+}
+
+function gardenTypePicker(businessTier: unknown): string {
+  return `${picker('Garden type', 'profile.businessTier', !!businessTier, [
+        { value: false, name: 'Home garden' },
+        { value: true, name: 'Business or professional' },
+      ])}`;
 }
 
 const PUSH_SENTENCE: Record<PushState, string> = {
@@ -317,10 +327,7 @@ function dataPane(s: AtlasSettings, ctx: PaneContext): string {
         { value: 1500, name: '1.5 seconds' },
         { value: 12000, name: '12 seconds', note: 'walks the slow state' },
       ])}
-      <div class="btn-row">${action('reset-mock', 'Reset the mock garden')}${action(
-        'mock-fail-next',
-        'Make the next change fail',
-      )}</div>`
+      <div class="btn-row">${action('reset-mock', 'Reset the mock garden')}</div>`
     : '';
   return `${sec('Data & Sync · where the world comes from')}
       ${note('Applies after a reload — the world is rebuilt from the other source. While the mock garden is on the topbar says so, so a real empty garden is never dressed with sample records.')}

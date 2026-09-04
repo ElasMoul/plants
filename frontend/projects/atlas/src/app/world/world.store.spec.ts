@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { anchorPosition } from '@plantpal/rhizome-engine';
 import { LAYOUT_KEY, WorldStore } from './world.store';
+import { MOCK_MODE } from '../core/mock-mode';
 import { SETTINGS_KEY } from '../settings/settings.model';
 import type { WorldData, WorldNode } from './world.model';
 
@@ -197,7 +198,10 @@ describe('WorldStore (S7 — the store reads its settings)', () => {
     store.setOffset('n-today', { x: 12, y: -8 });
     store.setModeFor('n-today', 'min');
     jest.advanceTimersByTime(250);
-    const kept = JSON.parse(localStorage.getItem(LAYOUT_KEY) as string);
+    // the two gardens keep their geography apart — this is the live one's branch
+    const blob = JSON.parse(localStorage.getItem(LAYOUT_KEY) as string);
+    expect(blob.mock).toEqual({ cells: {}, offsets: {}, modes: {} });
+    const kept = blob.live;
     expect(kept.offsets['n-today']).toEqual({ x: 12, y: -8 });
     expect(kept.modes['n-today']).toBe('min');
     expect(kept.cells['n-today']).toEqual({ col: 2, row: 3 });
@@ -214,6 +218,30 @@ describe('WorldStore (S7 — the store reads its settings)', () => {
     forgetful.setOffset('n-garden', { x: 4, y: 4 });
     jest.advanceTimersByTime(250);
     expect(localStorage.getItem(LAYOUT_KEY)).toBeNull();
+  });
+
+  it('never applies a mock session’s geography to the real garden', () => {
+    const live = make();
+    live.setWorld(world);
+    live.setOffset('n-today', { x: 12, y: -8 });
+    jest.advanceTimersByTime(250);
+
+    // the same page, switched to the mock garden: it starts from nothing
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: MOCK_MODE, useValue: { enabled: true, scenario: 'garden', latencyMs: 0 } }],
+    });
+    const mock = TestBed.inject(WorldStore);
+    expect(mock.offsets()).toEqual({});
+    mock.setWorld(world);
+    mock.setOffset('n-today', { x: 400, y: 400 });
+    jest.advanceTimersByTime(250);
+
+    // and the live garden still has its own, untouched
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const back = TestBed.inject(WorldStore);
+    expect(back.offsets()['n-today']).toEqual({ x: 12, y: -8 });
   });
 
   it('cellsSnapshot keeps a cell the board has not drawn this time', () => {

@@ -19,6 +19,7 @@ import {
   TargetMap,
   travelCamera,
 } from '@plantpal/rhizome-engine';
+import { MOCK_MODE } from '../core/mock-mode';
 import { DeviceStore } from '../settings/device.store';
 import { SettingsStore } from '../settings/settings.store';
 import { timeLabel } from './dates';
@@ -58,6 +59,40 @@ function readLayout(): string | null {
   }
 }
 
+/** The two gardens keep their own geography: a mock session's cells, drag offsets
+ *  and size pins must never be applied to the real garden (node ids collide). */
+export type LayoutSource = 'live' | 'mock';
+
+export interface StoredLayouts {
+  live: StoredLayout;
+  mock: StoredLayout;
+}
+
+/** How many remembered cells a device keeps before it stops growing. */
+const MAX_KEPT_CELLS = 200;
+
+export function parseLayouts(raw: string | null): StoredLayouts {
+  const blank = (): StoredLayout => ({ cells: {}, offsets: {}, modes: {} });
+  const out: StoredLayouts = { live: blank(), mock: blank() };
+  if (!raw) return out;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return out;
+  }
+  if (!parsed || typeof parsed !== 'object') return out;
+  const r = parsed as Record<string, unknown>;
+  // A blob written before the sources were split is the live garden's.
+  if (r['cells'] || r['offsets'] || r['modes']) {
+    out.live = parseLayout(raw);
+    return out;
+  }
+  out.live = parseLayout(JSON.stringify(r['live'] ?? {}));
+  out.mock = parseLayout(JSON.stringify(r['mock'] ?? {}));
+  return out;
+}
+
 export function parseLayout(raw: string | null): StoredLayout {
   const empty: StoredLayout = { cells: {}, offsets: {}, modes: {} };
   if (!raw) return empty;
@@ -88,9 +123,13 @@ export function parseLayout(raw: string | null): StoredLayout {
 export class WorldStore {
   private readonly settings = inject(SettingsStore);
   private readonly device = inject(DeviceStore);
+  /** Which garden this session's geography belongs to — never the other one's. */
+  private readonly layoutSource: LayoutSource = inject(MOCK_MODE, { optional: true })?.enabled
+    ? 'mock'
+    : 'live';
   /** What the last session kept, when it was allowed to keep anything. */
   private readonly storedLayout: StoredLayout = this.settings.settings().privacy.rememberLayout
-    ? parseLayout(readLayout())
+    ? parseLayouts(readLayout())[this.layoutSource]
     : { cells: {}, offsets: {}, modes: {} };
 
   private readonly data = signal<WorldData>(FIXTURE_WORLD);
@@ -288,6 +327,12 @@ export class WorldStore {
 
   /** Where every node sits right now — fed back into the next layout so an existing
    *  node keeps its cell and a new one takes a free one (C8). */
+  /** What the last session left behind — the seed for the FIRST assembly, before
+   *  any node of this session has been drawn. */
+  storedCells(): Record<string, { col: number; row: number }> {
+    return { ...this.storedLayout.cells };
+  }
+
   cellsSnapshot(): Record<string, { col: number; row: number }> {
     const out: Record<string, { col: number; row: number }> = { ...this.storedLayout.cells };
     for (const n of this.nodes()) out[n.id] = { col: n.cell.col, row: n.cell.row };
@@ -498,16 +543,28 @@ export class WorldStore {
     if (this.layoutTimer) clearTimeout(this.layoutTimer);
     this.layoutTimer = setTimeout(() => {
       const payload: StoredLayout = {
-        cells: this.cellsSnapshot(),
+        cells: this.keptCells(),
         offsets: this.offsets(),
         modes: this.modes(),
       };
       try {
-        localStorage.setItem(LAYOUT_KEY, JSON.stringify(payload));
+        const all = parseLayouts(readLayout());
+        all[this.layoutSource] = payload;
+        localStorage.setItem(LAYOUT_KEY, JSON.stringify(all));
       } catch {
         /* storage is a convenience, never a requirement */
       }
     }, 250);
+  }
+
+  /** The remembered cells, capped — a device never grows a map of ids it will
+   *  never see again. Beyond the cap only this world's own cells survive. */
+  private keptCells(): Record<string, { col: number; row: number }> {
+    const merged = this.cellsSnapshot();
+    if (Object.keys(merged).length <= MAX_KEPT_CELLS) return merged;
+    const out: Record<string, { col: number; row: number }> = {};
+    for (const n of this.nodes()) out[n.id] = { col: n.cell.col, row: n.cell.row };
+    return out;
   }
 
   forgetLayout(): void {

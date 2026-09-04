@@ -61,12 +61,48 @@ test.describe('settings', () => {
   test('cancel puts back exactly what was there when the panel opened', async ({ page }) => {
     const atlas = new AtlasPage(page);
     await atlas.goto('garden');
+    const before = await atlas.geography();
+    const ids = await atlas.nodeIds();
+    const focus = await atlas.focusId();
+    const camera = await atlas.camera();
+
     await atlas.openSettings();
     await atlas.settingsNav('Appearance').click();
     await atlas.pane().locator('.palette[data-palette="terrarium"]').click();
     await expect(page.locator('html')).toHaveAttribute('data-palette', 'terrarium');
     await page.locator('#cancel-settings').click();
     await expect(page.locator('html')).toHaveAttribute('data-palette', 'first-light');
+
+    // cancel re-assembles: the board it comes back to is the board it left
+    await expect(page.locator('rz-node#n-treatments')).toBeVisible();
+    expect(await atlas.geography()).toEqual(before);
+    expect(await atlas.nodeIds()).toEqual(ids);
+    expect(await atlas.focusId()).toBe(focus);
+    expect(await atlas.camera()).toBe(camera);
+  });
+
+  test('cancel undoes a change made from the account stake, not only the gear', async ({ page }) => {
+    const atlas = new AtlasPage(page);
+    await atlas.goto('garden');
+    await atlas.openSettings();
+    await atlas.settingsNav('Profile').click();
+    const metric = atlas.pane().locator('[data-set="profile.units"][data-value="metric"]');
+    await expect(metric).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('#save-settings').click();
+
+    // the other door into the overlay: the account node's own stake
+    await atlas.node('n-account').click();
+    await atlas.stake('n-account', 'Edit your details').click();
+    await expect(page.locator('#overview')).toBeVisible();
+    await atlas.pane().locator('[data-set="profile.units"][data-value="imperial"]').click();
+    await expect(atlas.pane().locator('[data-set="profile.units"][data-value="imperial"]'))
+      .toHaveAttribute('aria-pressed', 'true');
+    await page.locator('#cancel-settings').click();
+
+    await atlas.openSettings();
+    await atlas.settingsNav('Profile').click();
+    await expect(atlas.pane().locator('[data-set="profile.units"][data-value="metric"]'))
+      .toHaveAttribute('aria-pressed', 'true');
   });
 
   test('the probe panel and the classic link follow their settings', async ({ page }) => {
@@ -89,11 +125,21 @@ test.describe('settings', () => {
   test('reset restores the defaults, in words and on the document', async ({ page }) => {
     const atlas = new AtlasPage(page);
     await atlas.goto('garden');
+    const before = await atlas.geography();
+    const focus = await atlas.focusId();
+    const camera = await atlas.camera();
+
     await atlas.openSettings();
     await atlas.settingsNav('Appearance').click();
     await atlas.pane().locator('.palette[data-ui="glasshouse-table"]').click();
     await page.locator('#settings footer .hop').click();
     await expect(page.locator('html')).toHaveAttribute('data-ui', 'sill-line');
     await expect(atlas.live()).toContainText('Defaults restored');
+
+    // reset re-assembles too — and moves neither the board nor the camera
+    await expect(page.locator('rz-node#n-treatments')).toBeVisible();
+    expect(await atlas.geography()).toEqual(before);
+    expect(await atlas.focusId()).toBe(focus);
+    expect(await atlas.camera()).toBe(camera);
   });
 });

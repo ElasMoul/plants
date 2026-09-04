@@ -266,7 +266,7 @@ export class WorldGraphService {
                   preferences,
                   failures,
                   settings: this.settings.assemblySnapshot(),
-                  priorCells: this.assembled ? this.store.cellsSnapshot() : undefined,
+                  priorCells: this.assembled ? this.store.cellsSnapshot() : this.store.storedCells(),
                   paused: local.pausedPlanIds,
                   snoozed: local.snoozed,
                   stoppedReminders: [...this.stoppedReminders.values()],
