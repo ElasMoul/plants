@@ -13,6 +13,7 @@ function ident(id: number, status = 'COMPLETED', over: Partial<IdentificationDto
 
 function sources(over: Partial<WorldSources> = {}): WorldSources {
   return emptySources({
+    now: '2026-09-04T09:00:00.000Z',
     plants: [plant(1), plant(2), plant(3)],
     species: [species(1), species(2)],
     identifications: [ident(1)],

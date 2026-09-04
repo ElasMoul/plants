@@ -65,6 +65,7 @@ export function parseDevice(raw: string | null): DeviceState {
   }
   if (!parsed || typeof parsed !== 'object') return out;
   const r = parsed as Record<string, unknown>;
+  if (r['v'] !== 1) return out;
   if (typeof r['lastFocus'] === 'string') out.lastFocus = r['lastFocus'];
   const push = r['push'] as Record<string, unknown> | undefined;
   if (push && typeof push['endpoint'] === 'string' && typeof push['subscribedAt'] === 'string') {
@@ -85,8 +86,14 @@ export function parseDevice(raw: string | null): DeviceState {
 export class DeviceStore {
   readonly state = signal<DeviceState>(parseDevice(this.read()));
 
+  /** A copy: the only way to change device state is through the methods below. */
   care(source: DataSource): CareLocal {
-    return this.state().care[source];
+    const care = this.state().care[source];
+    return {
+      pausedPlanIds: [...care.pausedPlanIds],
+      snoozed: { ...care.snoozed },
+      knownTreatmentIds: [...care.knownTreatmentIds],
+    };
   }
 
   pausePlan(source: DataSource, planId: number): void {

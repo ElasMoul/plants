@@ -31,7 +31,7 @@ describe('resolveMockMode (S1 — activation)', () => {
   it('enables the mock garden from ?mock=1 and scrubs only that param', () => {
     const { win, store, replaced } = fakeWin('http://localhost:4300/?mock=1&keep=yes#frag');
     const mode = resolveMockMode(win, { mockByDefault: false });
-    expect(mode).toEqual({ enabled: true, scenario: 'garden', latencyMs: 0 });
+    expect(mode).toEqual({ enabled: true, scenario: 'garden', latencyMs: 300 });
     expect(replaced[0]).toBe('/?keep=yes#frag');
     expect(JSON.parse(store['atlas_settings']).data).toEqual({ source: 'mock', mockScenario: 'garden' });
   });

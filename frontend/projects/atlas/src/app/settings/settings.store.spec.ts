@@ -18,8 +18,11 @@ describe('SettingsStore', () => {
   it('persists only the difference from the defaults', () => {
     const s = make();
     s.set('general.pollIntervalMs', 20000);
+    // data.source is always written, default or not, so an explicit "live"
+    // choice survives a reload (mock-mode reads this blob).
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({
       general: { pollIntervalMs: 20000 },
+      data: { source: 'live' },
     });
     expect(make().get('general.pollIntervalMs')).toBe(20000);
   });
@@ -45,36 +48,38 @@ describe('SettingsStore', () => {
     s.set('care.askForNotes', true);
     s.reset();
     expect(s.settings()).toEqual(DEFAULT_SETTINGS);
-    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({});
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({ data: { source: 'live' } });
   });
 
   it('open, change and cancel restores the snapshot taken at open', () => {
     const s = make();
-    s.set('appearance.palette', 'moss');
+    s.set('appearance.palette', 'terrarium');
     s.open();
-    s.set('appearance.palette', 'ink');
+    s.set('appearance.palette', 'late-bench');
     s.set('care.defaultFrequencyDays', 14);
-    expect(s.get('appearance.palette')).toBe('ink');
+    expect(s.get('appearance.palette')).toBe('late-bench');
     s.cancel();
-    expect(s.get('appearance.palette')).toBe('moss');
+    expect(s.get('appearance.palette')).toBe('terrarium');
     expect(s.get('care.defaultFrequencyDays')).toBe(7);
   });
 
   it('save keeps the changes made since open', () => {
     const s = make();
     s.open();
-    s.set('appearance.palette', 'moss');
+    s.set('appearance.palette', 'terrarium');
     s.save();
     s.cancel();
-    expect(s.get('appearance.palette')).toBe('moss');
+    expect(s.get('appearance.palette')).toBe('terrarium');
   });
 
   it('assemblySnapshot is a plain object', () => {
     const s = make();
     s.set('general.dateStyle', 'absolute');
     const snap = s.assemblySnapshot();
-    expect(JSON.parse(JSON.stringify(snap))).toEqual(snap);
+    expect(Object.getPrototypeOf(snap)).toBe(Object.prototype);
     expect(snap.dateStyle).toBe('absolute');
+    (snap as { dateStyle: string }).dateStyle = 'relative';
+    expect(s.settings().general.dateStyle).toBe('absolute');
   });
 
   it('does not throw when localStorage.setItem throws', () => {

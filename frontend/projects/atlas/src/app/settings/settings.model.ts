@@ -8,6 +8,7 @@
  * in DeviceStore under its own key, namespaced by data source.
  */
 
+import { DEFAULT_MOCK_LATENCY_MS } from '../core/mock-mode';
 import { environment } from '../../environments/environment';
 
 export const SETTINGS_KEY = 'atlas_settings';
@@ -109,7 +110,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     stepReminders: 'under-course',
     source: 'live',
     mockScenario: 'garden',
-    mockLatencyMs: 300,
+    mockLatencyMs: DEFAULT_MOCK_LATENCY_MS,
     pageSize: 50,
     careLogPageSize: 5,
   },
@@ -134,12 +135,12 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
 /** The seven palettes the pinned prototype ships. */
 export const PALETTES = [
   'first-light',
-  'glasshouse',
-  'terracotta',
-  'moss',
-  'night-garden',
-  'paper',
-  'ink',
+  'night-canopy',
+  'terrarium',
+  'potting-shed',
+  'pressed-sheet',
+  'late-bench',
+  'glasshouse-table',
 ];
 
 type Rule = readonly unknown[] | 'string' | 'boolean' | 'isoOrNull' | 'url';
@@ -248,6 +249,13 @@ export function structuredCloneish(s: AtlasSettings): AtlasSettings {
   return JSON.parse(JSON.stringify(s)) as AtlasSettings;
 }
 
+/**
+ * Leaves always written even when they equal their default: an explicit choice
+ * that happens to match the default must still survive a reload (mock-vs-live
+ * reads this blob and falls back to the environment when the key is absent).
+ */
+const ALWAYS_PERSIST = new Set(['data.source']);
+
 /** The difference from the defaults — the only thing worth persisting. */
 export function diffFromDefaults(s: AtlasSettings): Record<string, Record<string, unknown>> {
   const out: Record<string, Record<string, unknown>> = {};
@@ -255,7 +263,7 @@ export function diffFromDefaults(s: AtlasSettings): Record<string, Record<string
     const mine = s[group as keyof AtlasSettings] as Record<string, unknown>;
     const base = DEFAULT_SETTINGS[group as keyof AtlasSettings] as Record<string, unknown>;
     for (const key of Object.keys(base)) {
-      if (mine[key] !== base[key]) {
+      if (mine[key] !== base[key] || ALWAYS_PERSIST.has(`${group}.${key}`)) {
         out[group] ??= {};
         out[group][key] = mine[key];
       }

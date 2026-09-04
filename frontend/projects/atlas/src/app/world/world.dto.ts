@@ -277,7 +277,7 @@ export const DEFAULT_ASSEMBLY_SETTINGS: AssemblySettings = {
 /** Every field defaulted, so a caller only states what it is testing. */
 export function emptySources(over: Partial<WorldSources> = {}): WorldSources {
   return {
-    now: '2026-09-04T09:00:00.000Z',
+    now: new Date().toISOString(),
     plants: [],
     species: [],
     identifications: [],

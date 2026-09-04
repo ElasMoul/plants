@@ -23,6 +23,14 @@ export function provideMockModeOff(): Provider {
 
 const SETTINGS_KEY = 'atlas_settings';
 
+/**
+ * The mock backend's default answer delay. Exported so DEFAULT_SETTINGS can use
+ * the same number: only the diff from the defaults is persisted, so a reader who
+ * never touches the control stores nothing and both sides must agree on the
+ * fallback.
+ */
+export const DEFAULT_MOCK_LATENCY_MS = 300;
+
 interface StoredData {
   source?: string;
   mockScenario?: string;
@@ -97,7 +105,9 @@ export function resolveMockMode(win: WinLike, env: { mockByDefault: boolean }): 
     ...(memoryData.get(win) ?? {}),
     ...((readSettings(win)['data'] ?? {}) as StoredData),
   } as StoredData;
-  const latencyMs = typeof data.mockLatencyMs === 'number' ? data.mockLatencyMs : 0;
+  // Must match DEFAULT_SETTINGS.data.mockLatencyMs: only the diff from the
+  // defaults is persisted, so an untouched control stores nothing at all.
+  const latencyMs = typeof data.mockLatencyMs === 'number' ? data.mockLatencyMs : DEFAULT_MOCK_LATENCY_MS;
 
   let param: string | null = null;
   try {
