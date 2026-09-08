@@ -69,6 +69,15 @@ deploy, on its own cadence; the platform observes via `app.health`).
       `plants-atlas.moulworks.com` at the registrar, same as the classic one.
    Note `VAPID_PUBLIC_KEY` is baked into BOTH apps (each carries its own push
    subscribe); unset, push is refused in words rather than breaking.
+   **If a NEW Vercel project deploys with `Error: Project not found` while the
+   older one still deploys fine, suspect the token, not the ids.** A Vercel
+   token can keep working for projects it already knew while failing to resolve
+   an account at all — the tell is `vercel whoami --token=...` answering
+   `Error: User not found.` Ids and org can be provably correct (compare a
+   sha256 of the stored secret against the dashboard's Project ID) and the
+   deploy still fails. Fix: issue a fresh token scoped to the account/team that
+   owns the projects and update `VERCEL_TOKEN`; `whoami` naming the user and
+   `vercel project ls` listing the project are the proof it is healthy.
 3c. **Photo storage (Cloudinary — recommended in prod)** — the Railway container
    disk is wiped on every redeploy, so `STORAGE_TYPE=local` keeps photos only in
    the 30-day Redis cache. For durable storage: create a free Cloudinary account
