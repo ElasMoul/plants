@@ -1,0 +1,3 @@
+{"ev": "session_start", "ts": "2026-09-08T00:57:50+01:00", "agent": "codex", "model": "claude-code"}
+{"ev": "query", "ts": "2026-09-08T00:57:51+01:00", "terms": "auth inventory protected routes endpoints demand fulfillment", "returned": [], "bodies_shown": []}
+{"ev": "session_stop", "ts": "2026-09-08T01:12:25+01:00"}

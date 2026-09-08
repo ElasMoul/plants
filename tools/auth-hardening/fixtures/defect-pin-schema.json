@@ -1,0 +1,26 @@
+{
+  "pin_pattern": "PP-AUTH-[0-9]{3}",
+  "allowed_assignments": ["authguard", "jwtinterceptor", "sessionhandoff"],
+  "pins": [
+    {"pin": "PP-AUTH-001", "assignment": "authguard"},
+    {"pin": "PP-AUTH-002", "assignment": "jwtinterceptor"},
+    {"pin": "PP-AUTH-003", "assignment": "sessionhandoff"}
+  ],
+  "source_checks": [
+    {
+      "pin": "PP-AUTH-001",
+      "path": "frontend/src/app/core/guards/auth.guard.ts",
+      "contains": ["this.authService.isLoggedIn()", "this.router.createUrlTree(['/login'])"]
+    },
+    {
+      "pin": "PP-AUTH-002",
+      "path": "frontend/src/app/core/interceptors/jwt.interceptor.ts",
+      "contains": ["if (error.status === 401)", "this.authService.logout()", "this.router.navigate(['/login'])"]
+    },
+    {
+      "pin": "PP-AUTH-003",
+      "path": "frontend/projects/shared-core/src/lib/session-handoff.ts",
+      "contains": ["const FRAGMENT_PREFIX = '#session='", "win.localStorage.setItem(SESSION_TOKEN_KEY, payload.t)"]
+    }
+  ]
+}

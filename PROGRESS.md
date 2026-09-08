@@ -251,3 +251,29 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-04 atlas second Vercel project + plant photographs
+
+## Session 8 (2026-09-08)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-08_0057_fulfill-app-studio-20260907-plantpal-t1.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill app-studio-20260907-plantpal-t1-20 auth surface inventory -- status: done.
+- Next step: Coordinator validates and owner-approves T1.20; T1.22 can consume the protected endpoint rows.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-08_0057_fulfill-app-studio-20260907-plantpal-t1
+
+## Session 9 (2026-09-08)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-08_0115_land-t1-20-fulfillment-report-on-main-de.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Land T1.20 fulfillment report on main demand doorbell -- status: done.
+- Next step: Coordinator owner approves T1.20; subsequent T1.22 work consumes the protected endpoint rows.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-08_0115_land-t1-20-fulfillment-report-on-main-de
