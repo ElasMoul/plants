@@ -329,3 +329,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-08_2006_fulfill-app-studio-20260907-plantpal-t1
+
+## Session 14 (2026-09-09)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-08_2336_fulfill-app-studio-20260907-plantpal-t1.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill app-studio-20260907-plantpal-t1-26 blocking auth CI evidence -- status: done.
+- Next step: Coordinator validates T1.26 and the owner decides approval; T1.27 remains the owner-observation unit.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-08_2336_fulfill-app-studio-20260907-plantpal-t1
