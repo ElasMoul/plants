@@ -27,11 +27,13 @@
     "tools/auth-hardening/verify_ci_policy.py",
     "tools/auth-hardening/verify_ci_run.py",
     "tools/auth-hardening/fixtures/ci-policy.json",
-    "tools/auth-hardening/fixtures/ci-allowed-paths.json"
+    "tools/auth-hardening/fixtures/ci-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-26-report.md"
   ],
   "required_changed_path_groups": {
     "ci": [".github/workflows/ci.yml"],
     "ignore_rules": [".gitignore"],
-    "verification_assets": ["tools/auth-hardening/**"]
+    "verification_assets": ["tools/auth-hardening/**"],
+    "evidence": ["demands/fulfilled/app-studio-20260907-plantpal-t1-26-report.md"]
   }
 }
