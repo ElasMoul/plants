@@ -1,0 +1,70 @@
+{
+  "subject": "github_actions_workflow",
+  "workflow_file": ".github/workflows/ci.yml",
+  "workflow_name": "CI",
+  "required_events": ["push", "pull_request"],
+  "forbidden_event_filters": ["branches", "branches-ignore", "paths", "paths-ignore"],
+  "required_job": {
+    "id": "auth-characterization-ci",
+    "name": "Auth Characterization CI",
+    "allowed_runs_on": ["ubuntu-latest"]
+  },
+  "required_runner_steps": [
+    {
+      "id": "run-protected-endpoint-auth",
+      "working_directory": "backend",
+      "run": "mvn -DfailIfNoTests=true -Dtest=ProtectedEndpointAuthTest test --batch-mode --no-transfer-progress",
+      "allowed_if": [null]
+    },
+    {
+      "id": "run-auth-guard",
+      "working_directory": "frontend",
+      "run": "npm run test:auth-guard",
+      "allowed_if": ["${{ !cancelled() }}"]
+    },
+    {
+      "id": "run-jwt-interceptor",
+      "working_directory": "frontend",
+      "run": "npm run test:jwt-interceptor",
+      "allowed_if": ["${{ !cancelled() }}"]
+    },
+    {
+      "id": "run-session-handoff",
+      "working_directory": "frontend",
+      "run": "npm run test:session-handoff",
+      "allowed_if": ["${{ !cancelled() }}"]
+    }
+  ],
+  "report_artifact": {
+    "step_id": "upload-auth-characterization-reports",
+    "uses": "actions/upload-artifact@v4",
+    "name": "auth-hardening-ci-reports",
+    "if": "${{ always() }}",
+    "if_no_files_found": "error",
+    "required_paths": [
+      "backend/target/surefire-reports/TEST-ProtectedEndpointAuthTest.xml",
+      "frontend/test-results/auth-guard.xml",
+      "frontend/test-results/jwt-interceptor.xml",
+      "frontend/test-results/session-handoff.xml"
+    ]
+  },
+  "required_existing_suite_steps": [
+    {
+      "job_id": "backend-ci",
+      "working_directory": "backend",
+      "run": "mvn clean verify --batch-mode --no-transfer-progress -Ddependency.check.skip=true"
+    },
+    {
+      "job_id": "frontend-ci",
+      "working_directory": "frontend",
+      "run": "npm test"
+    }
+  ],
+  "allowed_ci_input_globs": [
+    ".github/workflows/ci.yml",
+    "backend/**",
+    "frontend/**",
+    "contracts-src",
+    "contracts-src/gen/java/**"
+  ]
+}

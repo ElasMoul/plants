@@ -1,0 +1,37 @@
+{
+  "subject": "git_changed_files",
+  "base_ref": "7bfebd30b6c7b98a5e2e085fd13e2a3567b386c5",
+  "ignored_preexisting_untracked": ["AGENTS.md"],
+  "allowed_globs": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "tools/auth-hardening/verify_ci_policy.py",
+    "tools/auth-hardening/verify_ci_run.py",
+    "tools/auth-hardening/fixtures/ci-policy.json",
+    "tools/auth-hardening/fixtures/ci-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-26-report.md",
+    ".brain/events/**",
+    ".brain/sessions/**",
+    "PROGRESS.md"
+  ],
+  "forbidden_globs": [
+    "backend/src/main/**",
+    "frontend/src/**/*.ts",
+    "frontend/projects/**/src/**/*.ts",
+    "app-manifest.yaml",
+    "HEXAGON.md"
+  ],
+  "required_paths": [
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "tools/auth-hardening/verify_ci_policy.py",
+    "tools/auth-hardening/verify_ci_run.py",
+    "tools/auth-hardening/fixtures/ci-policy.json",
+    "tools/auth-hardening/fixtures/ci-allowed-paths.json"
+  ],
+  "required_changed_path_groups": {
+    "ci": [".github/workflows/ci.yml"],
+    "ignore_rules": [".gitignore"],
+    "verification_assets": ["tools/auth-hardening/**"]
+  }
+}

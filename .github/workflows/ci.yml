@@ -2,9 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
   pull_request:
-    branches: [main, dev]
   workflow_dispatch:       # allow manual trigger from the Actions tab / API
 
 jobs:
@@ -141,6 +139,90 @@ jobs:
       #       frontend/test-results/**/*.png
       #     if-no-files-found: ignore
       #     retention-days: 7
+
+  # Auth hardening wave 1 characterization evidence. Keep these exact-file
+  # runners separate from the full suites above so their reports prove that
+  # every required security boundary actually executed.
+  auth-characterization-ci:
+    name: Auth Characterization CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Read pinned contracts version
+        id: auth-contracts
+        run: |
+          VERSION=$(grep -A1 '<artifactId>contracts</artifactId>' backend/pom.xml | grep -oP '(?<=<version>)[^<]+')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout contracts at pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: elmoul/contracts
+          ref: v${{ steps.auth-contracts.outputs.version }}
+          token: ${{ secrets.CONTRACTS_READ_TOKEN }}
+          path: contracts-src
+
+      - name: Install contracts bindings into local Maven repo
+        working-directory: contracts-src/gen/java
+        run: mvn install -DskipTests --batch-mode --no-transfer-progress
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run protected endpoint auth characterization
+        id: run-protected-endpoint-auth
+        working-directory: backend
+        run: mvn -DfailIfNoTests=true -Dtest=ProtectedEndpointAuthTest test --batch-mode --no-transfer-progress
+
+      - name: Run AuthGuard characterization
+        id: run-auth-guard
+        if: ${{ !cancelled() }}
+        working-directory: frontend
+        run: npm run test:auth-guard
+
+      - name: Run JwtInterceptor characterization
+        id: run-jwt-interceptor
+        if: ${{ !cancelled() }}
+        working-directory: frontend
+        run: npm run test:jwt-interceptor
+
+      - name: Run session handoff characterization
+        id: run-session-handoff
+        if: ${{ !cancelled() }}
+        working-directory: frontend
+        run: npm run test:session-handoff
+
+      - name: Upload auth characterization reports
+        id: upload-auth-characterization-reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-hardening-ci-reports
+          path: |
+            backend/target/surefire-reports/TEST-ProtectedEndpointAuthTest.xml
+            frontend/test-results/auth-guard.xml
+            frontend/test-results/jwt-interceptor.xml
+            frontend/test-results/session-handoff.xml
+          if-no-files-found: error
+          retention-days: 14
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI

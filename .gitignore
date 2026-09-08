@@ -5,3 +5,7 @@ backend/.idea/
 # Per-machine self-signed dev TLS pair for the nginx frontend container —
 # regenerated on each machine (see DEPLOYMENT.md), never committed.
 frontend/nginx/certs/
+
+# Downloaded GitHub Actions evidence for the auth-hardening CI verifier.
+.auth-hardening-ci-reports/
+tools/auth-hardening/__pycache__/
