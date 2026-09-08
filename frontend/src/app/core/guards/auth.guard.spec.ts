@@ -28,7 +28,7 @@ describe('AuthGuard defect characterization', () => {
     const result = guard.canActivate();
 
     expect(result).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(result as UrlTree)).toBe('/mutation-login');
+    expect(router.serializeUrl(result as UrlTree)).toBe('/login');
   });
 
   it('[PP-AUTH-001][authguard] admits a forged future-exp token as the pinned current boundary', () => {
