@@ -1,0 +1,40 @@
+{
+  "subject": "git_changed_files",
+  "base_ref": "c803c7db6ae1b8f706844d214b59025518e167aa",
+  "ignored_preexisting_untracked": ["AGENTS.md"],
+  "allowed_globs": [
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/jest.auth-guard.config.js",
+    "frontend/src/app/core/guards/auth.guard.spec.ts",
+    "tools/auth-hardening/verify_frontend_junit_report.py",
+    "tools/auth-hardening/verify_pin_execution.py",
+    "tools/auth-hardening/verify_allowed_change_paths.py",
+    "tools/auth-hardening/fixtures/auth-guard-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-23-report.md",
+    ".brain/events/**",
+    ".brain/sessions/**",
+    "PROGRESS.md"
+  ],
+  "forbidden_globs": [
+    "frontend/src/app/core/guards/auth.guard.ts",
+    "frontend/projects/shared-core/src/lib/services/auth.service.ts",
+    "backend/src/main/**"
+  ],
+  "required_paths": [
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/jest.auth-guard.config.js",
+    "frontend/src/app/core/guards/auth.guard.spec.ts",
+    "tools/auth-hardening/verify_frontend_junit_report.py",
+    "tools/auth-hardening/verify_pin_execution.py",
+    "tools/auth-hardening/fixtures/auth-guard-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-23-report.md"
+  ],
+  "required_changed_path_groups": {
+    "test": ["frontend/src/app/core/guards/auth.guard.spec.ts"],
+    "test_configuration": ["frontend/package.json", "frontend/jest.auth-guard.config.js"],
+    "evidence": ["demands/fulfilled/app-studio-20260907-plantpal-t1-23-report.md"],
+    "verifier_assets": ["tools/auth-hardening/**"]
+  }
+}

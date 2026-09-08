@@ -38,6 +38,17 @@ def matches(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
+def required_group_counts(paths: list[str], groups: dict[str, list[str]]) -> dict[str, int]:
+    counts = {
+        name: sum(1 for path in paths if matches(path, patterns))
+        for name, patterns in groups.items()
+    }
+    missing = sorted(name for name, count in counts.items() if count == 0)
+    if missing:
+        raise ValueError(f"required changed-file groups are empty: {missing!r}")
+    return counts
+
+
 def main() -> int:
     args = parse_args()
     try:
@@ -58,13 +69,21 @@ def main() -> int:
         forbidden = [path for path in paths if matches(path, fixture["forbidden_globs"])]
         if disallowed or forbidden:
             raise ValueError(f"disallowed={disallowed!r}; forbidden={forbidden!r}")
+        missing_paths = sorted(set(fixture.get("required_paths", [])) - set(paths))
+        if missing_paths:
+            raise ValueError(f"required changed paths are missing: {missing_paths!r}")
+        group_counts = required_group_counts(
+            paths, fixture.get("required_changed_path_groups", {})
+        )
     except (OSError, ValueError, KeyError, json.JSONDecodeError, subprocess.CalledProcessError) as error:
         print(f"allowed_change_paths_verification=FAIL: {error}", file=sys.stderr)
         return 1
 
     print("allowed_change_paths_verification=PASS")
     print(f"changed_file_records={len(paths)}")
-    print("production_behavior_file_records=0")
+    print(f"production_behavior_file_records={len(forbidden)}")
+    for name, count in sorted(group_counts.items()):
+        print(f"required_{name}_records={count}")
     for path in paths:
         print(f"changed_file={path}")
     return 0
