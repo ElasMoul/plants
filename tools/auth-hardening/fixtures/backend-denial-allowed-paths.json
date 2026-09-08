@@ -1,0 +1,25 @@
+{
+  "subject": "git_changed_files",
+  "base_ref": "f9ba1690f49b6a72982919e3151a926ffb7c7bb7",
+  "ignored_preexisting_untracked": ["AGENTS.md"],
+  "allowed_globs": [
+    "mvnw",
+    "mvnw.cmd",
+    "backend/pom.xml",
+    "backend/src/test/**",
+    "docs/auth-hardening/**",
+    "tools/auth-hardening/**",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-22-report.md",
+    ".brain/events/**",
+    ".brain/sessions/**",
+    "PROGRESS.md"
+  ],
+  "forbidden_globs": [
+    "backend/src/main/**",
+    "backend/src/main/**/*",
+    "frontend/src/**",
+    "frontend/src/**/*",
+    "frontend/projects/**/src/**",
+    "frontend/projects/**/src/**/*"
+  ]
+}

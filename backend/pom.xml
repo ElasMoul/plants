@@ -253,6 +253,20 @@
                 </configuration>
             </plugin>
 
+            <!-- Surefire: named auth-hardening suites are selected from the repository root. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <authHardeningOutput>
+                            ${project.build.directory}/auth-hardening/protected-endpoint-coverage.json
+                        </authHardeningOutput>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
             <!-- ── Compiler: MapStruct + Lombok annotation processors ─────── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
