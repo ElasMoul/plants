@@ -1,0 +1,36 @@
+{
+  "subject": "git_changed_files",
+  "base_ref": "95db79bbb6c369343545e284462ecc2459424e00",
+  "ignored_preexisting_untracked": ["AGENTS.md"],
+  "allowed_globs": [
+    "frontend/package.json",
+    "frontend/jest.jwt-interceptor.config.js",
+    "frontend/src/app/core/interceptors/jwt.interceptor.spec.ts",
+    "tools/auth-hardening/fixtures/jwt-interceptor-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-24-report.md",
+    ".brain/events/**",
+    ".brain/sessions/**",
+    "PROGRESS.md"
+  ],
+  "forbidden_globs": [
+    "frontend/src/app/core/interceptors/jwt.interceptor.ts",
+    "frontend/projects/shared-core/src/lib/services/auth.service.ts",
+    "backend/src/main/**"
+  ],
+  "required_paths": [
+    "frontend/package.json",
+    "frontend/jest.jwt-interceptor.config.js",
+    "frontend/src/app/core/interceptors/jwt.interceptor.spec.ts",
+    "tools/auth-hardening/fixtures/jwt-interceptor-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-24-report.md"
+  ],
+  "required_changed_path_groups": {
+    "test": ["frontend/src/app/core/interceptors/jwt.interceptor.spec.ts"],
+    "test_configuration": [
+      "frontend/package.json",
+      "frontend/jest.jwt-interceptor.config.js"
+    ],
+    "evidence": ["demands/fulfilled/app-studio-20260907-plantpal-t1-24-report.md"],
+    "verifier_assets": ["tools/auth-hardening/**"]
+  }
+}
