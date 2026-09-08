@@ -7,14 +7,22 @@ import {
 } from './session-handoff';
 
 const USER: User = { id: 7, email: 'a@b.c', firstName: 'Mo', lastName: 'El', status: 'ACTIVE' };
+const TOKEN_STORAGE_CONTRACT = 'plantpal_token';
+const USER_STORAGE_CONTRACT = 'plantpal_user';
 
 /** A minimal Window stand-in so the tests never touch the real address bar. */
 function fakeWindow(hash: string) {
   const store = new Map<string, string>();
-  const replaceState = jest.fn();
+  const location = { hash, pathname: '/', search: '' };
+  const replaceState = jest.fn((_state: unknown, _unused: string, url: string) => {
+    const replacement = new URL(url, 'https://localhost:8445');
+    location.hash = replacement.hash;
+    location.pathname = replacement.pathname;
+    location.search = replacement.search;
+  });
   return {
     win: {
-      location: { hash, pathname: '/', search: '' },
+      location,
       history: { replaceState },
       localStorage: {
         setItem: (k: string, v: string) => void store.set(k, v),
@@ -27,7 +35,7 @@ function fakeWindow(hash: string) {
 }
 
 describe('session handoff (G — cross-origin login → atlas)', () => {
-  it('builds an atlas URL carrying the session in the fragment only', () => {
+  it('[PP-AUTH-003][sessionhandoff] builds an atlas URL carrying the session in the fragment only', () => {
     const url = buildAtlasHandoffUrl('https://localhost:8445', 'JWT123', USER);
     expect(url.startsWith('https://localhost:8445/#session=')).toBe(true);
     // nothing token-shaped before the fragment (never in path or query)
@@ -39,20 +47,39 @@ describe('session handoff (G — cross-origin login → atlas)', () => {
     expect(buildAtlasHandoffUrl('http://localhost:4300/', 't', null).startsWith('http://localhost:4300/#session=')).toBe(true);
   });
 
-  it('round-trips: consume stores the token + user under the shared keys', () => {
+  it('[PP-AUTH-003][sessionhandoff] preserves the exact cross-frontend storage-key contract', () => {
+    expect(SESSION_TOKEN_KEY).toBe(TOKEN_STORAGE_CONTRACT);
+    expect(SESSION_USER_KEY).toBe(USER_STORAGE_CONTRACT);
+
     const url = buildAtlasHandoffUrl('https://localhost:8445', 'JWT123', USER);
     const { win, store } = fakeWindow('#' + url.split('#')[1]);
 
     expect(consumeSessionHandoff(win)).toBe(true);
-    expect(store.get(SESSION_TOKEN_KEY)).toBe('JWT123');
-    expect(JSON.parse(store.get(SESSION_USER_KEY)!)).toEqual(USER);
+    expect(store.get(TOKEN_STORAGE_CONTRACT)).toBe('JWT123');
+    expect(JSON.parse(store.get(USER_STORAGE_CONTRACT)!)).toEqual(USER);
   });
 
-  it('scrubs the fragment from the URL after consuming', () => {
+  it('[PP-AUTH-003][sessionhandoff] characterizes the bearer fragment as replayable', () => {
     const url = buildAtlasHandoffUrl('https://localhost:8445', 'JWT123', USER);
-    const { win, replaceState } = fakeWindow('#' + url.split('#')[1]);
-    consumeSessionHandoff(win);
+    const hash = '#' + url.split('#')[1];
+    const firstAtlasOrigin = fakeWindow(hash);
+    const secondAtlasOrigin = fakeWindow(hash);
+
+    expect(consumeSessionHandoff(firstAtlasOrigin.win)).toBe(true);
+    expect(consumeSessionHandoff(secondAtlasOrigin.win)).toBe(true);
+    expect(firstAtlasOrigin.store.get(TOKEN_STORAGE_CONTRACT)).toBe('JWT123');
+    expect(secondAtlasOrigin.store.get(TOKEN_STORAGE_CONTRACT)).toBe('JWT123');
+  });
+
+  it('[PP-AUTH-003][sessionhandoff] scrubs the fragment after one consumption', () => {
+    const url = buildAtlasHandoffUrl('https://localhost:8445', 'JWT123', USER);
+    const { win, replaceState, store } = fakeWindow('#' + url.split('#')[1]);
+
+    expect(consumeSessionHandoff(win)).toBe(true);
     expect(replaceState).toHaveBeenCalledWith(null, '', '/');
+    expect(win.location.hash).toBe('');
+    expect(consumeSessionHandoff(win)).toBe(false);
+    expect(store.size).toBe(2);
   });
 
   it('ignores an absent or unrelated fragment', () => {
@@ -64,7 +91,7 @@ describe('session handoff (G — cross-origin login → atlas)', () => {
     expect(consumeSessionHandoff(other.win)).toBe(false);
   });
 
-  it('scrubs but does not store a malformed payload', () => {
+  it('[PP-AUTH-003][sessionhandoff] scrubs but does not store a malformed payload', () => {
     const { win, store, replaceState } = fakeWindow('#session=%%%not-base64%%%');
     expect(consumeSessionHandoff(win)).toBe(false);
     expect(store.size).toBe(0);
