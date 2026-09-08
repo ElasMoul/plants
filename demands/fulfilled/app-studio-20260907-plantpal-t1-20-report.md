@@ -23,9 +23,9 @@ summaryRef: "commit d0c46dc on feature/PP-096-auth-surface-inventory (T1.20 inve
   enumerates all Spring controller mappings, checks the fixture-pinned frontend records and defect
   pins, and validates three controller plus three routing samples against source declarations.
 - `tools/auth-hardening/verify_allowed_change_paths.py` builds its assertion subject from the
-  complete `origin/dev...HEAD`, index, worktree, and untracked changed-file channels before applying
-  the documentation/verifier allowlist. A temporary forbidden `frontend/src/` probe was observed
-  failing and was removed.
+  complete dispatched-base (`ccde4a8`) branch diff, index, worktree, and untracked changed-file
+  channels before applying the documentation/verifier allowlist. A temporary forbidden
+  `frontend/src/` probe was observed failing and was removed.
 
 ## Acceptance evidence
 

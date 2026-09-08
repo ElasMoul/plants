@@ -1,6 +1,6 @@
 {
   "subject": "git_changed_files",
-  "base_ref": "origin/dev",
+  "base_ref": "ccde4a8ff09d049cdf33f304ef85fdc27d287257",
   "ignored_preexisting_untracked": ["AGENTS.md"],
   "allowed_globs": [
     "docs/auth-hardening/**",
