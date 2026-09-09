@@ -36,6 +36,25 @@
   `StateFeedProperties`/`StateFeedEmitter` unit tests (7 + 1 cases): default
   gating, payload shape, transport-failure swallowing.
 
+- Auth characterization suites made blocking CI evidence (Factory feature
+  mission `9636b730-d536-4ad3-99e8-80c2797f9be3`, demand
+  `app-studio-20260907-plantpal-t1-*`) — **delivered waves only, feature not
+  complete**. Shipped: T1.20 auth surface inventory (23 frontend route
+  records, 48 backend endpoint records, 3 defect pins) and structural
+  verifiers; T1.22 protected-endpoint denial characterization
+  (`ProtectedEndpointAuthTest`, 88 cases); T1.23 AuthGuard
+  defect-characterization coverage; T1.24 JwtInterceptor
+  defect-characterization coverage; T1.25 cross-origin session-handoff
+  characterization (8 cases); T1.26 made the four characterization runners
+  (`ProtectedEndpointAuthTest`, AuthGuard, JwtInterceptor, session-handoff)
+  a blocking `Auth Characterization CI` job in `.github/workflows/ci.yml`
+  on every push/PR, with a structured JUnit-report artifact and mutation-run
+  evidence that a real assertion break fails the job. Reports:
+  `demands/fulfilled/app-studio-20260907-plantpal-t1-{20,22,23,24,25,26}-report.md`.
+  **Outstanding:** T1.27 (owner-observation unit) and any further planned
+  waves of this mission are not yet dispatched/shipped — no v1.0.0 tag or
+  app-birth release claim applies to this feature.
+
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
   (`IdentificationServiceImpl.parseIdentificationResult`), causing a
