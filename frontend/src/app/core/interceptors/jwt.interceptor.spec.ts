@@ -14,7 +14,7 @@ import { JwtInterceptor } from './jwt.interceptor';
 
 jest.mock('@sentry/angular', () => ({ setTag: jest.fn() }));
 
-describe('JwtInterceptor defect characterization', () => {
+describe('JwtInterceptor sign-out behavior (wave 2 — PP-AUTH-002)', () => {
   let http: HttpClient;
   let httpTesting: HttpTestingController;
   let getToken: jest.MockedFunction<AuthService['getToken']>;
@@ -42,7 +42,7 @@ describe('JwtInterceptor defect characterization', () => {
 
   afterEach(() => httpTesting.verify());
 
-  it('[PP-AUTH-002][jwtinterceptor] fans out logout and /login navigation for concurrent 401 responses', () => {
+  it('latches concurrent 401 responses to exactly one logout and one /login navigation', () => {
     const urls = ['/api/v1/plants', '/api/v1/reminders', '/api/v1/dashboard'];
     const observedStatuses: number[] = [];
 
@@ -59,11 +59,58 @@ describe('JwtInterceptor defect characterization', () => {
       request.flush(null, { status: 401, statusText: 'Unauthorized' });
     }
 
+    // Every request still surfaces its own 401 to its caller — only the
+    // sign-out side effect is deduplicated, not the error propagation.
     expect(observedStatuses).toEqual([401, 401, 401]);
-    expect(logout).toHaveBeenCalledTimes(3);
-    expect(navigate).toHaveBeenCalledTimes(3);
-    expect(navigate).toHaveBeenNthCalledWith(1, ['/login']);
-    expect(navigate).toHaveBeenNthCalledWith(2, ['/login']);
-    expect(navigate).toHaveBeenNthCalledWith(3, ['/login']);
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('does not sign out on a 401 from the login endpoint itself (wrong password)', done => {
+    http.post('/api/v1/auth/login', { email: 'a@b.com', password: 'wrong' }).subscribe({
+      error: (error: HttpErrorResponse) => {
+        expect(error.status).toBe(401);
+        expect(logout).not.toHaveBeenCalled();
+        expect(navigate).not.toHaveBeenCalled();
+        done();
+      },
+    });
+
+    httpTesting
+      .expectOne('/api/v1/auth/login')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+  });
+
+  it('does not sign out on a 401 from the register endpoint itself', done => {
+    http.post('/api/v1/auth/register', {}).subscribe({
+      error: (error: HttpErrorResponse) => {
+        expect(error.status).toBe(401);
+        expect(logout).not.toHaveBeenCalled();
+        expect(navigate).not.toHaveBeenCalled();
+        done();
+      },
+    });
+
+    httpTesting
+      .expectOne('/api/v1/auth/register')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+  });
+
+  it('latches again for a fresh 401 once the previous sign-out navigation has settled', async () => {
+    http.get('/api/v1/plants').subscribe({ error: () => undefined });
+    httpTesting.expectOne('/api/v1/plants').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    // Let the navigate().finally() microtask clear the latch.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    http.get('/api/v1/reminders').subscribe({ error: () => undefined });
+    httpTesting
+      .expectOne('/api/v1/reminders')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(logout).toHaveBeenCalledTimes(2);
+    expect(navigate).toHaveBeenCalledTimes(2);
   });
 });

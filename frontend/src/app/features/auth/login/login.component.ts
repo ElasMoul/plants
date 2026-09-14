@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService, buildAtlasHandoffUrl } from '@plantpal/shared-core';
 import { environment } from '../../../../environments/environment';
+import { sanitizeReturnUrl } from '../../../core/return-url';
 
 @Component({
     selector: 'app-login',
@@ -16,12 +17,19 @@ export class LoginComponent {
   loading = false;
   hidePassword = true;
 
+  // D8: after a signed-out redirect (idle expiry, a protected deep link, or an
+  // unknown path), restore the safe destination the visitor was headed to —
+  // never an arbitrary one (see return-url.ts's allowlist).
+  private readonly returnUrl: string | null;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private snackBar: MatSnackBar,
   ) {
+    this.returnUrl = sanitizeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
@@ -46,7 +54,11 @@ export class LoginComponent {
           );
           return;
         }
-        this.router.navigate(['/garden']);
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['/garden']);
+        }
       },
       error: err => {
         this.loading = false;
