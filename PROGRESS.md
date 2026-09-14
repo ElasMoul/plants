@@ -355,3 +355,18 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-09_2121_fulfill-demand-app-studio-20260909-plant
+
+## Session 16 (2026-09-14)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-14_1453_owner-requested-continuing-factory-missi.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Owner requested continuing Factory mission 9b774285-8a9f-4763-9d27-7310127bc931 with Claude Sonnet 5 medium. Work only in PlantPal. Read standing instructions, full spec and brain/session protocol; preserve prior branch/commits and check for live writers. Original app-studio mission 9636b730-d536-4a... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-14_1453_owner-requested-continuing-factory-missi.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-14_1453_owner-requested-continuing-factory-missi
