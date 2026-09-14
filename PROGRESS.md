@@ -370,3 +370,18 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-14_1453_owner-requested-continuing-factory-missi
+
+## Session 17 (2026-09-14)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand brain-toolkit-20260914-fleet-repin-v063 (capability: Every .brain repo moves its .brain/toolkit-pin to v0.6.3 — the fleet re-pin sweep for the session-model-field fix. The whole fleet is currently on v0.6.2; v0.6.3 fixes brain session open recording a false model: claude-code on every... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl
