@@ -542,3 +542,46 @@ open backend/target/site/jacoco/index.html
   sessions additionally append their handoff to `PROGRESS.md` per `../CLAUDE.md`.
   (The former external `plants-vault` was removed 2026-07-15 — `.claude/` is the
   single memory layer; project memory follows the platform guidelines.)
+
+---
+
+<!-- brain-adopt:section -->
+## `.brain` — operational memory (brain-toolkit v0.6.3)
+
+This repo carries `.brain/`, the platform's operational-memory system
+(`../platform-vault/spec-agent-memory-system.md`, governed by D052/D061).
+Every session opens a session file before any code change and closes it
+before ending — see `.brain/conventions.md` and `.brain/architecture.md`.
+
+**Always invoke the shims through `python`.** `.brain/bin/brain` is an
+extensionless Python script: PowerShell (this platform's primary shell) will
+not execute it, and depending on how it is invoked you may get no output and
+no session file rather than a clear error — so an unprefixed shim call can
+look like it worked when nothing at all was written. Always prefix `python`,
+and check that a new file appeared under `.brain/sessions/`.
+
+- **Open** (PowerShell / cmd, from the repo root):
+  `python .brain\bin\brain session open "<task>" --priority <1-3> --model <your-actual-model-id>`
+  before any code change. Under bash/sh use forward slashes:
+  `python .brain/bin/brain session open "<task>" --priority <1-3> --model <your-actual-model-id>`.
+  **Always pass `--model` as the model actually doing the work** (e.g.
+  `claude-sonnet-5`, `claude-opus-5`, `codex-gpt-5.1`, `qwen3-coder`) —
+  the fleet runs many providers/models and there is no default; omitting
+  it records `model: unknown` rather than a guess. (Before v0.6.3 the
+  field was hardcoded to a false `claude-code` on every session.)
+- **Close:** `python .brain\bin\brain session close` (bash:
+  `python .brain/bin/brain session close`) — fills/confirms `status`,
+  `changes`, `lessons`, `vault_sync`; the `PROGRESS.md` handoff block is a
+  generated projection of the session file, never hand-authored separately.
+- **Pin mechanism:** `.brain/bin/brain` and `.brain/bin/structurer` are thin
+  shims resolving `../brain-toolkit-worktrees/<pin>/bin/<tool>` via
+  `.brain/toolkit-pin` (currently `v0.6.3`) — a fix or version bump is a
+  one-line edit to `.brain/toolkit-pin`, never a hand-edit of the shim
+  itself.
+- Never hand-edit generated files (`AGENT.md`, `.brain/knowledge/*`,
+  `.brain/graph.md`, `.brain/index.db`) — human overrides go in
+  `.brain/overrides.md`.
+
+> Note: this repo's CLAUDE.md lives at `.claude/CLAUDE.md`, not the repo
+> root, so `bin/adopt` could not seed this section automatically; it was
+> added by hand during the v0.6.3 fleet re-pin.
