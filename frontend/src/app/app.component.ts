@@ -4,6 +4,7 @@ import { filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
+import { SessionMonitorService } from './core/services/session-monitor.service';
 
 const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
 
@@ -27,12 +28,14 @@ export class AppComponent implements OnInit {
   constructor(
     public authService: AuthService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly sessionMonitorService: SessionMonitorService,
     private readonly snackBar: MatSnackBar,
     private router: Router,
   ) {}
 
   ngOnInit(): void {
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
+    this.sessionMonitorService.start();
 
     // Always land at the top of the new page — Angular's own scroll restoration only resets
     // on forward navigation and restores position on back/forward, which isn't what we want here.
@@ -64,6 +67,7 @@ export class AppComponent implements OnInit {
   }
 
   logout(): void {
+    this.sessionMonitorService.stop();
     this.authService.logout();
     this.router.navigate(['/login']);
   }

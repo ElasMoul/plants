@@ -71,6 +71,19 @@ app:
   identification:
     transport: ${APP_IDENTIFICATION_TRANSPORT:kafka}
 
+  # ── Session registry (mission 9b774285, wave 3) ──────────────────────────────
+  # Redis-backed, server-authoritative session record keyed by the JWT's jti (ADR-1).
+  # Ships INERT: idleTtlSeconds/absoluteCapHours govern the registry's own sliding/
+  # absolute bookkeeping from the moment the app boots, but enforcementEnabled=false
+  # means JwtAuthFilter never rejects a request over it — a session with no live
+  # registry record still authenticates on signature+exp alone, exactly as before this
+  # wave. Flipping enforcement-enabled is wave 5's own deliberate, separately-
+  # authorized release event (ADR-8) — do not set this true outside that cutover.
+  session:
+    idle-ttl-seconds: ${APP_SESSION_IDLE_TTL_SECONDS:1800}
+    absolute-cap-hours: ${APP_SESSION_ABSOLUTE_CAP_HOURS:12}
+    enforcement-enabled: ${APP_SESSION_ENFORCEMENT_ENABLED:false}
+
 # ──── Sentry ──────────────────────────────────────────────────────────────────
 # Empty DSN disables Sentry. Set SENTRY_DSN in production environment.
 sentry:

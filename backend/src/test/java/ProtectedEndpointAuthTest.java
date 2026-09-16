@@ -8,6 +8,9 @@ import com.plantpal.shared.config.SecurityConfig;
 import com.plantpal.shared.filter.AuthRateLimitFilter;
 import com.plantpal.shared.filter.JwtAuthFilter;
 import com.plantpal.shared.util.JwtUtil;
+import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.service.SessionRegistryService;
+import com.plantpal.session.web.NonRenewingRequestMatcher;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -200,7 +203,12 @@ class ProtectedEndpointAuthTest {
 
     @Bean
     JwtAuthFilter jwtAuthFilter() {
-      return new JwtAuthFilter(Mockito.mock(JwtUtil.class), Mockito.mock(UserDetailsService.class));
+      return new JwtAuthFilter(
+          Mockito.mock(JwtUtil.class),
+          Mockito.mock(UserDetailsService.class),
+          Mockito.mock(SessionRegistryService.class),
+          new NonRenewingRequestMatcher(),
+          new SessionProperties());
     }
 
     @Bean

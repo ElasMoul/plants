@@ -1,6 +1,8 @@
 package com.plantpal.user.service.impl;
 
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
@@ -16,6 +18,7 @@ import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.entity.VisionModelPreference;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.UserService;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -37,6 +40,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
   private final AnthropicClient anthropicClient;
+  private final SessionRegistryService sessionRegistryService;
+  private final SessionProperties sessionProperties;
+  private final Clock clock;
 
   @Value("${app.jwt.expiration-ms}")
   private long jwtExpirationMs;
@@ -45,11 +51,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       UserRepository userRepository,
       PasswordEncoder passwordEncoder,
       JwtUtil jwtUtil,
-      AnthropicClient anthropicClient) {
+      AnthropicClient anthropicClient,
+      SessionRegistryService sessionRegistryService,
+      SessionProperties sessionProperties,
+      Clock clock) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
     this.anthropicClient = anthropicClient;
+    this.sessionRegistryService = sessionRegistryService;
+    this.sessionProperties = sessionProperties;
+    this.clock = clock;
   }
 
   @Override
@@ -72,6 +84,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     log.info("New user registered: id={}, email={}", user.getId(), user.getEmail());
 
     String token = jwtUtil.generateToken(user, user.getId());
+    openSession(user, token);
     return buildAuthResponse(user, token);
   }
 
@@ -95,7 +108,23 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
 
     String token = jwtUtil.generateToken(user, user.getId());
+    openSession(user, token);
     return buildAuthResponse(user, token);
+  }
+
+  private void openSession(User user, String token) {
+    try {
+      sessionRegistryService.createSession(
+          jwtUtil.extractJti(token),
+          user.getId(),
+          clock.instant(),
+          jwtUtil.extractSessionAbsoluteExp(token));
+    } catch (RuntimeException e) {
+      if (sessionProperties.isEnforcementEnabled()) {
+        throw e;
+      }
+      log.warn("Session registry unavailable while enforcement is inert", e);
+    }
   }
 
   @Override

@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
@@ -22,6 +24,7 @@ import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.impl.UserServiceImpl;
+import java.time.Clock;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +46,9 @@ class UserServiceTest {
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtUtil jwtUtil;
   @Mock private AnthropicClient anthropicClient;
+  @Mock private SessionRegistryService sessionRegistryService;
+  @Mock private SessionProperties sessionProperties;
+  @Mock private Clock clock;
 
   @InjectMocks private UserServiceImpl userService;
 

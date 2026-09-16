@@ -8,6 +8,7 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 
 import { JwtInterceptor } from './jwt.interceptor';
@@ -20,11 +21,13 @@ describe('JwtInterceptor sign-out behavior (wave 2 — PP-AUTH-002)', () => {
   let getToken: jest.MockedFunction<AuthService['getToken']>;
   let logout: jest.MockedFunction<AuthService['logout']>;
   let navigate: jest.Mock;
+  let snackBar: { open: jest.Mock };
 
   beforeEach(() => {
     getToken = jest.fn().mockReturnValue('current-session-token');
     logout = jest.fn();
     navigate = jest.fn().mockResolvedValue(true);
+    snackBar = { open: jest.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -33,6 +36,7 @@ describe('JwtInterceptor sign-out behavior (wave 2 — PP-AUTH-002)', () => {
         { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
         { provide: AuthService, useValue: { getToken, logout } },
         { provide: Router, useValue: { navigate } },
+        { provide: MatSnackBar, useValue: snackBar },
       ],
     });
 

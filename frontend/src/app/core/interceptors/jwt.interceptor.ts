@@ -5,6 +5,8 @@ import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import * as Sentry from '@sentry/angular';
 import { AuthService } from '@plantpal/shared-core';
+import { reasonMessage } from '../services/session-monitor.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 // The public auth endpoints (ADR-5): a 401 from a wrong-password login attempt is
 // the caller's own failed authentication, not evidence that an existing session
@@ -24,6 +26,7 @@ export class JwtInterceptor implements HttpInterceptor {
   constructor(
     private authService: AuthService,
     private router: Router,
+    private snackBar: MatSnackBar,
   ) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
@@ -48,18 +51,19 @@ export class JwtInterceptor implements HttpInterceptor {
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401 && !AUTH_ENDPOINT_PATTERN.test(request.url)) {
-          this.signOutOnce();
+          this.signOutOnce(error.headers.get('X-Session-Revoked-Reason'));
         }
         return throwError(() => error);
       }),
     );
   }
 
-  private signOutOnce(): void {
+  private signOutOnce(reason: string | null): void {
     if (this.signOutInFlight) return;
     this.signOutInFlight = true;
 
     this.authService.logout();
+    this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
     this.router.navigate(['/login']).finally(() => {
       this.signOutInFlight = false;
     });
