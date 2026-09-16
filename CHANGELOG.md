@@ -69,6 +69,28 @@
   in this environment by Testcontainers reporting no valid Docker environment; Wave 5's separate
   enforcement/release/live-verification decision remains outstanding.
 
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` acceptance-evidence pass
+  (2026-09-16, branch `feature/PP-100-session-hardening-waves-2-4`; waves 2–4 remain a
+  candidate — **no enforcement activation, no deployment, no live verification, no merge**).
+  Added `SessionEnforcementFilterTest` (14 cases): the wave-3 criterion "rejected and expired
+  sessions cannot call protected APIs" previously had no test at all — the registry test only
+  proved the service returns `invalid(...)`, and the existing denial suite ran with
+  `enforcementEnabled=false`, so the branch that withholds authentication was never exercised.
+  The suite now proves every `RevokedReason` yields 401 plus the `X-Session-Revoked-Reason`
+  header, that an unavailable registry fails closed once enforcing and open while inert, that the
+  same rejected session is still admitted while the flag is off (pinning ADR-8's inert default and
+  the wave-5 cutover boundary), and that the non-renewing status endpoint peeks rather than slides
+  — server-side proof that background polling cannot extend a session, which was previously
+  untested. It is a surefire `*Test` needing no Spring context and no Testcontainers, so the
+  enforcement boundary is verifiable where Docker is unavailable. Also applied `spotless` to the
+  mission's own sources (it is not lifecycle-bound, so `mvn clean verify` never ran it) and
+  recorded the wave-2 disposition of the wave-1 defect pins in
+  `docs/auth-hardening/defect-pins.md`. Verified: backend unit 465/465, frontend Jest 549/549
+  across 44 suites, production build exit 0, `spotless:check` clean. Backend integration
+  verification remains **not established**: Testcontainers 1.19.7's docker-java cannot talk to
+  this Docker Engine (API 1.55, MinAPIVersion 1.40) and every IT class dies in
+  `AbstractIntegrationTest`'s static initializer with HTTP 400 from the Docker client.
+
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
   (`IdentificationServiceImpl.parseIdentificationResult`), causing a
