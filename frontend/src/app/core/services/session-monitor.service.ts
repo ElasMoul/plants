@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { API_BASE_URL, ApiResponse, AuthService } from '@plantpal/shared-core';
 import { EMPTY, Subscription, timer } from 'rxjs';
 import { catchError, exhaustMap } from 'rxjs/operators';
+import { sanitizeReturnUrl } from '../return-url';
 
 interface SessionStatus {
   active: boolean;
@@ -87,7 +88,8 @@ export class SessionMonitorService implements OnDestroy {
   private evict(reason: string | null): void {
     this.stop();
     this.authService.logout();
-    this.router.navigate(['/login']);
+    const returnUrl = sanitizeReturnUrl(this.router.url);
+    this.router.navigate(['/login'], returnUrl ? { queryParams: { returnUrl } } : undefined);
     this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
   }
 }

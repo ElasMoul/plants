@@ -55,6 +55,20 @@
   waves of this mission are not yet dispatched/shipped — no v1.0.0 tag or
   app-birth release claim applies to this feature.
 
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` Waves 2–4 implementation
+  checkpoint (candidate only; no deployment or enforcement activation): protected-route
+  return URLs are validated and restored after login; concurrent protected-API 401s use one
+  sign-out/redirect flow; and explicit sign-out best-effort revokes the registry record.
+  The new PlantPal-owned Redis session registry issues a per-token `jti`, maintains a 30-minute
+  sliding record plus a signed 12-hour absolute cap, distinguishes revocation reasons, and is
+  deliberately **inert by default** (`app.session.enforcement-enabled=false`). The client polls
+  only the explicit non-renewing status endpoint, warns at two minutes, renews only after an
+  explicit user action, and preserves a safe return destination on an expiry verdict. Verified
+  in the recovered session: backend unit suite 451/451, focused auth/session suite 108/108,
+  and frontend expiry regression 11/11 plus production build. Full `mvn verify` remains blocked
+  in this environment by Testcontainers reporting no valid Docker environment; Wave 5's separate
+  enforcement/release/live-verification decision remains outstanding.
+
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
   (`IdentificationServiceImpl.parseIdentificationResult`), causing a

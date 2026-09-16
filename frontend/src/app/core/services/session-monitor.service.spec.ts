@@ -28,7 +28,7 @@ describe('SessionMonitorService', () => {
         provideHttpClientTesting(),
         { provide: API_BASE_URL, useValue: '/api/v1' },
         { provide: AuthService, useValue: { isLoggedIn: () => loggedIn, logout } },
-        { provide: Router, useValue: { navigate } },
+        { provide: Router, useValue: { navigate, url: '/treatment/42' } },
         { provide: MatSnackBar, useValue: snackBar },
       ],
     });
@@ -81,7 +81,7 @@ describe('SessionMonitorService', () => {
     });
 
     expect(logout).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith(['/login']);
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/treatment/42' } });
     expect(snackBar.open).toHaveBeenCalledWith(
       'Your 12-hour session ended. Please sign in again.',
       'Close',

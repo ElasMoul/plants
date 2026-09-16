@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { EMPTY } from 'rxjs';
+import { catchError, filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
@@ -30,6 +32,7 @@ export class AppComponent implements OnInit {
     private readonly pushNotificationService: PushNotificationService,
     private readonly sessionMonitorService: SessionMonitorService,
     private readonly snackBar: MatSnackBar,
+    private readonly http: HttpClient,
     private router: Router,
   ) {}
 
@@ -68,6 +71,9 @@ export class AppComponent implements OnInit {
 
   logout(): void {
     this.sessionMonitorService.stop();
+    // Local sign-out must never wait for the network, but tell the inert registry about an
+    // explicit user decision so its future enforcement has a real revocation record.
+    this.http.post<void>('/api/v1/auth/logout', {}).pipe(catchError(() => EMPTY)).subscribe();
     this.authService.logout();
     this.router.navigate(['/login']);
   }

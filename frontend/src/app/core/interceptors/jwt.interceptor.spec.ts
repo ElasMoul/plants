@@ -35,7 +35,7 @@ describe('JwtInterceptor sign-out behavior (wave 2 — PP-AUTH-002)', () => {
         provideHttpClientTesting(),
         { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
         { provide: AuthService, useValue: { getToken, logout } },
-        { provide: Router, useValue: { navigate } },
+        { provide: Router, useValue: { navigate, url: '/garden/42' } },
         { provide: MatSnackBar, useValue: snackBar },
       ],
     });
@@ -68,7 +68,7 @@ describe('JwtInterceptor sign-out behavior (wave 2 — PP-AUTH-002)', () => {
     expect(observedStatuses).toEqual([401, 401, 401]);
     expect(logout).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith(['/login']);
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/garden/42' } });
   });
 
   it('does not sign out on a 401 from the login endpoint itself (wrong password)', done => {

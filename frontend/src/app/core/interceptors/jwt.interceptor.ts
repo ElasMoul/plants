@@ -7,12 +7,13 @@ import * as Sentry from '@sentry/angular';
 import { AuthService } from '@plantpal/shared-core';
 import { reasonMessage } from '../services/session-monitor.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { sanitizeReturnUrl } from '../return-url';
 
-// The public auth endpoints (ADR-5): a 401 from a wrong-password login attempt is
+// Auth-flow endpoints (ADR-5): a 401 from a wrong-password login attempt is
 // the caller's own failed authentication, not evidence that an existing session
-// died. Routing that through the same sign-out-and-redirect path as every other
-// 401 is what let a login screen log itself out.
-const AUTH_ENDPOINT_PATTERN = /\/auth\/(login|register)(?:[/?]|$)/;
+// died. Logout is also exempt because the caller always clears local state itself;
+// routing that best-effort revocation through this side effect could create a second redirect.
+const AUTH_ENDPOINT_PATTERN = /\/auth\/(login|register|logout)(?:[/?]|$)/;
 
 @Injectable()
 export class JwtInterceptor implements HttpInterceptor {
@@ -64,7 +65,9 @@ export class JwtInterceptor implements HttpInterceptor {
 
     this.authService.logout();
     this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
-    this.router.navigate(['/login']).finally(() => {
+    const returnUrl = sanitizeReturnUrl(this.router.url);
+    const extras = returnUrl ? { queryParams: { returnUrl } } : undefined;
+    this.router.navigate(['/login'], extras).finally(() => {
       this.signOutInFlight = false;
     });
   }
