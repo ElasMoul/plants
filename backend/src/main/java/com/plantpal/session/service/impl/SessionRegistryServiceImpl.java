@@ -20,12 +20,12 @@ import org.springframework.stereotype.Service;
  * Redis-backed session registry (ADR-1). Two Redis shapes:
  *
  * <ul>
- *   <li>{@code session:<jti>} — the live {@link SessionRecord}, JSON, TTL = the idle window.
- *       Native key expiry <em>is</em> the sliding-window mechanism; nothing sweeps it.
- *   <li>{@code session:revoked:<jti>} — a short-lived tombstone written only by an explicit
- *       {@link #revoke}. A TTL eviction has no code path to run at the moment it fires, so a
- *       naturally-idle-timed-out session can't leave one — {@link #peekOrInfer} infers
- *       IDLE_TIMEOUT for "record simply gone, and not past the absolute cap" instead.
+ *   <li>{@code session:<jti>} — the live {@link SessionRecord}, JSON, TTL = the idle window. Native
+ *       key expiry <em>is</em> the sliding-window mechanism; nothing sweeps it.
+ *   <li>{@code session:revoked:<jti>} — a short-lived tombstone written only by an explicit {@link
+ *       #revoke}. A TTL eviction has no code path to run at the moment it fires, so a
+ *       naturally-idle-timed-out session can't leave one — {@link #peekOrInfer} infers IDLE_TIMEOUT
+ *       for "record simply gone, and not past the absolute cap" instead.
  * </ul>
  *
  * <p>{@code session:user:<userId>} tracks live jti's per user (for {@link #revokeAllForUser} on
@@ -80,7 +80,8 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
 
   @Override
   public SessionCheckResult validateAndSlide(String jti, Instant absoluteExpiresAtFromToken) {
-    SessionCheckResult invalidResult = checkTombstoneAndAbsoluteCap(jti, absoluteExpiresAtFromToken);
+    SessionCheckResult invalidResult =
+        checkTombstoneAndAbsoluteCap(jti, absoluteExpiresAtFromToken);
     if (invalidResult != null) {
       return invalidResult;
     }
@@ -107,7 +108,8 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
 
   @Override
   public SessionCheckResult status(String jti, Instant absoluteExpiresAtFromToken) {
-    SessionCheckResult invalidResult = checkTombstoneAndAbsoluteCap(jti, absoluteExpiresAtFromToken);
+    SessionCheckResult invalidResult =
+        checkTombstoneAndAbsoluteCap(jti, absoluteExpiresAtFromToken);
     if (invalidResult != null) {
       return invalidResult;
     }
@@ -146,11 +148,19 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
       }
     }
     redisTemplate.delete(userKey);
-    log.info("Revoked all sessions for userId={}, reason={}, count={}", userId, reason, jtis == null ? 0 : jtis.size());
+    log.info(
+        "Revoked all sessions for userId={}, reason={}, count={}",
+        userId,
+        reason,
+        jtis == null ? 0 : jtis.size());
   }
 
-  /** Returns a non-null invalid result if the tombstone exists or the absolute cap has passed; null if neither applies (caller should keep checking). */
-  private SessionCheckResult checkTombstoneAndAbsoluteCap(String jti, Instant absoluteExpiresAtFromToken) {
+  /**
+   * Returns a non-null invalid result if the tombstone exists or the absolute cap has passed; null
+   * if neither applies (caller should keep checking).
+   */
+  private SessionCheckResult checkTombstoneAndAbsoluteCap(
+      String jti, Instant absoluteExpiresAtFromToken) {
     String tombstone = redisTemplate.opsForValue().get(revokedKey(jti));
     if (tombstone != null) {
       return SessionCheckResult.invalid(parseReason(tombstone));
@@ -158,7 +168,9 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
 
     if (!clock.instant().isBefore(absoluteExpiresAtFromToken)) {
       redisTemplate.delete(sessionKey(jti));
-      redisTemplate.opsForValue().set(revokedKey(jti), RevokedReason.ABSOLUTE_CAP.name(), TOMBSTONE_TTL);
+      redisTemplate
+          .opsForValue()
+          .set(revokedKey(jti), RevokedReason.ABSOLUTE_CAP.name(), TOMBSTONE_TTL);
       return SessionCheckResult.invalid(RevokedReason.ABSOLUTE_CAP);
     }
 

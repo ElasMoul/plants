@@ -70,8 +70,7 @@ class SessionRegistryServiceImplTest {
 
       service.createSession(JTI, USER_ID, now, now.plus(Duration.ofHours(12)));
 
-      verify(valueOperations)
-          .set(eq("session:" + JTI), anyString(), eq(Duration.ofSeconds(1800)));
+      verify(valueOperations).set(eq("session:" + JTI), anyString(), eq(Duration.ofSeconds(1800)));
       verify(setOperations).add("session:user:" + USER_ID, JTI);
       verify(redisTemplate).expire(eq("session:user:" + USER_ID), eq(Duration.ofDays(7)));
     }
@@ -118,7 +117,8 @@ class SessionRegistryServiceImplTest {
   @DisplayName("validateAndSlide() — natural idle expiry")
   class IdleExpiry {
     @Test
-    @DisplayName("record naturally evicted by Redis TTL, before the absolute cap: inferred IDLE_TIMEOUT")
+    @DisplayName(
+        "record naturally evicted by Redis TTL, before the absolute cap: inferred IDLE_TIMEOUT")
     void inferredIdleTimeoutWhenRecordGone() {
       when(redisTemplate.opsForValue()).thenReturn(valueOperations);
       when(valueOperations.get("session:revoked:" + JTI)).thenReturn(null);

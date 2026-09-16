@@ -42,7 +42,8 @@ public class JwtUtil {
 
   public String generateToken(UserDetails userDetails, Long userId) {
     Date now = new Date();
-    Date sessionAbsoluteExp = Date.from(now.toInstant().plus(Duration.ofHours(sessionAbsoluteCapHours)));
+    Date sessionAbsoluteExp =
+        Date.from(now.toInstant().plus(Duration.ofHours(sessionAbsoluteCapHours)));
     return Jwts.builder()
         .subject(userDetails.getUsername())
         .claim(CLAIM_USER_ID, userId)
@@ -69,7 +70,8 @@ public class JwtUtil {
    */
   public boolean hasSessionRegistryClaims(String token) {
     return extractClaim(token, claims -> claims.get(CLAIM_JTI, String.class)) != null
-        && extractClaim(token, claims -> claims.get(CLAIM_SESSION_ABSOLUTE_EXP, Long.class)) != null;
+        && extractClaim(token, claims -> claims.get(CLAIM_SESSION_ABSOLUTE_EXP, Long.class))
+            != null;
   }
 
   public boolean validateToken(String token, UserDetails userDetails) {

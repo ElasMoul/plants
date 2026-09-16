@@ -10,7 +10,9 @@ import java.time.Instant;
  */
 public interface SessionRegistryService {
 
-  /** Opens a registry record on login/register. Called after the JWT (carrying this jti) is issued. */
+  /**
+   * Opens a registry record on login/register. Called after the JWT (carrying this jti) is issued.
+   */
   void createSession(String jti, Long userId, Instant issuedAt, Instant absoluteExpiresAt);
 
   /**
@@ -19,13 +21,17 @@ public interface SessionRegistryService {
    */
   SessionCheckResult validateAndSlide(String jti, Instant absoluteExpiresAtFromToken);
 
-  /** Read-only status peek — never renews. Backs GET /auth/session, which is itself non-renewing. */
+  /**
+   * Read-only status peek — never renews. Backs GET /auth/session, which is itself non-renewing.
+   */
   SessionCheckResult status(String jti, Instant absoluteExpiresAtFromToken);
 
   /** Explicit user-intent renewal (POST /auth/session/renew) — always slides, allowlist or not. */
   SessionCheckResult renew(String jti, Instant absoluteExpiresAtFromToken);
 
-  /** Revokes one session (logout) or, with reason PASSWORD_CHANGE/ADMIN, every session of a user. */
+  /**
+   * Revokes one session (logout) or, with reason PASSWORD_CHANGE/ADMIN, every session of a user.
+   */
   void revoke(String jti, RevokedReason reason);
 
   /** Revokes every live session belonging to a user — password change, account suspension. */

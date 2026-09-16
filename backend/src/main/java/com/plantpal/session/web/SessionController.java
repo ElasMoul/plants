@@ -1,7 +1,7 @@
 package com.plantpal.session.web;
 
-import com.plantpal.session.dto.SessionStatusResponse;
 import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.dto.SessionStatusResponse;
 import com.plantpal.session.entity.RevokedReason;
 import com.plantpal.session.entity.SessionCheckResult;
 import com.plantpal.session.service.SessionRegistryService;
@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Session-registry endpoints (apiSketch, wave 3). All three require an already-authenticated
- * request — JwtAuthFilter has already validated the bearer token's signature and stashed its jti
- * as a request attribute before any of these run.
+ * request — JwtAuthFilter has already validated the bearer token's signature and stashed its jti as
+ * a request attribute before any of these run.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -91,7 +91,9 @@ public class SessionController {
   }
 
   private String bearerToken(String authHeader) {
-    return authHeader.startsWith(BEARER_PREFIX) ? authHeader.substring(BEARER_PREFIX.length()) : authHeader;
+    return authHeader.startsWith(BEARER_PREFIX)
+        ? authHeader.substring(BEARER_PREFIX.length())
+        : authHeader;
   }
 
   private SessionStatusResponse toResponse(SessionCheckResult result) {

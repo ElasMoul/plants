@@ -4,13 +4,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.service.SessionRegistryService;
+import com.plantpal.session.web.NonRenewingRequestMatcher;
 import com.plantpal.shared.config.SecurityConfig;
 import com.plantpal.shared.filter.AuthRateLimitFilter;
 import com.plantpal.shared.filter.JwtAuthFilter;
 import com.plantpal.shared.util.JwtUtil;
-import com.plantpal.session.config.SessionProperties;
-import com.plantpal.session.service.SessionRegistryService;
-import com.plantpal.session.web.NonRenewingRequestMatcher;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;

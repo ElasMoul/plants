@@ -85,7 +85,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
               SecurityContextHolder.getContext().setAuthentication(authToken);
               MDC.put(MDC_USER_ID, String.valueOf(jwtUtil.extractUserId(token)));
             } else {
-              response.setHeader(SESSION_REVOKED_REASON_HEADER, sessionCheck.getRevokedReason().name());
+              response.setHeader(
+                  SESSION_REVOKED_REASON_HEADER, sessionCheck.getRevokedReason().name());
               log.info("Session enforcement rejected reason={}", sessionCheck.getRevokedReason());
             }
           }
