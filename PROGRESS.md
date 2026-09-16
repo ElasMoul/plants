@@ -385,3 +385,16 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl
+
+## Session 18 (2026-09-16)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-16_2004_recover-timed-out-factory-mission-9b7742.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Recover timed-out Factory mission 9b774285 Waves 2-4 verification and checkpoint -- status: partial.
+- Next step: On a Docker-capable runner, run mvn verify; then obtain the separate Wave 5 security-release decision before enabling app.session.enforcement-enabled or deploying.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-16_2004_recover-timed-out-factory-mission-9b7742
