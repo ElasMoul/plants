@@ -1,0 +1,14 @@
+{
+  "/api": {
+    "target": "http://127.0.0.1:18180",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
+  "/photos": {
+    "target": "http://127.0.0.1:18180",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}

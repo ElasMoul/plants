@@ -1,10 +1,12 @@
 package com.plantpal.session.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,6 +75,22 @@ class SessionRegistryServiceImplTest {
       verify(valueOperations).set(eq("session:" + JTI), anyString(), eq(Duration.ofSeconds(1800)));
       verify(setOperations).add("session:user:" + USER_ID, JTI);
       verify(redisTemplate).expire(eq("session:user:" + USER_ID), eq(Duration.ofDays(7)));
+    }
+
+    @Test
+    @DisplayName("propagates a failed record write so the caller can apply its enforcement policy")
+    void propagatesFailedRecordWrite() {
+      when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+      doThrow(new RuntimeException("redis down"))
+          .when(valueOperations)
+          .set(anyString(), anyString(), any());
+
+      assertThatThrownBy(() -> service.createSession(JTI, USER_ID, now, now.plus(Duration.ofHours(12))))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Failed to persist session record")
+          .hasCauseInstanceOf(RuntimeException.class);
+
+      verify(redisTemplate, never()).opsForSet();
     }
   }
 

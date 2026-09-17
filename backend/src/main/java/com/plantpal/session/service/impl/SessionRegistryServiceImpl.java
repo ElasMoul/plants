@@ -195,7 +195,10 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
     try {
       redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(record), ttl);
     } catch (Exception e) {
-      log.warn("Failed to write session record for key={}: {}", key, e.getMessage());
+      // Callers choose the policy at their boundary: inert rollout paths log and continue,
+      // while enforcement paths fail closed. Swallowing here made a successful login look
+      // registered even when Redis never persisted its session record.
+      throw new IllegalStateException("Failed to persist session record", e);
     }
   }
 
