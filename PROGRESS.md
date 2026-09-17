@@ -398,3 +398,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-16_2004_recover-timed-out-factory-mission-9b7742
+
+## Session 19 (2026-09-17)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-17_0116_recover-usage-limited-run-18b2cb6f-a6fc.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Recover usage-limited run 18b2cb6f-a6fc-43f1-bfd3-a583d360662d: checkpoint and verify Factory mission 9b774285 Waves 2-4 candidate -- status: partial.
+- Next step: Origin review of Waves 2-4 candidate; obtain separate Wave 5 enforcement/release authorization before any merge, deployment, or app.session.enforcement-enabled change.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-17_0116_recover-usage-limited-run-18b2cb6f-a6fc
