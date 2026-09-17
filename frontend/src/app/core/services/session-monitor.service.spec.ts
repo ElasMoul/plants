@@ -89,6 +89,17 @@ describe('SessionMonitorService', () => {
     );
   }));
 
+  it('keeps the supplied safe destination when an immediate poll still sees the login route', fakeAsync(() => {
+    (TestBed.inject(Router) as unknown as { url: string }).url = '/login?returnUrl=%2Fgarden';
+    service.start('/garden');
+    tick(1);
+    httpTesting.expectOne('/api/v1/auth/session').flush({
+      data: { active: false, secondsRemaining: null, revokedReason: 'IDLE_TIMEOUT', enforcementActive: true },
+    });
+
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/garden' } });
+  }));
+
   it('does not start another poll after another request has already signed the user out', fakeAsync(() => {
     service.start();
     tick(1);

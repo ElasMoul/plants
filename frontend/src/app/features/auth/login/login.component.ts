@@ -48,6 +48,10 @@ export class LoginComponent {
     const { email, password, openAtlas } = this.form.getRawValue();
     this.authService.login({ email, password }).subscribe({
       next: res => {
+        // A server-authoritative eviction can return the user to this route
+        // immediately after a successful login. Do not leave the submit control
+        // disabled in that same SPA visit.
+        this.loading = false;
         if (openAtlas) {
           // Full navigation to the atlas origin; the session rides the URL
           // fragment (never the query string) and is consumed+scrubbed on boot.
@@ -56,15 +60,14 @@ export class LoginComponent {
           );
           return;
         }
-        if (this.returnUrl) {
-          this.router.navigateByUrl(this.returnUrl);
-        } else {
-          this.router.navigate(['/garden']);
-        }
-        // The application shell is not recreated after an eviction. Restart the
-        // monitor after storing a fresh classic-app session so this SPA visit is
-        // observed just like a full-page login.
-        this.sessionMonitorService.start();
+        const destination = this.returnUrl
+            ? this.router.navigateByUrl(this.returnUrl)
+            : this.router.navigate(['/garden']);
+        // The application shell is not recreated after an eviction. Wait for the
+        // safe return navigation before restarting the monitor: its immediate
+        // poll may evict synchronously, and must preserve the destination rather
+        // than the transient /login route.
+        Promise.resolve(destination).then(() => this.sessionMonitorService.start(this.returnUrl ?? '/garden'));
       },
       error: err => {
         this.loading = false;

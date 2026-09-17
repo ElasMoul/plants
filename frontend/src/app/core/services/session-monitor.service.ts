@@ -21,6 +21,7 @@ const CHECK_INTERVAL_MS = 30_000;
 export class SessionMonitorService implements OnDestroy {
   private monitorSubscription?: Subscription;
   private warningVisible = false;
+  private returnUrlAfterEviction: string | null = null;
 
   constructor(
     private readonly http: HttpClient,
@@ -30,7 +31,8 @@ export class SessionMonitorService implements OnDestroy {
     private readonly snackBar: MatSnackBar,
   ) {}
 
-  start(): void {
+  start(returnUrlAfterEviction?: string): void {
+    this.returnUrlAfterEviction = sanitizeReturnUrl(returnUrlAfterEviction) ?? this.returnUrlAfterEviction;
     if (this.monitorSubscription || !this.authService.isLoggedIn()) return;
 
     this.monitorSubscription = timer(0, CHECK_INTERVAL_MS)
@@ -51,6 +53,7 @@ export class SessionMonitorService implements OnDestroy {
     this.monitorSubscription?.unsubscribe();
     this.monitorSubscription = undefined;
     this.warningVisible = false;
+    this.returnUrlAfterEviction = null;
   }
 
   ngOnDestroy(): void {
@@ -86,9 +89,9 @@ export class SessionMonitorService implements OnDestroy {
   }
 
   private evict(reason: string | null): void {
+    const returnUrl = sanitizeReturnUrl(this.router.url) ?? this.returnUrlAfterEviction;
     this.stop();
     this.authService.logout();
-    const returnUrl = sanitizeReturnUrl(this.router.url);
     this.router.navigate(['/login'], returnUrl ? { queryParams: { returnUrl } } : undefined);
     this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
   }
