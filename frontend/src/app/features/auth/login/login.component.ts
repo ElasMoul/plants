@@ -5,6 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService, buildAtlasHandoffUrl } from '@plantpal/shared-core';
 import { environment } from '../../../../environments/environment';
 import { sanitizeReturnUrl } from '../../../core/return-url';
+import { SessionMonitorService } from '../../../core/services/session-monitor.service';
 
 @Component({
     selector: 'app-login',
@@ -28,6 +29,7 @@ export class LoginComponent {
     private router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar,
+    private readonly sessionMonitorService: SessionMonitorService,
   ) {
     this.returnUrl = sanitizeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
     this.form = this.fb.group({
@@ -59,6 +61,10 @@ export class LoginComponent {
         } else {
           this.router.navigate(['/garden']);
         }
+        // The application shell is not recreated after an eviction. Restart the
+        // monitor after storing a fresh classic-app session so this SPA visit is
+        // observed just like a full-page login.
+        this.sessionMonitorService.start();
       },
       error: err => {
         this.loading = false;

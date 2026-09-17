@@ -30,6 +30,9 @@
         <spotless.version>2.43.0</spotless.version>
         <google-java-format.version>1.19.2</google-java-format.version>
         <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
+        <!-- 1.19.7 cannot negotiate Docker Desktop 29's minimum API on Windows npipe.
+             Keep this test-only override until the Spring Boot parent is upgraded. -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencies>

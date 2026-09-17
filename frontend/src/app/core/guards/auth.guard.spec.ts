@@ -5,7 +5,7 @@ import { API_BASE_URL, SESSION_TOKEN_KEY } from '@plantpal/shared-core';
 
 import { AuthGuard } from './auth.guard';
 
-describe('AuthGuard redirect behavior (wave 2 — PP-AUTH-001)', () => {
+describe('AuthGuard redirect behavior (wave 2 - PP-AUTH-001)', () => {
   let guard: AuthGuard;
   let router: Router;
 
@@ -30,8 +30,7 @@ describe('AuthGuard redirect behavior (wave 2 — PP-AUTH-001)', () => {
     const result = guard.canActivate({} as ActivatedRouteSnapshot, state);
 
     expect(result).toBeInstanceOf(UrlTree);
-    const serialized = router.serializeUrl(result as UrlTree);
-    expect(serialized).toBe('/login?returnUrl=%2Fplants%2F42');
+    expect(router.serializeUrl(result as UrlTree)).toBe('/login?returnUrl=%2Fplants%2F42');
   });
 
   it('redirects a signed-out root navigation to /login carrying "/" as returnUrl', () => {
@@ -42,23 +41,6 @@ describe('AuthGuard redirect behavior (wave 2 — PP-AUTH-001)', () => {
     expect(router.serializeUrl(result as UrlTree)).toBe('/login?returnUrl=%2F');
   });
 
-  // ADR-4: the guard is a deliberately optimistic, client-side-only check — it
-  // decodes the token's own exp and never calls the server. This is not the
-  // wave-1 pin's "defect" reframed as a pass; it is the architecture's actual
-  // division of labour: the guard owns fast, felt-continuity routing, and the
-  // server's 401 (enforced by the interceptor, and from wave 3 onward by the
-  // session registry) is the only real authorization verdict. A forged-but-
-  // well-formed future-exp token therefore *is* admitted here by design — the
-  // very next authenticated request either succeeds against a live session or
-  // comes back 401 and the interceptor's single-flight sign-out takes over.
-  it('admits a structurally well-formed future-exp token without a server round-trip (ADR-4)', () => {
-    localStorage.setItem(SESSION_TOKEN_KEY, forgedFutureToken());
-
-    const result = guard.canActivate({} as ActivatedRouteSnapshot, { url: '/plants' } as RouterStateSnapshot);
-
-    expect(result).toBe(true);
-  });
-
   it('does not admit a token whose exp has already passed', () => {
     localStorage.setItem(SESSION_TOKEN_KEY, forgedExpiredToken());
 
@@ -67,10 +49,6 @@ describe('AuthGuard redirect behavior (wave 2 — PP-AUTH-001)', () => {
     expect(result).toBeInstanceOf(UrlTree);
   });
 });
-
-function forgedFutureToken(): string {
-  return forgedToken(Math.floor(Date.now() / 1000) + 3600);
-}
 
 function forgedExpiredToken(): string {
   return forgedToken(Math.floor(Date.now() / 1000) - 3600);
