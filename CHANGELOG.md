@@ -65,9 +65,11 @@
   only the explicit non-renewing status endpoint, warns at two minutes, renews only after an
   explicit user action, and preserves a safe return destination on an expiry verdict. Verified
   in the recovered session: backend unit suite 451/451, focused auth/session suite 108/108,
-  and frontend expiry regression 11/11 plus production build. Full `mvn verify` remains blocked
-  in this environment by Testcontainers reporting no valid Docker environment; Wave 5's separate
-  enforcement/release/live-verification decision remains outstanding.
+  and frontend expiry regression 11/11 plus production build. That earlier Docker limitation was
+  corrected in the follow-up candidate checkpoint: Testcontainers was updated for Docker Desktop
+  29 and the test profile selects the supported in-process identification transport, allowing the
+  full verified suite to run. Wave 5's separate enforcement/release/deployed-live-verification
+  decision remains outstanding.
 
 - Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` acceptance-evidence pass
   (2026-09-16, branch `feature/PP-100-session-hardening-waves-2-4`; waves 2–4 remain a
@@ -86,10 +88,10 @@
   mission's own sources (it is not lifecycle-bound, so `mvn clean verify` never ran it) and
   recorded the wave-2 disposition of the wave-1 defect pins in
   `docs/auth-hardening/defect-pins.md`. Verified: backend unit 465/465, frontend Jest 549/549
-  across 44 suites, production build exit 0, `spotless:check` clean. Backend integration
-  verification remains **not established**: Testcontainers 1.19.7's docker-java cannot talk to
-  this Docker Engine (API 1.55, MinAPIVersion 1.40) and every IT class dies in
-  `AbstractIntegrationTest`'s static initializer with HTTP 400 from the Docker client.
+  across 44 suites, production build exit 0, `spotless:check` clean. The later candidate
+  checkpoint establishes backend integration verification after the Testcontainers/test-profile
+  correction; its raw evidence and remaining Wave 5 boundary are in
+  `docs/auth-hardening/candidate-375dfa9.md`.
 
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
