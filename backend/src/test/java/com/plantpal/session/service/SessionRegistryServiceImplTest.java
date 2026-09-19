@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,7 +85,8 @@ class SessionRegistryServiceImplTest {
           .when(valueOperations)
           .set(anyString(), anyString(), any());
 
-      assertThatThrownBy(() -> service.createSession(JTI, USER_ID, now, now.plus(Duration.ofHours(12))))
+      assertThatThrownBy(
+              () -> service.createSession(JTI, USER_ID, now, now.plus(Duration.ofHours(12))))
           .isInstanceOf(IllegalStateException.class)
           .hasMessage("Failed to persist session record")
           .hasCauseInstanceOf(RuntimeException.class);
