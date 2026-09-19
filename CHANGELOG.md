@@ -101,8 +101,12 @@
   correction's new registry test failed lifecycle-bound `spotless:check` while all tests
   passed, which `a75070a` corrected. Receipts were re-measured at `6981a45` rather than
   inherited: backend focused 111/111 (88 protected-endpoint denial, 14 enforcement-filter,
-  9 registry) and frontend session specs 24/24 across 5 suites, each with its own exit
-  code. The 2026-09-16 fulfillment report for this mission, which the origin ruled out of
+  9 registry) and frontend session specs 26/26 across 5 suites, each with its own exit
+  code. Reviewing wave-2's "a safe local destination is restored after login" clause
+  against the suite showed it unasserted — `login.component.spec.ts` covered only the
+  no-`returnUrl` default — so the restore path and its unsafe-input fallback are now
+  covered, the first proven non-vacuous by mutation. The 2026-09-16 fulfillment report
+  for this mission, which the origin ruled out of
   the active `demands/fulfilled/` scan, is preserved as history at
   `docs/auth-hardening/evidence/mission-9b774285-historical-partial-fulfillment.md`; the
   current candidate record is `docs/auth-hardening/candidate-6981a45.md`. Wave 5's

@@ -40,7 +40,19 @@ retained under the ignored `.auth-hardening-ci-reports/session-20260919/`):
 | `ProtectedEndpointAuthTest` | 88 passed, 0 failures/errors/skips | 0 |
 | `SessionEnforcementFilterTest` | 14 passed, 0 failures/errors/skips | 0 |
 | `SessionRegistryServiceImplTest` (6 nested classes) | 9 passed, 0 failures/errors/skips | 0 |
-| Frontend session specs — `session-monitor.service`, `jwt.interceptor`, `auth.guard`, `return-url`, `login.component` | 24 passed across 5 suites | 0 |
+| Frontend session specs — `session-monitor.service`, `jwt.interceptor`, `auth.guard`, `return-url`, `login.component` | 26 passed across 5 suites | 0 |
+
+**Wave-2 return-destination coverage added in this pass.** Reviewing the acceptance
+clause *"a safe local destination is restored after login"* against the suite found it
+was **not** asserted: `login.component.spec.ts` covered only the no-`returnUrl`
+default, `router.navigate(['/garden'])`. The restore path — `navigateByUrl(returnUrl)`
+plus handing the same destination to the restarted monitor — was exercised by no test
+at all, even though it is the clause's whole subject. Two cases were added: a valid
+`/garden/42` is restored (and `navigate` is *not* called), and an unsafe
+`https://evil.tld/steal` falls back to `/garden`. The first is confirmed
+non-vacuous by mutation: forcing the component back to an unconditional
+`navigate(['/garden'])` fails exactly that case and leaves the other two passing
+(`1 failed, 2 passed`), and the source was restored byte-identical afterwards.
 
 ## What waves 2–4 claim at this revision
 
