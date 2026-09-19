@@ -426,3 +426,16 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-19_0252_fulfill-demand-factory-20260914-mission
+
+## Session 21 (2026-09-19)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-19_1511_fulfill-demand-factory-20260914-mission.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260914-mission-9b774285-8a9f-4763-9d27-7310127bc931-855a5c8970a6 (capability: Finish protected pages & inactivity sessions, from: factory, target: plantpal). Acceptance criteria: - wave-2: Correct redirect and sign-out behaviour, then deliberately rewrite or remove the two w... -- status: partial.
+- Next step: Origin review of candidate 6981a45/8d6d730; then the owner's separate wave-5 enforcement and release decision before any merge, cutover, deployment, or APP_SESSION_ENFORCEMENT_ENABLED change.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-19_1511_fulfill-demand-factory-20260914-mission
