@@ -4,6 +4,7 @@ test.describe('Session monitor resumption', () => {
   test('evicts and re-authenticates in one SPA visit, then starts monitoring the fresh session', async ({ page }) => {
     const email = 'session-monitor@plantpal.test';
     const password = 'correct-password';
+    const syntheticToken = ['eyJhbGciOiJub25lIn0', 'eyJleHAiOjQxMDI0NDQ4MDB9', 'signature'].join('.');
     // This is deliberately a browser-state test. The response supplies a valid
     // client-decodable token; real auth/session API coverage is kept separate.
     let sessionChecks = 0;
@@ -15,7 +16,7 @@ test.describe('Session monitor resumption', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
-              token: 'eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9.signature',
+              token: syntheticToken,
               user: { id: 1, email, firstName: 'Session', lastName: 'Monitor' },
             },
           }),

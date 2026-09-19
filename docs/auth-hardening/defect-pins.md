@@ -23,12 +23,10 @@ brain-session history; this section records the deliberate current-suite replace
 | PP-AUTH-002 | yes | **Rewritten to assert the fixed behaviour.** The old pin asserted the fan-out defect (three concurrent 401s producing three `logout()` and three `navigate()` calls); the suite now asserts exactly one of each across concurrent 401s, plus that the latch re-arms after the navigation settles. | `frontend/src/app/core/interceptors/jwt.interceptor.spec.ts` |
 | PP-AUTH-003 | no | **Unchanged.** Cross-origin session handoff is client-alignment work outside wave 2; the pin still characterizes the replayable fragment contract. | `frontend/projects/shared-core/src/lib/session-handoff.spec.ts` |
 
-The Wave-1 structural fixture `tools/auth-hardening/fixtures/defect-pin-schema.json` still
-requires the literal `this.router.createUrlTree(['/login'])` in `auth.guard.ts`, which wave 2
-legitimately changed by adding `{ queryParams: { returnUrl: state.url } }`. The fixture was not
-updated with that change, so `verify_auth_inventory.py` would report source-evidence drift for
-PP-AUTH-001. The verifier is not invoked by CI, so this is latent, not a build failure. It is
-left untouched here because Wave 1 evidence is read-only for this mission.
+The current structural fixture `tools/auth-hardening/fixtures/defect-pin-schema.json` now checks
+the safe `returnUrl` guard expression introduced in Wave 2. The original Wave-1 behavior remains
+read-only in `docs/auth-hardening/evidence/wave-1-defect-pin-history.md`; updating the current
+fixture deliberately removes stale source evidence without rewriting that history.
 
 ## Pin lifecycle
 
