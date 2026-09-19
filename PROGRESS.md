@@ -411,3 +411,18 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-17_0116_recover-usage-limited-run-18b2cb6f-a6fc
+
+## Session 20 (2026-09-19)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-19_0252_fulfill-demand-factory-20260914-mission.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand factory-20260914-mission-9b774285-8a9f-4763-9d27-7310127bc931-855a5c8970a6 (capability: Finish protected pages & inactivity sessions, from: factory, target: plantpal). Acceptance criteria: - wave-2: Correct redirect and sign-out behaviour, then deliberately rewrite or remove the two w... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-19_0252_fulfill-demand-factory-20260914-mission.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-19_0252_fulfill-demand-factory-20260914-mission
