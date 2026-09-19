@@ -5,11 +5,33 @@ current branch head. Like `candidate-375dfa9.md`, this is **not** a completion,
 release, merge, deployment, or enforcement claim. It supersedes that document as
 the current candidate record.
 
-## Candidate identity
+## Candidate identity and revision chain
 
-- Revision: `6981a45` — *test(auth): align wave-2 evidence and secret scanning*.
-- Branch: `feature/PP-100-session-hardening-waves-2-4`, published — the local
-  branch and `origin/` are level (0 ahead / 0 behind) at this revision.
+The revision this document is named for, `6981a45` — *test(auth): align wave-2
+evidence and secret scanning* — is the revision at which the receipts below were
+measured. Two successors carry only non-enforcement deltas, so the enforcement
+boundary under review is unchanged across all three:
+
+| Revision | Content | Enforcement-relevant? |
+|---|---|---|
+| `6981a45` | candidate at which CI and the focused suites were measured | — |
+| `9789485` | docs only — this record and the preserved partial-report history | no |
+| `8d6d730` | test only — the wave-2 return-destination regression cases | no production change |
+
+CI and Secret Scanning pass at **all three** revisions, so the head is green and
+the receipts below are not inherited from a stale head:
+
+| Revision | CI | Secret Scanning |
+|---|---|---|
+| `8d6d730` (head) | `35448229852` success | `35448229818` success |
+| `9789485` | `35448154545` success | `35448154553` success |
+| `6981a45` | `35437826917` success | `35437826943` success |
+
+Any later successor that touches only this documentation directory changes nothing
+above; the commit log is the record.
+
+- Branch: `feature/PP-100-session-hardening-waves-2-4`, published and level with
+  `origin/`.
 - `app.session.enforcement-enabled` remains **`false`** (`application.yml`); it was
   not flipped in producing this candidate.
 
