@@ -93,6 +93,22 @@
   correction; its raw evidence and remaining Wave 5 boundary are in
   `docs/auth-hardening/candidate-375dfa9.md`.
 
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` current-candidate checkpoint
+  `6981a45` (2026-09-19, branch `feature/PP-100-session-hardening-waves-2-4`) — again
+  waves 2–4 only, still **no enforcement activation, no merge, no deployment, no live
+  verification**. CI and Secret Scanning both pass at this revision (runs `35437826917`,
+  `35437826943`); the preceding `f2f5a44` head was red because the Testcontainers
+  correction's new registry test failed lifecycle-bound `spotless:check` while all tests
+  passed, which `a75070a` corrected. Receipts were re-measured at `6981a45` rather than
+  inherited: backend focused 111/111 (88 protected-endpoint denial, 14 enforcement-filter,
+  9 registry) and frontend session specs 24/24 across 5 suites, each with its own exit
+  code. The 2026-09-16 fulfillment report for this mission, which the origin ruled out of
+  the active `demands/fulfilled/` scan, is preserved as history at
+  `docs/auth-hardening/evidence/mission-9b774285-historical-partial-fulfillment.md`; the
+  current candidate record is `docs/auth-hardening/candidate-6981a45.md`. Wave 5's
+  separate, still-unauthorized enforcement/release decision remains the outstanding
+  criterion.
+
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
   (`IdentificationServiceImpl.parseIdentificationResult`), causing a
