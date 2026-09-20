@@ -111,7 +111,7 @@ jobs:
 
       - name: Upload E2E report (atlas)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-screenshots
           path: |
@@ -131,7 +131,7 @@ jobs:
       #     CI: true
       # - name: Upload E2E screenshots
       #   if: always()
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v7
       #   with:
       #     name: playwright-screenshots
       #     path: |
@@ -213,7 +213,7 @@ jobs:
       - name: Upload auth characterization reports
         id: upload-auth-characterization-reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: auth-hardening-ci-reports
           path: |
