@@ -36,6 +36,83 @@
   `StateFeedProperties`/`StateFeedEmitter` unit tests (7 + 1 cases): default
   gating, payload shape, transport-failure swallowing.
 
+- Auth characterization suites made blocking CI evidence (Factory feature
+  mission `9636b730-d536-4ad3-99e8-80c2797f9be3`, demand
+  `app-studio-20260907-plantpal-t1-*`) — **delivered waves only, feature not
+  complete**. Shipped: T1.20 auth surface inventory (23 frontend route
+  records, 48 backend endpoint records, 3 defect pins) and structural
+  verifiers; T1.22 protected-endpoint denial characterization
+  (`ProtectedEndpointAuthTest`, 88 cases); T1.23 AuthGuard
+  defect-characterization coverage; T1.24 JwtInterceptor
+  defect-characterization coverage; T1.25 cross-origin session-handoff
+  characterization (8 cases); T1.26 made the four characterization runners
+  (`ProtectedEndpointAuthTest`, AuthGuard, JwtInterceptor, session-handoff)
+  a blocking `Auth Characterization CI` job in `.github/workflows/ci.yml`
+  on every push/PR, with a structured JUnit-report artifact and mutation-run
+  evidence that a real assertion break fails the job. Reports:
+  `demands/fulfilled/app-studio-20260907-plantpal-t1-{20,22,23,24,25,26}-report.md`.
+  **Outstanding:** T1.27 (owner-observation unit) and any further planned
+  waves of this mission are not yet dispatched/shipped — no v1.0.0 tag or
+  app-birth release claim applies to this feature.
+
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` Waves 2–4 implementation
+  checkpoint (candidate only; no deployment or enforcement activation): protected-route
+  return URLs are validated and restored after login; concurrent protected-API 401s use one
+  sign-out/redirect flow; and explicit sign-out best-effort revokes the registry record.
+  The new PlantPal-owned Redis session registry issues a per-token `jti`, maintains a 30-minute
+  sliding record plus a signed 12-hour absolute cap, distinguishes revocation reasons, and is
+  deliberately **inert by default** (`app.session.enforcement-enabled=false`). The client polls
+  only the explicit non-renewing status endpoint, warns at two minutes, renews only after an
+  explicit user action, and preserves a safe return destination on an expiry verdict. Verified
+  in the recovered session: backend unit suite 451/451, focused auth/session suite 108/108,
+  and frontend expiry regression 11/11 plus production build. That earlier Docker limitation was
+  corrected in the follow-up candidate checkpoint: Testcontainers was updated for Docker Desktop
+  29 and the test profile selects the supported in-process identification transport, allowing the
+  full verified suite to run. Wave 5's separate enforcement/release/deployed-live-verification
+  decision remains outstanding.
+
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` acceptance-evidence pass
+  (2026-09-16, branch `feature/PP-100-session-hardening-waves-2-4`; waves 2–4 remain a
+  candidate — **no enforcement activation, no deployment, no live verification, no merge**).
+  Added `SessionEnforcementFilterTest` (14 cases): the wave-3 criterion "rejected and expired
+  sessions cannot call protected APIs" previously had no test at all — the registry test only
+  proved the service returns `invalid(...)`, and the existing denial suite ran with
+  `enforcementEnabled=false`, so the branch that withholds authentication was never exercised.
+  The suite now proves every `RevokedReason` yields 401 plus the `X-Session-Revoked-Reason`
+  header, that an unavailable registry fails closed once enforcing and open while inert, that the
+  same rejected session is still admitted while the flag is off (pinning ADR-8's inert default and
+  the wave-5 cutover boundary), and that the non-renewing status endpoint peeks rather than slides
+  — server-side proof that background polling cannot extend a session, which was previously
+  untested. It is a surefire `*Test` needing no Spring context and no Testcontainers, so the
+  enforcement boundary is verifiable where Docker is unavailable. Also applied `spotless` to the
+  mission's own sources (it is not lifecycle-bound, so `mvn clean verify` never ran it) and
+  recorded the wave-2 disposition of the wave-1 defect pins in
+  `docs/auth-hardening/defect-pins.md`. Verified: backend unit 465/465, frontend Jest 549/549
+  across 44 suites, production build exit 0, `spotless:check` clean. The later candidate
+  checkpoint establishes backend integration verification after the Testcontainers/test-profile
+  correction; its raw evidence and remaining Wave 5 boundary are in
+  `docs/auth-hardening/candidate-375dfa9.md`.
+
+- Factory mission `9b774285-8a9f-4763-9d27-7310127bc931` current-candidate checkpoint
+  `6981a45` (2026-09-19, branch `feature/PP-100-session-hardening-waves-2-4`) — again
+  waves 2–4 only, still **no enforcement activation, no merge, no deployment, no live
+  verification**. CI and Secret Scanning both pass at this revision (runs `35437826917`,
+  `35437826943`); the preceding `f2f5a44` head was red because the Testcontainers
+  correction's new registry test failed lifecycle-bound `spotless:check` while all tests
+  passed, which `a75070a` corrected. Receipts were re-measured at `6981a45` rather than
+  inherited: backend focused 111/111 (88 protected-endpoint denial, 14 enforcement-filter,
+  9 registry) and frontend session specs 26/26 across 5 suites, each with its own exit
+  code. Reviewing wave-2's "a safe local destination is restored after login" clause
+  against the suite showed it unasserted — `login.component.spec.ts` covered only the
+  no-`returnUrl` default — so the restore path and its unsafe-input fallback are now
+  covered, the first proven non-vacuous by mutation. The 2026-09-16 fulfillment report
+  for this mission, which the origin ruled out of
+  the active `demands/fulfilled/` scan, is preserved as history at
+  `docs/auth-hardening/evidence/mission-9b774285-historical-partial-fulfillment.md`; the
+  current candidate record is `docs/auth-hardening/candidate-6981a45.md`. Wave 5's
+  separate, still-unauthorized enforcement/release decision remains the outstanding
+  criterion.
+
 ### Fixed
 - **Identification AI-JSON parsing broke on a markdown-fenced response**
   (`IdentificationServiceImpl.parseIdentificationResult`), causing a

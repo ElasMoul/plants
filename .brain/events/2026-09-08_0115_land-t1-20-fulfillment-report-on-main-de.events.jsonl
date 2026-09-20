@@ -1,0 +1,3 @@
+{"ev": "session_start", "ts": "2026-09-08T01:15:13+01:00", "agent": "codex", "model": "claude-code"}
+{"ev": "query", "ts": "2026-09-08T01:15:24+01:00", "terms": "demand main doorbell fulfillment report branch diff base", "returned": [], "bodies_shown": []}
+{"ev": "session_stop", "ts": "2026-09-08T01:16:18+01:00"}

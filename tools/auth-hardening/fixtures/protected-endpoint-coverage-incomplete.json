@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "suite": "ProtectedEndpointAuthTest",
+  "cases": [
+    {
+      "endpoint_id": "BE-003",
+      "method": "GET",
+      "path": "/api/v1/users/me/preferences",
+      "credential_case": "missing_credentials",
+      "expected_status": 401,
+      "actual_status": 401,
+      "passed": true
+    }
+  ]
+}
