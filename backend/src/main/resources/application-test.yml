@@ -43,6 +43,11 @@ github:
 # ──── Application settings ────────────────────────────────────────────────────
 app:
 
+  # HTTP integration tests do not provision Kafka. Use the already-supported
+  # in-process transport so KafkaAdmin never attempts broker discovery.
+  identification:
+    transport: in-process
+
   plantnet:
     api-key: test-plantnet-api-key-placeholder
 

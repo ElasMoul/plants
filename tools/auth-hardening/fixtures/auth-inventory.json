@@ -1,0 +1,83 @@
+{
+  "frontend_records": [
+    {"ID": "FE-001", "App": "classic", "Method": "ROUTE", "Path": "/", "Declaration": "LandingComponent", "Guard": "none", "Access": "public"},
+    {"ID": "FE-002", "App": "classic", "Method": "ROUTE", "Path": "/home", "Declaration": "HomeComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-003", "App": "classic", "Method": "ROUTE", "Path": "/home/overview", "Declaration": "GardenDashboardComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-004", "App": "classic", "Method": "REDIRECT", "Path": "/dashboard", "Declaration": "/home/overview", "Guard": "redirect to AuthGuard target", "Access": "protected"},
+    {"ID": "FE-005", "App": "classic", "Method": "ROUTE", "Path": "/garden", "Declaration": "SpeciesListComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-006", "App": "classic", "Method": "ROUTE", "Path": "/garden/species/:id", "Declaration": "SpeciesDetailComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-007", "App": "classic", "Method": "ROUTE", "Path": "/plants/new", "Declaration": "PlantFormComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-008", "App": "classic", "Method": "ROUTE", "Path": "/plants/:id/edit", "Declaration": "PlantFormComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-009", "App": "classic", "Method": "ROUTE", "Path": "/plants/:id/scans/:scanId", "Declaration": "ScanDetailComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-010", "App": "classic", "Method": "ROUTE", "Path": "/plants/:id", "Declaration": "PlantDetailComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-011", "App": "classic", "Method": "ROUTE", "Path": "/identify", "Declaration": "IdentificationPageComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-012", "App": "classic", "Method": "ROUTE", "Path": "/identify/:id", "Declaration": "IdentificationDetailPageComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-013", "App": "classic", "Method": "ROUTE", "Path": "/treatment/:id", "Declaration": "TreatmentDetailComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-014", "App": "classic", "Method": "ROUTE", "Path": "/reminders", "Declaration": "ReminderListComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-015", "App": "classic", "Method": "ROUTE", "Path": "/treatment-plans/:id", "Declaration": "TreatmentPlanDetailComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-016", "App": "classic", "Method": "ROUTE", "Path": "/plans/:planId/steps/:stepId", "Declaration": "TaskStepComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-017", "App": "classic", "Method": "ROUTE", "Path": "/chat", "Declaration": "ChatHomeComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-018", "App": "classic", "Method": "ROUTE", "Path": "/preferences", "Declaration": "PreferencesPageComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-019", "App": "classic", "Method": "ROUTE", "Path": "/voice-test", "Declaration": "VoiceTestComponent", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+    {"ID": "FE-020", "App": "classic", "Method": "ROUTE", "Path": "/login", "Declaration": "LoginComponent", "Guard": "none", "Access": "public"},
+    {"ID": "FE-021", "App": "classic", "Method": "ROUTE", "Path": "/register", "Declaration": "RegisterComponent", "Guard": "none", "Access": "public"},
+    {"ID": "FE-022", "App": "classic", "Method": "REDIRECT", "Path": "/**", "Declaration": "/garden", "Guard": "redirect to AuthGuard target", "Access": "protected"},
+    {"ID": "FE-023", "App": "atlas", "Method": "DOCUMENT", "Path": "/", "Declaration": "App bootstrap", "Guard": "none", "Access": "public"}
+  ],
+  "declaration_samples": [
+    {
+      "kind": "route",
+      "record_id": "FE-001",
+      "expected": {"Method": "ROUTE", "Path": "/", "Guard": "none", "Access": "public"},
+      "source_checks": [
+        {"path": "frontend/src/app/app-routing.module.ts", "contains": ["path: ''", "./features/landing/landing.module"]},
+        {"path": "frontend/src/app/features/landing/landing-routing.module.ts", "contains": ["path: ''", "component: LandingComponent"]}
+      ]
+    },
+    {
+      "kind": "route",
+      "record_id": "FE-010",
+      "expected": {"Method": "ROUTE", "Path": "/plants/:id", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+      "source_checks": [
+        {"path": "frontend/src/app/app-routing.module.ts", "contains": ["path: 'plants'", "canActivate: [AuthGuard]"]},
+        {"path": "frontend/src/app/features/plant/plant-routing.module.ts", "contains": ["path: ':id'", "component: PlantDetailComponent"]}
+      ]
+    },
+    {
+      "kind": "route",
+      "record_id": "FE-014",
+      "expected": {"Method": "ROUTE", "Path": "/reminders", "Guard": "AuthGuard (inherited)", "Access": "protected"},
+      "source_checks": [
+        {"path": "frontend/src/app/app-routing.module.ts", "contains": ["./features/reminder/reminder.module", "canActivate: [AuthGuard]"]},
+        {"path": "frontend/src/app/features/reminder/reminder-routing.module.ts", "contains": ["path: 'reminders'", "component: ReminderListComponent"]}
+      ]
+    },
+    {
+      "kind": "controller",
+      "record_id": "BE-002",
+      "expected": {"Method": "POST", "Path": "/api/v1/auth/login", "Security rule": "POST permitAll", "Access": "public"},
+      "source_checks": [
+        {"path": "backend/src/main/java/com/plantpal/user/controller/AuthController.java", "contains": ["@RequestMapping(\"/api/v1/auth\")", "@PostMapping(\"/login\")"]},
+        {"path": "backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java", "contains": ["HttpMethod.POST, \"/api/v1/auth/register\", \"/api/v1/auth/login\"", ".permitAll()"]}
+      ]
+    },
+    {
+      "kind": "controller",
+      "record_id": "BE-012",
+      "expected": {"Method": "DELETE", "Path": "/api/v1/plants/{id}", "Security rule": "anyRequest authenticated", "Access": "protected"},
+      "source_checks": [
+        {"path": "backend/src/main/java/com/plantpal/plant/controller/PlantController.java", "contains": ["@RequestMapping(\"/api/v1/plants\")", "@DeleteMapping(\"/{id}\")"]},
+        {"path": "backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java", "contains": [".anyRequest()", ".authenticated()"]}
+      ]
+    },
+    {
+      "kind": "controller",
+      "record_id": "BE-026",
+      "expected": {"Method": "POST", "Path": "/api/v1/identifications/{id}/retry", "Security rule": "anyRequest authenticated", "Access": "protected"},
+      "source_checks": [
+        {"path": "backend/src/main/java/com/plantpal/identification/controller/IdentificationController.java", "contains": ["@RequestMapping(\"/api/v1/identifications\")", "@PostMapping(\"/{id}/retry\")"]},
+        {"path": "backend/src/main/java/com/plantpal/shared/config/SecurityConfig.java", "contains": [".anyRequest()", ".authenticated()"]}
+      ]
+    }
+  ]
+}

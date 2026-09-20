@@ -1,0 +1,4 @@
+# Synthetic JWT used by the session-monitor browser fixture in the published
+# d073711 checkpoint. HEAD constructs the value from segments; retain this
+# exact historical fingerprint so new-commit scans do not mistake it for a key.
+d0737114e1fbc386a5aad158e5327559c3254c36:frontend/e2e/journeys/session-monitor-resumption.spec.ts:generic-api-key:18
