@@ -10,12 +10,20 @@
     {
       "pin": "PP-AUTH-001",
       "path": "frontend/src/app/core/guards/auth.guard.ts",
-      "contains": ["this.authService.isLoggedIn()", "this.router.createUrlTree(['/login'])"]
+      "contains": [
+        "this.authService.isLoggedIn()",
+        "this.router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } })"
+      ]
     },
     {
       "pin": "PP-AUTH-002",
       "path": "frontend/src/app/core/interceptors/jwt.interceptor.ts",
-      "contains": ["if (error.status === 401)", "this.authService.logout()", "this.router.navigate(['/login'])"]
+      "contains": [
+        "if (error.status === 401 && !AUTH_ENDPOINT_PATTERN.test(request.url))",
+        "this.signOutOnce(error.headers.get('X-Session-Revoked-Reason'))",
+        "this.authService.logout()",
+        "this.router.navigate(['/login'], extras)"
+      ]
     },
     {
       "pin": "PP-AUTH-003",

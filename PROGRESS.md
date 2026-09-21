@@ -316,3 +316,126 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-08_1945_fulfill-app-studio-20260907-plantpal-t1
+
+## Session 13 (2026-09-08)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-08_2006_fulfill-app-studio-20260907-plantpal-t1.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill app-studio-20260907-plantpal-t1-25 cross-origin session-handoff characterization coverage -- status: done.
+- Next step: Coordinator validates T1.25 and the owner decides approval; T1.26 remains a separate dispatched unit.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-08_2006_fulfill-app-studio-20260907-plantpal-t1
+
+## Session 14 (2026-09-09)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-08_2336_fulfill-app-studio-20260907-plantpal-t1.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill app-studio-20260907-plantpal-t1-26 blocking auth CI evidence -- status: done.
+- Next step: Coordinator validates T1.26 and the owner decides approval; T1.27 remains the owner-observation unit.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-08_2336_fulfill-app-studio-20260907-plantpal-t1
+
+## Session 15 (2026-09-09)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-09_2121_fulfill-demand-app-studio-20260909-plant.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand app-studio-20260909-plantpal-record-factory-mission-9636b730 (capability: record Factory feature mission 9636b730-d536-4ad3-99e8-80c2797f9be3 in plantpal's own CHANGELOG and operational memory, from: app-studio, target: plantpal). Acceptance criteria: - plantpal's CHANGELOG records mi... -- status: done.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-09_2121_fulfill-demand-app-studio-20260909-plant
+
+## Session 16 (2026-09-14)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-14_1453_owner-requested-continuing-factory-missi.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Owner requested continuing Factory mission 9b774285-8a9f-4763-9d27-7310127bc931 with Claude Sonnet 5 medium. Work only in PlantPal. Read standing instructions, full spec and brain/session protocol; preserve prior branch/commits and check for live writers. Original app-studio mission 9636b730-d536-4a... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-14_1453_owner-requested-continuing-factory-missi.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-14_1453_owner-requested-continuing-factory-missi
+
+## Session 17 (2026-09-14)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand brain-toolkit-20260914-fleet-repin-v063 (capability: Every .brain repo moves its .brain/toolkit-pin to v0.6.3 — the fleet re-pin sweep for the session-model-field fix. The whole fleet is currently on v0.6.2; v0.6.3 fixes brain session open recording a false model: claude-code on every... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-14_1816_fulfill-demand-brain-toolkit-20260914-fl
+
+## Session 18 (2026-09-16)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-16_2004_recover-timed-out-factory-mission-9b7742.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Recover timed-out Factory mission 9b774285 Waves 2-4 verification and checkpoint -- status: partial.
+- Next step: On a Docker-capable runner, run mvn verify; then obtain the separate Wave 5 security-release decision before enabling app.session.enforcement-enabled or deploying.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-16_2004_recover-timed-out-factory-mission-9b7742
+
+## Session 19 (2026-09-17)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-17_0116_recover-usage-limited-run-18b2cb6f-a6fc.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Recover usage-limited run 18b2cb6f-a6fc-43f1-bfd3-a583d360662d: checkpoint and verify Factory mission 9b774285 Waves 2-4 candidate -- status: partial.
+- Next step: Origin review of Waves 2-4 candidate; obtain separate Wave 5 enforcement/release authorization before any merge, deployment, or app.session.enforcement-enabled change.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-17_0116_recover-usage-limited-run-18b2cb6f-a6fc
+
+## Session 20 (2026-09-19)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-19_0252_fulfill-demand-factory-20260914-mission.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand factory-20260914-mission-9b774285-8a9f-4763-9d27-7310127bc931-855a5c8970a6 (capability: Finish protected pages & inactivity sessions, from: factory, target: plantpal). Acceptance criteria: - wave-2: Correct redirect and sign-out behaviour, then deliberately rewrite or remove the two w... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-19_0252_fulfill-demand-factory-20260914-mission.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-19_0252_fulfill-demand-factory-20260914-mission
+
+## Session 21 (2026-09-19)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-19_1511_fulfill-demand-factory-20260914-mission.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260914-mission-9b774285-8a9f-4763-9d27-7310127bc931-855a5c8970a6 (capability: Finish protected pages & inactivity sessions, from: factory, target: plantpal). Acceptance criteria: - wave-2: Correct redirect and sign-out behaviour, then deliberately rewrite or remove the two w... -- status: partial.
+- Next step: Origin review of candidate 6981a45/8d6d730; then the owner's separate wave-5 enforcement and release decision before any merge, cutover, deployment, or APP_SESSION_ENFORCEMENT_ENABLED change.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-19_1511_fulfill-demand-factory-20260914-mission

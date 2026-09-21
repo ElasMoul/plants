@@ -13,6 +13,7 @@
     "test": "jest",
     "test:auth-guard": "jest --config jest.auth-guard.config.js --runInBand --ci --passWithNoTests=false",
     "test:jwt-interceptor": "jest --config jest.jwt-interceptor.config.js --runInBand --ci --passWithNoTests=false",
+    "test:session-handoff": "jest --config jest.session-handoff.config.js --runInBand --ci --passWithNoTests=false",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "typecheck:engine": "tsc -p projects/rhizome-engine/tsconfig.json --noEmit",

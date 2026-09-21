@@ -117,7 +117,8 @@ public class SecurityConfig {
     config.setAllowedOriginPatterns(origins);
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
-    config.setExposedHeaders(List.of("X-Correlation-ID"));
+    config.setExposedHeaders(
+        List.of("X-Correlation-ID", JwtAuthFilter.SESSION_REVOKED_REASON_HEADER));
     config.setAllowCredentials(true);
     config.setMaxAge(3600L);
 

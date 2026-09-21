@@ -90,6 +90,9 @@ explicit in the Guard column.
 | BE-046 | POST | `/api/v1/species/{id}/regenerate-description` | SpeciesController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/species/controller/SpeciesController.java` |
 | BE-047 | GET | `/api/v1/photos/{filename}` | PhotoController | path permitAll | public | `backend/src/main/java/com/plantpal/shared/controller/PhotoController.java` |
 | BE-048 | GET | `/photos/{filename}` | PhotoController | path permitAll | public | `backend/src/main/java/com/plantpal/shared/controller/PhotoController.java` |
+| BE-049 | GET | `/api/v1/auth/session` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
+| BE-050 | POST | `/api/v1/auth/session/renew` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
+| BE-051 | POST | `/api/v1/auth/logout` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
 
 ## Security-filter public surfaces without controller declarations
 

@@ -1,0 +1,37 @@
+{
+  "subject": "git_changed_files",
+  "base_ref": "6fc08ccbb8ba6c36d3a862155bb42abf622ba41d",
+  "ignored_preexisting_untracked": ["AGENTS.md"],
+  "allowed_globs": [
+    "frontend/package.json",
+    "frontend/jest.session-handoff.config.js",
+    "frontend/projects/shared-core/src/lib/session-handoff.spec.ts",
+    "tools/auth-hardening/fixtures/session-handoff-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-25-report.md",
+    ".brain/events/**",
+    ".brain/sessions/**",
+    "PROGRESS.md"
+  ],
+  "forbidden_globs": [
+    "frontend/projects/shared-core/src/lib/session-handoff.ts",
+    "frontend/projects/shared-core/src/lib/services/auth.service.ts",
+    "frontend/projects/atlas/src/main.ts",
+    "backend/src/main/**"
+  ],
+  "required_paths": [
+    "frontend/package.json",
+    "frontend/jest.session-handoff.config.js",
+    "frontend/projects/shared-core/src/lib/session-handoff.spec.ts",
+    "tools/auth-hardening/fixtures/session-handoff-allowed-paths.json",
+    "demands/fulfilled/app-studio-20260907-plantpal-t1-25-report.md"
+  ],
+  "required_changed_path_groups": {
+    "test": ["frontend/projects/shared-core/src/lib/session-handoff.spec.ts"],
+    "test_configuration": [
+      "frontend/package.json",
+      "frontend/jest.session-handoff.config.js"
+    ],
+    "evidence": ["demands/fulfilled/app-studio-20260907-plantpal-t1-25-report.md"],
+    "verifier_assets": ["tools/auth-hardening/**"]
+  }
+}

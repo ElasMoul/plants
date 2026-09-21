@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService, buildAtlasHandoffUrl } from '@plantpal/shared-core';
 import { environment } from '../../../../environments/environment';
+import { sanitizeReturnUrl } from '../../../core/return-url';
+import { SessionMonitorService } from '../../../core/services/session-monitor.service';
 
 @Component({
     selector: 'app-login',
@@ -16,12 +18,20 @@ export class LoginComponent {
   loading = false;
   hidePassword = true;
 
+  // D8: after a signed-out redirect (idle expiry, a protected deep link, or an
+  // unknown path), restore the safe destination the visitor was headed to —
+  // never an arbitrary one (see return-url.ts's allowlist).
+  private readonly returnUrl: string | null;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private snackBar: MatSnackBar,
+    private readonly sessionMonitorService: SessionMonitorService,
   ) {
+    this.returnUrl = sanitizeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
@@ -38,6 +48,10 @@ export class LoginComponent {
     const { email, password, openAtlas } = this.form.getRawValue();
     this.authService.login({ email, password }).subscribe({
       next: res => {
+        // A server-authoritative eviction can return the user to this route
+        // immediately after a successful login. Do not leave the submit control
+        // disabled in that same SPA visit.
+        this.loading = false;
         if (openAtlas) {
           // Full navigation to the atlas origin; the session rides the URL
           // fragment (never the query string) and is consumed+scrubbed on boot.
@@ -46,7 +60,14 @@ export class LoginComponent {
           );
           return;
         }
-        this.router.navigate(['/garden']);
+        const destination = this.returnUrl
+            ? this.router.navigateByUrl(this.returnUrl)
+            : this.router.navigate(['/garden']);
+        // The application shell is not recreated after an eviction. Wait for the
+        // safe return navigation before restarting the monitor: its immediate
+        // poll may evict synchronously, and must preserve the destination rather
+        // than the transient /login route.
+        Promise.resolve(destination).then(() => this.sessionMonitorService.start(this.returnUrl ?? '/garden'));
       },
       error: err => {
         this.loading = false;
