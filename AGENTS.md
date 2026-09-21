@@ -516,6 +516,7 @@ open backend/target/site/jacoco/index.html
 | DEPLOY — Launch Preparation | ⚙️ T-DEPLOY.1–5(code) ✅ merged (PRs #125/#126, no Kafka in prod); remaining: account setup → deploy → beta → v1.0.0 |
 | ATLAS — Rhizome second frontend | ✅ Complete (A–H waves merged to main 2026-08-18; frontend-atlas/FIDELITY_PLAN.md; apps: :4300 dev / :8445 compose) |
 | ATLAS R2/R3 — care loop, dashboard/notifications/users, mock garden, settings | ✅ (I1–I7, slices S0–S8 on `atlas/R2-care-loop`) |
+| ADMIN — Administration console | Complete on `codex/plantpal-admin-dashboard` (2026-09-21): overview, user management, AI visibility, role enforcement, audit; migration 034; setup: `docs/admin-console.md` |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ---

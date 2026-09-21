@@ -277,3 +277,10 @@ for the full build plan with exact prompts for Claude Code-assisted tasks, and
 ---
 
 *PlantPal — built with 🌿 and enterprise-grade Java.*
+
+## Administration console
+
+The Classic app now includes an administrator workspace at `/admin`: community
+overview, user management, AI model visibility, and an activity log. See
+[the setup and operation guide](docs/admin-console.md) for provisioning the first
+administrator and the exact Settings visibility semantics.
