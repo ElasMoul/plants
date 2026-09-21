@@ -1,7 +1,11 @@
 package com.plantpal.shared.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.shared.filter.AuthRateLimitFilter;
 import com.plantpal.shared.filter.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +51,10 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain securityFilterChain(
-      HttpSecurity http, JwtAuthFilter jwtAuthFilter, AuthRateLimitFilter authRateLimitFilter)
+      HttpSecurity http,
+      JwtAuthFilter jwtAuthFilter,
+      AuthRateLimitFilter authRateLimitFilter,
+      ObjectMapper objectMapper)
       throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
@@ -65,6 +72,8 @@ public class SecurityConfig {
                         "/photos/**",
                         "/api/v1/photos/**")
                     .permitAll()
+                    .requestMatchers("/api/v1/admin/**")
+                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
@@ -72,11 +81,23 @@ public class SecurityConfig {
         .exceptionHandling(
             ex ->
                 ex.authenticationEntryPoint(
-                    (request, response, e) ->
-                        response.sendError(
-                            jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED)));
+                        (request, response, e) ->
+                            writeSecurityError(
+                                response, objectMapper, 401, "Authentication required"))
+                    .accessDeniedHandler(
+                        (request, response, e) ->
+                            writeSecurityError(
+                                response, objectMapper, 403, "Administrator access required")));
 
     return http.build();
+  }
+
+  private void writeSecurityError(
+      HttpServletResponse response, ObjectMapper mapper, int status, String message)
+      throws IOException {
+    response.setStatus(status);
+    response.setContentType("application/json");
+    mapper.writeValue(response.getOutputStream(), ApiResponse.error(message, status));
   }
 
   /**

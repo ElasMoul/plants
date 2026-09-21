@@ -39,8 +39,8 @@ const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
     standalone: false
 })
 export class ModelSelectorComponent implements OnInit, OnDestroy {
-  readonly visionOptions = VISION_OPTIONS;
-  readonly reasoningOptions = REASONING_OPTIONS;
+  visionOptions = VISION_OPTIONS;
+  reasoningOptions = REASONING_OPTIONS;
 
   selectedVision: VisionModelPreference = 'GITHUB_GPT4O';
   selectedReasoning: ReasoningModelPreference = 'DEEPSEEK_R1';
@@ -63,8 +63,16 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
         next: res => {
           this.selectedVision = res.data.visionModelPreference;
           this.selectedReasoning = res.data.reasoningModelPreference;
-          this.visionAvailability = res.data.visionModelAvailability ?? {};
-          this.reasoningAvailability = res.data.reasoningModelAvailability ?? {};
+          this.visionAvailability = { ...res.data.visionModelAvailability };
+          this.reasoningAvailability = { ...res.data.reasoningModelAvailability };
+          this.visionOptions = VISION_OPTIONS.filter(o => res.data.visionModelVisibility?.[o.value] !== false || o.value === this.selectedVision);
+          this.reasoningOptions = REASONING_OPTIONS.filter(o => res.data.reasoningModelVisibility?.[o.value] !== false || o.value === this.selectedReasoning);
+          for (const [key, visible] of Object.entries(res.data.visionModelVisibility ?? {})) {
+            if (!visible) this.visionAvailability[key as VisionModelPreference] = false;
+          }
+          for (const [key, visible] of Object.entries(res.data.reasoningModelVisibility ?? {})) {
+            if (!visible) this.reasoningAvailability[key as ReasoningModelPreference] = false;
+          }
         },
       });
   }

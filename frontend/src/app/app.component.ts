@@ -6,6 +6,7 @@ import { catchError, filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
+import { AdminService } from './features/admin/admin.service';
 import { SessionMonitorService } from './core/services/session-monitor.service';
 
 const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
@@ -26,6 +27,8 @@ export class AppComponent implements OnInit {
   ];
 
   showNotificationBanner = false;
+  isAdministrator = false;
+  get isAdminPage(): boolean { return this.router.url.startsWith('/admin'); }
 
   constructor(
     public authService: AuthService,
@@ -34,17 +37,27 @@ export class AppComponent implements OnInit {
     private readonly snackBar: MatSnackBar,
     private readonly http: HttpClient,
     private router: Router,
+    private readonly adminService: AdminService,
   ) {}
 
   ngOnInit(): void {
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
     this.sessionMonitorService.start();
+    this.refreshAccess();
 
     // Always land at the top of the new page — Angular's own scroll restoration only resets
     // on forward navigation and restores position on back/forward, which isn't what we want here.
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => window.scrollTo({ top: 0, left: 0 }));
+      .subscribe(() => { window.scrollTo({ top: 0, left: 0 }); this.refreshAccess(); });
+  }
+
+  private refreshAccess(): void {
+    if (!this.authService.isLoggedIn()) { this.isAdministrator = false; return; }
+    this.adminService.access().subscribe({
+      next: access => this.isAdministrator = access.administrator,
+      error: () => this.isAdministrator = false,
+    });
   }
 
   acceptNotifications(): void {

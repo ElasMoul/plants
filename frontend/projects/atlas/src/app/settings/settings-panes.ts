@@ -401,11 +401,13 @@ const REASONING_OPTIONS: { value: string; name: string; note: string }[] = [
 function modelOptions(
   table: { value: string; name: string; note: string }[],
   availability: Partial<Record<string, boolean>> | undefined,
+  visibility?: Partial<Record<string, boolean>>,
+  selected?: string,
 ): Option[] {
-  return table.map(o => ({
+  return table.filter(o => visibility?.[o.value] !== false || o.value === selected).map(o => ({
     ...o,
-    disabled: availability?.[o.value] === false,
-    disabledNote: 'Not configured on this server',
+    disabled: availability?.[o.value] === false || visibility?.[o.value] === false,
+    disabledNote: visibility?.[o.value] === false ? 'No longer offered in Settings' : 'Not configured on this server',
   }));
 }
 
@@ -428,7 +430,7 @@ function aiPane(s: AtlasSettings, ctx: PaneContext): string {
         'Vision model',
         'ai.visionModelPreference',
         ctx.prefs.visionModelPreference,
-        modelOptions(VISION_OPTIONS, ctx.prefs.visionModelAvailability),
+        modelOptions(VISION_OPTIONS, ctx.prefs.visionModelAvailability, ctx.prefs.visionModelVisibility, ctx.prefs.visionModelPreference),
       )}
 
       ${sec('AI Preferences · reasoning')}
@@ -437,7 +439,7 @@ function aiPane(s: AtlasSettings, ctx: PaneContext): string {
         'Reasoning model',
         'ai.reasoningModelPreference',
         ctx.prefs.reasoningModelPreference,
-        modelOptions(REASONING_OPTIONS, ctx.prefs.reasoningModelAvailability),
+        modelOptions(REASONING_OPTIONS, ctx.prefs.reasoningModelAvailability, ctx.prefs.reasoningModelVisibility, ctx.prefs.reasoningModelPreference),
       )}
 
       ${sec('AI Preferences · PlantNet')}

@@ -1,5 +1,6 @@
 package com.plantpal.user.service.impl;
 
+import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.session.config.SessionProperties;
 import com.plantpal.session.service.SessionRegistryService;
@@ -43,6 +44,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private final SessionRegistryService sessionRegistryService;
   private final SessionProperties sessionProperties;
   private final Clock clock;
+  private final ModelCatalogService modelCatalog;
 
   @Value("${app.jwt.expiration-ms}")
   private long jwtExpirationMs;
@@ -54,7 +56,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       AnthropicClient anthropicClient,
       SessionRegistryService sessionRegistryService,
       SessionProperties sessionProperties,
-      Clock clock) {
+      Clock clock,
+      ModelCatalogService modelCatalog) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
@@ -62,6 +65,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     this.sessionRegistryService = sessionRegistryService;
     this.sessionProperties = sessionProperties;
     this.clock = clock;
+    this.modelCatalog = modelCatalog;
   }
 
   @Override
@@ -148,9 +152,15 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       user.setAiModelPreference(request.getAiModelPreference());
     }
     if (request.getVisionModelPreference() != null) {
+      if (request.getVisionModelPreference() != user.getVisionModelPreference()) {
+        modelCatalog.validateSelection("VISION", request.getVisionModelPreference().name());
+      }
       user.setVisionModelPreference(request.getVisionModelPreference());
     }
     if (request.getReasoningModelPreference() != null) {
+      if (request.getReasoningModelPreference() != user.getReasoningModelPreference()) {
+        modelCatalog.validateSelection("REASONING", request.getReasoningModelPreference().name());
+      }
       user.setReasoningModelPreference(request.getReasoningModelPreference());
     }
     if (request.getPlantnetProject() != null) {
@@ -182,6 +192,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .reasoningModelPreference(user.getReasoningModelPreference())
         .visionModelAvailability(visionModelAvailability())
         .reasoningModelAvailability(reasoningModelAvailability())
+        .visionModelVisibility(modelCatalog.visibility("VISION"))
+        .reasoningModelVisibility(modelCatalog.visibility("REASONING"))
         .plantnetProject(user.getPlantnetProject())
         .plantnetLang(user.getPlantnetLang())
         .businessTier(user.isBusinessTier())

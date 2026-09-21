@@ -1,0 +1,803 @@
+<div class="console">
+  <aside class="sidebar" aria-label="Administration navigation">
+    <a class="console-brand" routerLink="/admin"
+      ><span class="brand-mark"
+        ><app-admin-icon name="eco"></app-admin-icon></span
+      ><span>PlantPal<span class="brand-caption">ADMINISTRATION</span></span></a
+    >
+    <div class="workspace">
+      <span class="workspace-avatar">P</span>
+      <div>PlantPal workspace<small>Community & intelligence</small></div>
+      <app-admin-icon name="unfold_more"></app-admin-icon>
+    </div>
+    <p class="nav-caption">WORKSPACE</p>
+    <nav>
+      @for (item of navigation; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="selected"
+          [routerLinkActiveOptions]="{ exact: item.exact }"
+          ><app-admin-icon [name]="item.icon"></app-admin-icon>{{ item.label
+          }}<span class="nav-dot"></span
+        ></a>
+      }
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="garden-note">
+        <app-admin-icon name="spa"></app-admin-icon
+        ><strong>Good things take tending.</strong>
+        <p>A healthy community starts with a little care behind the scenes.</p>
+      </div>
+      <a class="back-link" routerLink="/home"
+        ><app-admin-icon name="arrow_back"></app-admin-icon>Back to my garden</a
+      >
+    </div>
+  </aside>
+
+  <section class="main-panel">
+    <header class="topbar">
+      <div>
+        <span>Workspace</span
+        ><app-admin-icon name="chevron_right"></app-admin-icon
+        ><strong>{{
+          view === "detail"
+            ? "People / Account"
+            : view === "ai"
+              ? "AI studio"
+              : view === "activity"
+                ? "Activity log"
+                : (view | titlecase)
+        }}</strong>
+      </div>
+      <span class="admin-label"
+        ><span class="online-dot"></span>Administrator<span
+          class="avatar small"
+          >{{ access?.name?.charAt(0) || "A" }}</span
+        ></span
+      >
+    </header>
+    <div class="page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">
+            {{
+              view === "overview"
+                ? "THE BIG PICTURE"
+                : view === "ai"
+                  ? "THE INTELLIGENCE LAYER"
+                  : view === "activity"
+                    ? "ACCOUNTABILITY, BUILT IN"
+                    : "YOUR GROWING COMMUNITY"
+            }}
+          </p>
+          <h1>{{ titles[view] }}</h1>
+          <p class="subtitle">{{ descriptions[view] }}</p>
+        </div>
+        <button
+          class="button secondary refresh"
+          (click)="refresh()"
+          [disabled]="
+            loading || saving || !!savingModel || (view === 'detail' && dirty)
+          "
+        >
+          <app-admin-icon name="refresh"></app-admin-icon>Refresh
+        </button>
+      </div>
+
+      @if (error) {
+        <div class="message error" role="alert">
+          <app-admin-icon name="error_outline"></app-admin-icon
+          ><span>{{ error }}</span
+          ><button class="text-button" (click)="refresh()" [disabled]="saving">
+            Try again
+          </button>
+        </div>
+      }
+      @if (notice) {
+        <div class="message success" role="status">
+          <app-admin-icon name="check_circle_outline"></app-admin-icon
+          >{{ notice }}
+        </div>
+      }
+      @if (loading) {
+        <div class="loading" role="status" aria-live="polite">
+          <span class="loading-leaf"
+            ><app-admin-icon name="eco"></app-admin-icon
+          ></span>
+          <p>Gathering your workspace…</p>
+        </div>
+      } @else {
+        @if (view === "overview" && overview; as data) {
+          <div class="welcome-banner">
+            <div>
+              <span class="pill light">A GARDEN OF POSSIBILITIES</span>
+              <h2>Growing better, together.</h2>
+              <p>
+                {{ data.totals["activeUsers"] | number }} active accounts.
+                {{ data.totals["plants"] | number }} plants being cared for.<br />One
+                place to help it all thrive.
+              </p>
+              <a routerLink="/admin/users"
+                >Meet your community
+                <app-admin-icon name="arrow_forward"></app-admin-icon
+              ></a>
+            </div>
+            <div class="botanical" aria-hidden="true">
+              <div class="stem"></div>
+              <i></i><i></i><i></i><i></i><i></i
+              ><span class="orbit orbit-one"></span
+              ><span class="orbit orbit-two"></span
+              ><span class="plant-caption">ROOTED IN CARE</span>
+            </div>
+          </div>
+          <div class="stats">
+            <article class="stat">
+              <span class="stat-icon mint"
+                ><app-admin-icon name="people_outline"></app-admin-icon></span
+              ><span class="stat-title">Community</span
+              ><strong>{{ data.totals["users"] | number }}</strong
+              ><span class="stat-note"
+                ><b>{{ data.totals["newUsers"] | number }} new</b> in the last
+                30 days</span
+              >
+            </article>
+            <article class="stat">
+              <span class="stat-icon sage"
+                ><app-admin-icon name="local_florist"></app-admin-icon></span
+              ><span class="stat-title">Plants in care</span
+              ><strong>{{ data.totals["plants"] | number }}</strong
+              ><span class="stat-note"
+                >Across {{ data.totals["species"] | number }} known
+                species</span
+              >
+            </article>
+            <article class="stat">
+              <span class="stat-icon lavender"
+                ><app-admin-icon name="document_scanner"></app-admin-icon></span
+              ><span class="stat-title">Plant scans</span
+              ><strong>{{ data.totals["scans"] | number }}</strong
+              ><span class="stat-note">In the last 30 days</span>
+            </article>
+            <article class="stat">
+              <span class="stat-icon peach"
+                ><app-admin-icon name="healing"></app-admin-icon></span
+              ><span class="stat-title">Active treatments</span
+              ><strong>{{ data.totals["treatments"] | number }}</strong
+              ><span class="stat-note">Plants on the road to recovery</span>
+            </article>
+          </div>
+          <div class="overview-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">DISCOVERY IN MOTION</p>
+                  <h2>Every scan, a new connection.</h2>
+                </div>
+                <span class="pill">Last 14 days · UTC</span>
+              </div>
+              <div class="chart-summary">
+                <strong
+                  >{{ scanTotal | number }}<small>total scans</small></strong
+                ><span
+                  ><b>{{ successRate }}</b> completed among resolved scans</span
+                >
+              </div>
+              <div
+                class="chart"
+                role="img"
+                aria-label="Daily scan volume for the last 14 days. Exact values are available in the table below."
+              >
+                @for (day of data.scans; track day.date) {
+                  <div
+                    class="chart-column"
+                    [title]="
+                      day.date +
+                      ': ' +
+                      day.completed +
+                      ' completed, ' +
+                      day.failed +
+                      ' failed, ' +
+                      day.pending +
+                      ' pending'
+                    "
+                  >
+                    <div class="bar-track">
+                      <div
+                        class="bar pending"
+                        [style.height.%]="(day.pending / maxScans) * 100"
+                      ></div>
+                      <div
+                        class="bar failed"
+                        [style.height.%]="(day.failed / maxScans) * 100"
+                      ></div>
+                      <div
+                        class="bar completed"
+                        [style.height.%]="(day.completed / maxScans) * 100"
+                      ></div>
+                    </div>
+                    <span>{{ day.date.slice(8) }}</span>
+                  </div>
+                }
+              </div>
+              <div class="chart-footer">
+                <div class="legend">
+                  <span><i class="completed"></i>Completed</span
+                  ><span><i class="failed"></i>Failed</span
+                  ><span><i class="pending"></i>Pending</span>
+                </div>
+                <details>
+                  <summary>View data</summary>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Completed</th>
+                        <th>Failed</th>
+                        <th>Pending</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (day of data.scans; track day.date) {
+                        <tr>
+                          <td>{{ day.date }}</td>
+                          <td>{{ day.completed }}</td>
+                          <td>{{ day.failed }}</td>
+                          <td>{{ day.pending }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </details>
+              </div>
+            </article>
+            <article class="panel attention">
+              <p class="eyebrow">A LITTLE ATTENTION</p>
+              <h2>Keep things flourishing.</h2>
+              <div class="attention-row">
+                <span class="stat-icon peach"
+                  ><app-admin-icon name="schedule"></app-admin-icon
+                ></span>
+                <div>
+                  <strong>Overdue care</strong
+                  ><small>Enabled reminders past their due time</small>
+                </div>
+                <b>{{ data.totals["overdue"] | number }}</b>
+              </div>
+              <div class="attention-row">
+                <span class="stat-icon lavender"
+                  ><app-admin-icon name="hourglass_empty"></app-admin-icon
+                ></span>
+                <div>
+                  <strong>Scans in progress</strong
+                  ><small>Currently awaiting a result</small>
+                </div>
+                <b>{{ data.totals["pendingScans"] | number }}</b>
+              </div>
+              <div class="attention-row">
+                <span class="stat-icon rose"
+                  ><app-admin-icon name="troubleshoot"></app-admin-icon
+                ></span>
+                <div>
+                  <strong>Failed scans</strong
+                  ><small>Across the last 30 days</small>
+                </div>
+                <b>{{ data.totals["failedScans"] | number }}</b>
+              </div>
+              <a class="studio-link" routerLink="/admin/ai"
+                ><app-admin-icon name="auto_awesome"></app-admin-icon>
+                <div>
+                  <strong>Make AI feel right.</strong
+                  ><small>Curate models in Settings</small>
+                </div>
+                <app-admin-icon name="arrow_forward"></app-admin-icon
+              ></a>
+            </article>
+          </div>
+          <article class="panel recent">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">BEHIND THE SCENES</p>
+                <h2>Recent activity</h2>
+              </div>
+              <a class="text-link" routerLink="/admin/activity"
+                >View all <app-admin-icon name="arrow_forward"></app-admin-icon
+              ></a>
+            </div>
+            @for (event of events?.content?.slice(0, 4); track event.id) {
+              <div class="event-row">
+                <span class="event-icon"
+                  ><app-admin-icon
+                    [name]="
+                      event.target.startsWith('user:')
+                        ? 'manage_accounts'
+                        : 'auto_awesome'
+                    "
+                  ></app-admin-icon
+                ></span>
+                <div>
+                  <strong>{{ event.action }}</strong
+                  ><small
+                    >{{ event.target }} · Administrator #{{
+                      event.actorId
+                    }}</small
+                  >
+                </div>
+                <time>{{ event.createdAt | date: "MMM d, HH:mm" }}</time>
+              </div>
+            } @empty {
+              <div class="empty compact">
+                <app-admin-icon name="history"></app-admin-icon>
+                <p>A fresh start. Administrative changes will appear here.</p>
+              </div>
+            }
+          </article>
+          <p class="freshness">
+            <span class="online-dot"></span>Live database snapshot · Updated
+            {{ data.refreshedAt | date: "shortTime" }} · Refresh to see new
+            activity
+          </p>
+        }
+
+        @if (view === "users") {
+          <article class="panel people-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>
+                  People
+                  <span class="count">{{
+                    people?.totalElements | number
+                  }}</span>
+                </h2>
+                <p>Every account, in one place.</p>
+              </div>
+              <span class="pill">Access & membership</span>
+            </div>
+            <form class="filters" (ngSubmit)="search()">
+              <label class="search-field"
+                ><app-admin-icon name="search"></app-admin-icon
+                ><input
+                  name="query"
+                  [(ngModel)]="query"
+                  placeholder="Search by name or email"
+                  aria-label="Search by name or email"
+                  maxlength="255" /></label
+              ><label class="filter-label"
+                ><span class="sr-only">Account status</span
+                ><select name="status" [(ngModel)]="status">
+                  <option value="">All statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select></label
+              ><button class="button primary" type="submit">Search</button>
+            </form>
+            <div class="table-scroll">
+              <table class="people-table">
+                <thead>
+                  <tr>
+                    <th>Grower</th>
+                    <th>Status</th>
+                    <th>Role</th>
+                    <th>Membership</th>
+                    <th>Joined</th>
+                    <th><span class="sr-only">Manage account</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (person of people?.content; track person.id) {
+                    <tr>
+                      <td>
+                        <a
+                          class="person"
+                          [routerLink]="['/admin/users', person.id]"
+                          ><span class="avatar">{{ initials(person) }}</span
+                          ><span
+                            ><strong
+                              >{{ person.firstName }}
+                              {{ person.lastName }}</strong
+                            ><small>{{ person.email }}</small></span
+                          ></a
+                        >
+                      </td>
+                      <td>
+                        <span
+                          class="status-badge"
+                          [class.active]="person.status === 'ACTIVE'"
+                          [class.suspended]="person.status === 'SUSPENDED'"
+                          ><i></i>{{ person.status | titlecase }}</span
+                        >
+                      </td>
+                      <td>
+                        <span
+                          class="role"
+                          [class.admin-role]="person.role === 'ADMIN'"
+                          >{{
+                            person.role === "ADMIN" ? "Administrator" : "Member"
+                          }}</span
+                        >
+                      </td>
+                      <td>
+                        {{ person.businessTier ? "Business" : "Personal" }}
+                      </td>
+                      <td>{{ person.createdAt | date: "MMM d, y" }}</td>
+                      <td>
+                        <a
+                          class="manage-link"
+                          [routerLink]="['/admin/users', person.id]"
+                          [attr.aria-label]="'Manage ' + person.firstName"
+                          >Manage
+                          <app-admin-icon name="arrow_forward"></app-admin-icon
+                        ></a>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6">
+                        <div class="empty">
+                          <app-admin-icon name="person_search"></app-admin-icon>
+                          <h3>No growers found</h3>
+                          <p>Try a different name, email, or account status.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ng-container *ngTemplateOutlet="pagination"></ng-container>
+          </article>
+          <div class="footnote">
+            <app-admin-icon name="shield"></app-admin-icon>Account changes are
+            recorded. Suspending an account blocks access on its next request.
+          </div>
+        }
+
+        @if (view === "detail" && user; as person) {
+          <a class="text-link back-to" routerLink="/admin/users"
+            ><app-admin-icon name="arrow_back"></app-admin-icon>All people</a
+          >
+          <div class="detail-grid">
+            <aside class="panel profile-summary">
+              <span class="avatar large">{{ initials(person) }}</span>
+              <h2>{{ person.firstName }} {{ person.lastName }}</h2>
+              <p>{{ person.email }}</p>
+              <span
+                class="status-badge"
+                [class.active]="original?.status === 'ACTIVE'"
+                >{{ original?.status | titlecase }}</span
+              >
+              <dl>
+                <dt>Member since</dt>
+                <dd>{{ person.createdAt | date: "longDate" }}</dd>
+                <dt>Account ID</dt>
+                <dd>#{{ person.id }}</dd>
+                <dt>Vision model</dt>
+                <dd>{{ modelName(person.visionModel) }}</dd>
+                <dt>Reasoning model</dt>
+                <dd>{{ modelName(person.reasoningModel) }}</dd>
+              </dl>
+            </aside>
+            <form
+              class="panel edit-panel"
+              #userForm="ngForm"
+              (ngSubmit)="requestSave()"
+            >
+              <p class="eyebrow">ACCOUNT DETAILS</p>
+              <h2>A space to grow.</h2>
+              <fieldset [disabled]="saving || confirming">
+                <div class="field-grid">
+                  <label
+                    >First name<input
+                      name="firstName"
+                      [(ngModel)]="person.firstName"
+                      required
+                      maxlength="100"
+                      pattern=".*\S.*" /></label
+                  ><label
+                    >Last name<input
+                      name="lastName"
+                      [(ngModel)]="person.lastName"
+                      required
+                      maxlength="100"
+                      pattern=".*\S.*"
+                  /></label>
+                </div>
+                <label
+                  >Email address<input [value]="person.email" disabled /><small
+                    >Email is the account’s sign-in identity and cannot be
+                    changed here.</small
+                  ></label
+                >
+                <div class="divider"></div>
+                <h3>Access & membership</h3>
+                <div class="field-grid">
+                  <label
+                    >Account status<select
+                      aria-label="Account status"
+                      name="accountStatus"
+                      [(ngModel)]="person.status"
+                      [disabled]="person.id === access?.userId"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="SUSPENDED">Suspended</option>
+                      <option value="INACTIVE">Inactive</option>
+                    </select></label
+                  ><label
+                    >Workspace role<select
+                      aria-label="Workspace role"
+                      name="role"
+                      [(ngModel)]="person.role"
+                      [disabled]="person.id === access?.userId"
+                    >
+                      <option value="USER">Member</option>
+                      <option value="ADMIN">Administrator</option>
+                    </select></label
+                  >
+                </div>
+                <p class="field-help">
+                  Administrators can manage every user and the AI catalog. You
+                  cannot remove your own access.
+                </p>
+                <label class="checkbox-label"
+                  ><input
+                    type="checkbox"
+                    name="businessTier"
+                    [(ngModel)]="person.businessTier"
+                  /><span
+                    >Business membership<small
+                      >Marks this account as a professional grower.</small
+                    ></span
+                  ></label
+                >
+              </fieldset>
+              @if (confirming) {
+                <div class="confirm-box" role="alert">
+                  <h3>Confirm access changes</h3>
+                  <p>
+                    {{ person.email }} will become an
+                    <strong>{{ person.status | lowercase }}</strong> account
+                    with the
+                    <strong>{{
+                      person.role === "ADMIN" ? "administrator" : "member"
+                    }}</strong>
+                    role. This takes effect on the next request.
+                  </p>
+                  <div class="button-row">
+                    <button
+                      class="button primary"
+                      type="button"
+                      (click)="saveUser()"
+                      [disabled]="saving"
+                    >
+                      {{ saving ? "Saving…" : "Confirm changes" }}</button
+                    ><button
+                      class="button secondary"
+                      type="button"
+                      (click)="confirming = false"
+                      [disabled]="saving"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="form-footer">
+                  <span>{{
+                    dirty ? "You have unsaved changes" : "All changes saved"
+                  }}</span>
+                  <div class="button-row">
+                    <button
+                      type="button"
+                      class="button secondary"
+                      (click)="resetUser()"
+                      [disabled]="!dirty || saving"
+                    >
+                      Discard</button
+                    ><button
+                      type="submit"
+                      class="button primary"
+                      [disabled]="!dirty || userForm.invalid || saving"
+                    >
+                      {{ saving ? "Saving…" : "Save changes" }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </form>
+          </div>
+        }
+
+        @if (view === "ai") {
+          <div class="ai-intro">
+            <span class="ai-emblem"
+              ><app-admin-icon name="auto_awesome"></app-admin-icon
+            ></span>
+            <div>
+              <h2>The right tools for every grower.</h2>
+              <p>
+                Choose what appears in both Classic and Atlas AI Settings.
+                Hidden models remain available to people who already selected
+                them; existing scans and care plans are unaffected.
+              </p>
+            </div>
+            <div class="catalog-count">
+              <strong
+                >{{ visibleModels }}<small>/ {{ models.length }}</small></strong
+              ><span>choices offered</span>
+            </div>
+          </div>
+          @for (capability of ["VISION", "REASONING"]; track capability) {
+            <section class="model-section">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">
+                    {{
+                      capability === "VISION"
+                        ? "SEE & UNDERSTAND"
+                        : "REASON & RECOMMEND"
+                    }}
+                  </p>
+                  <h2>
+                    {{
+                      capability === "VISION"
+                        ? "Vision models"
+                        : "Reasoning models"
+                    }}
+                  </h2>
+                  <p>
+                    {{
+                      capability === "VISION"
+                        ? "Plant identification and visual understanding."
+                        : "Care plans, treatment advice, and botanical knowledge."
+                    }}
+                  </p>
+                </div>
+                <span class="pill"
+                  >{{ modelGroup(capability).length }} models</span
+                >
+              </div>
+              <div class="model-grid">
+                @for (model of modelGroup(capability); track model.id) {
+                  <article
+                    class="panel model-card"
+                    [class.hidden-model]="!model.visible"
+                  >
+                    <div class="model-top">
+                      <span
+                        class="model-logo"
+                        [class.plantnet]="model.model === 'PLANTNET'"
+                        ><app-admin-icon
+                          [name]="
+                            model.model === 'PLANTNET'
+                              ? 'eco'
+                              : model.model.startsWith('OLLAMA')
+                                ? 'computer'
+                                : 'auto_awesome'
+                          "
+                        ></app-admin-icon></span
+                      ><span class="pill" [class.warning]="!model.configured">{{
+                        !model.configured
+                          ? "Key missing"
+                          : model.visible
+                            ? "Offered in Settings"
+                            : "Hidden in Settings"
+                      }}</span>
+                    </div>
+                    <h3>{{ modelName(model.model) }}</h3>
+                    <p>{{ provider(model.model) }}</p>
+                    <div class="model-bottom">
+                      <label class="switch-label"
+                        ><input
+                          type="checkbox"
+                          [(ngModel)]="model.visible"
+                          [disabled]="!!savingModel"
+                          [attr.aria-label]="
+                            'Offer ' +
+                            modelName(model.model) +
+                            ' for ' +
+                            capability.toLowerCase()
+                          "
+                        /><span>{{
+                          model.visible ? "Visible" : "Hidden"
+                        }}</span></label
+                      ><button
+                        class="button small-button"
+                        (click)="saveModel(model)"
+                        [disabled]="
+                          savedVisibility[model.id] === model.visible ||
+                          !!savingModel
+                        "
+                      >
+                        {{ savingModel === model.id ? "Saving…" : "Save" }}
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+          <div class="footnote">
+            <app-admin-icon name="info_outline"></app-admin-icon>Visibility is
+            not a provider health check. Credentials and model endpoints remain
+            server configuration. GitHub-hosted routes may be retired; verify a
+            provider before offering it.
+          </div>
+        }
+
+        @if (view === "activity") {
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>
+                  Workspace history
+                  <span class="count">{{
+                    events?.totalElements | number
+                  }}</span>
+                </h2>
+                <p>Newest changes first. Times shown in your local timezone.</p>
+              </div>
+              <app-admin-icon class="muted" name="history"></app-admin-icon>
+            </div>
+            @for (event of events?.content; track event.id) {
+              <div class="event-row">
+                <span class="event-icon"
+                  ><app-admin-icon
+                    [name]="
+                      event.target.startsWith('user:')
+                        ? 'manage_accounts'
+                        : 'auto_awesome'
+                    "
+                  ></app-admin-icon
+                ></span>
+                <div>
+                  <strong>{{ event.action }}</strong
+                  ><small
+                    >{{ event.target }} · Administrator #{{
+                      event.actorId
+                    }}</small
+                  >
+                </div>
+                <time>{{ event.createdAt | date: "MMM d, y, HH:mm" }}</time>
+              </div>
+            } @empty {
+              <div class="empty">
+                <app-admin-icon name="history"></app-admin-icon>
+                <h3>Your workspace story starts here.</h3>
+                <p>User and model changes will be recorded automatically.</p>
+              </div>
+            }
+            <ng-container *ngTemplateOutlet="pagination"></ng-container>
+          </article>
+        }
+      }
+      <footer class="page-footer">
+        <span
+          ><app-admin-icon name="eco"></app-admin-icon>PlantPal
+          administration</span
+        ><span>Made for a growing world.</span>
+      </footer>
+    </div>
+  </section>
+</div>
+
+<ng-template #pagination
+  ><div class="pagination">
+    <span>{{
+      totalPages ? "Page " + (page + 1) + " of " + totalPages : "No results"
+    }}</span>
+    <div class="button-row">
+      <button
+        class="button secondary small-button"
+        (click)="search(page - 1)"
+        [disabled]="page === 0 || loading"
+      >
+        <app-admin-icon name="chevron_left"></app-admin-icon>Previous</button
+      ><button
+        class="button secondary small-button"
+        (click)="search(page + 1)"
+        [disabled]="page + 1 >= totalPages || loading"
+      >
+        Next<app-admin-icon name="chevron_right"></app-admin-icon>
+      </button>
+    </div></div
+></ng-template>
