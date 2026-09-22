@@ -25,10 +25,10 @@
     </button>
     <mat-menu #userMenu="matMenu">
       <div mat-menu-item disabled>{{ authService.getCurrentUser()?.email }}</div>
+      <mat-divider></mat-divider>
       <button mat-menu-item routerLink="/admin" *ngIf="isAdministrator">
         <mat-icon>admin_panel_settings</mat-icon><span>Administration</span>
       </button>
-      <mat-divider></mat-divider>
       <button mat-menu-item routerLink="/preferences">
         <mat-icon>tune</mat-icon>
         <span>AI Model Settings</span>
