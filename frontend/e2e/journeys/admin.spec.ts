@@ -13,6 +13,10 @@ const grower = {
   visionModel: "ANTHROPIC_CLAUDE",
   reasoningModel: "OLLAMA_GEMMA3",
   version: 0,
+  maxPlants: 100,
+  dailyScanLimit: 20,
+  dailyAiLimit: 100,
+  usage: { plants: 1, scansToday: 2, aiToday: 3 },
 };
 const names = [
   ["Sofia", "Bennett"],
@@ -52,6 +56,15 @@ async function setup(page: Page, administrator = true) {
     localStorage.setItem("plantpal_notifications_prompted", "true");
   });
   let person = { ...grower };
+  let plant = {
+    id: 7,
+    nickname: "Office fern",
+    commonName: "Boston fern",
+    species: "",
+    location: "Desk",
+    notes: "",
+    status: "ACTIVE",
+  };
   const models = catalog.map((id) => ({
     id,
     capability: id.split(":")[0],
@@ -75,6 +88,17 @@ async function setup(page: Page, administrator = true) {
       data = { userId: 1, name: "Alex", administrator };
     else if (path.endsWith("/auth/session"))
       data = { active: true, enforcementActive: false };
+    else if (path.endsWith("/plants/7/restore")) {
+      plant.status = "ACTIVE";
+      data = plant;
+    } else if (path.endsWith("/plants/7")) {
+      if (request.method() === "DELETE") plant.status = "ARCHIVED";
+      else plant = { ...plant, ...request.postDataJSON() };
+      data = plant;
+    } else if (path.endsWith("/admin/users/2/plants"))
+      data = paged(
+        plant.status === url.searchParams.get("status") ? [plant] : [],
+      );
     else if (path.endsWith("/admin/overview"))
       data = {
         totals: {
@@ -314,4 +338,62 @@ test("administration pages meet accessibility checks", async ({ page }) => {
     );
   }
   expect(violations).toEqual([]);
+});
+
+test("manage allowances, delete and restore an account", async ({ page }) => {
+  await setup(page);
+  await page.goto("/admin/users/2");
+  await page.getByRole("spinbutton", { name: "Maximum plants" }).fill("5");
+  await page.getByRole("spinbutton", { name: "Scans per day" }).fill("3");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("spinbutton", { name: "Maximum plants" }),
+  ).toHaveValue("5");
+  await page
+    .getByRole("button", { name: "Delete account", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Confirm changes" }).click();
+  await expect(
+    page.getByRole("button", { name: "Restore account" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Restore account" }).click();
+  await page.getByRole("button", { name: "Confirm changes" }).click();
+  await expect(
+    page.getByRole("button", { name: "Disable account" }),
+  ).toBeVisible();
+});
+
+test("edit, archive and restore a grower's plant", async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  await page.goto("/admin/users/2");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Nickname", exact: true })
+    .fill("Living room fern");
+  await page.getByRole("button", { name: "Save plant", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Living room fern", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Archive", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm archive" }).click();
+  await page.getByLabel("Show plants").selectOption("ARCHIVED");
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm restore" }).click();
+  await page.getByLabel("Show plants").selectOption("ACTIVE");
+  await expect(
+    page.getByRole("heading", { name: "Living room fern", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("admin-grower-garden.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

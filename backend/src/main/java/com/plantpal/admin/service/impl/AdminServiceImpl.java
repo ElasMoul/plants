@@ -13,6 +13,7 @@ import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserRole;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
+import com.plantpal.user.service.UsageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class AdminServiceImpl implements AdminService {
+  private final UsageService usage;
   private final UserRepository users;
   private final AdminRepository repository;
 
-  public AdminServiceImpl(UserRepository users, AdminRepository repository) {
+  public AdminServiceImpl(UserRepository users, AdminRepository repository, UsageService usage) {
+    this.usage = usage;
     this.users = users;
     this.repository = repository;
   }
@@ -56,14 +59,7 @@ public class AdminServiceImpl implements AdminService {
         users
             .findForAdminUpdate(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    if (user.getVersion() != request.version()) {
-      throw new ValidationException("This account has changed. Refresh before saving again.");
-    }
-    if (id.equals(actorId)
-        && (request.role() != UserRole.ADMIN || request.status() != UserStatus.ACTIVE)) {
-      throw new ValidationException(
-          "You cannot remove your own administrator access or suspend your own account.");
-    }
+    validateUpdate(user, request, actorId);
     String changes =
         "User updated: role "
             + user.getRole()
@@ -78,14 +74,37 @@ public class AdminServiceImpl implements AdminService {
     user.setStatus(request.status());
     user.setRole(request.role());
     user.setBusinessTier(request.businessTier());
+    if (request.maxPlants() != null) user.setMaxPlants(request.maxPlants());
+    if (request.dailyScanLimit() != null) user.setDailyScanLimit(request.dailyScanLimit());
+    if (request.dailyAiLimit() != null) user.setDailyAiLimit(request.dailyAiLimit());
     users.saveAndFlush(user);
-    repository.record(actorId, changes, "user:" + id);
+    repository.record(
+        actorId,
+        changes
+            + "; limits plants="
+            + user.getMaxPlants()
+            + ", scans/day="
+            + user.getDailyScanLimit()
+            + ", AI/day="
+            + user.getDailyAiLimit(),
+        "user:" + id);
     return view(user);
   }
 
   @Override
   public Page<Activity> activity(Pageable pageable) {
     return repository.activity(pageable);
+  }
+
+  private void validateUpdate(User user, UserUpdate request, Long actorId) {
+    if (user.getVersion() != request.version()) {
+      throw new ValidationException("This account has changed. Refresh before saving again.");
+    }
+    if (user.getId().equals(actorId)
+        && (request.role() != UserRole.ADMIN || request.status() != UserStatus.ACTIVE)) {
+      throw new ValidationException(
+          "You cannot remove your own administrator access or suspend your own account.");
+    }
   }
 
   private User findUser(Long id) {
@@ -104,6 +123,10 @@ public class AdminServiceImpl implements AdminService {
         user.getCreatedAt(),
         user.getVisionModelPreference().name(),
         user.getReasoningModelPreference().name(),
-        user.getVersion());
+        user.getVersion(),
+        user.getMaxPlants(),
+        user.getDailyScanLimit(),
+        user.getDailyAiLimit(),
+        usage.usage(user.getId()));
   }
 }

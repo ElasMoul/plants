@@ -43,6 +43,77 @@ class AdminControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void archivedAccountsCanBeRestoredAndLimitsAreEditable() {
+    var payload = new java.util.HashMap<String, Object>(update(member, "USER", "ARCHIVED"));
+    payload.put("maxPlants", 0);
+    payload.put("dailyScanLimit", 0);
+    payload.put("dailyAiLimit", 0);
+    var saved = call("/api/v1/admin/users/" + member.getId(), HttpMethod.PUT, adminToken, payload);
+    assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(data(saved).get("maxPlants")).isEqualTo(0);
+    assertThat(call("/api/v1/users/me/access", HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.UNAUTHORIZED);
+    member = users.findById(member.getId()).orElseThrow();
+    assertThat(member.getStatus()).isEqualTo(UserStatus.ARCHIVED);
+    call(
+        "/api/v1/admin/users/" + member.getId(),
+        HttpMethod.PUT,
+        adminToken,
+        update(member, "USER", "ACTIVE"));
+    assertThat(
+            call("/api/v1/chat", HttpMethod.POST, memberToken, Map.of("message", "Hello"))
+                .getStatusCode())
+        .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    assertThat(
+            call("/api/v1/plants", HttpMethod.POST, memberToken, Map.of("nickname", "Fern"))
+                .getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+    member = users.findById(member.getId()).orElseThrow();
+    payload = new java.util.HashMap<>(update(member, "USER", "ACTIVE"));
+    payload.put("maxPlants", -1);
+    assertThat(
+            call("/api/v1/admin/users/" + member.getId(), HttpMethod.PUT, adminToken, payload)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void administratorManagesPlantsWithOwnerScopeAndSoftArchive() {
+    var plant = call("/api/v1/plants", HttpMethod.POST, memberToken, Map.of("nickname", "Fern"));
+    assertThat(plant.getStatusCode().is2xxSuccessful()).isTrue();
+    var id = data(plant).get("id");
+    String path = "/api/v1/admin/users/" + member.getId() + "/plants/" + id;
+    assertThat(
+            call(path, HttpMethod.PUT, memberToken, Map.of("nickname", "Changed")).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(
+            call(
+                    path,
+                    HttpMethod.PUT,
+                    adminToken,
+                    Map.of("nickname", "Office fern", "location", "Desk"))
+                .getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(
+            call(
+                    "/api/v1/admin/users/" + admin.getId() + "/plants/" + id,
+                    HttpMethod.PUT,
+                    adminToken,
+                    Map.of("nickname", "Wrong owner"))
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(call(path, HttpMethod.DELETE, adminToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(call("/api/v1/plants/" + id, HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(call(path + "/restore", HttpMethod.POST, adminToken, Map.of()).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(
+            data(call("/api/v1/plants/" + id, HttpMethod.GET, memberToken, null)).get("nickname"))
+        .isEqualTo("Office fern");
+  }
+
+  @Test
   void requiresAdministratorForReadsAndWrites() {
     for (String path : new String[] {"overview", "users", "models", "activity"}) {
       assertThat(call("/api/v1/admin/" + path, HttpMethod.GET, memberToken, null).getStatusCode())
@@ -217,7 +288,7 @@ class AdminControllerIT extends AbstractIntegrationTest {
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> data(ResponseEntity<Map> response) {
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     return (Map<String, Object>) response.getBody().get("data");
   }
 }

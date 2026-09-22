@@ -55,6 +55,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   }
 
   @Override
+  protected boolean shouldNotFilterAsyncDispatch() {
+    // Deferred chat responses re-enter the security chain on another thread.
+    return false;
+  }
+
+  @Override
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {

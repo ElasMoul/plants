@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.TreatmentStepDto;
@@ -49,6 +50,7 @@ class TreatmentServiceTest {
   private static final Long USER_ID = 1L;
   private static final Long PLANT_ID = 10L;
 
+  @Mock private DeepSeekDirectClient deepSeekDirect;
   @Mock private TreatmentRepository treatmentRepository;
   @Mock private PlantRepository plantRepository;
   @Mock private TreatmentPlanService treatmentPlanService;
@@ -84,6 +86,7 @@ class TreatmentServiceTest {
             deepSeekClient,
             ollamaClient,
             anthropicClient,
+            deepSeekDirect,
             userRepository,
             objectMapper,
             Runnable::run,

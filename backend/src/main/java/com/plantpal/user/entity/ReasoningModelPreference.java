@@ -6,6 +6,7 @@ public enum ReasoningModelPreference {
   GITHUB_GPT41_MINI,
   OLLAMA_GEMMA3,
   ANTHROPIC_CLAUDE,
+  DEEPSEEK_FLASH,
 
   /**
    * @deprecated superseded by {@link #OLLAMA_GEMMA3} (Ollama's recommended local model moved from

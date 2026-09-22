@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.session.config.SessionProperties;
 import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.UnauthorizedException;
@@ -43,6 +44,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @DisplayName("UserService — Unit Tests")
 class UserServiceTest {
 
+  @Mock private DeepSeekDirectClient deepSeekDirect;
   @Mock private UserRepository userRepository;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtUtil jwtUtil;

@@ -6,6 +6,7 @@ public enum VisionModelPreference {
   OLLAMA_GEMMA3,
   PLANTNET,
   ANTHROPIC_CLAUDE,
+  DEEPSEEK_FLASH,
 
   /**
    * @deprecated superseded by {@link #OLLAMA_GEMMA3} (Ollama's recommended local vision model moved

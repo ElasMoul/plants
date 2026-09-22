@@ -5,6 +5,7 @@ import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.shared.entity.GenerationStatus;
@@ -39,6 +40,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   private final SpeciesRepository speciesRepository;
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
+  private final DeepSeekDirectClient deepSeekDirect;
   private final AnthropicClient anthropicClient;
   private final ObjectMapper objectMapper;
   private final GatewayClient gatewayClient;
@@ -49,6 +51,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
+      DeepSeekDirectClient deepSeekDirect,
       ObjectMapper objectMapper,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties) {
@@ -56,6 +59,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
+    this.deepSeekDirect = deepSeekDirect;
     this.objectMapper = objectMapper;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
@@ -81,7 +85,11 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
     // takes over the non-Ollama branch; DeepSeek remains only as the un-keyed fallback.
     boolean useAnthropic = !useOllama && anthropicClient.isAvailable();
     try {
-      String raw = generateEnrichment(species, useOllama, useAnthropic);
+      String raw =
+          preference == AiModelPreference.DEEPSEEK_FLASH
+              ? deepSeekDirect.generateSpeciesEnrichment(
+                  species.getScientificName(), species.getCommonName())
+              : generateEnrichment(species, useOllama, useAnthropic);
       SpeciesEnrichmentJson parsed = objectMapper.readValue(raw, SpeciesEnrichmentJson.class);
 
       species.setDescription(parsed.getDescription());
@@ -95,11 +103,13 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
         species.setExternalDataSource(AI_SOURCE);
       }
       species.setEnrichmentModel(
-          (useOllama
-                  ? ReasoningModelPreference.OLLAMA_LLAVA
-                  : useAnthropic
-                      ? ReasoningModelPreference.ANTHROPIC_CLAUDE
-                      : ReasoningModelPreference.DEEPSEEK_R1)
+          (preference == AiModelPreference.DEEPSEEK_FLASH
+                  ? ReasoningModelPreference.DEEPSEEK_FLASH
+                  : useOllama
+                      ? ReasoningModelPreference.OLLAMA_LLAVA
+                      : useAnthropic
+                          ? ReasoningModelPreference.ANTHROPIC_CLAUDE
+                          : ReasoningModelPreference.DEEPSEEK_R1)
               .name());
       species.setExternalDataFetchedAt(Instant.now());
       species.setDescriptionStatus(GenerationStatus.READY);

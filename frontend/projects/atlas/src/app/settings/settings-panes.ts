@@ -385,6 +385,7 @@ function dataPane(s: AtlasSettings, ctx: PaneContext): string {
 const VISION_OPTIONS: { value: string; name: string; note: string }[] = [
   { value: 'GITHUB_GPT4O', name: 'GPT-4o', note: 'Best' },
   { value: 'GITHUB_GPT41', name: 'GPT-4.1', note: 'Frontier' },
+  { value: 'DEEPSEEK_FLASH', name: 'DeepSeek V4.1 Flash', note: 'Fast' },
   { value: 'ANTHROPIC_CLAUDE', name: 'Claude', note: 'Specialist' },
   { value: 'OLLAMA_GEMMA3', name: 'Gemma 3', note: 'Offline' },
   { value: 'PLANTNET', name: 'PlantNet', note: 'Balanced' },
@@ -394,6 +395,7 @@ const REASONING_OPTIONS: { value: string; name: string; note: string }[] = [
   { value: 'DEEPSEEK_R1', name: 'DeepSeek-R1', note: 'Best' },
   { value: 'GITHUB_GPT41_MINI', name: 'GPT-4.1 mini', note: 'Balanced' },
   { value: 'GITHUB_O4_MINI', name: 'o4-mini', note: 'Frontier' },
+  { value: 'DEEPSEEK_FLASH', name: 'DeepSeek V4.1 Flash', note: 'Fast' },
   { value: 'ANTHROPIC_CLAUDE', name: 'Claude', note: 'Specialist' },
   { value: 'OLLAMA_GEMMA3', name: 'Gemma 3', note: 'Offline' },
 ];

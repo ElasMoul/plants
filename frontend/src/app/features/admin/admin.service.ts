@@ -19,13 +19,27 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   email: string;
-  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "ARCHIVED";
   role: "USER" | "ADMIN";
   businessTier: boolean;
+  maxPlants: number;
+  dailyScanLimit: number;
+  dailyAiLimit: number;
+  usage: { plants: number; scansToday: number; aiToday: number };
   createdAt: string;
   visionModel: string;
   reasoningModel: string;
   version: number;
+}
+export interface AdminPlant {
+  id: number;
+  nickname: string;
+  species: string;
+  commonName: string;
+  location: string;
+  notes: string;
+  status: "ACTIVE" | "ARCHIVED";
+  photoUrl: string;
 }
 export interface AdminModel {
   id: string;
@@ -72,12 +86,47 @@ export class AdminService {
     return this.get<AdminUser>(`users/${id}`);
   }
   saveUser(user: AdminUser) {
-    const { firstName, lastName, role, status, businessTier, version } = user;
+    const {
+      firstName,
+      lastName,
+      role,
+      status,
+      businessTier,
+      version,
+      maxPlants,
+      dailyScanLimit,
+      dailyAiLimit,
+    } = user;
     return this.http
       .put<
         ApiResponse<AdminUser>
-      >(`${this.base}/admin/users/${user.id}`, { firstName, lastName, role, status, businessTier, version })
+      >(`${this.base}/admin/users/${user.id}`, { firstName, lastName, role, status, businessTier, version, maxPlants, dailyScanLimit, dailyAiLimit })
       .pipe(map((r) => r.data));
+  }
+  plants(userId: number, status: string, page: number) {
+    return this.get<AdminPage<AdminPlant>>(
+      `users/${userId}/plants`,
+      new HttpParams().set("status", status).set("page", page).set("size", 8),
+    );
+  }
+  savePlant(userId: number, plant: AdminPlant) {
+    const { nickname, commonName, location, notes } = plant;
+    return this.http
+      .put<
+        ApiResponse<AdminPlant>
+      >(`${this.base}/admin/users/${userId}/plants/${plant.id}`, { nickname, commonName, location, notes })
+      .pipe(map((r) => r.data));
+  }
+  archivePlant(userId: number, plantId: number) {
+    return this.http.delete<ApiResponse<string>>(
+      `${this.base}/admin/users/${userId}/plants/${plantId}`,
+    );
+  }
+  restorePlant(userId: number, plantId: number) {
+    return this.http.post<ApiResponse<AdminPlant>>(
+      `${this.base}/admin/users/${userId}/plants/${plantId}/restore`,
+      {},
+    );
   }
   models() {
     return this.get<AdminPage<AdminModel>>(

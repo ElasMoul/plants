@@ -8,6 +8,7 @@ import com.plantpal.admin.entity.AiModelSetting;
 import com.plantpal.admin.repository.*;
 import com.plantpal.admin.service.impl.ModelCatalogServiceImpl;
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.shared.exception.ValidationException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ModelCatalogServiceTest {
+  @Mock private DeepSeekDirectClient deepSeekDirect;
   @Mock private AiModelSettingRepository settings;
   @Mock private AdminRepository audit;
   @Mock private AnthropicClient anthropic;

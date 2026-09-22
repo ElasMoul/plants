@@ -1,0 +1,103 @@
+:host {
+  .quota-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .lifecycle-actions {
+    display: grid;
+    gap: 12px;
+    margin-top: 28px;
+    text-align: left;
+  }
+  .lifecycle-actions small {
+    line-height: 1.6;
+    color: #69746b;
+  }
+  .danger {
+    color: #9a3b3b;
+    border: 1px solid #e6c6c6;
+    background: #fff7f5;
+  }
+  .garden-management {
+    margin-top: 24px;
+    padding: 28px;
+  }
+  .managed-plant {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid #e6e9e3;
+  }
+  .managed-plant > div:first-of-type {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .managed-plant h3 {
+    margin: 0 0 6px;
+  }
+  .managed-plant p {
+    margin: 0 0 6px;
+  }
+  .plant-emblem {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: #eaf0e2;
+    color: #3b6140;
+  }
+  .garden-pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding-top: 22px;
+  }
+  .plant-editor {
+    margin-top: 20px;
+    border-radius: 16px;
+    padding: 24px;
+    background: #f4f6ef;
+  }
+  .plant-editor label,
+  .garden-management .panel-heading label {
+    display: grid;
+    gap: 8px;
+  }
+  .plant-editor input,
+  .plant-editor textarea,
+  .garden-management select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #c9d2c4;
+    border-radius: 9px;
+    padding: 12px;
+    font: inherit;
+    background: white;
+  }
+  .plant-editor .button-row {
+    margin-top: 20px;
+  }
+  @media (max-width: 700px) {
+    .quota-grid {
+      grid-template-columns: 1fr;
+    }
+    .garden-management {
+      padding: 18px;
+    }
+    .managed-plant {
+      flex-wrap: wrap;
+    }
+    .managed-plant .button-row {
+      width: 100%;
+    }
+    .garden-pager {
+      flex-wrap: wrap;
+    }
+  }
+}

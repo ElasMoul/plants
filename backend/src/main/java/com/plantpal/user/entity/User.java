@@ -59,6 +59,18 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "version", nullable = false)
   private long version;
 
+  @Builder.Default
+  @Column(name = "max_plants", nullable = false)
+  private int maxPlants = 100;
+
+  @Builder.Default
+  @Column(name = "daily_scan_limit", nullable = false)
+  private int dailyScanLimit = 20;
+
+  @Builder.Default
+  @Column(name = "daily_ai_limit", nullable = false)
+  private int dailyAiLimit = 100;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below.
   // Kept (not dropped) so existing callers aren't broken in this phase.
   @Builder.Default

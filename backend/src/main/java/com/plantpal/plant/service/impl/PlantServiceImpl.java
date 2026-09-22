@@ -21,6 +21,7 @@ import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.dto.RestPage;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.util.HtmlSanitizer;
+import com.plantpal.user.service.UsageService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -47,6 +48,7 @@ public class PlantServiceImpl implements PlantService {
   private static final String GARDEN_CACHE = "garden";
   private static final String NOT_FOUND_MSG = "Plant not found or not owned by user";
 
+  private final UsageService usage;
   private final PlantRepository plantRepository;
   private final PlantMapper plantMapper;
   private final IdentificationRepository identificationRepository;
@@ -60,7 +62,9 @@ public class PlantServiceImpl implements PlantService {
       IdentificationRepository identificationRepository,
       ReminderRepository reminderRepository,
       ObjectMapper objectMapper,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      UsageService usage) {
+    this.usage = usage;
     this.plantRepository = plantRepository;
     this.plantMapper = plantMapper;
     this.identificationRepository = identificationRepository;
@@ -77,6 +81,7 @@ public class PlantServiceImpl implements PlantService {
         @CacheEvict(value = GARDEN_CACHE, key = "#userId")
       })
   public PlantResponse createPlant(CreatePlantRequest request, Long userId) {
+    usage.requirePlantCapacity(userId);
     Plant plant = plantMapper.toEntity(request);
     plant.setUserId(userId);
     plant.setStatus(PlantStatus.ACTIVE);
@@ -125,6 +130,25 @@ public class PlantServiceImpl implements PlantService {
     log.info("Plant archived: id={}, userId={}", id, userId);
 
     emitDimensionEvent(userId, -1);
+  }
+
+  @Override
+  @Transactional
+  @Caching(
+      evict = {
+        @CacheEvict(value = PLANTS_CACHE, allEntries = true),
+        @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+      })
+  public PlantResponse restorePlant(Long id, Long userId) {
+    usage.requirePlantCapacity(userId);
+    Plant plant =
+        plantRepository
+            .findByIdAndUserIdAndStatus(id, userId, PlantStatus.ARCHIVED)
+            .orElseThrow(() -> new ResourceNotFoundException(NOT_FOUND_MSG));
+    plant.setStatus(PlantStatus.ACTIVE);
+    plantRepository.saveAndFlush(plant);
+    emitDimensionEvent(userId, 1);
+    return plantMapper.toResponse(plant);
   }
 
   /**
@@ -235,6 +259,7 @@ public class PlantServiceImpl implements PlantService {
       })
   public PlantResponse saveFromIdentification(
       SaveIdentificationAsPlantRequest request, Long userId) {
+    usage.requirePlantCapacity(userId);
     Identification identification =
         identificationRepository
             .findById(request.getIdentificationId())

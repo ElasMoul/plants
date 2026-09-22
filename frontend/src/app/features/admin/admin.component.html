@@ -368,6 +368,7 @@
                   <option value="ACTIVE">Active</option>
                   <option value="SUSPENDED">Suspended</option>
                   <option value="INACTIVE">Inactive</option>
+                  <option value="ARCHIVED">Deleted (recoverable)</option>
                 </select></label
               ><button class="button primary" type="submit">Search</button>
             </form>
@@ -476,6 +477,47 @@
                 <dt>Reasoning model</dt>
                 <dd>{{ modelName(person.reasoningModel) }}</dd>
               </dl>
+              @if (person.id !== access?.userId) {
+                <div class="lifecycle-actions">
+                  @if (original?.status === "ACTIVE") {
+                    <button
+                      type="button"
+                      class="button secondary"
+                      (click)="changeAccess('SUSPENDED')"
+                      [disabled]="saving || confirming"
+                    >
+                      Disable account
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="button primary"
+                      (click)="changeAccess('ACTIVE')"
+                      [disabled]="saving || confirming"
+                    >
+                      {{
+                        original?.status === "ARCHIVED"
+                          ? "Restore account"
+                          : "Enable account"
+                      }}
+                    </button>
+                  }
+                  @if (original?.status !== "ARCHIVED") {
+                    <button
+                      type="button"
+                      class="button danger"
+                      (click)="changeAccess('ARCHIVED')"
+                      [disabled]="saving || confirming"
+                    >
+                      Delete account
+                    </button>
+                  }
+                  <small
+                    >Deleting blocks access and keeps the account recoverable,
+                    including its garden.</small
+                  >
+                </div>
+              }
             </aside>
             <form
               class="panel edit-panel"
@@ -521,6 +563,7 @@
                       <option value="ACTIVE">Active</option>
                       <option value="SUSPENDED">Suspended</option>
                       <option value="INACTIVE">Inactive</option>
+                      <option value="ARCHIVED">Deleted (recoverable)</option>
                     </select></label
                   ><label
                     >Workspace role<select
@@ -537,6 +580,61 @@
                 <p class="field-help">
                   Administrators can manage every user and the AI catalog. You
                   cannot remove your own access.
+                </p>
+                <div class="divider"></div>
+                <h3>Growth & AI allowances</h3>
+                <p class="field-help">
+                  Daily allowances reset at midnight UTC. Scans and retries also
+                  use one AI request. Failed attempts count; background scan
+                  stages are included. Set 0 to block new usage.
+                </p>
+                <div class="quota-grid">
+                  <label
+                    >Maximum plants<input
+                      type="number"
+                      name="maxPlants"
+                      [(ngModel)]="person.maxPlants"
+                      min="0"
+                      max="1000000"
+                      step="1"
+                      pattern="[0-9]+"
+                      required
+                    /><small
+                      >{{ person.usage?.plants ?? 0 }} active plants</small
+                    ></label
+                  >
+                  <label
+                    >Scans per day<input
+                      type="number"
+                      name="dailyScanLimit"
+                      [(ngModel)]="person.dailyScanLimit"
+                      min="0"
+                      max="1000000"
+                      step="1"
+                      pattern="[0-9]+"
+                      required
+                    /><small
+                      >{{ person.usage?.scansToday ?? 0 }} attempts today</small
+                    ></label
+                  >
+                  <label
+                    >AI requests per day<input
+                      type="number"
+                      name="dailyAiLimit"
+                      [(ngModel)]="person.dailyAiLimit"
+                      min="0"
+                      max="1000000"
+                      step="1"
+                      pattern="[0-9]+"
+                      required
+                    /><small
+                      >{{ person.usage?.aiToday ?? 0 }} requests today ·
+                      includes chat & treatments</small
+                    ></label
+                  >
+                </div>
+                <p class="field-help">
+                  Lowering an allowance preserves existing plants and usage.
                 </p>
                 <label class="checkbox-label"
                   ><input
@@ -605,6 +703,179 @@
               }
             </form>
           </div>
+        }
+
+        @if (view === "detail" && user; as person) {
+          <article class="panel garden-management">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">THEIR GARDEN</p>
+                <h2>Plants belonging to {{ person.firstName }}</h2>
+                <p>Edit details or archive plants on this grower's behalf.</p>
+              </div>
+              <label
+                >Show plants<select
+                  [(ngModel)]="plantStatus"
+                  (ngModelChange)="loadPlants()"
+                >
+                  <option value="ACTIVE">Active plants</option>
+                  <option value="ARCHIVED">Archived plants</option>
+                </select></label
+              >
+            </div>
+            @if (plantsLoading) {
+              <p role="status">Loading garden…</p>
+            } @else {
+              <div class="managed-plants">
+                @for (plant of plants?.content; track plant.id) {
+                  <div class="managed-plant">
+                    <span class="plant-emblem"
+                      ><app-admin-icon name="eco"></app-admin-icon
+                    ></span>
+                    <div>
+                      <h3>{{ plant.nickname }}</h3>
+                      <p>
+                        {{
+                          plant.commonName || plant.species || "Species not set"
+                        }}
+                      </p>
+                      <small
+                        >{{ plant.location || "No location" }} · #{{
+                          plant.id
+                        }}</small
+                      >
+                    </div>
+                    <div class="button-row">
+                      @if (plant.status === "ACTIVE") {
+                        <button
+                          class="button secondary"
+                          (click)="editPlant(plant)"
+                        >
+                          Edit
+                        </button>
+                      }
+                      <button
+                        class="button secondary"
+                        (click)="plantAction = plant"
+                      >
+                        {{ plant.status === "ACTIVE" ? "Archive" : "Restore" }}
+                      </button>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="empty">
+                    No {{ plantStatus | lowercase }} plants in this garden.
+                  </p>
+                }
+              </div>
+              <div class="garden-pager">
+                <button
+                  class="button secondary"
+                  (click)="loadPlants(plantPage - 1)"
+                  [disabled]="plantPage === 0"
+                >
+                  Previous</button
+                ><span
+                  >{{ plants?.totalElements ?? 0 }} plants · Page
+                  {{ plantPage + 1 }}</span
+                ><button
+                  class="button secondary"
+                  (click)="loadPlants(plantPage + 1)"
+                  [disabled]="plantPage + 1 >= (plants?.totalPages ?? 0)"
+                >
+                  Next
+                </button>
+              </div>
+            }
+            @if (editingPlant; as plant) {
+              <form
+                class="plant-editor"
+                #plantForm="ngForm"
+                (ngSubmit)="savePlant()"
+              >
+                <h3>Edit {{ plant.nickname }}</h3>
+                <div class="field-grid">
+                  <label
+                    >Nickname<input
+                      name="plantNickname"
+                      [(ngModel)]="plant.nickname"
+                      required
+                      maxlength="255"
+                      pattern=".*\S.*"
+                  /></label>
+                  <label
+                    >Common name<input
+                      name="plantCommonName"
+                      [(ngModel)]="plant.commonName"
+                      maxlength="255"
+                  /></label>
+                  <label
+                    >Location<input
+                      name="plantLocation"
+                      [(ngModel)]="plant.location"
+                      maxlength="255"
+                  /></label>
+                  <label
+                    >Notes<textarea
+                      name="plantNotes"
+                      [(ngModel)]="plant.notes"
+                      maxlength="10000"
+                      rows="3"
+                    ></textarea>
+                  </label>
+                </div>
+                <div class="button-row">
+                  <button
+                    class="button primary"
+                    type="submit"
+                    [disabled]="savingPlant || plantForm.invalid"
+                  >
+                    Save plant</button
+                  ><button
+                    class="button secondary"
+                    type="button"
+                    (click)="editingPlant = undefined"
+                    [disabled]="savingPlant"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            }
+            @if (plantAction; as plant) {
+              <div class="confirm-box" role="alert">
+                <h3>
+                  {{ plant.status === "ACTIVE" ? "Archive" : "Restore" }}
+                  {{ plant.nickname }}?
+                </h3>
+                <p>
+                  {{
+                    plant.status === "ACTIVE"
+                      ? "This removes the plant from the active garden and stops its reminders. Its history is preserved."
+                      : "The plant will return to the garden if there is room in this user’s allowance. Reminders stay disabled until the grower enables them."
+                  }}
+                </p>
+                <div class="button-row">
+                  <button
+                    class="button primary"
+                    (click)="confirmPlantAction()"
+                    [disabled]="savingPlant"
+                  >
+                    Confirm
+                    {{
+                      plant.status === "ACTIVE" ? "archive" : "restore"
+                    }}</button
+                  ><button
+                    class="button secondary"
+                    (click)="plantAction = undefined"
+                    [disabled]="savingPlant"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            }
+          </article>
         }
 
         @if (view === "ai") {

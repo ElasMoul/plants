@@ -112,4 +112,5 @@
 
     <include file="db/changelog/migrations/034_admin_console.sql"
              relativeToChangelogFile="false"/>
+    <include file="db/changelog/migrations/035_user_management.sql"/>
 </databaseChangeLog>

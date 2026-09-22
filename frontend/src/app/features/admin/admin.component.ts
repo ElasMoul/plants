@@ -17,6 +17,7 @@ import {
 } from "rxjs";
 import {
   AdminAccess,
+  AdminPlant,
   AdminActivity,
   AdminModel,
   AdminOverview,
@@ -36,6 +37,7 @@ import {
     "./admin-people.scss",
     "./admin-models.scss",
     "./admin-responsive.scss",
+    "./admin-gardens.scss",
   ],
 })
 export class AdminComponent implements OnInit {
@@ -99,6 +101,13 @@ export class AdminComponent implements OnInit {
   error = "";
   notice = "";
   confirming = false;
+  plants?: AdminPage<AdminPlant>;
+  plantStatus = "ACTIVE";
+  plantPage = 0;
+  plantsLoading = false;
+  editingPlant?: AdminPlant;
+  plantAction?: AdminPlant;
+  savingPlant = false;
 
   ngOnInit(): void {
     this.api
@@ -180,6 +189,77 @@ export class AdminComponent implements OnInit {
       });
   }
 
+  changeAccess(status: AdminUser["status"]): void {
+    if (!this.user || this.user.id === this.access?.userId) return;
+    this.user.status = status;
+    this.requestSave();
+  }
+
+  loadPlants(page = 0): void {
+    if (!this.user) return;
+    this.plantPage = page;
+    this.plantsLoading = true;
+    this.api
+      .plants(this.user.id, this.plantStatus, page)
+      .pipe(
+        finalize(() => (this.plantsLoading = false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (plants) => (this.plants = plants),
+        error: (e: HttpErrorResponse) => (this.error = this.message(e)),
+      });
+  }
+
+  savePlant(): void {
+    if (!this.user || !this.editingPlant || this.savingPlant) return;
+    this.savingPlant = true;
+    this.api
+      .savePlant(this.user.id, this.editingPlant)
+      .pipe(
+        finalize(() => (this.savingPlant = false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.editingPlant = undefined;
+          this.notice = "Plant details saved.";
+          this.loadPlants(this.plantPage);
+        },
+        error: (e: HttpErrorResponse) => (this.error = this.message(e)),
+      });
+  }
+
+  confirmPlantAction(): void {
+    if (!this.user || !this.plantAction || this.savingPlant) return;
+    this.savingPlant = true;
+    const action: Observable<unknown> =
+      this.plantAction.status === "ACTIVE"
+        ? this.api.archivePlant(this.user.id, this.plantAction.id)
+        : this.api.restorePlant(this.user.id, this.plantAction.id);
+    action
+      .pipe(
+        finalize(() => (this.savingPlant = false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.plantAction = undefined;
+          this.notice = "Garden updated.";
+          this.loadPlants();
+          this.refresh();
+        },
+        error: (e: HttpErrorResponse) => {
+          this.plantAction = undefined;
+          this.error = this.message(e);
+        },
+      });
+  }
+
+  editPlant(plant: AdminPlant): void {
+    this.editingPlant = { ...plant };
+  }
+
   resetUser(): void {
     if (this.original) this.user = { ...this.original };
     this.confirming = false;
@@ -210,6 +290,7 @@ export class AdminComponent implements OnInit {
     return (
       (
         {
+          DEEPSEEK_FLASH: "DeepSeek V4.1 Flash",
           ANTHROPIC_CLAUDE: "Claude",
           GITHUB_GPT4O: "GPT-4o",
           GITHUB_GPT41: "GPT-4.1",
@@ -224,6 +305,7 @@ export class AdminComponent implements OnInit {
   }
 
   provider(model: string): string {
+    if (model === "DEEPSEEK_FLASH") return "DeepSeek · direct API";
     if (model.startsWith("ANTHROPIC")) return "Anthropic";
     if (model.startsWith("OLLAMA")) return "Ollama · local";
     if (model === "PLANTNET") return "Botanical identification";
@@ -288,6 +370,7 @@ export class AdminComponent implements OnInit {
         tap((user) => {
           this.user = { ...user };
           this.original = { ...user };
+          this.loadPlants();
         }),
       );
     if (this.view === "activity")

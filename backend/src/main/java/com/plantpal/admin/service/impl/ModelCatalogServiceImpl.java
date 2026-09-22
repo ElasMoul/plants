@@ -7,6 +7,7 @@ import com.plantpal.admin.repository.AdminRepository;
 import com.plantpal.admin.repository.AiModelSettingRepository;
 import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import java.util.LinkedHashMap;
@@ -23,13 +24,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class ModelCatalogServiceImpl implements ModelCatalogService {
   private final AiModelSettingRepository settings;
   private final AdminRepository audit;
+  private final DeepSeekDirectClient deepSeek;
   private final AnthropicClient anthropic;
 
   public ModelCatalogServiceImpl(
-      AiModelSettingRepository settings, AdminRepository audit, AnthropicClient anthropic) {
+      AiModelSettingRepository settings,
+      AdminRepository audit,
+      AnthropicClient anthropic,
+      DeepSeekDirectClient deepSeek) {
     this.settings = settings;
     this.audit = audit;
     this.anthropic = anthropic;
+    this.deepSeek = deepSeek;
   }
 
   @Override
@@ -74,6 +80,8 @@ public class ModelCatalogServiceImpl implements ModelCatalogService {
       throw new ValidationException(
           "This model is no longer offered in Settings. Choose another model.");
     }
+    if (model.equals("DEEPSEEK_FLASH") && !deepSeek.isAvailable())
+      throw new ValidationException("DeepSeek is not configured on this server.");
     if (model.equals("ANTHROPIC_CLAUDE") && !anthropic.isAvailable()) {
       throw new ValidationException("Claude is not configured on this server.");
     }
@@ -81,7 +89,10 @@ public class ModelCatalogServiceImpl implements ModelCatalogService {
 
   private ModelView view(AiModelSetting setting) {
     String[] parts = setting.getId().split(":");
-    boolean configured = !parts[1].equals("ANTHROPIC_CLAUDE") || anthropic.isAvailable();
+    boolean configured =
+        parts[1].equals("DEEPSEEK_FLASH")
+            ? deepSeek.isAvailable()
+            : !parts[1].equals("ANTHROPIC_CLAUDE") || anthropic.isAvailable();
     return new ModelView(
         setting.getId(), parts[0], parts[1], setting.isVisible(), configured, setting.getVersion());
   }
