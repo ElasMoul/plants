@@ -10,5 +10,16 @@
 - [x] Verify builds, full backend gate, unit suites, browser flows, and accessibility.
 - [x] Commit implementation and synchronize feature documentation.
 
-Owner setup: provision the intended existing account using the documented optional
-bootstrap setting. No account/email was inferred or elevated during implementation.
+Initial console setup was followed by explicit owner-requested local provisioning;
+see the expansion below and STATE.md for the current administrator identity.
+
+
+## Administration expansion — completed 2026-09-22
+- [x] Make admin@plantpal.com the local administrator, preserving the existing account.
+- [x] Route administrator login directly to the console.
+- [x] Add recoverable delete/restore and explicit disable/enable controls.
+- [x] Persist per-user plant, scan and total AI ceilings with concurrent enforcement.
+- [x] Manage users' gardens through audited, owner-scoped endpoints.
+- [x] Verify native DeepSeek model/API; add direct Flash support and settings choices.
+- [x] Verify unit/integration/browser behavior and restore the local preview.
+- [x] Commit implementation and synchronize documentation.

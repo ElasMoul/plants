@@ -18,7 +18,7 @@ account changes. Audit inserts participate in the mutation transaction.
 
 ## Model visibility
 
-A bounded persisted catalog contains the ten non-deprecated vision/reasoning
+A bounded persisted catalog contains the twelve non-deprecated vision/reasoning
 choices. ModelCatalogService owns visibility separately from provider configuration.
 Preferences expose visibility maps consumed by both frontends. Hidden current
 choices remain readable but disabled, and new selections are rejected server-side.
@@ -36,3 +36,26 @@ avoid a dependency on externally hosted icon fonts. CSS is split by shell,
 overview, people, models, and responsive rules, keeping existing error budgets.
 
 Bootstrap/access guide and exact API semantics: `docs/admin-console.md`.
+
+
+## Usage admission and native DeepSeek
+
+UsageService is a leaf dependency on JDBC, avoiding UserService/PlantService cycles.
+Plant insertion/restoration locks the user's row inside the caller transaction before
+counting active plants. AiUsageAspect reserves one action in a separate transaction
+before user-triggered AI work; daily rows keyed by user/date persist across instances.
+Scans consume both scan and AI allowance. Failed admitted attempts count; background
+steps do not count separately. Default ceilings are 100 plants, 20 scans/day, 100 AI
+attempts/day. Zero blocks new usage. Lowering ceilings never deletes user data.
+
+AdminPlantService delegates to PlantService so cache eviction/reminder behavior stays
+shared with user actions. Lists are bounded and plant mutations require owner+plant IDs.
+Archive/restore preserves history; restoration leaves reminders disabled. User ARCHIVED
+is recoverable and blocked by the JWT filter; scheduled reminders require ACTIVE users.
+
+DeepSeekDirectClient is separate from legacy Azure-backed DeepSeekClient. Optional
+DEEPSEEK_API_KEY controls configured availability; DEEPSEEK_DIRECT_MODEL defaults to
+native `deepseek-flash`. Both preference enums include DEEPSEEK_FLASH; legacy species
+preference mapping preserves it for enrichment. Chat honors the reasoning selection.
+HTTP calls are bounded and do not log keys or raw provider failures. Native calls stay
+inside PlantPal's standalone domain flow. No Platform-facing contracts changed.
