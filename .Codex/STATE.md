@@ -61,3 +61,24 @@ log in again. Preview is running on 4210 (frontend) and 8190 (backend); health U
 SPA HTTP 200 checked. Runtime logs/pids/proxy are in ignored backend/target/admin-preview.
 No push, merge, or production deployment. Remaining owner action: set DeepSeek key and
 restart the backend to use that provider.
+
+
+## 2026-09-23 — hosted DeepSeek and plant viewer complete
+
+Code commit a4ef7e5. Native provider uses DEEPSEEK_HOSTED_API_KEY plus
+DEEPSEEK_HOSTED_BASE_URL=https://api.deepseek.com/anthropic, POST /v1/messages,
+Anthropic payload/response format. User's ignored .env already contained the key;
+tracked .env.example key is blank. Other owner edits to the example were preserved.
+Small live DeepSeek test succeeded (HTTP 200, deepseek-flash, end_turn, pothos tip).
+No credentials printed or stored in logs/source.
+
+People account plants now offer View plant: accessible responsive photo/details modal,
+paginated care/scans/treatment/admin history, completed status, expandable details,
+archived support, missing-photo fallback, retry, Escape and focus restoration.
+API validates owner and ADMIN role; history lists capped at 50. No migration.
+
+Validation: 33 focused provider/model/user/chat unit tests passed, then four adapter
+and eight real-database admin tests passed; production Classic build and admin lint
+passed; nine Chromium admin journeys passed, with an additional successful modal
+visual run. Live preview frontend 4210 and backend 8190 healthy (UP, SPA 200).
+Backend process last started PID 9028; logs/pids are in target/admin-preview. No push.

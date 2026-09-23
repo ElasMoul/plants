@@ -54,8 +54,24 @@ Archive/restore preserves history; restoration leaves reminders disabled. User A
 is recoverable and blocked by the JWT filter; scheduled reminders require ACTIVE users.
 
 DeepSeekDirectClient is separate from legacy Azure-backed DeepSeekClient. Optional
-DEEPSEEK_API_KEY controls configured availability; DEEPSEEK_DIRECT_MODEL defaults to
+DEEPSEEK_HOSTED_API_KEY controls configured availability; DEEPSEEK_DIRECT_MODEL defaults to
 native `deepseek-flash`. Both preference enums include DEEPSEEK_FLASH; legacy species
 preference mapping preserves it for enrichment. Chat honors the reasoning selection.
 HTTP calls are bounded and do not log keys or raw provider failures. Native calls stay
 inside PlantPal's standalone domain flow. No Platform-facing contracts changed.
+
+
+## Hosted DeepSeek format and plant viewer (2026-09-23)
+
+DeepSeekDirectClient now reads DEEPSEEK_HOSTED_API_KEY and DEEPSEEK_HOSTED_BASE_URL
+(default https://api.deepseek.com/anthropic); POST /v1/messages uses x-api-key,
+Anthropic system/content blocks, base64 image source blocks, end_turn completion
+validation and text-block extraction. Legacy GitHub DeepSeekClient is unaffected.
+A live small text request succeeded; transport/error cases use a local mock HTTP server.
+
+AdminPlantHistoryRepository combines bounded care, scan, treatment, admin audit and
+plant-created records. AdminPlantService first checks plant+owner (including archived).
+Treatment rows summarize current state with completed/start/creation time, rather than
+pretending to have a full transition audit. Material Dialog owns accessible focus and
+keyboard behavior; standalone modal loads independent paginated history and handles
+errors/retries without replacing the account page.

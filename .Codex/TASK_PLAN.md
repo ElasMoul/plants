@@ -23,3 +23,11 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Verify native DeepSeek model/API; add direct Flash support and settings choices.
 - [x] Verify unit/integration/browser behavior and restore the local preview.
 - [x] Commit implementation and synchronize documentation.
+
+
+## Hosted provider and plant viewer — complete 2026-09-23
+- [x] Use DEEPSEEK_HOSTED_API_KEY / DEEPSEEK_HOSTED_BASE_URL with Anthropic format.
+- [x] Test the configured native DeepSeek key with one small live request.
+- [x] Add View plant modal with photo, details, activity and treatment status.
+- [x] Verify bounded owner-scoped API, archived access, mobile and accessibility.
+- [x] Rebuild/restart preview and synchronize documentation.

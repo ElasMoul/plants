@@ -141,13 +141,15 @@ on async dispatch so a quota error does not become an erroneous sign-out.
 
 ## Native DeepSeek Flash
 
-Add `DEEPSEEK_API_KEY=your-key` to `backend/.env`, export it for native launches (the
+Add `DEEPSEEK_HOSTED_API_KEY=your-key` to `backend/.env`, export it for native launches (the
 local preview launcher reads this file), and restart/recreate the backend. No key goes
 to the browser, database catalog, or Git. `DEEPSEEK_DIRECT_MODEL` optionally overrides
 the default **`deepseek-flash`**, currently DeepSeek V4.1 Flash. This is independent of
 the legacy GitHub-hosted `DEEPSEEK_R1` and its `DEEPSEEK_MODEL` variable.
 
-The native client uses `https://api.deepseek.com/chat/completions`, Bearer authentication,
+Set `DEEPSEEK_HOSTED_BASE_URL=https://api.deepseek.com/anthropic`. The native client
+uses its `/v1/messages` endpoint with `x-api-key` authentication and Anthropic-format
+text/image blocks,
 8,192 maximum output tokens and thinking disabled for bounded structured-output calls.
 It supports plant identification, image annotation, cure advice, disease descriptions,
 species enrichment and chat. Select DeepSeek independently in Vision and Reasoning
@@ -159,7 +161,8 @@ visibility remains an independent admin choice. Existing selections are not migr
 The adapter rejects empty/truncated output and translates provider failures without
 exposing credentials or upstream response bodies. Availability means a nonblank key is
 configured, not that billing or provider health has been verified. Request shape and
-failure behavior were tested with a local HTTP server; no paid live DeepSeek call was made.
+failure behavior were tested with a local HTTP server. A small live request using the
+configured hosted key returned HTTP 200, model `deepseek-flash`, and a plant-care answer.
 
 Official references: [vision](https://api-docs.deepseek.com/guides/vision/) and
 [models](https://api-docs.deepseek.com/quick_start/pricing/).
@@ -180,3 +183,33 @@ existing skips and no failures; coverage, Checkstyle and Spotless passed. Both f
 production builds passed; 555 Jest tests and 8 Chromium administration journeys passed,
 including desktop/mobile and axe checks. Existing non-fatal build warnings remain.
 The garden screenshot in `screenshots/admin-grower-garden.png` uses test fixtures.
+
+
+## Plant viewer and hosted provider update — 2026-09-23
+
+People → select a grower → Their garden → **View plant** opens a modal without
+leaving the account. It shows the plant photo (with missing/broken-image fallback),
+status, species, location, dates and notes, plus paginated care logs, scans, treatments,
+admin plant actions and the original garden entry. Treatment entries expose current
+status, including COMPLETED, and expandable disease descriptions. Their date uses
+completion, start or creation time; these are lifecycle summaries, not a reconstructed
+event for every past status transition. No history records are fabricated.
+
+GET `/api/v1/admin/users/{userId}/plants/{plantId}` returns plant details and a history
+page capped at 50, sorted deterministically by date/type/id. It validates ownership
+before querying history and accepts archived plants. The modal uses Material Dialog
+for focus trapping, Escape dismissal and focus restoration, and displays API errors
+with retry. Its first page contains up to 12 records. No migration is needed.
+
+Native DeepSeek now uses the owner's exact `DEEPSEEK_HOSTED_API_KEY` and
+`DEEPSEEK_HOSTED_BASE_URL` variables. `DEEPSEEK_API_KEY` is no longer read by this
+adapter. `DEEPSEEK_DIRECT_MODEL=deepseek-flash` remains the optional model override.
+The tracked example has an empty key; the real configured value remains in ignored
+`backend/.env`. The preview backend was rebuilt/restarted to load it. Official format:
+[DeepSeek Anthropic API](https://api-docs.deepseek.com/guides/anthropic_api/).
+
+Focused checks: 33 provider/model/user/chat unit tests passed; native adapter tests
+and eight admin PostgreSQL integration tests passed after the viewer addition.
+Classic production build, admin ESLint, and nine Chromium administration journeys
+passed, including modal photo/history, mobile overflow, error retry, axe accessibility,
+Escape and focus restoration. `screenshots/admin-plant-modal.png` uses fixture data.
