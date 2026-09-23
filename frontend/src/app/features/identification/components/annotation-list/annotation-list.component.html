@@ -10,7 +10,7 @@
     >
       <span class="dot" [style.background]="regionColor(region.type)"></span>
 
-      <span class="item-label">{{ region.label }}</span>
+      <span class="item-label">{{ region.label | aiText }}</span>
 
       <span class="badges">
         <span class="badge confidence-{{ region.confidence.toLowerCase() }}">

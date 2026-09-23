@@ -4,6 +4,7 @@ export interface ChatMessageDto {
 }
 
 export interface ChatRequest {
+  language?: 'en' | 'fr';
   message: string;
   plantId?: number;
   history?: ChatMessageDto[];

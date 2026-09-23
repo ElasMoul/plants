@@ -9,13 +9,13 @@
       <mat-icon>{{ card.icon }}</mat-icon>
     </div>
     <div class="card-body">
-      <p class="card-title">{{ card.title }}</p>
-      <p class="card-summary">{{ card.summary }}</p>
+      <p class="card-title">{{ card.title | aiText }}</p>
+      <p class="card-summary">{{ card.summary | aiText }}</p>
     </div>
     <app-read-aloud-button
       (click)="$event.stopPropagation()"
-      [text]="card.title + '. ' + card.summary"
-      [ariaLabel]="('Read aloud ' | t) + card.title"
+      [text]="(card.title | aiText) + '. ' + (card.summary | aiText)"
+      [ariaLabel]="('Read aloud ' | t) + (card.title | aiText)"
     ></app-read-aloud-button>
     <mat-icon class="expand-icon" [class.rotated]="expanded">expand_more</mat-icon>
   </div>
@@ -30,12 +30,12 @@
       </ol>
     </ng-container>
     <ng-template #plainDetail>
-      <p class="detail-text">{{ card.detail }}</p>
+      <p class="detail-text">{{ card.detail | aiText }}</p>
     </ng-template>
 
     <div class="seasonal-tip" *ngIf="card.seasonalVariation">
       <mat-icon>calendar_month</mat-icon>
-      <span>{{ card.seasonalVariation }}</span>
+      <span>{{ card.seasonalVariation | aiText }}</span>
     </div>
 
     <app-model-usage-badge

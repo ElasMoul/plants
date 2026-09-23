@@ -2,7 +2,7 @@
 
   <mat-card-header>
     <mat-icon mat-card-avatar color="warn">bug_report</mat-icon>
-    <mat-card-title>{{ region.label }}</mat-card-title>
+    <mat-card-title>{{ region.label | aiText }}</mat-card-title>
     <mat-card-subtitle>
       <span class="confidence-badge confidence-{{ region.confidence.toLowerCase() }}">
         {{ '{0} confidence' | t : [(region.confidence)] }}
@@ -48,7 +48,7 @@
 
     <!-- Advice result -->
     <ng-container *ngIf="advice">
-      <p class="advice-text">{{ advice }}</p>
+      <p class="advice-text">{{ advice | aiText }}</p>
       <app-model-usage-badge
         [reasoningModel]="reasoningModelUsed"
         prefix="Advice generated using"

@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>{{ data.instruction }}</h2>
+<h2 mat-dialog-title>{{ data.instruction | aiText }}</h2>
 
 <mat-dialog-content>
   <ng-container *ngIf="detailList; else plainStepDetail">
@@ -8,7 +8,7 @@
     </ol>
   </ng-container>
   <ng-template #plainStepDetail>
-    <p class="step-detail-text" *ngIf="data.stepDetail">{{ data.stepDetail }}</p>
+    <p class="step-detail-text" *ngIf="data.stepDetail">{{ data.stepDetail | aiText }}</p>
   </ng-template>
 
   <app-mermaid-diagram

@@ -33,7 +33,7 @@
       <button mat-icon-button class="back-btn" (click)="goBack()" [attr.aria-label]="&#x27;Back&#x27; | t">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1 class="plan-title">{{ plan.title }}</h1>
+      <h1 class="plan-title">{{ plan.title | aiText }}</h1>
       <span class="status-chip" [ngClass]="'status-' + plan.status.toLowerCase()">
         <mat-icon *ngIf="plan.status === 'COMPLETED'">check_circle</mat-icon>
         {{ plan.status | t }}

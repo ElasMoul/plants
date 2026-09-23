@@ -72,3 +72,44 @@ test('French plant form keeps entered content and displays a French date picker'
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '../docs/screenshots/french-plant-form.png', fullPage: true });
 });
+
+test('saved AI descriptions and care cards become French after the translation job completes', async ({ page }) => {
+  await userSession(page);
+  let polls = 0;
+  let language = '';
+  await page.route('**/api/v1/species/77', async route => {
+    language = route.request().headers()['x-content-language'];
+    await route.fulfill({ json: { success: true, data: {
+      id: 77, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
+      description: 'A tropical climbing plant.', careOverview: 'Water every 7 days with 100 ml.',
+      careCards: [{ type: 'WATERING', icon: 'water_drop', title: 'Water the roots',
+        summary: 'Water every 7 days with 100 ml.', detail: 'Keep the leaves dry.', urgency: 'LOW' }],
+    }, localization: { id: 'species-fr', language: 'fr', status: 'PENDING', texts: {} } } });
+  });
+  await page.route('**/api/v1/translations/species-fr', route => route.fulfill({ json: { success: true, data: {
+    id: 'species-fr', language: 'fr', status: ++polls > 1 ? 'READY' : 'PENDING', texts: {
+      'A tropical climbing plant.': 'Une plante grimpante tropicale.',
+      'Water every 7 days with 100 ml.': 'Arrosez tous les 7 jours avec 100 ml.',
+      'Water the roots': 'Arroser les racines', 'Keep the leaves dry.': 'Gardez les feuilles sèches.',
+    },
+  } } }));
+  await page.goto('/garden/species/77');
+  await expect(page.getByText('Préparation du texte IA en français…')).toBeVisible();
+  await expect(page.getByText('Une plante grimpante tropicale.')).toBeVisible();
+  await expect(page.getByText('Arroser les racines', { exact: true })).toBeVisible();
+  await expect(page.getByText('Arrosez tous les 7 jours avec 100 ml.').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Monstera deliciosa', exact: true })).toBeVisible();
+  expect(language).toBe('fr');
+});
+
+test('translation failure displays the original with a retry control', async ({ page }) => {
+  await userSession(page);
+  await page.route('**/api/v1/species/78', route => route.fulfill({ json: { success: true, data: {
+    id: 78, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
+    description: 'Original description.', careCards: [],
+  }, localization: { id: 'failed-translation', language: 'fr', status: 'FAILED', texts: {} } } }));
+  await page.goto('/garden/species/78');
+  await expect(page.getByText('Original description.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Le texte original est affiché');
+  await expect(page.getByRole('button', { name: 'Réessayer la traduction' })).toBeVisible();
+});

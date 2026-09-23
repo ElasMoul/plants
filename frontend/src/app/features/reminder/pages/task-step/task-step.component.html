@@ -24,7 +24,7 @@
       </button>
       <div class="step-title-block">
         <p class="step-order" *ngIf="step.stepOrder">{{ 'Step {0}' | t : [(step.stepOrder)] }}</p>
-        <h1 class="step-instruction">{{ step.instruction || step.careType }}</h1>
+        <h1 class="step-instruction">{{ step.instruction ? (step.instruction | aiText) : (step.careType | t) }}</h1>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
         </ol>
       </ng-container>
       <ng-template #plainDetail>
-        <p class="detail-text">{{ step.stepDetail }}</p>
+        <p class="detail-text">{{ step.stepDetail | aiText }}</p>
       </ng-template>
     </div>
 

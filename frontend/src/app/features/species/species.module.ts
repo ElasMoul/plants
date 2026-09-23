@@ -1,3 +1,5 @@
+import { ReminderService } from '../reminder/services/reminder.service';
+import { TreatmentService } from '../plant/services/treatment.service';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -44,6 +46,6 @@ import { SpeciesPlantRowComponent } from './components/species-plant-row/species
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  providers: [SpeciesService, IdentificationService, BatchScanService, PlantService],
+  providers: [ReminderService, TreatmentService, SpeciesService, IdentificationService, BatchScanService, PlantService],
 })
 export class SpeciesModule {}

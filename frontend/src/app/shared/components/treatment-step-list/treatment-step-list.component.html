@@ -19,7 +19,7 @@
 
     <div class="step-body">
       <div class="step-instruction-row">
-        <p class="step-instruction" [class.done]="!step.enabled">{{ stepInstruction(step) }}</p>
+        <p class="step-instruction" [class.done]="!step.enabled">{{ stepInstruction(step) | aiText }}</p>
         <button
           *ngIf="hasStepDetail(step)"
           mat-icon-button
@@ -31,7 +31,7 @@
           <mat-icon>info_outline</mat-icon>
         </button>
         <app-read-aloud-button
-          [text]="('Step ' | t) + (step.stepOrder ?? '') + ': ' + stepInstruction(step) + (step.stepDetail ? '. ' + step.stepDetail : '')"
+          [text]="('Step ' | t) + (step.stepOrder ?? '') + ': ' + (stepInstruction(step) | aiText) + (step.stepDetail ? '. ' + (step.stepDetail | aiText) : '')"
           ariaLabel="Read step aloud"
         ></app-read-aloud-button>
       </div>

@@ -30,7 +30,7 @@
 
         <div class="hero-text">
           <a class="hero-back-link" (click)="goToPlant()" *ngIf="plant">{{ 'Back to {0}' | t : [(plant.nickname)] }}</a>
-          <h1 class="hero-name">{{ treatment.diseaseName }}</h1>
+          <h1 class="hero-name">{{ treatment.diseaseName | aiText }}</h1>
         </div>
       </div>
     </div>
@@ -62,10 +62,10 @@
           <!-- READY -->
           <ng-container *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription">
             <app-read-aloud-button
-              [text]="treatment.diseaseDescription!"
+              [text]="treatment.diseaseDescription! | aiText"
               ariaLabel="Read disease description aloud"
             ></app-read-aloud-button>
-            <p>{{ treatment.diseaseDescription }}</p>
+            <p>{{ treatment.diseaseDescription | aiText }}</p>
           </ng-container>
           <!-- PENDING -->
           <p class="description-pending" *ngIf="!treatment.descriptionStatus || treatment.descriptionStatus === 'PENDING'">

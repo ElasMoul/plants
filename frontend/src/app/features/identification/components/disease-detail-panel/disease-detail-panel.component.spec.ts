@@ -1,3 +1,4 @@
+import { AiTextPipe } from '../../../../shared/i18n/ai-text.pipe';
 import { TranslatePipe } from '../../../../shared/i18n/translate.pipe';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -17,7 +18,7 @@ describe('DiseaseDetailPanelComponent', () => {
     getCureAdviceMock = jest.fn();
 
     TestBed.configureTestingModule({
-      imports: [TranslatePipe],
+      imports: [TranslatePipe, AiTextPipe],
       declarations: [DiseaseDetailPanelComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [

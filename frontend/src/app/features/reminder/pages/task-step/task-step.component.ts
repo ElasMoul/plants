@@ -1,3 +1,4 @@
+import { aiText } from '../../../../shared/i18n/ai-text.pipe';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
@@ -84,7 +85,7 @@ export class TaskStepComponent implements OnInit, OnDestroy {
             return;
           }
           this.step = found;
-          this.detailList = parseDetailAsList(found.stepDetail);
+          this.detailList = parseDetailAsList(aiText(found.stepDetail));
           this.state = 'ready';
         },
         error: () => {

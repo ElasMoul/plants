@@ -49,7 +49,7 @@
     <div class="warnings-list">
       <div *ngFor="let warning of carePlan.beginnerWarnings" class="warning-chip">
         <mat-icon>warning_amber</mat-icon>
-        <span>{{ warning }}</span>
+        <span>{{ warning | aiText }}</span>
       </div>
     </div>
   </div>

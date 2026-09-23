@@ -1,4 +1,5 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { aiDiagram } from '../../i18n/ai-text.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 let mermaidInitialized = false;
@@ -43,7 +44,7 @@ export class MermaidDiagramComponent implements OnChanges {
       }
 
       const id = `mermaid-diagram-${renderCounter++}`;
-      const { svg } = await mermaid.render(id, this.definition);
+      const { svg } = await mermaid.render(id, aiDiagram(this.definition));
       this.svg = this.sanitizer.bypassSecurityTrustHtml(svg);
     } catch {
       // Malformed mermaid syntax from the AI — fail silently, diagrams are a bonus, never required.

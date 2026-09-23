@@ -22,6 +22,9 @@ public class ChatRequest {
   @Schema(example = "Why are my monstera's leaves turning yellow?")
   private String message;
 
+  @jakarta.validation.constraints.Pattern(regexp = "en|fr")
+  private String language;
+
   private Long plantId;
 
   // Prior turns of this session's conversation, oldest first. Optional -- absent/empty means

@@ -1,3 +1,5 @@
+import { AiLanguageInterceptor } from './core/interceptors/ai-language.interceptor';
+import { AiTranslationNoticeComponent } from './shared/i18n/ai-translation-notice.component';
 import { MatDatepickerIntl } from '@angular/material/datepicker';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { localizedDatepicker } from './shared/i18n/localized-datepicker';
@@ -34,7 +36,7 @@ import { SharedModule } from './shared/shared.module';
 import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
 
 @NgModule({ declarations: [AppComponent],
-    bootstrap: [AppComponent], imports: [LanguageSwitchComponent, BrowserModule,
+    bootstrap: [AppComponent], imports: [AiTranslationNoticeComponent, LanguageSwitchComponent, BrowserModule,
         BrowserAnimationsModule,
         AppRoutingModule,
         CoreModule,
@@ -54,6 +56,7 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
         { provide: LOCALE_ID, useFactory: (language: LanguageService) => language.locale, deps: [LanguageService] },
         { provide: MAT_DATE_LOCALE, useFactory: (language: LanguageService) => language.locale, deps: [LanguageService] },
         { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
+        { provide: HTTP_INTERCEPTORS, useClass: AiLanguageInterceptor, multi: true },
         { provide: ErrorHandler, useValue: Sentry.createErrorHandler() },
         { provide: Sentry.TraceService, deps: [Router] },
         {

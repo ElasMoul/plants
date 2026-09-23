@@ -71,7 +71,7 @@
             (click)="$event.stopPropagation()"
           >
             <mat-icon class="chip-icon">medical_services</mat-icon>
-            {{ 'Step {0} · {1}' | t : [(reminder.stepOrder), (reminder.treatmentPlanTitle)] }}
+            {{ 'Step {0} · {1}' | t : [(reminder.stepOrder), (reminder.treatmentPlanTitle | aiText)] }}
           </a>
           <ng-container *ngIf="isOverdue(reminder)">
             {{ '· Overdue by {0} day{1}' | t : [(daysOverdue(reminder)), (daysOverdue(reminder) | pluralSuffix)] }}
