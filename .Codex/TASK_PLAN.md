@@ -61,3 +61,9 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Add Arabic saved AI translations, cache isolation, retry target and chat prompts.
 - [x] Apply migration 037; verify backend, frontend, RTL browser and admin regressions.
 - [ ] Owner tests Arabic/French; merge to dev only after owner confirms results.
+
+## PR #159 recovery — complete locally
+- [x] Fix five Spotless violations; unfiltered check and full backend verify passed.
+- [x] Preserve checkout-blocking files in a named stash and recover feature checkout.
+- [x] Back up divergent main commits, then align local main with origin/main.
+- [ ] Await GitHub checks and owner approval before merging.

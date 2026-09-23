@@ -133,3 +133,10 @@ reload. Physical UI spacing/positions became logical properties; directional ico
 mirror while photo coordinates and technical inputs retain their meaning. Arabic
 counted messages use Intl.PluralRules with explicit forms, not an English s suffix.
 No admin text translation or Atlas rollout was added.
+
+## CI verification lesson (PR #159)
+Use unfiltered mvn spotless:apply followed by spotless:check, then the full verify
+lifecycle before reporting backend CI readiness. A successful filtered apply can
+match zero files; package does not execute the verify-bound Spotless gate. Preserve
+local preview uploads under target when choosing whether to run clean; full verify
+was used for this recovery without deleting those uploads.

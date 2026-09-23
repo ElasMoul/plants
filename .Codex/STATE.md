@@ -159,3 +159,17 @@ static application labels, reviewed and corrected; no saved user content exporte
 Preview restarted to include new catalog/backend; migration 037 applied, backend
 8190 UP, frontend 4210 available. No push/merge. Owner explicitly wants testing
 before merge to dev; await that verdict.
+
+## 2026-09-23 — PR #159 formatting and checkout recovery
+
+Commit bdb92a4 fixes the five Java files rejected by CI Spotless. Ran unfiltered
+mvn spotless:apply spotless:check and full mvn verify -Ddependency.check.skip=true:
+unit/integration tests, coverage and formatting all passed. Do not treat a filtered
+formatter invocation or package/test as proof that CI verify passed.
+
+Checkout was blocked by untracked feature files left on older local main. Preserved
+all untracked files in stash named codex-preserve-main-files-before-pr159-format-fix,
+then switched to the PR branch. Preserved main's three unique local commits on
+codex/main-before-sync-20260923 before aligning inactive main with fetched origin/main.
+No files or commits discarded; do not blindly pop the stash over tracked feature files.
+PR: https://github.com/ElasMoul/plants/pull/159. Merge still awaits owner approval.
