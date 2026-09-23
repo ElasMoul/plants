@@ -48,6 +48,17 @@ function dom(html: string): HTMLElement {
 }
 
 describe('settings panes (S7)', () => {
+  it('honors administrator visibility and retains hidden current choices as disabled', () => {
+    const context = ctx();
+    context.prefs!.visionModelVisibility = { GITHUB_GPT4O: false, GITHUB_GPT41: false };
+    context.prefs!.reasoningModelVisibility = { DEEPSEEK_R1: false, GITHUB_O4_MINI: false };
+    const html = renderPane('ai', context)!;
+    expect(html).not.toContain('data-value="GITHUB_GPT41"');
+    expect(html).not.toContain('data-value="GITHUB_O4_MINI"');
+    expect(html).toContain('No longer offered in Settings');
+    expect(html).toContain('GPT-4o');
+    expect(html).toContain('DeepSeek-R1');
+  });
   it('renders every section but Appearance, each with its own heading', () => {
     for (const section of SECTIONS) {
       const html = renderPane(section, ctx());

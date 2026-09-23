@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.Collection;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -49,6 +50,27 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "status", nullable = false, length = 20)
   private UserStatus status;
 
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "role", nullable = false, length = 20)
+  private UserRole role = UserRole.USER;
+
+  @Version
+  @Column(name = "version", nullable = false)
+  private long version;
+
+  @Builder.Default
+  @Column(name = "max_plants", nullable = false)
+  private int maxPlants = 100;
+
+  @Builder.Default
+  @Column(name = "daily_scan_limit", nullable = false)
+  private int dailyScanLimit = 20;
+
+  @Builder.Default
+  @Column(name = "daily_ai_limit", nullable = false)
+  private int dailyAiLimit = 100;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below.
   // Kept (not dropped) so existing callers aren't broken in this phase.
   @Builder.Default
@@ -85,7 +107,7 @@ public class User extends AuditableEntity implements UserDetails {
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
   }
 
   @Override

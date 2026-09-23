@@ -50,6 +50,7 @@ public class SpeciesServiceImpl implements SpeciesService {
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
   private final ObjectMapper objectMapper;
+  private final com.plantpal.user.repository.UserRepository users;
 
   public SpeciesServiceImpl(
       SpeciesRepository speciesRepository,
@@ -57,13 +58,15 @@ public class SpeciesServiceImpl implements SpeciesService {
       Optional<SpeciesEnrichmentService> speciesEnrichmentService,
       PlantRepository plantRepository,
       IdentificationRepository identificationRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      com.plantpal.user.repository.UserRepository users) {
     this.speciesRepository = speciesRepository;
     this.speciesMapper = speciesMapper;
     this.speciesEnrichmentService = speciesEnrichmentService;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.objectMapper = objectMapper;
+    this.users = users;
   }
 
   @Override
@@ -268,6 +271,7 @@ public class SpeciesServiceImpl implements SpeciesService {
   @Override
   @Transactional
   @CacheEvict(value = SPECIES_CACHE, key = "#speciesId")
+  @com.plantpal.shared.ai.AiUsage(userArgument = 1)
   public SpeciesResponse regenerateDescription(Long speciesId, Long userId) {
     Species species =
         speciesRepository
@@ -277,13 +281,24 @@ public class SpeciesServiceImpl implements SpeciesService {
     speciesRepository.save(species);
 
     Long id = species.getId();
+    AiModelPreference preference =
+        users
+            .findById(userId)
+            .map(
+                u ->
+                    switch (u.getReasoningModelPreference()) {
+                      case DEEPSEEK_FLASH -> AiModelPreference.DEEPSEEK_FLASH;
+                      case OLLAMA_GEMMA3, OLLAMA_LLAVA -> AiModelPreference.OLLAMA_LLAVA;
+                      default -> AiModelPreference.DEEPSEEK;
+                    })
+            .orElse(AiModelPreference.DEEPSEEK);
     speciesEnrichmentService.ifPresent(
         service ->
             TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                   @Override
                   public void afterCommit() {
-                    service.enrich(id, AiModelPreference.DEEPSEEK);
+                    service.enrich(id, preference);
                   }
                 }));
 

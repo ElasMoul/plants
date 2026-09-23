@@ -1,6 +1,8 @@
 package com.plantpal.user.service.impl;
 
+import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.session.config.SessionProperties;
 import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -39,10 +41,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
+  private final DeepSeekDirectClient deepSeekDirect;
   private final AnthropicClient anthropicClient;
   private final SessionRegistryService sessionRegistryService;
   private final SessionProperties sessionProperties;
   private final Clock clock;
+  private final ModelCatalogService modelCatalog;
 
   @Value("${app.jwt.expiration-ms}")
   private long jwtExpirationMs;
@@ -52,16 +56,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       PasswordEncoder passwordEncoder,
       JwtUtil jwtUtil,
       AnthropicClient anthropicClient,
+      DeepSeekDirectClient deepSeekDirect,
       SessionRegistryService sessionRegistryService,
       SessionProperties sessionProperties,
-      Clock clock) {
+      Clock clock,
+      ModelCatalogService modelCatalog) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
     this.anthropicClient = anthropicClient;
+    this.deepSeekDirect = deepSeekDirect;
     this.sessionRegistryService = sessionRegistryService;
     this.sessionProperties = sessionProperties;
     this.clock = clock;
+    this.modelCatalog = modelCatalog;
   }
 
   @Override
@@ -148,9 +156,15 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       user.setAiModelPreference(request.getAiModelPreference());
     }
     if (request.getVisionModelPreference() != null) {
+      if (request.getVisionModelPreference() != user.getVisionModelPreference()) {
+        modelCatalog.validateSelection("VISION", request.getVisionModelPreference().name());
+      }
       user.setVisionModelPreference(request.getVisionModelPreference());
     }
     if (request.getReasoningModelPreference() != null) {
+      if (request.getReasoningModelPreference() != user.getReasoningModelPreference()) {
+        modelCatalog.validateSelection("REASONING", request.getReasoningModelPreference().name());
+      }
       user.setReasoningModelPreference(request.getReasoningModelPreference());
     }
     if (request.getPlantnetProject() != null) {
@@ -182,6 +196,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .reasoningModelPreference(user.getReasoningModelPreference())
         .visionModelAvailability(visionModelAvailability())
         .reasoningModelAvailability(reasoningModelAvailability())
+        .visionModelVisibility(modelCatalog.visibility("VISION"))
+        .reasoningModelVisibility(modelCatalog.visibility("REASONING"))
         .plantnetProject(user.getPlantnetProject())
         .plantnetLang(user.getPlantnetLang())
         .businessTier(user.isBusinessTier())
@@ -198,7 +214,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     for (VisionModelPreference option : VisionModelPreference.values()) {
       availability.put(
           option.name(),
-          option == VisionModelPreference.ANTHROPIC_CLAUDE ? anthropicClient.isAvailable() : true);
+          option == VisionModelPreference.DEEPSEEK_FLASH
+              ? deepSeekDirect.isAvailable()
+              : option == VisionModelPreference.ANTHROPIC_CLAUDE
+                  ? anthropicClient.isAvailable()
+                  : true);
     }
     return availability;
   }
@@ -208,9 +228,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     for (ReasoningModelPreference option : ReasoningModelPreference.values()) {
       availability.put(
           option.name(),
-          option == ReasoningModelPreference.ANTHROPIC_CLAUDE
-              ? anthropicClient.isAvailable()
-              : true);
+          option == ReasoningModelPreference.DEEPSEEK_FLASH
+              ? deepSeekDirect.isAvailable()
+              : option == ReasoningModelPreference.ANTHROPIC_CLAUDE
+                  ? anthropicClient.isAvailable()
+                  : true);
     }
     return availability;
   }
@@ -226,6 +248,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private AuthResponse buildAuthResponse(User user, String token) {
     return AuthResponse.builder()
         .token(token)
+        .role(user.getRole().name())
         .expiresIn(jwtExpirationMs)
         .userId(user.getId())
         .email(user.getEmail())

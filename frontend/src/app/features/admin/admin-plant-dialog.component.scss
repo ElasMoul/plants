@@ -1,0 +1,241 @@
+:host {
+  display: block;
+  color: #243d30;
+  font:
+    14px Inter,
+    Arial,
+    sans-serif;
+  background: #fafbf7;
+}
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 24px 28px 12px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #657154;
+  margin: 0 0 8px;
+}
+h2[mat-dialog-title] {
+  padding: 0;
+  margin: 0;
+  font:
+    28px Georgia,
+    serif;
+  overflow-wrap: anywhere;
+}
+h2[mat-dialog-title]::before {
+  display: none;
+}
+button {
+  border: 1px solid #cbd4c6;
+  background: white;
+  color: #2a4937;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #355e40;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.close-button {
+  flex-shrink: 0;
+}
+mat-dialog-content {
+  padding: 16px 28px !important;
+  max-height: 68vh;
+}
+.plant-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.plant-photo {
+  min-height: 230px;
+  height: 280px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #eef2e7;
+  color: #606d55;
+  overflow: hidden;
+}
+.plant-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: #edf0e8;
+  color: #4b6049;
+  white-space: nowrap;
+}
+.badge.done {
+  background: #e0efda;
+  color: #345c30;
+}
+.plant-facts h3 {
+  margin: 14px 0 8px;
+  font-size: 20px;
+}
+.botanical {
+  font-style: italic;
+  color: #62705d;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 18px;
+  font-size: 13px;
+  margin: 20px 0;
+}
+dt {
+  color: #63705e;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.plant-notes,
+.event-detail {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.plant-history {
+  border-top: 1px solid #e0e5d9;
+  margin-top: 28px;
+  padding-top: 24px;
+}
+.history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.history-heading h3 {
+  font:
+    23px Georgia,
+    serif;
+  margin: 0;
+}
+.history-heading > span,
+.history-note {
+  font-size: 12px;
+  color: #5d6a58;
+}
+.history-note {
+  line-height: 1.6;
+}
+.timeline {
+  list-style: none;
+  padding: 0 0 0 14px;
+}
+.timeline li {
+  position: relative;
+  border-left: 1px solid #d8e0cf;
+  padding: 0 0 24px 22px;
+}
+.timeline-dot {
+  position: absolute;
+  top: 4px;
+  left: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #98aa82;
+}
+.timeline-dot.completed {
+  background: #477844;
+}
+.event-heading,
+.event-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.event-heading {
+  font-size: 11px;
+  color: #617059;
+}
+.event-kind {
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.event-title h4 {
+  margin: 10px 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #4d693e;
+  padding: 6px 0;
+}
+.event-detail {
+  font-size: 13px;
+}
+.history-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.empty {
+  text-align: center;
+  padding: 24px;
+  color: #617059;
+}
+.viewer-error {
+  background: #fff0eb;
+  border-radius: 10px;
+  padding: 16px;
+  color: #913e30;
+}
+mat-dialog-actions {
+  border-top: 1px solid #e0e5d9;
+  padding: 14px 28px !important;
+}
+@media (max-width: 600px) {
+  .plant-overview {
+    grid-template-columns: 1fr;
+  }
+  .plant-photo {
+    height: 220px;
+    min-height: 220px;
+  }
+  .viewer-header {
+    padding: 18px;
+  }
+  mat-dialog-content {
+    padding: 12px 18px !important;
+  }
+  .event-title,
+  .event-heading {
+    flex-wrap: wrap;
+  }
+  .history-heading {
+    align-items: flex-start;
+  }
+  .history-pager button {
+    padding: 10px;
+  }
+}

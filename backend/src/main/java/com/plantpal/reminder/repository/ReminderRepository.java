@@ -26,7 +26,8 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
 
   Optional<Reminder> findByIdAndUserId(Long id, Long userId);
 
-  @Query("SELECT r FROM Reminder r WHERE r.enabled = true AND r.nextDueAt <= :now")
+  @Query(
+      "SELECT r FROM Reminder r WHERE r.enabled = true AND r.nextDueAt <= :now AND EXISTS (SELECT u.id FROM User u WHERE u.id = r.userId AND u.status = 'ACTIVE')")
   List<Reminder> findAllDue(@Param("now") Instant now);
 
   List<Reminder> findByTreatmentPlanIdAndEnabledTrue(Long treatmentPlanId);

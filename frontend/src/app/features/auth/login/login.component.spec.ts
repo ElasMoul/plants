@@ -16,8 +16,8 @@ describe('LoginComponent session monitoring', () => {
     },
   };
 
-  function buildComponent(returnUrlParam: string | null) {
-    const authService = { login: jest.fn(() => of(loginResponse)) } as unknown as AuthService;
+  function buildComponent(returnUrlParam: string | null, role = "USER") {
+    const authService = { login: jest.fn(() => of({...loginResponse,data:{...loginResponse.data,role}})) } as unknown as AuthService;
     const router = {
       navigate: jest.fn(() => Promise.resolve(true)),
       navigateByUrl: jest.fn(() => Promise.resolve(true)),
@@ -47,6 +47,14 @@ describe('LoginComponent session monitoring', () => {
 
     expect(router.navigate).toHaveBeenCalledWith(['/garden']);
     expect(sessionMonitor.start).toHaveBeenCalledWith('/garden');
+  }));
+
+  it('sends administrators to the console, even with an Atlas or garden destination', fakeAsync(() => {
+    const {component,router,sessionMonitor}=buildComponent('/garden/42', 'ADMIN');
+    component.form.patchValue({openAtlas:true});
+    component.submit(); tick();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
+    expect(sessionMonitor.start).toHaveBeenCalledWith('/admin');
   }));
 
   // Wave 2 acceptance: "a safe local destination is restored after login". The

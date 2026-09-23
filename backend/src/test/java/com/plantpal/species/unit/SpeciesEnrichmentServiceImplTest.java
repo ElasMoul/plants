@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.shared.exception.PlantPalException;
@@ -34,6 +35,7 @@ class SpeciesEnrichmentServiceImplTest {
 
   private static final Long SPECIES_ID = 1L;
 
+  @Mock private DeepSeekDirectClient deepSeekDirect;
   @Mock private SpeciesRepository speciesRepository;
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private OllamaClient ollamaClient;
@@ -60,6 +62,7 @@ class SpeciesEnrichmentServiceImplTest {
             deepSeekClient,
             ollamaClient,
             anthropicClient,
+            deepSeekDirect,
             objectMapper,
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));

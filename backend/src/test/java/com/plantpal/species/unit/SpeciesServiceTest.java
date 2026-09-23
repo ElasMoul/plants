@@ -49,6 +49,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @DisplayName("SpeciesService — Unit Tests")
 class SpeciesServiceTest {
 
+  @Mock private com.plantpal.user.repository.UserRepository users;
   @Mock private SpeciesRepository speciesRepository;
   @Mock private SpeciesMapper speciesMapper;
   @Mock private SpeciesEnrichmentService speciesEnrichmentService;
@@ -69,7 +70,8 @@ class SpeciesServiceTest {
             Optional.of(speciesEnrichmentService),
             plantRepository,
             identificationRepository,
-            objectMapper);
+            objectMapper,
+            users);
   }
 
   @Nested

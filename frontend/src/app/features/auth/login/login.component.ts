@@ -52,6 +52,10 @@ export class LoginComponent {
         // immediately after a successful login. Do not leave the submit control
         // disabled in that same SPA visit.
         this.loading = false;
+        if (res.data.role === 'ADMIN') {
+          void this.router.navigateByUrl('/admin').then(() => this.sessionMonitorService.start('/admin'));
+          return;
+        }
         if (openAtlas) {
           // Full navigation to the atlas origin; the session rides the URL
           // fragment (never the query string) and is consumed+scrubbed on boot.

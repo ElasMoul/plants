@@ -27,6 +27,9 @@ public class UserPreferencesResponse {
   private Map<String, Boolean> visionModelAvailability;
   private Map<String, Boolean> reasoningModelAvailability;
 
+  private Map<String, Boolean> visionModelVisibility;
+  private Map<String, Boolean> reasoningModelVisibility;
+
   // PlantNet flora and common-name language (T8.4).
   private String plantnetProject;
   private String plantnetLang;

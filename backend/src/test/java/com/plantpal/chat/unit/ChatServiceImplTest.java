@@ -12,6 +12,7 @@ import com.plantpal.chat.dto.ChatRequest;
 import com.plantpal.chat.dto.ChatResponse;
 import com.plantpal.chat.service.GardenContextService;
 import com.plantpal.chat.service.impl.ChatServiceImpl;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
@@ -21,6 +22,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.treatment.entity.Treatment;
 import com.plantpal.treatment.repository.TreatmentRepository;
+import com.plantpal.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +39,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("ChatServiceImpl — Unit Tests")
 class ChatServiceImplTest {
 
+  @Mock private DeepSeekDirectClient deepSeekDirect;
+  @Mock private UserRepository users;
   @Mock private OllamaClient ollamaClient;
   @Mock private com.plantpal.identification.client.AnthropicClient anthropicClient;
   @Mock private PlantRepository plantRepository;
@@ -57,13 +61,30 @@ class ChatServiceImplTest {
         new ChatServiceImpl(
             ollamaClient,
             anthropicClient,
+            deepSeekDirect,
             plantRepository,
             identificationRepository,
             treatmentRepository,
             gardenContextService,
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+            users,
             CHAT_RATE_LIMIT);
+  }
+
+  @Test
+  void selectedNativeDeepSeekServesChatEvenWhenOtherProvidersAreAvailable() {
+    var user =
+        com.plantpal.user.entity.User.builder()
+            .reasoningModelPreference(
+                com.plantpal.user.entity.ReasoningModelPreference.DEEPSEEK_FLASH)
+            .build();
+    when(users.findById(USER_ID)).thenReturn(Optional.of(user));
+    when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
+    when(deepSeekDirect.chat(any(), any())).thenReturn("Native reply");
+    assertThat(chatService.chat(request("hello"), USER_ID).getReply()).isEqualTo("Native reply");
+    verify(ollamaClient, never()).chat(any());
+    verify(anthropicClient, never()).chat(any(), any());
   }
 
   /** Flips the gateway flag on for a single test. */
@@ -159,12 +180,14 @@ class ChatServiceImplTest {
           new ChatServiceImpl(
               ollamaClient,
               anthropicClient,
+              deepSeekDirect,
               plantRepository,
               identificationRepository,
               treatmentRepository,
               gardenContextService,
               gatewayClient,
               new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              users,
               customLimit);
       when(gardenContextService.buildGardenContext(any())).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("reply");
@@ -186,12 +209,14 @@ class ChatServiceImplTest {
           new ChatServiceImpl(
               ollamaClient,
               anthropicClient,
+              deepSeekDirect,
               plantRepository,
               identificationRepository,
               treatmentRepository,
               gardenContextService,
               gatewayClient,
               new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),
+              users,
               customLimit);
       when(gardenContextService.buildGardenContext(any())).thenReturn(EMPTY_GARDEN);
       when(ollamaClient.chat(any())).thenReturn("reply");

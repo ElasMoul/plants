@@ -8,6 +8,7 @@ import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.gateway.PlantNetGatewayClient;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
@@ -55,6 +56,7 @@ import com.plantpal.plant.service.PlantService;
 import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
+import com.plantpal.shared.ai.AiUsage;
 import com.plantpal.shared.config.KafkaTransportProperties;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
@@ -173,6 +175,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final PlantNetClient plantNetClient;
   private final PlantNetDiseaseClient plantNetDiseaseClient;
   private final OllamaClient ollamaClient;
+  private final DeepSeekDirectClient deepSeekDirect;
   private final AnthropicClient anthropicClient;
   private final IdentificationDispatcher identificationDispatcher;
   private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -205,6 +208,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       PlantNetDiseaseClient plantNetDiseaseClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
+      DeepSeekDirectClient deepSeekDirect,
       IdentificationDispatcher identificationDispatcher,
       KafkaTemplate<String, Object> kafkaTemplate,
       KafkaTransportProperties kafkaTransportProperties,
@@ -231,6 +235,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.plantNetDiseaseClient = plantNetDiseaseClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
+    this.deepSeekDirect = deepSeekDirect;
     this.identificationDispatcher = identificationDispatcher;
     this.kafkaTemplate = kafkaTemplate;
     this.kafkaTransportProperties = kafkaTransportProperties;
@@ -246,6 +251,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   @Override
+  @AiUsage(userArgument = 3, scan = true)
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
       List<MultipartFile> images,
       Long plantId,
@@ -574,6 +580,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Override
   @Async("aiTaskExecutor")
+  @AiUsage(userArgument = 2, scan = false)
   public CompletableFuture<CureAdviceResponse> getCureAdvice(
       Long id, CureAdviceRequest req, Long userId) {
     Identification identification =
@@ -596,6 +603,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   @Override
+  @AiUsage(userArgument = 2)
   public CarePlanDto addCareCard(Long id, AddCareCardRequest req, Long userId) {
     Identification identification =
         identificationRepository
@@ -821,6 +829,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Override
   @Transactional
+  @AiUsage(userArgument = 2)
   public SpeciesMatchDto resolveSpecies(Long id, ResolveSpeciesRequest req, Long userId) {
     Identification identification = findOwnedIdentification(id, userId);
 
@@ -954,6 +963,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Override
   @Transactional
+  @AiUsage(userArgument = 1, scan = true)
   public IdentificationResponse retryIdentification(Long id, Long userId) {
     Identification identification = findOwnedIdentification(id, userId);
 
@@ -1406,7 +1416,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       ReasoningModelPreference preference, String species, String regionLabel, Long userId) {
     // Gateway routing (D022): every ReasoningModelPreference is in scope for the gateway swap
     // (Chunk 3) — unlike the vision preferences, none of them are excluded.
-    if (gatewayProperties.enabled()) {
+    if (gatewayProperties.enabled() && preference != ReasoningModelPreference.DEEPSEEK_FLASH) {
       String effectiveSpecies = species != null ? species : "Unknown plant";
       String userMessage =
           "My "
@@ -1426,6 +1436,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, regionLabel);
+      case DEEPSEEK_FLASH -> deepSeekDirect.generateCureAdvice(species, regionLabel);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, regionLabel);
       case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, regionLabel);
       case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, regionLabel);
@@ -1437,6 +1448,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private String modelHintForReasoning(ReasoningModelPreference preference) {
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.getModel();
+      case DEEPSEEK_FLASH -> deepSeekDirect.getModel();
       case ANTHROPIC_CLAUDE -> anthropicClient.getDefaultModel();
       case GITHUB_O4_MINI -> deepSeekClient.getO4MiniModel();
       case GITHUB_GPT41_MINI -> deepSeekClient.getGpt41MiniModel();
@@ -1454,6 +1466,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       ReasoningModelPreference preference) {
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> AiModelPreference.OLLAMA_LLAVA;
+      case DEEPSEEK_FLASH -> AiModelPreference.DEEPSEEK_FLASH;
       case DEEPSEEK_R1, GITHUB_O4_MINI, GITHUB_GPT41_MINI, ANTHROPIC_CLAUDE ->
           AiModelPreference.DEEPSEEK;
     };
@@ -1561,6 +1574,10 @@ public class IdentificationServiceImpl implements IdentificationService {
             gitHubModelsClient.identifyPlantWithGpt41(imageBytes, mediaType, userContext),
             VisionModelPreference.GITHUB_GPT41.name());
       }
+      case DEEPSEEK_FLASH ->
+          new IdentificationOutcome(
+              deepSeekDirect.identifyPlant(imageBytes, mediaType, userContext),
+              VisionModelPreference.DEEPSEEK_FLASH.name());
       case ANTHROPIC_CLAUDE -> {
         if (gatewayProperties.enabled()) {
           yield new IdentificationOutcome(
@@ -1616,6 +1633,8 @@ public class IdentificationServiceImpl implements IdentificationService {
    * resolvable user (falls back to "system", matching the convention used for species enrichment).
    */
   private String runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
+    if (userId != null && loadVisionPreference(userId) == VisionModelPreference.DEEPSEEK_FLASH)
+      return deepSeekDirect.analyzeRegions(imageBytes, mediaType);
     if (gatewayProperties.enabled()) {
       AiRequest request =
           new AiRequest()

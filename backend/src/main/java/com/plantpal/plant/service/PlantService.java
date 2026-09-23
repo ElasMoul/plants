@@ -13,6 +13,8 @@ public interface PlantService {
 
   PlantResponse updatePlant(Long id, UpdatePlantRequest request, Long userId);
 
+  PlantResponse restorePlant(Long id, Long userId);
+
   void archivePlant(Long id, Long userId);
 
   Page<PlantResponse> getUserPlants(Long userId, Pageable pageable);

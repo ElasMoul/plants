@@ -26,6 +26,7 @@ import com.plantpal.plant.service.impl.PlantServiceImpl;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
+import com.plantpal.user.service.UsageService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,7 @@ import org.springframework.data.domain.Pageable;
 @DisplayName("PlantService — Unit Tests")
 class PlantServiceTest {
 
+  @Mock private UsageService usage;
   @Mock private PlantRepository plantRepository;
   @Mock private PlantMapper plantMapper;
   @Mock private IdentificationRepository identificationRepository;

@@ -45,6 +45,24 @@ describe('ModelSelectorComponent logic', () => {
     expect(component.isVisionAvailable('GITHUB_GPT4O')).toBe(true);
   });
 
+  it('hides unselected catalog entries while preserving a disabled current selection', () => {
+    const service = TestBed.inject(UserService);
+    (service.getPreferences as jest.Mock).mockReturnValue(of({
+      data: {
+        ...mockPreferences.data,
+        visionModelVisibility: { GITHUB_GPT4O: false, GITHUB_GPT41: false },
+        reasoningModelVisibility: { DEEPSEEK_R1: false, GITHUB_O4_MINI: false },
+      },
+    }));
+    component.ngOnInit();
+    expect(component.visionOptions.some(o => o.value === 'GITHUB_GPT41')).toBe(false);
+    expect(component.selectedVisionOption?.value).toBe('GITHUB_GPT4O');
+    expect(component.isVisionAvailable('GITHUB_GPT4O')).toBe(false);
+    expect(component.reasoningOptions.some(o => o.value === 'GITHUB_O4_MINI')).toBe(false);
+    expect(component.selectedReasoningOption?.value).toBe('DEEPSEEK_R1');
+    expect(component.isReasoningAvailable('DEEPSEEK_R1')).toBe(false);
+  });
+
   it('returns false for a model explicitly disabled by the backend', () => {
     expect(component.isVisionAvailable('ANTHROPIC_CLAUDE')).toBe(false);
   });

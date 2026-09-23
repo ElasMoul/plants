@@ -385,6 +385,7 @@ function dataPane(s: AtlasSettings, ctx: PaneContext): string {
 const VISION_OPTIONS: { value: string; name: string; note: string }[] = [
   { value: 'GITHUB_GPT4O', name: 'GPT-4o', note: 'Best' },
   { value: 'GITHUB_GPT41', name: 'GPT-4.1', note: 'Frontier' },
+  { value: 'DEEPSEEK_FLASH', name: 'DeepSeek V4.1 Flash', note: 'Fast' },
   { value: 'ANTHROPIC_CLAUDE', name: 'Claude', note: 'Specialist' },
   { value: 'OLLAMA_GEMMA3', name: 'Gemma 3', note: 'Offline' },
   { value: 'PLANTNET', name: 'PlantNet', note: 'Balanced' },
@@ -394,6 +395,7 @@ const REASONING_OPTIONS: { value: string; name: string; note: string }[] = [
   { value: 'DEEPSEEK_R1', name: 'DeepSeek-R1', note: 'Best' },
   { value: 'GITHUB_GPT41_MINI', name: 'GPT-4.1 mini', note: 'Balanced' },
   { value: 'GITHUB_O4_MINI', name: 'o4-mini', note: 'Frontier' },
+  { value: 'DEEPSEEK_FLASH', name: 'DeepSeek V4.1 Flash', note: 'Fast' },
   { value: 'ANTHROPIC_CLAUDE', name: 'Claude', note: 'Specialist' },
   { value: 'OLLAMA_GEMMA3', name: 'Gemma 3', note: 'Offline' },
 ];
@@ -401,11 +403,13 @@ const REASONING_OPTIONS: { value: string; name: string; note: string }[] = [
 function modelOptions(
   table: { value: string; name: string; note: string }[],
   availability: Partial<Record<string, boolean>> | undefined,
+  visibility?: Partial<Record<string, boolean>>,
+  selected?: string,
 ): Option[] {
-  return table.map(o => ({
+  return table.filter(o => visibility?.[o.value] !== false || o.value === selected).map(o => ({
     ...o,
-    disabled: availability?.[o.value] === false,
-    disabledNote: 'Not configured on this server',
+    disabled: availability?.[o.value] === false || visibility?.[o.value] === false,
+    disabledNote: visibility?.[o.value] === false ? 'No longer offered in Settings' : 'Not configured on this server',
   }));
 }
 
@@ -428,7 +432,7 @@ function aiPane(s: AtlasSettings, ctx: PaneContext): string {
         'Vision model',
         'ai.visionModelPreference',
         ctx.prefs.visionModelPreference,
-        modelOptions(VISION_OPTIONS, ctx.prefs.visionModelAvailability),
+        modelOptions(VISION_OPTIONS, ctx.prefs.visionModelAvailability, ctx.prefs.visionModelVisibility, ctx.prefs.visionModelPreference),
       )}
 
       ${sec('AI Preferences · reasoning')}
@@ -437,7 +441,7 @@ function aiPane(s: AtlasSettings, ctx: PaneContext): string {
         'Reasoning model',
         'ai.reasoningModelPreference',
         ctx.prefs.reasoningModelPreference,
-        modelOptions(REASONING_OPTIONS, ctx.prefs.reasoningModelAvailability),
+        modelOptions(REASONING_OPTIONS, ctx.prefs.reasoningModelAvailability, ctx.prefs.reasoningModelVisibility, ctx.prefs.reasoningModelPreference),
       )}
 
       ${sec('AI Preferences · PlantNet')}

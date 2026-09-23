@@ -1,9 +1,11 @@
 package com.plantpal.user.controller;
 
+import com.plantpal.admin.dto.AdminDtos.Access;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.dto.UserPreferencesRequest;
 import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
+import com.plantpal.user.entity.UserRole;
 import com.plantpal.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -69,5 +72,11 @@ public class UserController {
   private Long getCurrentUserId() {
     User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return user.getId();
+  }
+
+  @GetMapping("/me/access")
+  public ApiResponse<Access> access(@AuthenticationPrincipal User user) {
+    return ApiResponse.success(
+        new Access(user.getId(), user.getFirstName(), user.getRole() == UserRole.ADMIN));
   }
 }
