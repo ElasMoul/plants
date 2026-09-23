@@ -20,13 +20,33 @@ public class AdminPlantServiceImpl implements AdminPlantService {
   private final PlantMapper mapper;
   private final PlantService service;
   private final AdminRepository audit;
+  private final com.plantpal.admin.repository.AdminPlantHistoryRepository history;
 
   public AdminPlantServiceImpl(
-      PlantRepository plants, PlantMapper mapper, PlantService service, AdminRepository audit) {
+      PlantRepository plants,
+      PlantMapper mapper,
+      PlantService service,
+      AdminRepository audit,
+      com.plantpal.admin.repository.AdminPlantHistoryRepository history) {
     this.plants = plants;
     this.mapper = mapper;
     this.service = service;
     this.audit = audit;
+    this.history = history;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public com.plantpal.admin.dto.AdminDtos.PlantDetail view(
+      Long userId, Long plantId, Pageable page) {
+    var plant =
+        plants
+            .findByIdAndUserId(plantId, userId)
+            .orElseThrow(
+                () ->
+                    new com.plantpal.shared.exception.ResourceNotFoundException("Plant not found"));
+    return new com.plantpal.admin.dto.AdminDtos.PlantDetail(
+        mapper.toResponse(plant), history.history(userId, plantId, page));
   }
 
   @Override

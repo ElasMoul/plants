@@ -35,6 +35,16 @@ public class AdminPlantController {
                 Sort.by("createdAt").descending().and(Sort.by("id").descending()))));
   }
 
+  @GetMapping("/{plantId}")
+  public ApiResponse<com.plantpal.admin.dto.AdminDtos.PlantDetail> view(
+      @PathVariable Long userId, @PathVariable Long plantId, Pageable page) {
+    return ApiResponse.success(
+        service.view(
+            userId,
+            plantId,
+            PageRequest.of(page.getPageNumber(), Math.min(page.getPageSize(), 50))));
+  }
+
   @PutMapping("/{plantId}")
   public ApiResponse<PlantResponse> update(
       @PathVariable Long userId,

@@ -1,3 +1,5 @@
+import { MatDialog } from "@angular/material/dialog";
+import { AdminPlantDialogComponent } from "./admin-plant-dialog.component";
 import { CommonModule } from "@angular/common";
 import { Component, DestroyRef, inject, OnInit } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -42,6 +44,7 @@ import {
 })
 export class AdminComponent implements OnInit {
   private readonly api = inject(AdminService);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -254,6 +257,22 @@ export class AdminComponent implements OnInit {
           this.error = this.message(e);
         },
       });
+  }
+
+  viewPlant(plant: AdminPlant): void {
+    if (!this.user) return;
+    this.dialog.open(AdminPlantDialogComponent, {
+      data: {
+        userId: this.user.id,
+        plantId: plant.id,
+        nickname: plant.nickname,
+      },
+      width: "920px",
+      maxWidth: "96vw",
+      maxHeight: "92vh",
+      autoFocus: "first-tabbable",
+      ariaLabel: `Plant details for ${plant.nickname}`,
+    });
   }
 
   editPlant(plant: AdminPlant): void {

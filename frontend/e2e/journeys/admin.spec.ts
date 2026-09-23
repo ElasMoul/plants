@@ -91,6 +91,32 @@ async function setup(page: Page, administrator = true) {
     else if (path.endsWith("/plants/7/restore")) {
       plant.status = "ACTIVE";
       data = plant;
+    } else if (path.endsWith("/plants/7") && request.method() === "GET") {
+      data = {
+        plant: {
+          ...plant,
+          createdAt: "2026-09-01T10:00:00Z",
+          photoUrl: "/test-plant.svg",
+        },
+        activity: paged([
+          {
+            id: "TREATMENT:1",
+            kind: "TREATMENT",
+            title: "Leaf spot",
+            status: "COMPLETED",
+            detail: "Leaves recovered after treatment.",
+            occurredAt: "2026-09-20T12:00:00Z",
+          },
+          {
+            id: "CARE:1",
+            kind: "CARE",
+            title: "WATERING",
+            status: "COMPLETED",
+            detail: "Watered thoroughly.",
+            occurredAt: "2026-09-19T12:00:00Z",
+          },
+        ]),
+      };
     } else if (path.endsWith("/plants/7")) {
       if (request.method() === "DELETE") plant.status = "ARCHIVED";
       else plant = { ...plant, ...request.postDataJSON() };
@@ -396,4 +422,63 @@ test("edit, archive and restore a grower's plant", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("plant viewer shows photo and completed treatments, handles errors and restores focus", async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  await page.route("**/test-plant.svg", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="300"><rect width="320" height="300" fill="#e9efde"/><path d="M160 250V60M160 140Q40 30 70 150Q120 190 160 160M160 180Q280 60 250 180Q210 210 160 200" fill="#557c4b" stroke="#375d30" stroke-width="8"/></svg>',
+    }),
+  );
+  await page.goto("/admin/users/2");
+  const view = page.getByRole("button", { name: "View plant", exact: true });
+  await view.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("img", { name: "Office fern" })).toBeVisible();
+  await expect(
+    dialog.getByRole("heading", { name: "Leaf spot" }),
+  ).toBeVisible();
+  await dialog.getByText("View treatment details").click();
+  await expect(
+    dialog.getByText("Leaves recovered after treatment."),
+  ).toBeVisible();
+  const result = await new AxeBuilder({ page })
+    .include("mat-dialog-container")
+    .analyze();
+  expect(result.violations).toEqual([]);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await dialog.locator('mat-dialog-content').evaluate(el => el.scrollTop = 0);
+  await page.screenshot({
+    path: testInfo.outputPath("admin-plant-modal.png"),
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(view).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await view.click();
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  let fail = true;
+  await page.route("**/api/v1/admin/users/2/plants/7?**", async (route) => {
+    if (fail)
+      await route.fulfill({
+        status: 503,
+        json: { message: "History unavailable" },
+      });
+    else await route.fallback();
+  });
+  await view.click();
+  await expect(dialog.getByRole("alert")).toContainText("History unavailable");
+  fail = false;
+  await dialog.getByRole("button", { name: "Try again" }).click();
+  await expect(
+    dialog.getByRole("heading", { name: "Leaf spot" }),
+  ).toBeVisible();
 });

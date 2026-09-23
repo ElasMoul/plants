@@ -13,6 +13,13 @@ import java.util.Map;
 public final class AdminDtos {
   private AdminDtos() {}
 
+  public record PlantActivity(
+      String id, String kind, String title, String status, String detail, Instant occurredAt) {}
+
+  public record PlantDetail(
+      com.plantpal.plant.dto.PlantResponse plant,
+      org.springframework.data.domain.Page<PlantActivity> activity) {}
+
   public record Access(Long userId, String name, boolean administrator) {}
 
   public record UserView(

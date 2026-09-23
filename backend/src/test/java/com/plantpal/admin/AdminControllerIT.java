@@ -21,17 +21,23 @@ class AdminControllerIT extends AbstractIntegrationTest {
   private final UserRepository users;
   private final AiModelSettingRepository models;
   private final JwtUtil jwt;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   private User admin;
   private User member;
   private String adminToken;
   private String memberToken;
 
   AdminControllerIT(
-      TestRestTemplate http, UserRepository users, AiModelSettingRepository models, JwtUtil jwt) {
+      TestRestTemplate http,
+      UserRepository users,
+      AiModelSettingRepository models,
+      JwtUtil jwt,
+      org.springframework.jdbc.core.JdbcTemplate jdbc) {
     this.http = http;
     this.users = users;
     this.models = models;
     this.jwt = jwt;
+    this.jdbc = jdbc;
   }
 
   @BeforeEach
@@ -40,6 +46,49 @@ class AdminControllerIT extends AbstractIntegrationTest {
     member = createUser(UserRole.USER);
     adminToken = jwt.generateToken(admin, admin.getId());
     memberToken = jwt.generateToken(member, member.getId());
+  }
+
+  @Test
+  void plantViewerIncludesCompletedTreatmentCareAndScansWithBoundedOwnerScopedHistory() {
+    var created =
+        call("/api/v1/plants", HttpMethod.POST, memberToken, Map.of("nickname", "History fern"));
+    var id = ((Number) data(created).get("id")).longValue();
+    jdbc.update(
+        "INSERT INTO treatments(plant_id,user_id,disease_name,status,completed_at,disease_description) VALUES (?,?,'Leaf spot','COMPLETED',now(),'Leaves recovered')",
+        id,
+        member.getId());
+    jdbc.update(
+        "INSERT INTO care_logs(plant_id,user_id,care_type,notes,performed_at) VALUES (?,?,'WATERING','Watered well',now())",
+        id,
+        member.getId());
+    jdbc.update(
+        "INSERT INTO identifications(plant_id,user_id,status,common_name,health_notes) VALUES (?,?,'COMPLETED','Fern','Healthy foliage')",
+        id,
+        member.getId());
+    String path = "/api/v1/admin/users/" + member.getId() + "/plants/" + id;
+    var result = data(call(path + "?size=500", HttpMethod.GET, adminToken, null));
+    var history = (Map<?, ?>) result.get("activity");
+    assertThat(history.get("size")).isEqualTo(50);
+    assertThat(history.get("totalElements")).isEqualTo(4);
+    assertThat(history.get("content").toString())
+        .contains("Leaf spot", "COMPLETED", "Watered well", "Healthy foliage");
+    assertThat(call(path, HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(
+            call(
+                    "/api/v1/admin/users/" + admin.getId() + "/plants/" + id,
+                    HttpMethod.GET,
+                    adminToken,
+                    null)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
+    call(path, HttpMethod.DELETE, adminToken, null);
+    assertThat(call(path, HttpMethod.GET, adminToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    var page =
+        (Map<?, ?>)
+            data(call(path + "?size=1&page=1", HttpMethod.GET, adminToken, null)).get("activity");
+    assertThat((java.util.List<?>) page.get("content")).hasSize(1);
   }
 
   @Test

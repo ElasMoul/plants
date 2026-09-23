@@ -1,0 +1,131 @@
+<header class="viewer-header">
+  <div>
+    <p class="eyebrow">A CLOSER LOOK</p>
+    <h2 mat-dialog-title>{{ detail?.plant?.nickname || data.nickname }}</h2>
+  </div>
+  <button
+    mat-dialog-close
+    class="close-button"
+    aria-label="Close plant details"
+  >
+    ✕
+  </button>
+</header>
+<mat-dialog-content>
+  @if (error) {
+    <div class="viewer-error" role="alert">
+      <p>{{ error }}</p>
+      <button (click)="load()">Try again</button>
+    </div>
+  }
+  @if (loading && !detail) {
+    <p class="empty" role="status">Loading plant and activity…</p>
+  }
+  @if (detail; as view) {
+    <section class="plant-overview" aria-label="Plant details">
+      <div class="plant-photo">
+        @if (view.plant.photoUrl && !photoFailed) {
+          <img
+            [src]="view.plant.photoUrl"
+            [alt]="view.plant.nickname"
+            (error)="photoFailed = true"
+            referrerpolicy="no-referrer"
+          />
+        } @else {
+          <span>{{ photoFailed ? "Photo unavailable" : "No photo yet" }}</span>
+        }
+      </div>
+      <div class="plant-facts">
+        <span class="badge">{{ label(view.plant.status) | titlecase }}</span>
+        <h3>
+          {{ view.plant.commonName || view.plant.species || "Species not set" }}
+        </h3>
+        @if (view.plant.species && view.plant.commonName) {
+          <p class="botanical">{{ view.plant.species }}</p>
+        }
+        <dl>
+          <dt>Location</dt>
+          <dd>{{ view.plant.location || "Not set" }}</dd>
+          <dt>Added to garden</dt>
+          <dd>{{ view.plant.createdAt | date: "mediumDate" }}</dd>
+          @if (view.plant.acquiredAt) {
+            <dt>Acquired</dt>
+            <dd>{{ view.plant.acquiredAt | date: "mediumDate" }}</dd>
+          }
+        </dl>
+        @if (view.plant.notes) {
+          <p class="plant-notes">{{ view.plant.notes }}</p>
+        }
+      </div>
+    </section>
+    <section class="plant-history" aria-label="Plant activity">
+      <div class="history-heading">
+        <div>
+          <p class="eyebrow">FROM FIRST DAY TO TODAY</p>
+          <h3>Activity & treatments</h3>
+        </div>
+        <span>{{ view.activity.totalElements }} records</span>
+      </div>
+      <p class="history-note">
+        Care completed, scans, treatments and administrative changes. Each
+        treatment shows its current status and latest lifecycle date.
+      </p>
+      @if (loading) {
+        <p role="status">Loading activity…</p>
+      }
+      <ol class="timeline" [attr.aria-busy]="loading">
+        @for (event of view.activity.content; track event.id) {
+          <li>
+            <span
+              class="timeline-dot"
+              [class.completed]="event.status === 'COMPLETED'"
+            ></span>
+            <div class="event-heading">
+              <span class="event-kind">{{ label(event.kind) | titlecase }}</span
+              ><time>{{ event.occurredAt | date: "medium" }}</time>
+            </div>
+            <div class="event-title">
+              <h4>
+                {{
+                  event.kind === "CARE"
+                    ? (label(event.title) | titlecase)
+                    : event.title
+                }}
+              </h4>
+              <span class="badge" [class.done]="event.status === 'COMPLETED'">{{
+                label(event.status) | titlecase
+              }}</span>
+            </div>
+            @if (event.detail) {
+              <details>
+                <summary>
+                  View
+                  {{
+                    event.kind === "TREATMENT" ? "treatment details" : "notes"
+                  }}
+                </summary>
+                <p class="event-detail">{{ event.detail }}</p>
+              </details>
+            }
+          </li>
+        } @empty {
+          <li class="empty">No activity recorded yet.</li>
+        }
+      </ol>
+      <nav class="history-pager" aria-label="Activity pages">
+        <button (click)="load(page - 1)" [disabled]="loading || page === 0">
+          Previous</button
+        ><span>Page {{ page + 1 }} of {{ view.activity.totalPages || 1 }}</span
+        ><button
+          (click)="load(page + 1)"
+          [disabled]="loading || page + 1 >= view.activity.totalPages"
+        >
+          Next
+        </button>
+      </nav>
+    </section>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end"
+  ><button mat-dialog-close>Close</button></mat-dialog-actions
+>

@@ -41,6 +41,18 @@ export interface AdminPlant {
   status: "ACTIVE" | "ARCHIVED";
   photoUrl: string;
 }
+export interface AdminPlantActivity {
+  id: string;
+  kind: string;
+  title: string;
+  status: string;
+  detail?: string;
+  occurredAt: string;
+}
+export interface AdminPlantDetail {
+  plant: AdminPlant & { createdAt: string; acquiredAt?: string };
+  activity: AdminPage<AdminPlantActivity>;
+}
 export interface AdminModel {
   id: string;
   capability: string;
@@ -107,6 +119,12 @@ export class AdminService {
     return this.get<AdminPage<AdminPlant>>(
       `users/${userId}/plants`,
       new HttpParams().set("status", status).set("page", page).set("size", 8),
+    );
+  }
+  plantDetail(userId: number, plantId: number, page = 0) {
+    return this.get<AdminPlantDetail>(
+      `users/${userId}/plants/${plantId}`,
+      new HttpParams().set("page", page).set("size", 12),
     );
   }
   savePlant(userId: number, plant: AdminPlant) {

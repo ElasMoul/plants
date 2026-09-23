@@ -25,8 +25,8 @@ public class DeepSeekDirectClient {
   private final String model;
 
   public DeepSeekDirectClient(
-      @Value("${deepseek.direct.base-url:https://api.deepseek.com}") String baseUrl,
-      @Value("${DEEPSEEK_API_KEY:}") String key,
+      @Value("${DEEPSEEK_HOSTED_BASE_URL:https://api.deepseek.com/anthropic}") String baseUrl,
+      @Value("${DEEPSEEK_HOSTED_API_KEY:}") String key,
       @Value("${DEEPSEEK_DIRECT_MODEL:deepseek-flash}") String model) {
     this.key = key;
     this.model = model;
@@ -40,7 +40,8 @@ public class DeepSeekDirectClient {
         RestClient.builder()
             .baseUrl(baseUrl)
             .requestFactory(new HttpComponentsClientHttpRequestFactory(http))
-            .defaultHeader("Authorization", "Bearer " + key)
+            .defaultHeader("x-api-key", key)
+            .defaultHeader("anthropic-version", "2023-06-01")
             .build();
   }
 
@@ -94,10 +95,15 @@ public class DeepSeekDirectClient {
         Map.of("type", "text", "text", text),
         Map.of(
             "type",
-            "image_url",
-            "image_url",
+            "image",
+            "source",
             Map.of(
-                "url", "data:" + type + ";base64," + Base64.getEncoder().encodeToString(bytes))));
+                "type",
+                "base64",
+                "media_type",
+                type,
+                "data",
+                Base64.getEncoder().encodeToString(bytes))));
   }
 
   private String call(String system, Object content) {
@@ -110,26 +116,20 @@ public class DeepSeekDirectClient {
             8192,
             "thinking",
             Map.of("type", "disabled"),
+            "system",
+            system,
             "messages",
-            List.of(
-                Map.of("role", "system", "content", system),
-                Map.of("role", "user", "content", content)));
+            List.of(Map.of("role", "user", "content", content)));
     try {
       JsonNode response =
           client
               .post()
-              .uri("/chat/completions")
+              .uri("/v1/messages")
               .contentType(MediaType.APPLICATION_JSON)
               .body(body)
               .retrieve()
               .body(JsonNode.class);
-      JsonNode choice = response == null ? null : response.path("choices").path(0);
-      if (choice == null || !"stop".equals(choice.path("finish_reason").asText()))
-        throw new PlantPalException(
-            "DeepSeek returned an incomplete response. Please try again.", 503);
-      String text = choice.path("message").path("content").asText("");
-      if (text.isBlank()) throw new PlantPalException("DeepSeek returned an empty response", 503);
-      return DeepSeekClient.stripThinkTags(text);
+      return extractText(response);
     } catch (RestClientResponseException e) {
       if (e.getStatusCode().value() == 429)
         throw new RateLimitException("DeepSeek is busy. Please try again later.", 60L);
@@ -138,5 +138,18 @@ public class DeepSeekDirectClient {
     } catch (RestClientException e) {
       throw new PlantPalException("Unable to reach DeepSeek. Please try again later.", 503);
     }
+  }
+
+  private String extractText(JsonNode response) {
+    if (response == null || !"end_turn".equals(response.path("stop_reason").asText()))
+      throw new PlantPalException(
+          "DeepSeek returned an incomplete response. Please try again.", 503);
+    StringBuilder text = new StringBuilder();
+    for (JsonNode block : response.path("content")) {
+      if ("text".equals(block.path("type").asText())) text.append(block.path("text").asText(""));
+    }
+    if (text.isEmpty() || text.toString().isBlank())
+      throw new PlantPalException("DeepSeek returned an empty response", 503);
+    return DeepSeekClient.stripThinkTags(text.toString());
   }
 }

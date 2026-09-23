@@ -746,6 +746,12 @@
                       >
                     </div>
                     <div class="button-row">
+                      <button
+                        class="button secondary"
+                        (click)="viewPlant(plant)"
+                      >
+                        View plant
+                      </button>
                       @if (plant.status === "ACTIVE") {
                         <button
                           class="button secondary"
