@@ -3,6 +3,11 @@ import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
+  {
+    path: 'admin',
+    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
+    canActivate: [AuthGuard],
+  },
   // Public marketing landing page (PP-082) — anonymous visitors land here; the component
   // itself redirects to '/home' when already logged in (mirrors AuthGuard's opposite check).
   // pathMatch: 'full' keeps this from swallowing every other route below.

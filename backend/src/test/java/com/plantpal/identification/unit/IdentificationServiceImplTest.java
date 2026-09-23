@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.client.PlantNetClient;
@@ -78,6 +79,7 @@ import org.springframework.web.multipart.MultipartFile;
 @DisplayName("IdentificationServiceImpl — Unit Tests")
 class IdentificationServiceImplTest {
 
+  @Mock private DeepSeekDirectClient deepSeekDirect;
   @Mock private DeepSeekClient deepSeekClient;
   @Mock private GitHubModelsClient gitHubModelsClient;
   @Mock private VisionAnnotationClient visionAnnotationClient;
@@ -126,6 +128,7 @@ class IdentificationServiceImplTest {
             plantNetDiseaseClient,
             ollamaClient,
             anthropicClient,
+            deepSeekDirect,
             identificationDispatcher,
             kafkaTemplate,
             new KafkaTransportProperties(KafkaTransportProperties.KAFKA),

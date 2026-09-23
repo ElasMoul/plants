@@ -8,6 +8,7 @@ import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.plantnet.PlantNetDiseaseResult;
@@ -17,6 +18,7 @@ import com.plantpal.identification.util.LenientJsonParser;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.service.TreatmentPlanService;
+import com.plantpal.shared.ai.AiUsage;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -77,6 +79,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private final IdentificationRepository identificationRepository;
   private final DeepSeekClient deepSeekClient;
   private final OllamaClient ollamaClient;
+  private final DeepSeekDirectClient deepSeekDirect;
   private final AnthropicClient anthropicClient;
   private final UserRepository userRepository;
   private final ObjectMapper objectMapper;
@@ -94,6 +97,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
+      DeepSeekDirectClient deepSeekDirect,
       UserRepository userRepository,
       ObjectMapper objectMapper,
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
@@ -106,6 +110,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
+    this.deepSeekDirect = deepSeekDirect;
     this.userRepository = userRepository;
     this.objectMapper = objectMapper;
     this.aiTaskExecutor = aiTaskExecutor;
@@ -116,6 +121,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   @Override
   @Transactional
   @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+  @AiUsage(userArgument = 1, scan = false)
   public TreatmentResponse createTreatment(CreateTreatmentRequest request, Long userId) {
     Plant plant =
         plantRepository
@@ -177,6 +183,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   @Async("aiTaskExecutor")
   @Transactional
   @CacheEvict(value = GARDEN_CACHE, key = "#userId")
+  @AiUsage(userArgument = 1, scan = false)
   public CompletableFuture<TreatmentResponse> craftPlan(Long id, Long userId) {
     Treatment treatment = findOwnedTreatment(id, userId);
     if (treatment.getStatus() != TreatmentStatus.DRAFT) {
@@ -310,6 +317,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   @Override
   @Transactional
+  @AiUsage(userArgument = 1, scan = false)
   public TreatmentResponse regenerateDescription(Long id, Long userId) {
     Treatment treatment = findOwnedTreatment(id, userId);
     Plant plant =
@@ -451,7 +459,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       ReasoningModelPreference preference, String species, String diseaseName, Long userId) {
     // Gateway routing (D022): every ReasoningModelPreference is in scope for the gateway swap
     // (Chunk 3) — unlike the vision preferences, none of them are excluded.
-    if (gatewayProperties.enabled()) {
+    if (gatewayProperties.enabled() && preference != ReasoningModelPreference.DEEPSEEK_FLASH) {
       String effectiveSpecies = species != null ? species : "Unknown plant";
       String userMessage =
           "My "
@@ -470,6 +478,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.generateCureAdvice(species, diseaseName);
+      case DEEPSEEK_FLASH -> deepSeekDirect.generateCureAdvice(species, diseaseName);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateCureAdvice(species, diseaseName);
       case GITHUB_O4_MINI -> deepSeekClient.generateCureAdviceViaO4Mini(species, diseaseName);
       case GITHUB_GPT41_MINI -> deepSeekClient.generateCureAdviceViaGpt41Mini(species, diseaseName);
@@ -479,7 +488,7 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   private String generateDiseaseDescription(
       ReasoningModelPreference preference, String species, String diseaseName, Long userId) {
-    if (gatewayProperties.enabled()) {
+    if (gatewayProperties.enabled() && preference != ReasoningModelPreference.DEEPSEEK_FLASH) {
       String effectiveSpecies = species != null ? species : "Unknown plant";
       String userMessage = "Plant: " + effectiveSpecies + "\nDisease/pest issue: " + diseaseName;
       return gatewayClient
@@ -494,6 +503,7 @@ public class TreatmentServiceImpl implements TreatmentService {
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 ->
           ollamaClient.generateDiseaseDescription(species, diseaseName);
+      case DEEPSEEK_FLASH -> deepSeekDirect.generateDiseaseDescription(species, diseaseName);
       case ANTHROPIC_CLAUDE -> anthropicClient.generateDiseaseDescription(species, diseaseName);
       case GITHUB_O4_MINI ->
           deepSeekClient.generateDiseaseDescriptionViaO4Mini(species, diseaseName);
@@ -517,6 +527,7 @@ public class TreatmentServiceImpl implements TreatmentService {
   private String modelHintForReasoning(ReasoningModelPreference preference) {
     return switch (preference) {
       case OLLAMA_LLAVA, OLLAMA_GEMMA3 -> ollamaClient.getModel();
+      case DEEPSEEK_FLASH -> deepSeekDirect.getModel();
       case ANTHROPIC_CLAUDE -> anthropicClient.getDefaultModel();
       case GITHUB_O4_MINI -> deepSeekClient.getO4MiniModel();
       case GITHUB_GPT41_MINI -> deepSeekClient.getGpt41MiniModel();

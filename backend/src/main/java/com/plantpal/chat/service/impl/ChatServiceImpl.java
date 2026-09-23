@@ -8,16 +8,19 @@ import com.plantpal.chat.service.GardenContextService;
 import com.plantpal.gateway.GatewayClient;
 import com.plantpal.gateway.GatewayProperties;
 import com.plantpal.identification.client.AnthropicClient;
+import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
+import com.plantpal.shared.ai.AiUsage;
 import com.plantpal.shared.ai.PromptSanitizer;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.treatment.entity.Treatment;
 import com.plantpal.treatment.repository.TreatmentRepository;
+import com.plantpal.user.repository.UserRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.platform.contracts.aigateway.AiRequest;
@@ -56,6 +59,7 @@ public class ChatServiceImpl implements ChatService {
       """;
 
   private final OllamaClient ollamaClient;
+  private final DeepSeekDirectClient deepSeekDirect;
   private final AnthropicClient anthropicClient;
   private final PlantRepository plantRepository;
   private final IdentificationRepository identificationRepository;
@@ -63,6 +67,7 @@ public class ChatServiceImpl implements ChatService {
   private final GardenContextService gardenContextService;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
+  private final UserRepository users;
   private final int chatMessagesPerHour;
 
   private final Map<Long, Bucket> chatBuckets = new ConcurrentHashMap<>();
@@ -70,15 +75,18 @@ public class ChatServiceImpl implements ChatService {
   public ChatServiceImpl(
       OllamaClient ollamaClient,
       AnthropicClient anthropicClient,
+      DeepSeekDirectClient deepSeekDirect,
       PlantRepository plantRepository,
       IdentificationRepository identificationRepository,
       TreatmentRepository treatmentRepository,
       GardenContextService gardenContextService,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties,
+      UserRepository users,
       @Value("${app.rate-limit.chat-messages-per-hour:10}") int chatMessagesPerHour) {
     this.ollamaClient = ollamaClient;
     this.anthropicClient = anthropicClient;
+    this.deepSeekDirect = deepSeekDirect;
     this.plantRepository = plantRepository;
     this.identificationRepository = identificationRepository;
     this.treatmentRepository = treatmentRepository;
@@ -86,15 +94,24 @@ public class ChatServiceImpl implements ChatService {
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
     this.chatMessagesPerHour = chatMessagesPerHour;
+    this.users = users;
   }
 
   @Override
+  @AiUsage(userArgument = 1, scan = false)
   public ChatResponse chat(ChatRequest request, Long userId) {
     if (!consumeRateLimit(userId)) {
       throw new PlantPalException("Chat rate limit reached — try again later", 429);
     }
 
     log.info("Chat request: userId={}", userId);
+    if (usesDeepSeek(userId))
+      return ChatResponse.builder()
+          .reply(
+              deepSeekDirect.chat(
+                  buildSystemPromptBlock(request, userId),
+                  PromptSanitizer.delimit(request.getMessage())))
+          .build();
     if (gatewayProperties.enabled()) {
       return ChatResponse.builder().reply(gatewayChat(request, userId)).build();
     }
@@ -107,12 +124,20 @@ public class ChatServiceImpl implements ChatService {
   }
 
   @Override
+  @AiUsage(userArgument = 1, scan = false)
   public void chatStream(ChatRequest request, Long userId, Consumer<String> onToken) {
     if (!consumeRateLimit(userId)) {
       throw new PlantPalException("Chat rate limit reached — try again later", 429);
     }
 
     log.info("Chat stream request: userId={}", userId);
+    if (usesDeepSeek(userId)) {
+      onToken.accept(
+          deepSeekDirect.chat(
+              buildSystemPromptBlock(request, userId),
+              PromptSanitizer.delimit(request.getMessage())));
+      return;
+    }
     if (gatewayProperties.enabled()) {
       // ai-gateway is buffered-only (no SSE passthrough yet, a real chunk for later) — call once
       // and invoke onToken a single time with the full result, unlike the real per-token Ollama
@@ -133,6 +158,16 @@ public class ChatServiceImpl implements ChatService {
    * Direct Claude path — took over from Ollama-only chat after GitHub Models' upstream retirement
    * made Claude the primary hosted provider; Ollama remains the un-keyed local fallback.
    */
+  private boolean usesDeepSeek(Long userId) {
+    return users
+        .findById(userId)
+        .map(
+            u ->
+                u.getReasoningModelPreference()
+                    == com.plantpal.user.entity.ReasoningModelPreference.DEEPSEEK_FLASH)
+        .orElse(false);
+  }
+
   private String anthropicChat(ChatRequest request, Long userId) {
     return anthropicClient.chat(
         buildSystemPromptBlock(request, userId), PromptSanitizer.delimit(request.getMessage()));

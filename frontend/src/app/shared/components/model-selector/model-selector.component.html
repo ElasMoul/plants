@@ -20,7 +20,7 @@
       *ngFor="let opt of visionOptions"
       [value]="opt.value"
       [disabled]="!isVisionAvailable(opt.value)"
-      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
+      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : 'This model is not currently offered for new selections'"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >
@@ -51,7 +51,7 @@
       *ngFor="let opt of reasoningOptions"
       [value]="opt.value"
       [disabled]="!isReasoningAvailable(opt.value)"
-      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : 'Not configured on this server'"
+      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : 'This model is not currently offered for new selections'"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >

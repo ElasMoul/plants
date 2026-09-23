@@ -1,4 +1,4 @@
-export type AiModelPreference = 'DEEPSEEK' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITHUB_GPT4O';
+export type AiModelPreference = 'DEEPSEEK' | 'DEEPSEEK_FLASH' | 'PLANTNET' | 'OLLAMA_LLAVA' | 'GITHUB_GPT4O';
 
 // Split out from AiModelPreference (T7.1/T7.2) — vision (identification + annotation) and
 // reasoning (care plans, cure advice, disease description, species enrichment) are now
@@ -12,6 +12,7 @@ export type VisionModelPreference =
   | 'GITHUB_GPT41'
   | 'OLLAMA_GEMMA3'
   | 'PLANTNET'
+  | 'DEEPSEEK_FLASH'
   | 'ANTHROPIC_CLAUDE'
   | 'OLLAMA_LLAVA';
 export type ReasoningModelPreference =
@@ -19,10 +20,13 @@ export type ReasoningModelPreference =
   | 'GITHUB_O4_MINI'
   | 'GITHUB_GPT41_MINI'
   | 'OLLAMA_GEMMA3'
+  | 'DEEPSEEK_FLASH'
   | 'ANTHROPIC_CLAUDE'
   | 'OLLAMA_LLAVA';
 
 export interface UserPreferences {
+  visionModelVisibility?: Partial<Record<VisionModelPreference, boolean>>;
+  reasoningModelVisibility?: Partial<Record<ReasoningModelPreference, boolean>>;
   // Deprecated by the vision/reasoning split below — backend keeps the column for now (T7.1),
   // not read by any UI built after this point.
   aiModelPreference: AiModelPreference;

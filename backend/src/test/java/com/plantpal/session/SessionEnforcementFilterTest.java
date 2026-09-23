@@ -211,6 +211,10 @@ class SessionEnforcementFilterTest {
   @EnableWebMvc
   @Import(SecurityConfig.class)
   static class TestWebConfig {
+    @Bean
+    ObjectMapper securityObjectMapper() {
+      return new ObjectMapper().findAndRegisterModules();
+    }
 
     @Bean
     JwtAuthFilter jwtAuthFilter() {

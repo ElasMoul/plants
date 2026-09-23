@@ -59,10 +59,12 @@ public class ChatController {
         description = "Chat rate limit reached")
   })
   @PostMapping
-  public ResponseEntity<ApiResponse<ChatResponse>> chat(@RequestBody @Valid ChatRequest request) {
+  public CompletableFuture<ResponseEntity<ApiResponse<ChatResponse>>> chat(
+      @RequestBody @Valid ChatRequest request) {
     Long userId = getCurrentUserId();
-    ChatResponse response = chatService.chat(request, userId);
-    return ResponseEntity.ok(ApiResponse.success(response));
+    return CompletableFuture.supplyAsync(
+        () -> ResponseEntity.ok(ApiResponse.success(chatService.chat(request, userId))),
+        aiTaskExecutor);
   }
 
   @Operation(summary = "Send a message to the chat assistant, streaming the reply token-by-token")

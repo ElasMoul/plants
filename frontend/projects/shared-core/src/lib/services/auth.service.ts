@@ -19,6 +19,7 @@ interface RegisterRequest {
 }
 
 interface AuthResponse {
+  role?: "USER" | "ADMIN";
   token: string;
   user: User;
 }

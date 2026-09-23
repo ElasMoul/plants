@@ -110,4 +110,7 @@
     <include file="db/changelog/migrations/033_switch_default_ai_models_to_claude.sql"
              relativeToChangelogFile="false"/>
 
+    <include file="db/changelog/migrations/034_admin_console.sql"
+             relativeToChangelogFile="false"/>
+    <include file="db/changelog/migrations/035_user_management.sql"/>
 </databaseChangeLog>

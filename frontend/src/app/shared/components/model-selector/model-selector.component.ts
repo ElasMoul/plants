@@ -19,6 +19,7 @@ interface ModelOption<T extends string> {
 const VISION_OPTIONS: ModelOption<VisionModelPreference>[] = [
   { value: 'GITHUB_GPT4O',     label: 'Best',      intent: 'GPT-4o',          icon: 'smart_toy',  tooltip: 'Balanced accuracy + care plan quality — ~50 vision calls/day on free tier' },
   { value: 'GITHUB_GPT41',     label: 'Frontier',  intent: 'GPT-4.1',         icon: 'auto_awesome', tooltip: 'Latest GPT vision model — same free-tier quota as GPT-4o' },
+  { value: 'DEEPSEEK_FLASH', label: 'Fast', intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: 'Native DeepSeek API � requires a server API key' },
   { value: 'ANTHROPIC_CLAUDE', label: 'Specialist',intent: 'Claude',          icon: 'diamond',    tooltip: 'Anthropic Claude — strong reasoning about visible health issues' },
   { value: 'OLLAMA_GEMMA3',    label: 'Offline',   intent: 'Ollama (gemma3)', icon: 'computer',   tooltip: 'Fully local — no API quota, needs Ollama running' },
   { value: 'PLANTNET',         label: 'Balanced',  intent: 'PlantNet',        icon: 'eco',        tooltip: 'Plant-only identification, no health/care plan' },
@@ -28,6 +29,7 @@ const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
   { value: 'DEEPSEEK_R1',       label: 'Best',      intent: 'DeepSeek-R1',     icon: 'psychology',   tooltip: 'Deep reasoning for cure advice + descriptions — ~20 calls/hour' },
   { value: 'GITHUB_GPT41_MINI', label: 'Balanced',  intent: 'GPT-4.1 mini',    icon: 'bolt',         tooltip: 'Fast, cheap text generation — same free-tier quota' },
   { value: 'GITHUB_O4_MINI',    label: 'Frontier',  intent: 'o4-mini',         icon: 'auto_awesome', tooltip: 'Latest reasoning-tuned model — same free-tier quota' },
+  { value: 'DEEPSEEK_FLASH', label: 'Fast', intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: 'Native DeepSeek API � requires a server API key' },
   { value: 'ANTHROPIC_CLAUDE',  label: 'Specialist',intent: 'Claude',          icon: 'diamond',      tooltip: 'Anthropic Claude — strong plain-English explanations' },
   { value: 'OLLAMA_GEMMA3',     label: 'Offline',   intent: 'Ollama (gemma3)', icon: 'computer',     tooltip: 'Fully local — no API quota, needs Ollama running' },
 ];
@@ -39,8 +41,8 @@ const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
     standalone: false
 })
 export class ModelSelectorComponent implements OnInit, OnDestroy {
-  readonly visionOptions = VISION_OPTIONS;
-  readonly reasoningOptions = REASONING_OPTIONS;
+  visionOptions = VISION_OPTIONS;
+  reasoningOptions = REASONING_OPTIONS;
 
   selectedVision: VisionModelPreference = 'GITHUB_GPT4O';
   selectedReasoning: ReasoningModelPreference = 'DEEPSEEK_R1';
@@ -63,8 +65,16 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
         next: res => {
           this.selectedVision = res.data.visionModelPreference;
           this.selectedReasoning = res.data.reasoningModelPreference;
-          this.visionAvailability = res.data.visionModelAvailability ?? {};
-          this.reasoningAvailability = res.data.reasoningModelAvailability ?? {};
+          this.visionAvailability = { ...res.data.visionModelAvailability };
+          this.reasoningAvailability = { ...res.data.reasoningModelAvailability };
+          this.visionOptions = VISION_OPTIONS.filter(o => res.data.visionModelVisibility?.[o.value] !== false || o.value === this.selectedVision);
+          this.reasoningOptions = REASONING_OPTIONS.filter(o => res.data.reasoningModelVisibility?.[o.value] !== false || o.value === this.selectedReasoning);
+          for (const [key, visible] of Object.entries(res.data.visionModelVisibility ?? {})) {
+            if (!visible) this.visionAvailability[key as VisionModelPreference] = false;
+          }
+          for (const [key, visible] of Object.entries(res.data.reasoningModelVisibility ?? {})) {
+            if (!visible) this.reasoningAvailability[key as ReasoningModelPreference] = false;
+          }
         },
       });
   }
