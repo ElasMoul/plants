@@ -43,3 +43,13 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Commit implementation and synchronize documentation.
 - Future: Atlas localization; Arabic catalog/plural rules and RTL layout verification;
   account-synced language; localized AI output and server errors.
+
+## French AI content — complete 2026-09-23
+
+- [x] Preserve canonical analyses and persist French presentation versions (036).
+- [x] Translate existing/new care, health, species and treatment prose asynchronously.
+- [x] Enforce ownership, quotas, batch limits, safe retries and amount/unit checks.
+- [x] Display French cards, steps, diagram labels and read-aloud; explicit failure notice.
+- [x] Generate new chat replies in the selected language.
+- [x] Verify database cache/ownership, UI journeys, production build and hosted DeepSeek.
+- [ ] Owner tests French before starting Arabic.

@@ -95,3 +95,26 @@ French locale data is registered; Material hint/error sizing is dynamic to preve
 long French hints overlapping following fields. Language metadata includes direction;
 Arabic still needs its catalog, plural categories beyond simple suffixes, and full
 RTL layout/accessibility QA. Atlas is an independent later integration.
+
+## French AI presentation translations (2026-09-23)
+
+Keep canonical domain DTOs and saved analyses unchanged. TranslationResponseAdvice
+runs after authorized identification/species/treatment/reminder controllers and adds
+localization metadata for X-Content-Language: fr. TranslationTextExtractor allowlists
+prose and excludes user notes, names, enums and IDs. Angular waits for translation
+jobs, then applies aiText/aiDiagram at display time; never translate action payloads.
+
+TranslationService (interface/impl) uses ai_translations (036), keyed by a fingerprint
+of sorted source prose, owner/shared species scope, language and prompt version.
+Only public species detail/regenerate-description routes use shared scope. Source
+changes create a new cache version. Atomic INSERT ON CONFLICT claims one worker on
+the bounded AI executor; attempt/status fencing prevents old retries overwriting.
+Pending jobs older than ten minutes fail on read; explicit retry has a ten-second
+cooldown. Authenticated GET/POST retry enforce owner or public-species visibility.
+
+TranslationClient uses native hosted DeepSeek, then Anthropic/Ollama. Each batch
+consumes AI usage and per-user translation rate limit; cache reads are free. Bounded
+batches and numeric/unit validation prevent unsafe structural output being saved.
+Do not regenerate diagnoses merely to change display language. Chat instead carries
+language on each request into the shared system prompt. Current target is explicitly
+French; adding Arabic requires language-aware cache/schema/prompt changes and RTL UI.

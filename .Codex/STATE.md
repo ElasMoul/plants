@@ -113,3 +113,26 @@ except the technical isSecureContext diagnostic field name.
 
 Preview processes were restarted after stopping between sessions: frontend 4210,
 backend 8190, logs/pids/proxy in backend/target/admin-preview. No push or merge.
+
+## 2026-09-23 — French AI content complete
+
+Implementation f5f913d on codex/plantpal-french-localization. Adds async persisted
+French presentation translations for existing/new identification, species, care and
+treatment prose; original domain records remain immutable. Native hosted DeepSeek
+is preferred, then configured Anthropic/Ollama. Translation batches consume AI quota,
+not scans; cached versions are reused. Chat requests carry en/fr into the shared
+system prompt for both streaming and buffered paths. Migration 036 applied locally.
+
+Private translations are owner-scoped; only public species detail prose is shared.
+Atomic cache claim, attempt fencing, ten-minute stale recovery, explicit retry with
+cooldown, bounded text/batches, and numeric/unit validation are covered. Frontend
+waits for jobs with progress/failure notices and display-only pipes. Diagram labels
+and read-aloud use translations. Fixed species direct-navigation service providers.
+
+Validation: 483 backend units, four translation integration tests, 566 frontend
+units, 14 Chromium journeys passed. Final production build and touched-TS lint
+passed; existing bundle/CommonJS warnings remain. Hosted DeepSeek synthetic-text
+check returned French and preserved Monstera deliciosa, 5 ml, 1 L and 7. Automatic
+approval review blocked exporting an existing saved identification for a live test;
+no such export occurred. Database pipeline was tested with mocked provider output.
+Preview remains frontend 4210/backend 8190. No push or merge; Arabic awaits owner testing.
