@@ -82,3 +82,34 @@ and eight real-database admin tests passed; production Classic build and admin l
 passed; nine Chromium admin journeys passed, with an additional successful modal
 visual run. Live preview frontend 4210 and backend 8190 healthy (UP, SPA 200).
 Backend process last started PID 9028; logs/pids are in target/admin-preview. No push.
+
+
+## 2026-09-23 — French user interface complete
+
+Created codex/plantpal-french-localization from clean dev after the owner merged admin.
+Implementation commit: e1932b1. Standard Angular user app now offers English/Français
+in the header (including before login) and settings. Translation catalog covers
+landing/auth, home/garden/species, plants, identification, reminders/treatments,
+chat controls, model settings, notifications, validation, accessibility labels and
+voice-test interface. No backend or database changes; no admin page translation.
+
+Preference is local to this browser origin (plantpal.language), defaults to English,
+and persists through login/logout. Selecting a language reloads the current page
+so Angular locale providers and eagerly constructed labels initialize consistently.
+French calendar/date/pagination/speech locales, document lang/dir, and plural rules
+are configured. Form hints grow to accommodate longer French text. Existing AI
+output, species descriptions, user notes/names, and unknown server errors retain
+their source language; UI language does not change AI prompts or PlantNet preferences.
+Atlas and Arabic remain future rollouts. Direction metadata admits rtl, but Arabic
+translation/plurals/layout validation are not implemented.
+
+Validation: production build passed (existing size/CommonJS warnings); 562 unit
+tests in 46 suites passed; touched TypeScript and new localization files passed
+ESLint; 12 Chromium journeys passed (3 French, 9 admin). Screenshot:
+docs/screenshots/french-plant-form.png. Calendar test selects a date before capturing
+the mobile form; native Escape timing during opening animation was not a reliable
+screenshot setup. Angular template audit found no untranslated static user text
+except the technical isSecureContext diagnostic field name.
+
+Preview processes were restarted after stopping between sessions: frontend 4210,
+backend 8190, logs/pids/proxy in backend/target/admin-preview. No push or merge.

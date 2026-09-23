@@ -75,3 +75,23 @@ Treatment rows summarize current state with completed/start/creation time, rathe
 pretending to have a full transition audit. Material Dialog owns accessible focus and
 keyboard behavior; standalone modal loads independent paginated history and handles
 errors/retries without replacing the account page.
+
+
+## User-interface localization (2026-09-23)
+
+Classic uses shared/i18n/fr.ts with English source messages as stable lookup keys,
+a standalone t pipe, and translate() for application-owned TypeScript copy.
+Numbered placeholders keep values outside translated text; Angular escapes rendered
+values. Never translate protocol enum comparisons, identifiers, user text, or AI
+content. Species health-summary presentation handles the existing server string
+without changing filtering comparisons. Tests verify catalog placeholder parity.
+
+plantpal.language is a per-origin browser preference (en/fr), not a database field.
+Selection reloads the current route to reinitialize LOCALE_ID, MAT_DATE_LOCALE,
+Material labels and module-level translated constants. Unsaved form state is not
+preserved; settings explains the reload. No language-based routes or extra packages.
+English is the fallback for unknown language/message and unavailable localStorage.
+French locale data is registered; Material hint/error sizing is dynamic to prevent
+long French hints overlapping following fields. Language metadata includes direction;
+Arabic still needs its catalog, plural categories beyond simple suffixes, and full
+RTL layout/accessibility QA. Atlas is an independent later integration.

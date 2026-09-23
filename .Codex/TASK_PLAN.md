@@ -31,3 +31,15 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Add View plant modal with photo, details, activity and treatment status.
 - [x] Verify bounded owner-scoped API, archived access, mobile and accessibility.
 - [x] Rebuild/restart preview and synchronize documentation.
+
+
+## French user interface — complete 2026-09-23
+- [x] Branch from dev after the admin merge.
+- [x] Add English/French catalog, browser language preference and selectors.
+- [x] Translate standard user screens and application-generated messages.
+- [x] Localize dates, calendars, pagination, speech language and plural labels.
+- [x] Preserve protocol values, user content and admin workflows.
+- [x] Validate unit tests, production build, browser journeys and mobile layout.
+- [x] Commit implementation and synchronize documentation.
+- Future: Atlas localization; Arabic catalog/plural rules and RTL layout verification;
+  account-synced language; localized AI output and server errors.

@@ -13,3 +13,5 @@ status index, not a second copy of those rules.
 Read `STATE.md` for validation and handoff, `TASK_PLAN.md` for completed scope,
 `ARCHITECT.md` for decisions, and `../docs/admin-console.md` for operation.
 The prior `.claude/` archive remains the source for older feature history.
+
+| I18N — French user interface | Complete on `codex/plantpal-french-localization` (2026-09-23): Classic English/French UI, browser preference, localized dates/calendar/pagination/speech; Arabic and Atlas pending; `docs/localization.md` |
