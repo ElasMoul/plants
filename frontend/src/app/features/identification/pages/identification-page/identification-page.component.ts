@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnDestroy, ViewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -68,7 +69,7 @@ export class IdentificationPageComponent implements OnDestroy {
         next: res => {
           this.submitting = false;
           this.snackBar.open(
-            "Identification started — we'll update the list when it's ready.",
+            translate("Identification started — we'll update the list when it's ready."),
             undefined,
             { duration: 3000 },
           );
@@ -77,7 +78,7 @@ export class IdentificationPageComponent implements OnDestroy {
         error: (err: HttpErrorResponse) => {
           this.submitting = false;
           if (err.status === 404) {
-            this.snackBar.open('No matching plant species found — try a clearer photo', 'Dismiss', { duration: 5000 });
+            this.snackBar.open(translate('No matching plant species found — try a clearer photo'), translate('Dismiss'), { duration: 5000 });
             return;
           }
           this.aiErrorService.notify(err);

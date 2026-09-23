@@ -12,14 +12,14 @@
   <!-- Card body -->
   <div class="card-body">
     <h3 class="species-name">{{ species.scientificName }}</h3>
-    <p class="species-common-name">{{ species.commonName || 'Common name unknown' }}</p>
+    <p class="species-common-name">{{ species.commonName || ('Common name unknown' | t) }}</p>
 
     <div class="card-meta">
       <span class="plant-count-badge">
-        {{ species.plantCount }} plant{{ species.plantCount !== 1 ? 's' : '' }}
+        {{ '{0} plant{1}' | t : [(species.plantCount), (species.plantCount | pluralSuffix)] }}
       </span>
       <span class="health-chip" [class.health-chip--issues]="hasIssues">
-        {{ species.healthSummary }}
+        {{ species.healthSummary | t }}
       </span>
     </div>
   </div>

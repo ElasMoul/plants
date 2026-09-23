@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -67,9 +68,9 @@ export class ScanDetailComponent implements OnInit, OnDestroy {
 
   get healthLabel(): string {
     switch (this.scan?.healthStatus) {
-      case 'HEALTHY': return 'Healthy';
-      case 'ISSUES_DETECTED': return 'Issues detected';
-      default: return 'Unknown';
+      case 'HEALTHY': return translate('Healthy');
+      case 'ISSUES_DETECTED': return translate('Issues detected');
+      default: return translate('Unknown');
     }
   }
 

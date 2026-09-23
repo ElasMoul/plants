@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
@@ -59,7 +60,7 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          this.snackBar.open('Species not found.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Species not found.'), translate('Dismiss'), { duration: 4000 });
           this.loading = false;
         },
       });
@@ -96,7 +97,7 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.retrying = false;
-          this.snackBar.open('Could not retry description generation.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not retry description generation.'), translate('Dismiss'), { duration: 4000 });
         },
       });
   }
@@ -121,9 +122,9 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
 
   iucnLabel(category: string | null | undefined): string {
     const labels: Record<string, string> = {
-      EX: 'Extinct', EW: 'Extinct in the Wild', CR: 'Critically Endangered',
-      EN: 'Endangered', VU: 'Vulnerable', NT: 'Near Threatened',
-      LC: 'Least Concern', DD: 'Data Deficient', NE: 'Not Evaluated',
+      EX: translate('Extinct'), EW: translate('Extinct in the Wild'), CR: translate('Critically Endangered'),
+      EN: translate('Endangered'), VU: translate('Vulnerable'), NT: translate('Near Threatened'),
+      LC: translate('Least Concern'), DD: translate('Data Deficient'), NE: translate('Not Evaluated'),
     };
     return category ? (labels[category] ?? category) : '';
   }
@@ -154,7 +155,7 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.snackBar.open(
-            "Identification started — view it in the Identify tab.",
+            translate("Identification started — view it in the Identify tab."),
             undefined,
             { duration: 3000 },
           );
@@ -162,9 +163,9 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0
-            ? 'Connection problem — check your internet and try again'
-            : 'Could not start identification. Please try again.';
-          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+            ? translate('Connection problem — check your internet and try again')
+            : translate('Could not start identification. Please try again.');
+          this.snackBar.open(message, translate('Dismiss'), { duration: 5000 });
         },
       });
   }

@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -160,7 +161,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
             },
             error: () => {
               this.settingReminder = false;
-              this.snackBar.open('Could not set reminder.', 'Dismiss', { duration: 4000 });
+              this.snackBar.open(translate('Could not set reminder.'), translate('Dismiss'), { duration: 4000 });
             },
           });
       });

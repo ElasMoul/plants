@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -128,7 +129,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
           // the snackbar ourselves instead of also calling notify().
           this.adviceErrorMessage = this.aiErrorService.handle(err);
           if (err.status !== 429) {
-            this.snackBar.open(this.adviceErrorMessage, 'Dismiss', { duration: 4500 });
+            this.snackBar.open(this.adviceErrorMessage, translate('Dismiss'), { duration: 4500 });
           }
         },
       });

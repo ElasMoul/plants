@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -64,9 +65,9 @@ export class PreviewCardComponent implements OnInit {
 
   get healthLabel(): string {
     const labels: Record<HealthStatus, string> = {
-      HEALTHY:          'Healthy',
-      ISSUES_DETECTED:  'Issues detected',
-      UNKNOWN:          'Unknown health',
+      HEALTHY:          translate('Healthy'),
+      ISSUES_DETECTED:  translate('Issues detected'),
+      UNKNOWN:          translate('Unknown health'),
     };
     return this.result.healthStatus ? labels[this.result.healthStatus] : '';
   }
@@ -84,7 +85,7 @@ export class PreviewCardComponent implements OnInit {
         this.saved.emit(res.data);
       },
       error: () => {
-        this.snackBar.open('Could not save plant — please try again.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Could not save plant — please try again.'), translate('Dismiss'), { duration: 4000 });
         this.saving = false;
       },
     });

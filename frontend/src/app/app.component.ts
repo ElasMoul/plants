@@ -1,3 +1,4 @@
+import { translate } from './shared/i18n/language.service';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NavigationEnd, Router } from '@angular/router';
@@ -19,11 +20,11 @@ const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
 })
 export class AppComponent implements OnInit {
   readonly navLinks = [
-    { label: 'Home',       route: '/home',      icon: 'home' },
-    { label: 'Garden',     route: '/garden',    icon: 'local_florist' },
-    { label: 'Identify',   route: '/identify',  icon: 'document_scanner' },
-    { label: 'Reminders',  route: '/reminders', icon: 'notifications' },
-    { label: 'Chat',       route: '/chat',      icon: 'chat_bubble_outline' },
+    { label: translate('Home'),       route: '/home',      icon: 'home' },
+    { label: translate('Garden'),     route: '/garden',    icon: 'local_florist' },
+    { label: translate('Identify'),   route: '/identify',  icon: 'document_scanner' },
+    { label: translate('Reminders'),  route: '/reminders', icon: 'notifications' },
+    { label: translate('Chat'),       route: '/chat',      icon: 'chat_bubble_outline' },
   ];
 
   showNotificationBanner = false;
@@ -68,10 +69,10 @@ export class AppComponent implements OnInit {
       if (!granted) return;
       this.pushNotificationService.subscribeToNotifications().subscribe({
         next: () => {
-          this.snackBar.open('Reminders enabled on this device.', undefined, { duration: 3000 });
+          this.snackBar.open(translate('Reminders enabled on this device.'), undefined, { duration: 3000 });
         },
         error: () => {
-          this.snackBar.open('Could not enable notifications.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not enable notifications.'), translate('Dismiss'), { duration: 4000 });
         },
       });
     });

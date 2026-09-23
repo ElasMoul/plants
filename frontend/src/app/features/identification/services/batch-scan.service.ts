@@ -1,3 +1,4 @@
+import { translate } from '../../../shared/i18n/language.service';
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -101,7 +102,7 @@ export class BatchScanService {
             this.checkAllResolved();
           },
           error: () => {
-            this.patchItem(id, { status: 'FAILED', errorMessage: 'Analysis failed — please try again' });
+            this.patchItem(id, { status: 'FAILED', errorMessage: translate('Analysis failed — please try again') });
             this.checkAllResolved();
           },
         });
@@ -129,9 +130,9 @@ export class BatchScanService {
     const doneCount = items.filter(i => i.status === 'DONE').length;
     const failedCount = items.filter(i => i.status === 'FAILED').length;
     const message = failedCount
-      ? `Batch scan finished — ${doneCount} added, ${failedCount} failed`
-      : `Batch scan finished — ${doneCount} plant${doneCount === 1 ? '' : 's'} added`;
-    const ref = this.snackBar.open(message, 'View', { duration: 6000 });
+      ? translate("Batch scan finished — {0} added, {1} failed", [doneCount, failedCount])
+      : translate("Batch scan finished — {0} plant{1} added", [doneCount, doneCount === 1 ? '' : 's']);
+    const ref = this.snackBar.open(message, translate('View'), { duration: 6000 });
     ref.onAction().subscribe(() => this.router.navigate(['/identify']));
   }
 

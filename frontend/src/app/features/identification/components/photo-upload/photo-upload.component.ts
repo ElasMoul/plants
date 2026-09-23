@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, isDevMode, NgZone, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -180,7 +181,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = false;
       this.recognition.interimResults = true;
-      this.recognition.lang = navigator.language;
+      this.recognition.lang = document.documentElement.lang || navigator.language;
 
       this.recognitionBaseText = this.contextText.trim();
 
@@ -206,7 +207,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
         this.ngZone.run(() => {
           this.listening = false;
           if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+            this.snackBar.open(translate('Microphone unavailable'), translate('Dismiss'), { duration: 4000 });
           }
         });
       };
@@ -218,7 +219,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
       this.recognition.start();
       this.listening = true;
     } catch {
-      this.snackBar.open('Microphone unavailable', 'Dismiss', { duration: 4000 });
+      this.snackBar.open(translate('Microphone unavailable'), translate('Dismiss'), { duration: 4000 });
     }
   }
 
@@ -238,7 +239,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
     Array.from(fileList).forEach(file => {
       if (this.entries.length + toAdd.length >= MAX_IMAGES) {
-        errors.push(`"${file.name}" skipped — maximum ${MAX_IMAGES} images allowed`);
+        errors.push(translate("\"{0}\" skipped — maximum {1} images allowed", [file.name, MAX_IMAGES]));
         return;
       }
       const err = this.validateFile(file);
@@ -265,10 +266,10 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
   private validateFile(file: File): string | null {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return `"${file.name}": unsupported format — JPEG, PNG, or WebP only`;
+      return translate("\"{0}\": unsupported format — JPEG, PNG, or WebP only", [file.name]);
     }
     if (file.size > MAX_SIZE_BYTES) {
-      return `"${file.name}": exceeds 10 MB limit`;
+      return translate("\"{0}\": exceeds 10 MB limit", [file.name]);
     }
     return null;
   }

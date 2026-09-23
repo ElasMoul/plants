@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../../shared/i18n/translate.pipe';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -16,6 +17,7 @@ describe('DiseaseDetailPanelComponent', () => {
     getCureAdviceMock = jest.fn();
 
     TestBed.configureTestingModule({
+      imports: [TranslatePipe],
       declarations: [DiseaseDetailPanelComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [

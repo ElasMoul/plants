@@ -6,10 +6,10 @@
       <mat-icon>local_florist</mat-icon>
     </div>
     <div class="header-text">
-      <p class="header-title">PlantPal AI Assistant</p>
+      <p class="header-title">{{ 'PlantPal AI Assistant' | t }}</p>
       <p class="header-status">
         <span class="status-dot"></span>
-        Expert mode active
+        {{ 'Expert mode active' | t }}
       </p>
     </div>
   </div>
@@ -17,8 +17,8 @@
   <!-- Plant context chip -->
   <div class="context-chip" *ngIf="contextPlantNickname">
     <mat-icon>eco</mat-icon>
-    <span>Chatting about {{ contextPlantNickname }}</span>
-    <button type="button" class="context-chip-dismiss" (click)="clearContext()" aria-label="Clear plant context">
+    <span>{{ 'Chatting about {0}' | t : [(contextPlantNickname)] }}</span>
+    <button type="button" class="context-chip-dismiss" (click)="clearContext()" [attr.aria-label]="&#x27;Clear plant context&#x27; | t">
       <mat-icon>close</mat-icon>
     </button>
   </div>
@@ -73,14 +73,14 @@
     <input
       class="chat-input"
       type="text"
-      placeholder="Ask about your plants..."
+      [placeholder]="&#x27;Ask about your plants...&#x27; | t"
       [(ngModel)]="draft"
       [disabled]="sending"
       (keydown.enter)="sendMessage()"
       data-testid="chat-input"
     />
 
-    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" aria-label="Send message" data-testid="chat-send-btn">
+    <button mat-icon-button class="send-btn" type="button" [disabled]="sending || !draft.trim()" (click)="sendMessage()" [attr.aria-label]="&#x27;Send message&#x27; | t" data-testid="chat-send-btn">
       <mat-icon>arrow_upward</mat-icon>
     </button>
   </div>

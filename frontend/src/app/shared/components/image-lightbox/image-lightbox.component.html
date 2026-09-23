@@ -1,10 +1,10 @@
 <div class="lightbox-backdrop" (click)="close()">
-  <button mat-icon-button class="lightbox-close" (click)="close()" aria-label="Close">
+  <button mat-icon-button class="lightbox-close" (click)="close()" [attr.aria-label]="&#x27;Close&#x27; | t">
     <mat-icon>close</mat-icon>
   </button>
   <img
     [src]="data.imageUrl"
-    [alt]="data.alt || 'Photo'"
+    [alt]="data.alt || ('Photo' | t)"
     class="lightbox-image"
     (click)="$event.stopPropagation()"
   />

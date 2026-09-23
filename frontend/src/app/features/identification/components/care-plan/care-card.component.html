@@ -15,7 +15,7 @@
     <app-read-aloud-button
       (click)="$event.stopPropagation()"
       [text]="card.title + '. ' + card.summary"
-      [ariaLabel]="'Read aloud ' + card.title"
+      [ariaLabel]="('Read aloud ' | t) + card.title"
     ></app-read-aloud-button>
     <mat-icon class="expand-icon" [class.rotated]="expanded">expand_more</mat-icon>
   </div>
@@ -58,7 +58,7 @@
           (click)="openReminderDialog($event)"
         >
           <mat-icon>{{ reminderSet ? 'check' : 'notifications_active' }}</mat-icon>
-          {{ reminderSet ? 'Reminder set' : (settingReminder ? 'Setting…' : 'Set reminder') }}
+          {{ reminderSet ? ('Reminder set' | t) : (settingReminder ? ('Setting…' | t) : ('Set reminder' | t)) }}
         </button>
       </div>
 
@@ -78,7 +78,7 @@
             class="btn-spinner"
           ></mat-progress-spinner>
           <mat-icon *ngIf="!startingTreatment">medical_services</mat-icon>
-          {{ treatmentStarted ? 'Plan in progress' : (startingTreatment ? 'Starting…' : 'Start treatment plan') }}
+          {{ treatmentStarted ? ('Plan in progress' | t) : (startingTreatment ? ('Starting…' | t) : ('Start treatment plan' | t)) }}
         </button>
       </div>
     </ng-container>

@@ -2,8 +2,8 @@
   *ngIf="speechService.isSupported"
   mat-icon-button
   type="button"
-  [attr.aria-label]="isReading ? 'Stop reading' : ariaLabel"
-  [matTooltip]="isReading ? 'Stop reading' : 'Read aloud'"
+  [attr.aria-label]="isReading ? ('Stop reading' | t) : ariaLabel"
+  [matTooltip]="isReading ? ('Stop reading' | t) : ('Read aloud' | t)"
   [class.reading]="isReading"
   (click)="toggle()"
 >

@@ -1,4 +1,15 @@
-import { APP_INITIALIZER, ErrorHandler, NgModule, isDevMode } from '@angular/core';
+import { MatDatepickerIntl } from '@angular/material/datepicker';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
+import { localizedDatepicker } from './shared/i18n/localized-datepicker';
+import { MatPaginatorIntl } from '@angular/material/paginator';
+import { localizedPaginator } from './shared/i18n/localized-paginator';
+import { registerLocaleData } from '@angular/common';
+import fr from '@angular/common/locales/fr';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { LanguageService } from './shared/i18n/language.service';
+import { LanguageSwitchComponent } from './shared/i18n/language-switch.component';
+registerLocaleData(fr);
+import { LOCALE_ID, APP_INITIALIZER, ErrorHandler, NgModule, isDevMode } from '@angular/core';
 import { noop } from 'rxjs';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -23,7 +34,7 @@ import { SharedModule } from './shared/shared.module';
 import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
 
 @NgModule({ declarations: [AppComponent],
-    bootstrap: [AppComponent], imports: [BrowserModule,
+    bootstrap: [AppComponent], imports: [LanguageSwitchComponent, BrowserModule,
         BrowserAnimationsModule,
         AppRoutingModule,
         CoreModule,
@@ -37,6 +48,11 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
             enabled: !isDevMode(),
             registrationStrategy: 'registerWhenStable:30000',
         })], providers: [
+        { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { subscriptSizing: 'dynamic' } },
+        { provide: MatDatepickerIntl, useFactory: localizedDatepicker },
+        { provide: MatPaginatorIntl, useFactory: localizedPaginator },
+        { provide: LOCALE_ID, useFactory: (language: LanguageService) => language.locale, deps: [LanguageService] },
+        { provide: MAT_DATE_LOCALE, useFactory: (language: LanguageService) => language.locale, deps: [LanguageService] },
         { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
         { provide: ErrorHandler, useValue: Sentry.createErrorHandler() },
         { provide: Sentry.TraceService, deps: [Router] },

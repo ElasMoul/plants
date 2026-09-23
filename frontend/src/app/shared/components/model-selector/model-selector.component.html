@@ -1,14 +1,14 @@
 <div class="model-selector-wrap">
   <p class="section-hint">
-    <strong>Vision model</strong> — used for plant identification and disease annotation. 
+    <strong>{{ 'Vision model' | t }}</strong> {{ '— used for plant identification and disease annotation.' | t }}
   </p>
   <mat-select
     class="model-select"
     panelClass="model-select-panel"
     [value]="selectedVision"
     [disabled]="saving"
-    aria-label="Vision model preference"
-    matTooltip="Vision model — identification + annotation"
+    [attr.aria-label]="&#x27;Vision model preference&#x27; | t"
+    [matTooltip]="&#x27;Vision model — identification + annotation&#x27; | t"
     matTooltipPosition="below"
     (selectionChange)="onVisionChange($event)"
   >
@@ -20,7 +20,7 @@
       *ngFor="let opt of visionOptions"
       [value]="opt.value"
       [disabled]="!isVisionAvailable(opt.value)"
-      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : 'This model is not currently offered for new selections'"
+      [matTooltip]="isVisionAvailable(opt.value) ? opt.tooltip : ('This model is not currently offered for new selections' | t)"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >
@@ -30,16 +30,16 @@
     </mat-option>
   </mat-select>
   <p class="section-hint">
-    <strong>Reasoning model</strong> — used for care plans, cure advice, disease descriptions, and species enrichment.
+    <strong>{{ 'Reasoning model' | t }}</strong> {{ '— used for care plans, cure advice, disease descriptions, and species enrichment.' | t }}
   </p>
-    
+
   <mat-select
     class="model-select"
     panelClass="model-select-panel"
     [value]="selectedReasoning"
     [disabled]="saving"
-    aria-label="Reasoning model preference"
-    matTooltip="Reasoning model — care plans, cure advice, descriptions"
+    [attr.aria-label]="&#x27;Reasoning model preference&#x27; | t"
+    [matTooltip]="&#x27;Reasoning model — care plans, cure advice, descriptions&#x27; | t"
     matTooltipPosition="below"
     (selectionChange)="onReasoningChange($event)"
   >
@@ -51,7 +51,7 @@
       *ngFor="let opt of reasoningOptions"
       [value]="opt.value"
       [disabled]="!isReasoningAvailable(opt.value)"
-      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : 'This model is not currently offered for new selections'"
+      [matTooltip]="isReasoningAvailable(opt.value) ? opt.tooltip : ('This model is not currently offered for new selections' | t)"
       matTooltipPosition="right"
       [matTooltipShowDelay]="300"
     >

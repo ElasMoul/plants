@@ -12,17 +12,17 @@
       <img [src]="species.imageUrl || placeholderImage" [alt]="species.scientificName" class="hero-img" />
       <div class="hero-overlay"></div>
 
-      <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
+      <button mat-icon-button class="hero-back" routerLink="/garden" [attr.aria-label]="&#x27;Back to garden&#x27; | t">
         <mat-icon>arrow_back</mat-icon>
       </button>
 
       <div class="hero-text">
         <h1 class="species-name">{{ species.scientificName }}</h1>
-        <p class="species-common-name">{{ species.commonName || 'Common name unknown' }}</p>
+        <p class="species-common-name">{{ species.commonName || ('Common name unknown' | t) }}</p>
         <p *ngIf="species.family || species.genus" class="species-taxonomy">
-          <span *ngIf="species.family">Family: <em>{{ species.family }}</em></span>
+          <span *ngIf="species.family">{{ 'Family:' | t }} <em>{{ species.family }}</em></span>
           <span *ngIf="species.family && species.genus"> · </span>
-          <span *ngIf="species.genus">Genus: <em>{{ species.genus }}</em></span>
+          <span *ngIf="species.genus">{{ 'Genus:' | t }} <em>{{ species.genus }}</em></span>
         </p>
       </div>
     </div>
@@ -36,7 +36,7 @@
     <mat-tab-group class="species-tabs" animationDuration="0ms">
 
       <!-- Overview tab -->
-      <mat-tab label="Overview">
+      <mat-tab [label]="'Overview' | t">
         <div class="tab-content overview-content">
           <span
             *ngIf="species.externalDataSource"
@@ -47,18 +47,18 @@
 
           <!-- Botanical facts: always visible once PlantNet data is harvested -->
           <div *ngIf="species.family || species.genus || species.iucnCategory" class="info-block">
-            <h2 class="info-heading">Botanical facts</h2>
+            <h2 class="info-heading">{{ 'Botanical facts' | t }}</h2>
             <div class="botanical-facts-grid">
               <div class="fact-row" *ngIf="species.family">
-                <span class="fact-label">Family</span>
+                <span class="fact-label">{{ 'Family' | t }}</span>
                 <span class="fact-value">{{ species.family }}</span>
               </div>
               <div class="fact-row" *ngIf="species.genus">
-                <span class="fact-label">Genus</span>
+                <span class="fact-label">{{ 'Genus' | t }}</span>
                 <em class="fact-value">{{ species.genus }}</em>
               </div>
               <div class="fact-row" *ngIf="species.iucnCategory">
-                <span class="fact-label">Conservation status</span>
+                <span class="fact-label">{{ 'Conservation status' | t }}</span>
                 <span class="fact-value iucn-badge" [ngClass]="iucnBadgeClass(species.iucnCategory)">
                   {{ iucnLabel(species.iucnCategory) }}
                 </span>
@@ -69,13 +69,13 @@
           <!-- Description: PENDING — polling in background; still show other data above -->
           <div *ngIf="!species.descriptionStatus || species.descriptionStatus === 'PENDING'" class="info-block pending-block">
             <mat-spinner diameter="20" class="pending-spinner"></mat-spinner>
-            <p class="pending-text">Generating species description…</p>
+            <p class="pending-text">{{ 'Generating species description…' | t }}</p>
           </div>
 
           <!-- Description: READY -->
           <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
             <div class="info-heading-row">
-              <h2 class="info-heading">About</h2>
+              <h2 class="info-heading">{{ 'About' | t }}</h2>
               <app-read-aloud-button
                 [text]="species.description!"
                 ariaLabel="Read species description aloud"
@@ -86,16 +86,16 @@
 
           <!-- Description: FAILED — offer retry -->
           <div *ngIf="species.descriptionStatus === 'FAILED'" class="info-block failed-block">
-            <p class="failed-text">Description generation failed.</p>
+            <p class="failed-text">{{ 'Description generation failed.' | t }}</p>
             <button mat-stroked-button color="warn" (click)="retryDescription()" [disabled]="retrying" class="retry-btn">
               <mat-spinner *ngIf="retrying" diameter="16" class="btn-spinner"></mat-spinner>
               <mat-icon *ngIf="!retrying">refresh</mat-icon>
-              {{ retrying ? 'Retrying…' : 'Retry' }}
+              {{ retrying ? ('Retrying…' | t) : ('Retry' | t) }}
             </button>
           </div>
 
           <div *ngIf="species.careOverview" class="info-block">
-            <h2 class="info-heading">Care overview</h2>
+            <h2 class="info-heading">{{ 'Care overview' | t }}</h2>
             <p class="info-text">{{ species.careOverview }}</p>
           </div>
 
@@ -108,7 +108,7 @@
           <!-- Informational only -- plantId=null hides each card's action row (no reminders/
                treatments at the species level), same as the unsaved-preview use of these cards. -->
           <div *ngIf="species.careCards && species.careCards.length" class="info-block">
-            <h2 class="info-heading">How to care for it</h2>
+            <h2 class="info-heading">{{ 'How to care for it' | t }}</h2>
             <div class="care-cards-grid">
               <app-care-card
                 *ngFor="let card of species.careCards"
@@ -121,7 +121,7 @@
       </mat-tab>
 
       <!-- Plants tab -->
-      <mat-tab label="Plants">
+      <mat-tab [label]="'Plants' | t">
         <div class="tab-content plants-content">
 
           <div *ngIf="plantsLoading" class="plants-loading">
@@ -131,10 +131,10 @@
           <ng-container *ngIf="!plantsLoading">
             <div *ngIf="plants.length === 0" class="empty-plants-state">
               <mat-icon class="empty-icon">local_florist</mat-icon>
-              <p class="empty-sub">You don't have a plant of this species yet.</p>
+              <p class="empty-sub">{{ 'You don\'t have a plant of this species yet.' | t }}</p>
               <button mat-raised-button color="primary" (click)="openAddPlantDialog()" class="add-plant-btn">
                 <mat-icon>add</mat-icon>
-                Add plant of this species
+                {{ 'Add plant of this species' | t }}
               </button>
             </div>
 
@@ -147,7 +147,7 @@
               </div>
               <button mat-raised-button color="primary" (click)="openAddPlantDialog()" class="add-plant-btn">
                 <mat-icon>add</mat-icon>
-                Add plant of this species
+                {{ 'Add plant of this species' | t }}
               </button>
             </ng-container>
           </ng-container>

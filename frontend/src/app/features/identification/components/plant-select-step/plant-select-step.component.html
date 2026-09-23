@@ -5,8 +5,8 @@
 
   <mat-card class="step-card" *ngIf="!loading && candidatePlants.length > 0">
     <mat-card-content>
-      <h2 class="step-title">Which plant is this?</h2>
-      <p class="step-subtitle">You already have plants of this species.</p>
+      <h2 class="step-title">{{ 'Which plant is this?' | t }}</h2>
+      <p class="step-subtitle">{{ 'You already have plants of this species.' | t }}</p>
 
       <div class="candidate-list">
         <button
@@ -25,7 +25,7 @@
       <div class="action-row">
         <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onCreateNewPlant()">
           <mat-icon>add</mat-icon>
-          New plant
+          {{ 'New plant' | t }}
         </button>
       </div>
     </mat-card-content>

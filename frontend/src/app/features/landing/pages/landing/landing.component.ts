@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@plantpal/shared-core';
@@ -17,52 +18,52 @@ interface FeatureCard {
 const HOW_IT_WORKS: HowItWorksStep[] = [
   {
     icon: 'add_a_photo',
-    title: 'Snap a photo',
-    description: 'Take a picture of any plant, leaf, or flower — no special equipment needed.',
+    title: translate('Snap a photo'),
+    description: translate('Take a picture of any plant, leaf, or flower — no special equipment needed.'),
   },
   {
     icon: 'document_scanner',
-    title: 'Get an instant diagnosis',
+    title: translate('Get an instant diagnosis'),
     description:
-      'AI identifies the species and checks for signs of disease, pests, or stress in seconds.',
+      translate('AI identifies the species and checks for signs of disease, pests, or stress in seconds.'),
   },
   {
     icon: 'checklist',
-    title: 'Follow a care plan',
-    description: 'Receive a personalised watering, feeding, and treatment schedule — with reminders.',
+    title: translate('Follow a care plan'),
+    description: translate('Receive a personalised watering, feeding, and treatment schedule — with reminders.'),
   },
 ];
 
 const FEATURES: FeatureCard[] = [
   {
     icon: 'yard',
-    title: 'AI species identification',
+    title: translate('AI species identification'),
     description:
-      'Powered by multiple AI models — including Claude, GPT-4o, and PlantNet — for fast, accurate identification of thousands of species.',
+      translate('Powered by multiple AI models — including Claude, GPT-4o, and PlantNet — for fast, accurate identification of thousands of species.'),
   },
   {
     icon: 'notifications_active',
-    title: 'Personalised care reminders',
+    title: translate('Personalised care reminders'),
     description:
-      'Never miss a watering, fertilizing, or repotting day again. Reminders arrive as push notifications, tailored to each plant.',
+      translate('Never miss a watering, fertilizing, or repotting day again. Reminders arrive as push notifications, tailored to each plant.'),
   },
   {
     icon: 'healing',
-    title: 'Disease detection & treatment',
+    title: translate('Disease detection & treatment'),
     description:
-      'Spot issues early. Every diagnosis comes with a step-by-step treatment plan you can track through to completion.',
+      translate('Spot issues early. Every diagnosis comes with a step-by-step treatment plan you can track through to completion.'),
   },
   {
     icon: 'forum',
-    title: 'AI plant-care chat',
+    title: translate('AI plant-care chat'),
     description:
-      'Ask anything, anytime. Your assistant knows your garden and gives advice specific to the plants you actually own.',
+      translate('Ask anything, anytime. Your assistant knows your garden and gives advice specific to the plants you actually own.'),
   },
   {
     icon: 'menu_book',
-    title: 'Shared species knowledge',
+    title: translate('Shared species knowledge'),
     description:
-      'Every identification enriches a community botanical knowledge base — so care advice keeps getting better for everyone.',
+      translate('Every identification enriches a community botanical knowledge base — so care advice keeps getting better for everyone.'),
   },
 ];
 

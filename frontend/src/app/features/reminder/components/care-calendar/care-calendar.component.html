@@ -6,7 +6,7 @@
     [class.is-selected]="selectedIndex === i"
     (click)="selectDay(i, day)"
   >
-    <p class="day-label">{{ day.isToday ? 'Today' : day.label }}</p>
+    <p class="day-label">{{ day.isToday ? ('Today' | t) : day.label }}</p>
     <p class="day-number">{{ day.dayNumber }}</p>
 
     <div class="day-reminders">

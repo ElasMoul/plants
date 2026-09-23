@@ -1,3 +1,5 @@
+import { LanguageSwitchComponent } from './i18n/language-switch.component';
+import { PluralSuffixPipe, TranslatePipe } from './i18n/translate.pipe';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -59,8 +61,8 @@ const MATERIAL_MODULES = [
     AiBlockNoticeComponent,
     BusinessTierPromptComponent,
   ],
-  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
-  exports: [
+  imports: [LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
+  exports: [LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
     CommonModule,
     RouterModule,
     FormsModule,

@@ -1,5 +1,5 @@
 <div class="treatment-select-sheet">
-  <h3 class="treatment-select-title">Active treatments</h3>
+  <h3 class="treatment-select-title">{{ 'Active treatments' | t }}</h3>
 
   <div class="treatment-select-list">
     <button
@@ -12,11 +12,11 @@
       <div class="treatment-select-meta">
         <span class="treatment-select-name">{{ row.treatment.diseaseName }}</span>
         <span class="treatment-select-date" *ngIf="row.treatment.startedAt">
-          Started {{ row.treatment.startedAt | date:'mediumDate' }}
+          {{ 'Started {0}' | t : [(row.treatment.startedAt | date:'mediumDate')] }}
         </span>
       </div>
       <span class="status-chip" [ngClass]="'status-' + row.treatment.status.toLowerCase()">
-        {{ row.treatment.status | titlecase }}
+        {{ row.treatment.status | t }}
       </span>
     </button>
   </div>

@@ -8,10 +8,10 @@
   <!-- Error -->
   <div *ngIf="state === 'error'" class="center-state error-state">
     <mat-icon class="error-icon">report_problem</mat-icon>
-    <p>Step not found.</p>
+    <p>{{ 'Step not found.' | t }}</p>
     <button mat-stroked-button type="button" class="btn-pill" (click)="goBack()">
       <mat-icon>arrow_back</mat-icon>
-      Go back
+      {{ 'Go back' | t }}
     </button>
   </div>
 
@@ -19,11 +19,11 @@
   <ng-container *ngIf="state === 'ready' && step">
 
     <div class="step-header">
-      <button mat-icon-button type="button" class="back-btn" (click)="goBack()" aria-label="Back">
+      <button mat-icon-button type="button" class="back-btn" (click)="goBack()" [attr.aria-label]="&#x27;Back&#x27; | t">
         <mat-icon>arrow_back</mat-icon>
       </button>
       <div class="step-title-block">
-        <p class="step-order" *ngIf="step.stepOrder">Step {{ step.stepOrder }}</p>
+        <p class="step-order" *ngIf="step.stepOrder">{{ 'Step {0}' | t : [(step.stepOrder)] }}</p>
         <h1 class="step-instruction">{{ step.instruction || step.careType }}</h1>
       </div>
     </div>
@@ -49,8 +49,8 @@
     <!-- Due status -->
     <div class="step-meta">
       <mat-icon class="meta-icon">{{ step.enabled ? 'schedule' : 'check_circle' }}</mat-icon>
-      <span *ngIf="!step.enabled">Completed {{ step.completedAt | date:'MMMM d, y' }}</span>
-      <span *ngIf="step.enabled && step.nextDueAt">Due {{ step.nextDueAt | date:'MMMM d, y' }}</span>
+      <span *ngIf="!step.enabled">{{ 'Completed {0}' | t : [(step.completedAt | date:'longDate')] }}</span>
+      <span *ngIf="step.enabled && step.nextDueAt">{{ 'Due {0}' | t : [(step.nextDueAt | date:'longDate')] }}</span>
     </div>
 
     <!-- Mark done -->
@@ -65,7 +65,7 @@
       >
         <mat-spinner *ngIf="markingDone" diameter="18" class="btn-spinner"></mat-spinner>
         <mat-icon *ngIf="!markingDone">check</mat-icon>
-        {{ markingDone ? 'Marking done…' : 'Mark done' }}
+        {{ markingDone ? ('Marking done…' | t) : ('Mark done' | t) }}
       </button>
     </div>
 

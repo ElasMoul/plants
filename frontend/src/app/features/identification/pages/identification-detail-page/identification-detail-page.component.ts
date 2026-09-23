@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -62,7 +63,7 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   onSaved(plant: PlantResponse): void {
-    this.snackBar.open('Added to your garden!', undefined, { duration: 3000 });
+    this.snackBar.open(translate('Added to your garden!'), undefined, { duration: 3000 });
     this.router.navigate(['/plants', plant.id]);
   }
 
@@ -74,7 +75,7 @@ export class IdentificationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   onPlantResolved(identification: IdentificationResponse): void {
-    this.snackBar.open('Added to your garden!', undefined, { duration: 3000 });
+    this.snackBar.open(translate('Added to your garden!'), undefined, { duration: 3000 });
     this.router.navigate(['/plants', identification.plantId]);
   }
 

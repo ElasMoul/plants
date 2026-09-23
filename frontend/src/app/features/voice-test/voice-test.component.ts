@@ -21,7 +21,7 @@ export class VoiceTestComponent implements OnDestroy {
   readonly hasSpeechAPI = !!SpeechRecognitionAPI;
   readonly isSecureCtx = window.isSecureContext;
   readonly hostname = location.hostname;
-  readonly lang = navigator.language;
+  readonly lang = document.documentElement.lang || navigator.language;
 
   // ── Mic-only test (getUserMedia + AudioContext, NO recognition) ──────────
   micTesting = false;
@@ -143,7 +143,7 @@ export class VoiceTestComponent implements OnDestroy {
     this.recognition = new SpeechRecognitionAPI();
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
-    this.recognition.lang = navigator.language;
+    this.recognition.lang = document.documentElement.lang || navigator.language;
 
     this.recognition.onaudiostart = () => {
       this.ngZone.run(() => this.addLog('[REC] onaudiostart — mic capture open (before cloud connect)'));

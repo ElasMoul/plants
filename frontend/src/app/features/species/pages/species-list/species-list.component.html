@@ -3,9 +3,9 @@
   <!-- Header -->
   <div class="list-header">
     <div>
-      <h1 class="garden-title">My Garden</h1>
+      <h1 class="garden-title">{{ 'My Garden' | t }}</h1>
       <p class="garden-subtitle" *ngIf="!loading">
-        You have {{ species.length }} species under your care.
+        {{ 'You have {0} species under your care.' | t : [(species.length)] }}
       </p>
     </div>
   </div>
@@ -18,7 +18,7 @@
       [class.filter-chip--active]="activeFilter === 'all'"
       (click)="setFilter('all')"
     >
-      All
+      {{ 'All' | t }}
     </button>
     <button
       type="button"
@@ -26,7 +26,7 @@
       [class.filter-chip--active]="activeFilter === 'issues'"
       (click)="setFilter('issues')"
     >
-      With Issues
+      {{ 'With Issues' | t }}
     </button>
     <button
       type="button"
@@ -34,7 +34,7 @@
       [class.filter-chip--active]="activeFilter === 'recent'"
       (click)="setFilter('recent')"
     >
-      Recently scanned
+      {{ 'Recently scanned' | t }}
     </button>
   </div>
 
@@ -55,17 +55,17 @@
     <div class="empty-icon-wrap">
       <mat-icon class="empty-icon">local_florist</mat-icon>
     </div>
-    <h2 class="empty-title">Your garden awaits</h2>
-    <p class="empty-sub">Add your first plant to start tracking its care.</p>
+    <h2 class="empty-title">{{ 'Your garden awaits' | t }}</h2>
+    <p class="empty-sub">{{ 'Add your first plant to start tracking its care.' | t }}</p>
     <button mat-raised-button color="primary" (click)="openIdentifyDialog()" class="empty-btn">
       <mat-icon>add</mat-icon>
-      Add your first plant
+      {{ 'Add your first plant' | t }}
     </button>
   </div>
 
   <!-- No results for the active filter -->
   <div *ngIf="!loading && species.length > 0 && filteredSpecies.length === 0" class="empty-state">
-    <p class="empty-sub">No species match this filter on the current page.</p>
+    <p class="empty-sub">{{ 'No species match this filter on the current page.' | t }}</p>
   </div>
 
   <!-- Species grid -->
@@ -96,7 +96,7 @@
   color="primary"
   class="add-fab"
   (click)="openIdentifyDialog()"
-  aria-label="Add plant"
+  [attr.aria-label]="&#x27;Add plant&#x27; | t"
 >
   <mat-icon>add</mat-icon>
 </button>

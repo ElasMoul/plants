@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../i18n/translate.pipe';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -15,6 +16,7 @@ describe('BusinessTierPromptComponent', () => {
     router = { navigate: jest.fn() };
 
     TestBed.configureTestingModule({
+      imports: [TranslatePipe],
       declarations: [BusinessTierPromptComponent],
       providers: [{ provide: Router, useValue: router }],
       schemas: [NO_ERRORS_SCHEMA],

@@ -1,3 +1,4 @@
+import { translate } from '../../../shared/i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpDownloadProgressEvent, HttpErrorResponse, HttpEventType } from '@angular/common/http';
@@ -29,16 +30,16 @@ const GREETING_ID = 1;
 })
 export class ChatHomeComponent implements OnInit, OnDestroy {
   readonly quickChips: string[] = [
-    'Why are my leaves yellow?',
-    'How often should I water?',
-    'Best light for Monstera?',
+    translate('Why are my leaves yellow?'),
+    translate('How often should I water?'),
+    translate('Best light for Monstera?'),
   ];
 
   messages: ChatMessage[] = [
     {
       id: 1,
       sender: 'ai',
-      text: "Hi! I'm your PlantPal AI assistant. Ask me anything about your garden — watering, light, pests, or diagnosing issues.",
+      text: translate("Hi! I'm your PlantPal AI assistant. Ask me anything about your garden — watering, light, pests, or diagnosing issues."),
     },
   ];
 
@@ -131,7 +132,7 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
             this.sending = false;
             const msg = this.messages.find(m => m.id === aiMessageId);
             if (msg && !msg.text) {
-              msg.text = "Sorry, I didn't get a reply. Please try again.";
+              msg.text = translate("Sorry, I didn't get a reply. Please try again.");
             }
           }
         },

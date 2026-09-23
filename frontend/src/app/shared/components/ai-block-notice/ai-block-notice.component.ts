@@ -1,3 +1,4 @@
+import { translate } from '../../i18n/language.service';
 import { Component, Input } from '@angular/core';
 
 // Dedicated, friendly "AI limit reached" state for a platform ai-gateway block (HTTP 402
@@ -17,8 +18,8 @@ export class AiBlockNoticeComponent {
   // Compact = inline chat bubble variant; default = full-width detail state screen.
   @Input() compact = false;
 
-  readonly title = 'Daily AI limit reached';
-  readonly guidance = 'You’ve used all of today’s AI requests. Please try again tomorrow.';
+  readonly title = translate('Daily AI limit reached');
+  readonly guidance = translate('You’ve used all of today’s AI requests. Please try again tomorrow.');
 
   get showReason(): boolean {
     const r = this.reason?.trim();
