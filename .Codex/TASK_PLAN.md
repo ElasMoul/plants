@@ -53,3 +53,11 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Generate new chat replies in the selected language.
 - [x] Verify database cache/ownership, UI journeys, production build and hosted DeepSeek.
 - [ ] Owner tests French before starting Arabic.
+
+## Arabic and compact selector — ready for owner testing 2026-09-23
+
+- [x] Replace selector labels with EN / FR / AR and remove symbol.
+- [x] Complete Arabic user catalog, RTL, calendar/speech locale and counted forms.
+- [x] Add Arabic saved AI translations, cache isolation, retry target and chat prompts.
+- [x] Apply migration 037; verify backend, frontend, RTL browser and admin regressions.
+- [ ] Owner tests Arabic/French; merge to dev only after owner confirms results.

@@ -136,3 +136,26 @@ check returned French and preserved Monstera deliciosa, 5 ml, 1 L and 7. Automat
 approval review blocked exporting an existing saved identification for a live test;
 no such export occurred. Database pipeline was tested with mocked provider output.
 Preview remains frontend 4210/backend 8190. No push or merge; Arabic awaits owner testing.
+
+## 2026-09-23 — Arabic and compact selector ready for owner testing
+
+Implementation 816783c on codex/plantpal-french-localization. Selector displays
+EN / FR / AR without the previous symbol. Arabic catalog has 586 entries and
+placeholder/key parity with French. Uses Modern Standard Arabic, ar-MA locale,
+RTL document, logical layout properties, mirrored navigation arrows, LTR technical
+inputs, and Arabic counted forms (zero/one/two/few/many/other). Existing user text
+is preserved. Screenshot reviewed: docs/screenshots/arabic-plant-form.png.
+
+AI translation jobs now carry target language throughout scheduling/polling/retry;
+cache fingerprints separate French and Arabic. Migration 037 widens the language
+constraint while preserving existing French jobs. Arabic chat prompts shared by
+streaming and buffered paths. Arabic pending/failure/retry notices included.
+
+Validation: 567 frontend unit tests, 485 backend units, five database translation
+integration tests, seven language Chromium journeys and nine admin journeys passed.
+Production frontend/backend builds and localization lint passed; existing bundle
+size/CommonJS warnings remain. UI catalog generated using hosted DeepSeek with only
+static application labels, reviewed and corrected; no saved user content exported.
+Preview restarted to include new catalog/backend; migration 037 applied, backend
+8190 UP, frontend 4210 available. No push/merge. Owner explicitly wants testing
+before merge to dev; await that verdict.

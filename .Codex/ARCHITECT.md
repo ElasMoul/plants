@@ -118,3 +118,18 @@ batches and numeric/unit validation prevent unsafe structural output being saved
 Do not regenerate diagnoses merely to change display language. Chat instead carries
 language on each request into the shared system prompt. Current target is explicitly
 French; adding Arabic requires language-aware cache/schema/prompt changes and RTL UI.
+
+## Arabic extension (2026-09-23)
+
+The French presentation-translation architecture now supports fr and ar. Migration
+037 widens the existing table check; never alter the already-applied migration 036.
+The worker receives the target explicitly, polling reads it from the persisted row,
+and retries use that row's target. French cache IDs remain unchanged. The provider
+prompt selects French or Modern Standard Arabic; numeric/unit checks remain intact.
+
+Angular registers Arabic locale data, uses ar-MA and document RTL, and reloads on
+language changes as before. aiText remains display-only; the session map resets on
+reload. Physical UI spacing/positions became logical properties; directional icons
+mirror while photo coordinates and technical inputs retain their meaning. Arabic
+counted messages use Intl.PluralRules with explicit forms, not an English s suffix.
+No admin text translation or Atlas rollout was added.

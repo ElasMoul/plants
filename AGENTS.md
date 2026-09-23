@@ -517,7 +517,7 @@ open backend/target/site/jacoco/index.html
 | ATLAS — Rhizome second frontend | ✅ Complete (A–H waves merged to main 2026-08-18; frontend-atlas/FIDELITY_PLAN.md; apps: :4300 dev / :8445 compose) |
 | ATLAS R2/R3 — care loop, dashboard/notifications/users, mock garden, settings | ✅ (I1–I7, slices S0–S8 on `atlas/R2-care-loop`) |
 | ADMIN — Administration console | Complete on `codex/plantpal-admin-dashboard` (2026-09-21): overview, user lifecycle/quotas, plant management/photo-history modal, native hosted DeepSeek Flash (Anthropic API), admin login routing, AI visibility, audit; migrations 034–035; setup: `docs/admin-console.md` |
-| I18N — French user interface | Complete on `codex/plantpal-french-localization` (2026-09-23): Classic English/French UI, browser preference, localized dates/calendar/pagination/speech, persistent French AI content and language-aware chat (migration 036); Arabic and Atlas pending; `docs/localization.md` |
+| I18N — User languages | Complete on `codex/plantpal-french-localization` (2026-09-23): Classic EN/FR/AR UI, compact selector, Arabic RTL/plurals, localized dates/calendar/pagination/speech, persistent French/Arabic AI content and language-aware chat (migrations 036–037); owner testing before dev merge, Atlas pending; `docs/localization.md` |
 | — Pre-Phase-5 cleanup pass | ✅ Complete (`feature/PP-038-pre-phase5-cleanup`) |
 
 ---

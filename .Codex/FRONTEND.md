@@ -17,3 +17,12 @@
 - ChatService supplies current en/fr language. SpeciesModule supplies treatment and
   reminder services for direct species detail navigation with care cards.
 - Tests: interceptor spec plus language.spec browser journeys. See docs/localization.md.
+
+## Arabic and compact selector (2026-09-23)
+- ar.ts: full 586-entry Arabic catalog; language service adds ar-MA/RTL and counted forms.
+- LanguageSwitchComponent: EN/FR/AR options with native-language titles, no symbol.
+- Logical spacing/position CSS and directional-icon class support RTL; email/password/code
+  retain LTR. Arabic locale registered for Angular dates and Material calendar.
+- AI interceptor sends current fr/ar target; Arabic notice, display pipes and chat language.
+- Arabic browser journeys cover login switch, form/calendar/mobile overflow, core routes,
+  scientific-name/quantity preservation in AI text and switching back to LTR.
