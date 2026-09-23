@@ -135,7 +135,7 @@
   background: var(--color-surface);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
-  border-left: 4px solid transparent;
+  border-inline-start: 4px solid transparent;
   cursor: pointer;
   transition: transform 0.15s ease;
 
@@ -144,7 +144,7 @@
   }
 
   &.overdue {
-    border-left-color: var(--color-error);
+    border-inline-start-color: var(--color-error);
   }
 }
 
@@ -271,7 +271,7 @@
 // ── FAB ──────────────────────────────────────────────────────
 .add-fab {
   position: fixed;
-  right: 20px;
+  inset-inline-end: 20px;
   bottom: 88px;
   background-color: var(--color-primary) !important;
 

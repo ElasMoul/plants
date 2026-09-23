@@ -4,7 +4,7 @@
   <div class="annotator-controls" *ngIf="hasRegions">
     <button mat-stroked-button type="button" (click)="toggleAnnotations()" class="toggle-btn">
       <mat-icon>{{ showAnnotations ? 'visibility_off' : 'visibility' }}</mat-icon>
-      {{ showAnnotations ? 'Hide annotations' : 'Show annotations' }}
+      {{ showAnnotations ? ('Hide annotations' | t) : ('Show annotations' | t) }}
     </button>
   </div>
 
@@ -13,7 +13,7 @@
     <img
       #photoImg
       [src]="imageUrl"
-      alt="Plant photo"
+      [alt]="&#x27;Plant photo&#x27; | t"
       class="plant-photo"
       (load)="onImageLoad()"
     />

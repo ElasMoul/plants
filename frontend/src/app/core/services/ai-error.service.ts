@@ -1,3 +1,4 @@
+import { translate } from '../../shared/i18n/language.service';
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -19,7 +20,7 @@ export class AiErrorService {
   handle(err: HttpErrorResponse): string {
     if (err.status === 429) {
       const message = this.rateLimitMessage(err);
-      const ref = this.snackBar.open(message, 'Settings', { duration: 6000 });
+      const ref = this.snackBar.open(message, translate('Settings'), { duration: 6000 });
       ref.onAction().subscribe(() => this.router.navigate(['/preferences']));
       return message;
     }
@@ -27,10 +28,10 @@ export class AiErrorService {
       return this.blockedMessage(err);
     }
     if (err.status === 0) {
-      return 'Connection problem — check your internet and try again';
+      return translate('Connection problem — check your internet and try again');
     }
     const backendMessage = this.parseBody(err)?.message;
-    return backendMessage || 'Something went wrong — please try again';
+    return backendMessage || translate('Something went wrong — please try again');
   }
 
   // A 402 means a cost ceiling was hit (daily/monthly) — distinct from a 429 rate limit, this
@@ -50,7 +51,7 @@ export class AiErrorService {
   notify(err: HttpErrorResponse): void {
     const message = this.handle(err);
     if (err.status !== 429) {
-      this.snackBar.open(message, 'Dismiss', { duration: 4500 });
+      this.snackBar.open(message, translate('Dismiss'), { duration: 4500 });
     }
   }
 
@@ -73,20 +74,20 @@ export class AiErrorService {
     const body = this.parseBody(err);
     const message = body?.message ?? '';
     if (message.toLowerCase().includes('plantnet')) {
-      return "Pl@ntNet daily quota reached — try again tomorrow, or switch to a different model in Settings";
+      return translate("Pl@ntNet daily quota reached — try again tomorrow, or switch to a different model in Settings");
     }
     const retryAfterSeconds = body?.retryAfterSeconds;
-    const timeText = retryAfterSeconds ? this.formatRetryTime(retryAfterSeconds) : 'a bit';
-    return `Rate limit reached — try again in ${timeText}, or switch your AI model in Settings`;
+    const timeText = retryAfterSeconds ? this.formatRetryTime(retryAfterSeconds) : translate('a bit');
+    return translate("Rate limit reached — try again in {0}, or switch your AI model in Settings", [timeText]);
   }
 
   private blockedMessage(err: HttpErrorResponse): string {
     const body = this.parseBody(err);
     const message = body?.message ?? '';
     if (message.toLowerCase().includes('daily')) {
-      return 'Daily AI limit reached — try again tomorrow';
+      return translate('Daily AI limit reached — try again tomorrow');
     }
-    return 'AI limit reached for this period — try again later';
+    return translate('AI limit reached for this period — try again later');
   }
 
   private formatRetryTime(seconds: number): string {

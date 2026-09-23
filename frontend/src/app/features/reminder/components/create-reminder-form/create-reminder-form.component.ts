@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -17,10 +18,10 @@ import { CareType } from '../../models/reminder.model';
 })
 export class CreateReminderFormComponent implements OnInit, OnDestroy {
   readonly careTypes: { value: CareType; label: string }[] = [
-    { value: 'WATERING', label: 'Watering' },
-    { value: 'FERTILIZING', label: 'Fertilizing' },
-    { value: 'REPOTTING', label: 'Repotting' },
-    { value: 'PRUNING', label: 'Pruning' },
+    { value: 'WATERING', label: translate('Watering') },
+    { value: 'FERTILIZING', label: translate('Fertilizing') },
+    { value: 'REPOTTING', label: translate('Repotting') },
+    { value: 'PRUNING', label: translate('Pruning') },
   ];
 
   form!: FormGroup;
@@ -78,7 +79,7 @@ export class CreateReminderFormComponent implements OnInit, OnDestroy {
       next: () => this.dialogRef.close(true),
       error: () => {
         this.saving = false;
-        this.snackBar.open('Could not create reminder — please try again.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Could not create reminder — please try again.'), translate('Dismiss'), { duration: 4000 });
       },
     });
   }

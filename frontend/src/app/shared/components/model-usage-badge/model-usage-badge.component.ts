@@ -1,3 +1,4 @@
+import { translate } from '../../i18n/language.service';
 import { Component, Input } from '@angular/core';
 
 const MODEL_LABELS: Record<string, string> = {
@@ -26,7 +27,7 @@ function modelLabel(model: string | null | undefined): string | null {
 export class ModelUsageBadgeComponent {
   @Input() visionModel: string | null | undefined = null;
   @Input() reasoningModel: string | null | undefined = null;
-  @Input() prefix = 'Identified using';
+  @Input() prefix = translate('Identified using');
 
   get visionLabel(): string | null {
     return modelLabel(this.visionModel);

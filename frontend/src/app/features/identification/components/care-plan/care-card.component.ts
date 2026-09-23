@@ -1,3 +1,5 @@
+import { aiText } from '../../../../shared/i18n/ai-text.pipe';
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -63,7 +65,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['card']) {
-      this.detailList = parseDetailAsList(this.card.detail);
+      this.detailList = parseDetailAsList(aiText(this.card.detail));
     }
     if (changes['card'] || changes['existingCareTypes']) {
       // AI only attaches a ROUTINE actionPlan to cards whose type maps to a real reminder CareType
@@ -160,7 +162,7 @@ export class CareCardComponent implements OnChanges, OnDestroy {
             },
             error: () => {
               this.settingReminder = false;
-              this.snackBar.open('Could not set reminder.', 'Dismiss', { duration: 4000 });
+              this.snackBar.open(translate('Could not set reminder.'), translate('Dismiss'), { duration: 4000 });
             },
           });
       });

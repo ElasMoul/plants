@@ -1,3 +1,4 @@
+import { translate } from '../../../shared/i18n/language.service';
 import { Component } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -64,8 +65,8 @@ export class RegisterComponent {
       next: () => this.router.navigate(['/garden']),
       error: err => {
         this.loading = false;
-        const msg = (err.error?.message as string | undefined) ?? 'Registration failed. Please try again.';
-        this.snackBar.open(msg, 'Close', { duration: 4000 });
+        const msg = (err.error?.message as string | undefined) ?? translate('Registration failed. Please try again.');
+        this.snackBar.open(translate(msg), translate('Close'), { duration: 4000 });
       },
     });
   }

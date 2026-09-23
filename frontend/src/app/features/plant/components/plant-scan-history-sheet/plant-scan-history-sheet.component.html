@@ -1,11 +1,11 @@
 <div class="history-sheet">
-  <h3 class="history-title">Scan history</h3>
+  <h3 class="history-title">{{ 'Scan history' | t }}</h3>
 
   <div *ngIf="loading" class="history-loading">
     <mat-spinner diameter="32"></mat-spinner>
   </div>
 
-  <p *ngIf="!loading && scans.length === 0" class="history-empty">No scans yet.</p>
+  <p *ngIf="!loading && scans.length === 0" class="history-empty">{{ 'No scans yet.' | t }}</p>
 
   <div *ngIf="!loading && scans.length" class="history-list">
     <button

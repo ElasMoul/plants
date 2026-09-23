@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CareType, ReminderResponse } from '../../models/reminder.model';
 import { careIcon as getCareIcon } from '../../models/care-icon.util';
@@ -55,7 +56,7 @@ export class CareCalendarComponent implements OnChanges {
       return;
     }
     this.selectedIndex = index;
-    this.daySelected.emit({ label: day.isToday ? 'Today' : `${day.label} ${day.dayNumber}`, reminders: day.reminders });
+    this.daySelected.emit({ label: day.isToday ? translate('Today') : `${day.label} ${day.dayNumber}`, reminders: day.reminders });
   }
 
   private buildDays(): void {
@@ -68,8 +69,8 @@ export class CareCalendarComponent implements OnChanges {
       date.setDate(today.getDate() + i);
       days.push({
         date,
-        label: date.toLocaleDateString(undefined, { weekday: 'short' }),
-        dayNumber: date.toLocaleDateString(undefined, { day: 'numeric' }),
+        label: date.toLocaleDateString(document.documentElement.lang, { weekday: 'short' }),
+        dayNumber: date.toLocaleDateString(document.documentElement.lang, { day: 'numeric' }),
         isToday: i === 0,
         reminders: [],
         chips: [],

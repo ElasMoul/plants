@@ -131,7 +131,7 @@
 .remove-btn {
   position: absolute;
   top: 4px;
-  right: 4px;
+  inset-inline-end: 4px;
   background: rgba(0, 0, 0, 0.5) !important;
   color: white !important;
 
@@ -165,7 +165,7 @@
     width: 18px;
     height: 18px;
     vertical-align: middle;
-    margin-right: 4px;
+    margin-inline-end: 4px;
   }
 }
 

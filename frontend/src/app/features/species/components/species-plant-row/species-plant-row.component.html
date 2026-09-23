@@ -8,9 +8,9 @@
   <div class="row-body">
     <span class="row-nickname">{{ plant.nickname }}</span>
     <span class="row-scan-date" *ngIf="plant.lastScanAt">
-      Last scan: {{ plant.lastScanAt | date:'mediumDate' }}
+      {{ 'Last scan: {0}' | t : [(plant.lastScanAt | date:'mediumDate')] }}
     </span>
-    <span class="row-scan-date" *ngIf="!plant.lastScanAt">Never scanned</span>
+    <span class="row-scan-date" *ngIf="!plant.lastScanAt">{{ 'Never scanned' | t }}</span>
   </div>
 
   <span
@@ -18,6 +18,6 @@
     class="health-badge"
     [ngClass]="healthBadgeClass(plant.healthStatus)"
   >
-    {{ plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus }}
+    {{ (plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus) | t }}
   </span>
 </div>

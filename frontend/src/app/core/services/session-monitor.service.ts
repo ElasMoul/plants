@@ -1,3 +1,4 @@
+import { translate } from '../../shared/i18n/language.service';
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable, OnDestroy } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -73,7 +74,7 @@ export class SessionMonitorService implements OnDestroy {
     if (!this.warningVisible && (status.secondsRemaining ?? Infinity) <= WARNING_THRESHOLD_SECONDS) {
       this.warningVisible = true;
       this.snackBar
-        .open('You will be signed out in two minutes due to inactivity.', 'Stay signed in')
+        .open(translate('You will be signed out in two minutes due to inactivity.'), translate('Stay signed in'))
         .onAction()
         .subscribe(() => this.renew());
     }
@@ -93,21 +94,21 @@ export class SessionMonitorService implements OnDestroy {
     this.stop();
     this.authService.logout();
     this.router.navigate(['/login'], returnUrl ? { queryParams: { returnUrl } } : undefined);
-    this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
+    this.snackBar.open(reasonMessage(reason), translate('Close'), { duration: 6000 });
   }
 }
 
 export function reasonMessage(reason: string | null): string {
   switch (reason) {
     case 'IDLE_TIMEOUT':
-      return 'You were signed out after 30 minutes of inactivity.';
+      return translate('You were signed out after 30 minutes of inactivity.');
     case 'ABSOLUTE_CAP':
-      return 'Your 12-hour session ended. Please sign in again.';
+      return translate('Your 12-hour session ended. Please sign in again.');
     case 'PASSWORD_CHANGE':
-      return 'Your password changed, so please sign in again.';
+      return translate('Your password changed, so please sign in again.');
     case 'ADMIN':
-      return 'Your session was ended. Please sign in again.';
+      return translate('Your session was ended. Please sign in again.');
     default:
-      return 'Your session ended. Please sign in again.';
+      return translate('Your session ended. Please sign in again.');
   }
 }

@@ -1,3 +1,4 @@
+import { translate } from '../../../shared/i18n/language.service';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -109,7 +110,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
             return;
           }
           this.inFlightOrDoneIds.delete(reminder.id);
-          this.snackBar.open('Could not update reminder.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not update reminder.'), translate('Dismiss'), { duration: 4000 });
           this.cdr.markForCheck();
         },
       });

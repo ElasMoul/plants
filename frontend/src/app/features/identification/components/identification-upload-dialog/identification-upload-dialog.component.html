@@ -21,7 +21,7 @@
           <mat-icon *ngIf="item.status === 'PENDING'">schedule</mat-icon>
           <mat-icon *ngIf="item.status === 'DONE'">check_circle</mat-icon>
           <mat-icon *ngIf="item.status === 'FAILED'" color="warn">error</mat-icon>
-          {{ item.status === 'PENDING' ? 'Pending' : item.status === 'SCANNING' ? 'Scanning…' : item.status === 'DONE' ? 'Done' : 'Failed' }}
+          {{ item.status === 'PENDING' ? ('Pending' | t) : item.status === 'SCANNING' ? ('Scanning…' | t) : item.status === 'DONE' ? ('Done' | t) : ('Failed' | t) }}
         </span>
         <span class="batch-error" *ngIf="item.errorMessage">{{ item.errorMessage }}</span>
       </div>
@@ -33,7 +33,7 @@
 <mat-dialog-actions align="end">
 
   <ng-container *ngIf="!batchActive">
-    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-button type="button" (click)="cancel()">{{ 'Cancel' | t }}</button>
     <button
       mat-raised-button
       color="primary"
@@ -43,13 +43,13 @@
       (click)="startIdentification()"
     >
       <mat-icon>biotech</mat-icon>
-      Start identification
+      {{ 'Start identification' | t }}
     </button>
   </ng-container>
 
   <ng-container *ngIf="batchActive">
     <button mat-button type="button" (click)="cancel()">
-      {{ batchScan.running ? 'Run in background' : 'Close' }}
+      {{ batchScan.running ? ('Run in background' | t) : ('Close' | t) }}
     </button>
     <ng-container *ngIf="batchScan.done">
       <button
@@ -60,15 +60,15 @@
         (click)="retryFailed()"
       >
         <mat-icon>refresh</mat-icon>
-        Retry remaining
+        {{ 'Retry remaining' | t }}
       </button>
       <button mat-stroked-button type="button" class="btn-pill" (click)="startNewBatch()">
         <mat-icon>add_photo_alternate</mat-icon>
-        Scan more
+        {{ 'Scan more' | t }}
       </button>
       <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="done()">
         <mat-icon>check</mat-icon>
-        Done
+        {{ 'Done' | t }}
       </button>
     </ng-container>
   </ng-container>

@@ -1,3 +1,4 @@
+import { translate } from '../../i18n/language.service';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -58,10 +59,10 @@ export class TreatmentStepListComponent {
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
     if (diffDays < 0) {
       const overdueDays = Math.abs(diffDays);
-      return `Overdue by ${overdueDays} day${overdueDays !== 1 ? 's' : ''}`;
+      return translate("Overdue by {0} day{1}", [overdueDays, overdueDays !== 1 ? 's' : '']);
     }
-    if (diffDays === 0) return 'Due today';
-    return `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    if (diffDays === 0) return translate('Due today');
+    return translate("Due in {0} day{1}", [diffDays, diffDays !== 1 ? 's' : '']);
   }
 
   trackByStepId(_index: number, step: ReminderResponse): number {

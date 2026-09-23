@@ -18,11 +18,11 @@
     <!-- Zero-plant empty state — distinct from Dashboard's, points to identifying the first plant -->
     <div class="empty-home" *ngIf="!hasAnyData">
       <mat-icon class="empty-icon">document_scanner</mat-icon>
-      <h2>Let's meet your first plant</h2>
-      <p>Snap a photo to identify it and start tracking its care.</p>
+      <h2>{{ 'Let\'s meet your first plant' | t }}</h2>
+      <p>{{ 'Snap a photo to identify it and start tracking its care.' | t }}</p>
       <button mat-raised-button color="primary" class="btn-pill" (click)="openIdentifyDialog()">
         <mat-icon>add_a_photo</mat-icon>
-        Identify your first plant
+        {{ 'Identify your first plant' | t }}
       </button>
     </div>
 
@@ -37,21 +37,21 @@
       <div class="stats-strip">
         <div class="stat-chip stat-species">
           <span class="stat-count">{{ dashboard.speciesCount }}</span>
-          <span class="stat-label">Species</span>
+          <span class="stat-label">{{ 'Species' | t }}</span>
         </div>
         <div class="stat-chip stat-issues">
           <span class="stat-count">{{ dashboard.healthSummary.issuesCount }}</span>
-          <span class="stat-label">Issues</span>
+          <span class="stat-label">{{ 'Issues' | t }}</span>
         </div>
         <div class="stat-chip stat-due">
           <span class="stat-count">{{ dashboard.todayReminders.length }}</span>
-          <span class="stat-label">Due today</span>
+          <span class="stat-label">{{ 'Due today' | t }}</span>
         </div>
       </div>
 
       <!-- Needs attention -->
       <section class="dash-section" *ngIf="dashboard.overdueReminders.length">
-        <h2 class="section-heading">Needs attention</h2>
+        <h2 class="section-heading">{{ 'Needs attention' | t }}</h2>
         <div
           class="row-card row-overdue"
           *ngFor="let reminder of dashboard.overdueReminders; trackBy: trackByReminderId"
@@ -66,7 +66,7 @@
             <p class="row-name">{{ reminder.plantNickname }}</p>
             <p class="row-detail">
               <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
-              Overdue by {{ reminder.daysOverdue }} day{{ reminder.daysOverdue !== 1 ? 's' : '' }}
+              {{ 'Overdue by {0} day{1}' | t : [(reminder.daysOverdue), (reminder.daysOverdue | pluralSuffix)] }}
             </p>
           </div>
           <app-read-aloud-button
@@ -78,7 +78,7 @@
 
       <!-- Care due today -->
       <section class="dash-section">
-        <h2 class="section-heading">Care due today</h2>
+        <h2 class="section-heading">{{ 'Care due today' | t }}</h2>
         <div
           class="row-card"
           *ngFor="let reminder of topTodayReminders; trackBy: trackByReminderId"
@@ -93,7 +93,7 @@
             <p class="row-name">{{ reminder.plantNickname }}</p>
             <p class="row-detail">
               <mat-icon class="row-icon">{{ careIcon(reminder.careType) }}</mat-icon>
-              {{ reminder.careType | titlecase }}
+              {{ reminder.careType | t }}
             </p>
           </div>
           <app-read-aloud-button
@@ -101,12 +101,12 @@
             [text]="reminderReadText(reminder)"
           ></app-read-aloud-button>
         </div>
-        <p class="empty-note" *ngIf="!topTodayReminders.length">Nothing due today 🌿</p>
+        <p class="empty-note" *ngIf="!topTodayReminders.length">{{ 'Nothing due today 🌿' | t }}</p>
       </section>
 
       <!-- Recent scans -->
       <section class="dash-section" *ngIf="dashboard.recentScans.length">
-        <h2 class="section-heading">Recent scans</h2>
+        <h2 class="section-heading">{{ 'Recent scans' | t }}</h2>
         <div class="scans-strip">
           <div
             class="scan-card"
@@ -115,10 +115,10 @@
           >
             <img
               [src]="scan.photoUrl || placeholderImage"
-              [alt]="scan.plantNickname || 'Scan'"
+              [alt]="scan.plantNickname || ('Scan' | t)"
               class="scan-photo"
             />
-            <p class="scan-label">{{ scan.plantNickname || 'New species' }}</p>
+            <p class="scan-label">{{ scan.plantNickname || ('New species' | t) }}</p>
           </div>
         </div>
       </section>
@@ -136,7 +136,7 @@
   color="primary"
   class="identify-fab"
   (click)="openIdentifyDialog()"
-  aria-label="Identify a plant"
+  [attr.aria-label]="&#x27;Identify a plant&#x27; | t"
 >
   <mat-icon>add_a_photo</mat-icon>
 </button>

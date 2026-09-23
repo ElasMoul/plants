@@ -82,3 +82,94 @@ and eight real-database admin tests passed; production Classic build and admin l
 passed; nine Chromium admin journeys passed, with an additional successful modal
 visual run. Live preview frontend 4210 and backend 8190 healthy (UP, SPA 200).
 Backend process last started PID 9028; logs/pids are in target/admin-preview. No push.
+
+
+## 2026-09-23 — French user interface complete
+
+Created codex/plantpal-french-localization from clean dev after the owner merged admin.
+Implementation commit: e1932b1. Standard Angular user app now offers English/Français
+in the header (including before login) and settings. Translation catalog covers
+landing/auth, home/garden/species, plants, identification, reminders/treatments,
+chat controls, model settings, notifications, validation, accessibility labels and
+voice-test interface. No backend or database changes; no admin page translation.
+
+Preference is local to this browser origin (plantpal.language), defaults to English,
+and persists through login/logout. Selecting a language reloads the current page
+so Angular locale providers and eagerly constructed labels initialize consistently.
+French calendar/date/pagination/speech locales, document lang/dir, and plural rules
+are configured. Form hints grow to accommodate longer French text. Existing AI
+output, species descriptions, user notes/names, and unknown server errors retain
+their source language; UI language does not change AI prompts or PlantNet preferences.
+Atlas and Arabic remain future rollouts. Direction metadata admits rtl, but Arabic
+translation/plurals/layout validation are not implemented.
+
+Validation: production build passed (existing size/CommonJS warnings); 562 unit
+tests in 46 suites passed; touched TypeScript and new localization files passed
+ESLint; 12 Chromium journeys passed (3 French, 9 admin). Screenshot:
+docs/screenshots/french-plant-form.png. Calendar test selects a date before capturing
+the mobile form; native Escape timing during opening animation was not a reliable
+screenshot setup. Angular template audit found no untranslated static user text
+except the technical isSecureContext diagnostic field name.
+
+Preview processes were restarted after stopping between sessions: frontend 4210,
+backend 8190, logs/pids/proxy in backend/target/admin-preview. No push or merge.
+
+## 2026-09-23 — French AI content complete
+
+Implementation f5f913d on codex/plantpal-french-localization. Adds async persisted
+French presentation translations for existing/new identification, species, care and
+treatment prose; original domain records remain immutable. Native hosted DeepSeek
+is preferred, then configured Anthropic/Ollama. Translation batches consume AI quota,
+not scans; cached versions are reused. Chat requests carry en/fr into the shared
+system prompt for both streaming and buffered paths. Migration 036 applied locally.
+
+Private translations are owner-scoped; only public species detail prose is shared.
+Atomic cache claim, attempt fencing, ten-minute stale recovery, explicit retry with
+cooldown, bounded text/batches, and numeric/unit validation are covered. Frontend
+waits for jobs with progress/failure notices and display-only pipes. Diagram labels
+and read-aloud use translations. Fixed species direct-navigation service providers.
+
+Validation: 483 backend units, four translation integration tests, 566 frontend
+units, 14 Chromium journeys passed. Final production build and touched-TS lint
+passed; existing bundle/CommonJS warnings remain. Hosted DeepSeek synthetic-text
+check returned French and preserved Monstera deliciosa, 5 ml, 1 L and 7. Automatic
+approval review blocked exporting an existing saved identification for a live test;
+no such export occurred. Database pipeline was tested with mocked provider output.
+Preview remains frontend 4210/backend 8190. No push or merge; Arabic awaits owner testing.
+
+## 2026-09-23 — Arabic and compact selector ready for owner testing
+
+Implementation 816783c on codex/plantpal-french-localization. Selector displays
+EN / FR / AR without the previous symbol. Arabic catalog has 586 entries and
+placeholder/key parity with French. Uses Modern Standard Arabic, ar-MA locale,
+RTL document, logical layout properties, mirrored navigation arrows, LTR technical
+inputs, and Arabic counted forms (zero/one/two/few/many/other). Existing user text
+is preserved. Screenshot reviewed: docs/screenshots/arabic-plant-form.png.
+
+AI translation jobs now carry target language throughout scheduling/polling/retry;
+cache fingerprints separate French and Arabic. Migration 037 widens the language
+constraint while preserving existing French jobs. Arabic chat prompts shared by
+streaming and buffered paths. Arabic pending/failure/retry notices included.
+
+Validation: 567 frontend unit tests, 485 backend units, five database translation
+integration tests, seven language Chromium journeys and nine admin journeys passed.
+Production frontend/backend builds and localization lint passed; existing bundle
+size/CommonJS warnings remain. UI catalog generated using hosted DeepSeek with only
+static application labels, reviewed and corrected; no saved user content exported.
+Preview restarted to include new catalog/backend; migration 037 applied, backend
+8190 UP, frontend 4210 available. No push/merge. Owner explicitly wants testing
+before merge to dev; await that verdict.
+
+## 2026-09-23 — PR #159 formatting and checkout recovery
+
+Commit bdb92a4 fixes the five Java files rejected by CI Spotless. Ran unfiltered
+mvn spotless:apply spotless:check and full mvn verify -Ddependency.check.skip=true:
+unit/integration tests, coverage and formatting all passed. Do not treat a filtered
+formatter invocation or package/test as proof that CI verify passed.
+
+Checkout was blocked by untracked feature files left on older local main. Preserved
+all untracked files in stash named codex-preserve-main-files-before-pr159-format-fix,
+then switched to the PR branch. Preserved main's three unique local commits on
+codex/main-before-sync-20260923 before aligning inactive main with fetched origin/main.
+No files or commits discarded; do not blindly pop the stash over tracked feature files.
+PR: https://github.com/ElasMoul/plants/pull/159. Merge still awaits owner approval.

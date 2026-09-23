@@ -1,7 +1,7 @@
 <div class="page-container">
 
-  <h1 class="page-title">Care Schedule</h1>
-  <p class="page-subtitle">Stay on top of watering, feeding, and repotting.</p>
+  <h1 class="page-title">{{ 'Care Schedule' | t }}</h1>
+  <p class="page-subtitle">{{ 'Stay on top of watering, feeding, and repotting.' | t }}</p>
 
   <!-- Skeleton while loading -->
   <div *ngIf="loading" class="skeleton-grid">
@@ -24,22 +24,22 @@
 
     <!-- Active day filter -->
     <p class="filter-note" *ngIf="daySelection">
-      Showing reminders for <strong>{{ daySelection.label }}</strong>
-      <button type="button" class="filter-clear" (click)="onDaySelected(null)">Show all</button>
+      {{ 'Showing reminders for' | t }} <strong>{{ daySelection.label }}</strong>
+      <button type="button" class="filter-clear" (click)="onDaySelected(null)">{{ 'Show all' | t }}</button>
     </p>
 
     <!-- Empty state -->
     <div class="empty-state" *ngIf="!reminders.length">
       <mat-icon class="empty-icon">notifications_none</mat-icon>
-      <h2>No reminders yet</h2>
-      <p>Add a care reminder to start tracking watering, feeding, and repotting.</p>
+      <h2>{{ 'No reminders yet' | t }}</h2>
+      <p>{{ 'Add a care reminder to start tracking watering, feeding, and repotting.' | t }}</p>
     </div>
 
     <!-- Empty state — day filter active but nothing due that day -->
     <div class="empty-state" *ngIf="reminders.length && daySelection && !daySelection.reminders.length">
       <mat-icon class="empty-icon">event_available</mat-icon>
-      <h2>Nothing due {{ daySelection.label }}</h2>
-      <p>No reminders fall on this day.</p>
+      <h2>{{ 'Nothing due {0}' | t : [(daySelection.label)] }}</h2>
+      <p>{{ 'No reminders fall on this day.' | t }}</p>
     </div>
 
     <!-- Reminder cards — sorted by nextDueAt, overdue highlighted -->
@@ -63,7 +63,7 @@
       <div class="reminder-body">
         <p class="reminder-plant">{{ reminder.plantNickname }}</p>
         <p class="reminder-detail">
-          <ng-container *ngIf="!reminder.treatmentPlanId">{{ reminder.careType | titlecase }}</ng-container>
+          <ng-container *ngIf="!reminder.treatmentPlanId">{{ reminder.careType | t }}</ng-container>
           <a
             *ngIf="reminder.treatmentPlanId"
             class="treatment-chip"
@@ -71,13 +71,13 @@
             (click)="$event.stopPropagation()"
           >
             <mat-icon class="chip-icon">medical_services</mat-icon>
-            Step {{ reminder.stepOrder }} &middot; {{ reminder.treatmentPlanTitle }}
+            {{ 'Step {0} · {1}' | t : [(reminder.stepOrder), (reminder.treatmentPlanTitle | aiText)] }}
           </a>
           <ng-container *ngIf="isOverdue(reminder)">
-            &middot; Overdue by {{ daysOverdue(reminder) }} day{{ daysOverdue(reminder) !== 1 ? 's' : '' }}
+            {{ '· Overdue by {0} day{1}' | t : [(daysOverdue(reminder)), (daysOverdue(reminder) | pluralSuffix)] }}
           </ng-container>
           <ng-container *ngIf="!isOverdue(reminder)">
-            &middot; Due {{ reminder.nextDueAt | date:'MMM d' }}
+            {{ '· Due {0}' | t : [(reminder.nextDueAt | date:'mediumDate')] }}
           </ng-container>
         </p>
       </div>
@@ -88,7 +88,7 @@
         [class.done]="isDone(reminder)"
         [disabled]="completingId === reminder.id || isDone(reminder)"
         (click)="completeReminder(reminder, $event)"
-        [attr.aria-label]="isDone(reminder) ? 'Done' : 'Mark as done'"
+        [attr.aria-label]="isDone(reminder) ? ('Done' | t) : ('Mark as done' | t)"
       >
         <mat-icon>check</mat-icon>
       </button>
@@ -96,7 +96,7 @@
 
   </ng-container>
 
-  <button mat-fab color="primary" class="add-fab" aria-label="Add reminder" (click)="openCreateDialog()">
+  <button mat-fab color="primary" class="add-fab" [attr.aria-label]="&#x27;Add reminder&#x27; | t" (click)="openCreateDialog()">
     <mat-icon>add</mat-icon>
   </button>
 

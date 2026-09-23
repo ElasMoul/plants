@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PageEvent } from '@angular/material/paginator';
@@ -96,7 +97,7 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.snackBar.open('Failed to load your garden. Is the backend running?', 'Dismiss', { duration: 5000 });
+        this.snackBar.open(translate('Failed to load your garden. Is the backend running?'), translate('Dismiss'), { duration: 5000 });
         this.loading = false;
         this.cdr.markForCheck();
       },
@@ -120,7 +121,7 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.snackBar.open(
-            "Identification started — view it in the Identify tab.",
+            translate("Identification started — view it in the Identify tab."),
             undefined,
             { duration: 3000 },
           );
@@ -128,9 +129,9 @@ export class SpeciesListComponent implements OnInit, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0
-            ? 'Connection problem — check your internet and try again'
-            : 'Could not start identification. Please try again.';
-          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+            ? translate('Connection problem — check your internet and try again')
+            : translate('Could not start identification. Please try again.');
+          this.snackBar.open(message, translate('Dismiss'), { duration: 5000 });
         },
       });
   }

@@ -3,9 +3,9 @@
   <!-- Header -->
   <div class="list-header">
     <div>
-      <h1 class="garden-title">My Garden</h1>
+      <h1 class="garden-title">{{ 'My Garden' | t }}</h1>
       <p class="garden-subtitle" *ngIf="!loading">
-        You have {{ plants.length }} plant{{ plants.length !== 1 ? 's' : '' }} under your care.
+        {{ 'You have {0} plant{1} under your care.' | t : [(plants.length), (plants.length | pluralSuffix)] }}
       </p>
     </div>
   </div>
@@ -27,11 +27,11 @@
     <div class="empty-icon-wrap">
       <mat-icon class="empty-icon">local_florist</mat-icon>
     </div>
-    <h2 class="empty-title">Your garden awaits</h2>
-    <p class="empty-sub">Add your first plant to start tracking its care.</p>
+    <h2 class="empty-title">{{ 'Your garden awaits' | t }}</h2>
+    <p class="empty-sub">{{ 'Add your first plant to start tracking its care.' | t }}</p>
     <button mat-raised-button color="primary" (click)="openIdentifyDialog()" class="empty-btn">
       <mat-icon>add</mat-icon>
-      Add your first plant
+      {{ 'Add your first plant' | t }}
     </button>
   </div>
 
@@ -64,7 +64,7 @@
   color="primary"
   class="add-fab"
   (click)="openIdentifyDialog()"
-  aria-label="Add plant"
+  [attr.aria-label]="&#x27;Add plant&#x27; | t"
   data-testid="add-plant-btn"
 >
   <mat-icon>add</mat-icon>

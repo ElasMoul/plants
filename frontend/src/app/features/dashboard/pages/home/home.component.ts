@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
@@ -91,7 +92,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     const hour = new Date().getHours();
     const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
     const firstName = this.authService.getCurrentUser()?.firstName;
-    return firstName ? `Good ${period}, ${firstName}` : `Good ${period}`;
+    const greeting = translate(`Good ${period}`);
+    return firstName ? `${greeting}, ${firstName}` : greeting;
   }
 
   get hasAnyData(): boolean {
@@ -149,7 +151,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.snackBar.open(
-            'Identification started — view it in the Identify tab.',
+            translate('Identification started — view it in the Identify tab.'),
             undefined,
             { duration: 3000 },
           );
@@ -157,9 +159,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0
-            ? 'Connection problem — check your internet and try again'
-            : 'Could not start identification. Please try again.';
-          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+            ? translate('Connection problem — check your internet and try again')
+            : translate('Could not start identification. Please try again.');
+          this.snackBar.open(message, translate('Dismiss'), { duration: 5000 });
         },
       });
   }

@@ -6,7 +6,7 @@
     [checked]="batchMode"
     (change)="onBatchModeChange($event.checked)"
   >
-    Scan multiple plants
+    {{ 'Scan multiple plants' | t }}
   </mat-checkbox>
 
   <!-- Drop zone / click to browse -->
@@ -21,15 +21,15 @@
     (keydown.space)="fileInput.click()"
     role="button"
     tabindex="0"
-    aria-label="Upload plant photos"
+    [attr.aria-label]="&#x27;Upload plant photos&#x27; | t"
   >
     <div class="upload-icon-circle">
       <mat-icon class="upload-icon">local_florist</mat-icon>
     </div>
-    <p class="drop-primary">Upload a photo</p>
-    <p class="drop-secondary">Drag & drop, or <strong>click to browse</strong></p>
-    <p class="drop-hint" *ngIf="!batchMode">Up to 5 images · JPEG, PNG, WebP · Max 10 MB each</p>
-    <p class="drop-hint" *ngIf="batchMode">Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each</p>
+    <p class="drop-primary">{{ 'Upload a photo' | t }}</p>
+    <p class="drop-secondary">{{ 'Drag & drop, or' | t }} <strong>{{ 'click to browse' | t }}</strong></p>
+    <p class="drop-hint" *ngIf="!batchMode">{{ 'Up to 5 images · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
+    <p class="drop-hint" *ngIf="batchMode">{{ 'Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
   </div>
 
   <!-- Hidden file input -->
@@ -54,26 +54,26 @@
   <div class="preview-grid" *ngIf="entries.length">
     <div class="preview-card" *ngFor="let entry of entries; let i = index">
       <div class="img-wrapper">
-        <img [src]="entry.preview" [alt]="'Image ' + (i + 1)" class="preview-img" />
+        <img [src]="entry.preview" [alt]="('Image ' | t) + (i + 1)" class="preview-img" />
         <button
           mat-icon-button
           class="remove-btn"
           type="button"
           (click)="removeImage(i)"
-          [attr.aria-label]="'Remove image ' + (i + 1)"
+          [attr.aria-label]="('Remove image ' | t) + (i + 1)"
         >
           <mat-icon>close</mat-icon>
         </button>
       </div>
       <mat-form-field appearance="outline" class="organ-field" *ngIf="!batchMode">
-        <mat-label>Plant part</mat-label>
+        <mat-label>{{ 'Plant part' | t }}</mat-label>
         <mat-select [value]="entry.organ" (selectionChange)="onOrganChange(i, $event)">
-          <mat-option value="auto">Auto-detect</mat-option>
-          <mat-option value="flower">Flower</mat-option>
-          <mat-option value="leaf">Leaf</mat-option>
-          <mat-option value="fruit">Fruit</mat-option>
-          <mat-option value="bark">Bark</mat-option>
-          <mat-option value="habit">Habit (whole plant)</mat-option>
+          <mat-option value="auto">{{ 'Auto-detect' | t }}</mat-option>
+          <mat-option value="flower">{{ 'Flower' | t }}</mat-option>
+          <mat-option value="leaf">{{ 'Leaf' | t }}</mat-option>
+          <mat-option value="fruit">{{ 'Fruit' | t }}</mat-option>
+          <mat-option value="bark">{{ 'Bark' | t }}</mat-option>
+          <mat-option value="habit">{{ 'Habit (whole plant)' | t }}</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -81,13 +81,13 @@
 
   <!-- Optional plant link -->
   <mat-form-field appearance="outline" class="full-width mt-16" *ngIf="plants.length && !lockedPlantId && !batchMode">
-    <mat-label>Link to existing plant (optional)</mat-label>
+    <mat-label>{{ 'Link to existing plant (optional)' | t }}</mat-label>
     <mat-icon matPrefix>local_florist</mat-icon>
     <mat-select
       [value]="selectedPlantId"
       (selectionChange)="onPlantChange($event)"
     >
-      <mat-option [value]="undefined">None — identify without linking</mat-option>
+      <mat-option [value]="undefined">{{ 'None — identify without linking' | t }}</mat-option>
       <mat-option *ngFor="let plant of plants" [value]="plant.id">
         {{ plant.nickname }}<span *ngIf="plant.species"> ({{ plant.species }})</span>
       </mat-option>
@@ -104,25 +104,25 @@
       [attr.aria-expanded]="contextExpanded"
     >
       <mat-icon>{{ contextExpanded ? 'expand_less' : 'chat_bubble_outline' }}</mat-icon>
-      Add context <span class="context-optional">(optional)</span>
+      {{ 'Add context' | t }} <span class="context-optional">{{ '(optional)' | t }}</span>
     </button>
 
     <div class="context-body" *ngIf="contextExpanded">
-      <p class="context-helper">Tell the AI what to look for.</p>
+      <p class="context-helper">{{ 'Tell the AI what to look for.' | t }}</p>
       <p class="context-batch-hint" *ngIf="batchMode && contextText.trim()">
-        Context applies to all scans in this batch.
+        {{ 'Context applies to all scans in this batch.' | t }}
       </p>
       <div class="context-input-row">
         <mat-form-field appearance="outline" class="context-field">
-          <mat-label>What do you want to know?</mat-label>
+          <mat-label>{{ 'What do you want to know?' | t }}</mat-label>
           <textarea
             matInput
             [(ngModel)]="contextText"
             [maxlength]="maxContextChars"
             rows="3"
-            placeholder="e.g. This leaf is very yellow — is there a problem?"
+            [placeholder]="&#x27;e.g. This leaf is very yellow — is there a problem?&#x27; | t"
           ></textarea>
-          <mat-hint align="end">{{ contextCharsLeft }} chars remaining</mat-hint>
+          <mat-hint align="end">{{ '{0} chars remaining' | t : [(contextCharsLeft)] }}</mat-hint>
         </mat-form-field>
 
         <button
@@ -133,8 +133,8 @@
           [class.listening]="listening"
           [disabled]="!speechSecure"
           (click)="toggleListening()"
-          [attr.aria-label]="listening ? 'Stop listening' : 'Start voice input'"
-          [matTooltip]="!speechSecure ? 'Voice input requires HTTPS' : (listening ? 'Stop' : 'Speak')"
+          [attr.aria-label]="listening ? ('Stop listening' | t) : ('Start voice input' | t)"
+          [matTooltip]="!speechSecure ? ('Voice input requires HTTPS' | t) : (listening ? ('Stop' | t) : ('Speak' | t))"
         >
           <mat-icon>{{ listening ? 'stop_circle' : 'mic' }}</mat-icon>
         </button>
@@ -142,7 +142,7 @@
 
       <div class="listening-chip" *ngIf="listening">
         <mat-icon>mic</mat-icon>
-        Listening…
+        {{ 'Listening…' | t }}
       </div>
     </div>
   </div>

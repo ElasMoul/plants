@@ -15,19 +15,19 @@
   <div class="summary-bar">
     <span class="summary-item">
       <mat-icon>water_drop</mat-icon>
-      Water every {{ carePlan.wateringFrequencyDays }} days
+      {{ 'Water every {0} days' | t : [(carePlan.wateringFrequencyDays)] }}
     </span>
     <ng-container *ngIf="carePlan.fertilizingFrequencyDays > 0">
       <span class="summary-sep">·</span>
       <span class="summary-item">
         <mat-icon>grass</mat-icon>
-        Fertilize every {{ carePlan.fertilizingFrequencyDays }} days
+        {{ 'Fertilize every {0} days' | t : [(carePlan.fertilizingFrequencyDays)] }}
       </span>
     </ng-container>
     <span class="summary-sep">·</span>
     <span class="summary-item">
       <mat-icon>eco</mat-icon>
-      Repot every {{ carePlan.repottingFrequencyMonths }} months
+      {{ 'Repot every {0} months' | t : [(carePlan.repottingFrequencyMonths)] }}
     </span>
   </div>
 
@@ -45,11 +45,11 @@
 
   <!-- Beginner warnings -->
   <div class="warnings-section" *ngIf="carePlan.beginnerWarnings.length">
-    <p class="warnings-label">Watch out for</p>
+    <p class="warnings-label">{{ 'Watch out for' | t }}</p>
     <div class="warnings-list">
       <div *ngFor="let warning of carePlan.beginnerWarnings" class="warning-chip">
         <mat-icon>warning_amber</mat-icon>
-        <span>{{ warning }}</span>
+        <span>{{ warning | aiText }}</span>
       </div>
     </div>
   </div>

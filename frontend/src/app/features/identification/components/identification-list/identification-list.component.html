@@ -1,5 +1,5 @@
 <div class="list-section">
-  <h2 class="list-title">Your Identifications</h2>
+  <h2 class="list-title">{{ 'Your Identifications' | t }}</h2>
 
   <div class="list-loading" *ngIf="loading">
     <mat-progress-spinner diameter="28" mode="indeterminate"></mat-progress-spinner>
@@ -7,12 +7,12 @@
 
   <div class="list-error" *ngIf="!loading && loadError">
     <mat-icon color="warn">error_outline</mat-icon>
-    <span>Couldn't load your identifications.</span>
+    <span>{{ 'Couldn\'t load your identifications.' | t }}</span>
   </div>
 
   <div class="list-empty" *ngIf="!loading && !loadError && items.length === 0">
     <mat-icon>local_florist</mat-icon>
-    <span>No identifications yet — upload a photo to get started.</span>
+    <span>{{ 'No identifications yet — upload a photo to get started.' | t }}</span>
   </div>
 
   <div class="identification-rows" *ngIf="!loading && !loadError && items.length">
@@ -27,10 +27,10 @@
 
       <div class="row-body">
         <p class="row-name">
-          {{ item.commonName || item.scientificName || 'Identifying…' }}
+          {{ item.commonName || item.scientificName || ('Identifying…' | t) }}
         </p>
         <p class="row-date">
-          {{ item.createdAt | date:'MMM d, h:mm a' }}
+          {{ item.createdAt | date:'short' }}
           <span class="model-chip" *ngIf="modelLabel(item) as model">{{ model }}</span>
         </p>
       </div>
@@ -39,7 +39,7 @@
         <mat-icon *ngIf="item.status === 'PENDING'" class="spin-icon">sync</mat-icon>
         <mat-icon *ngIf="item.status === 'COMPLETED'">check_circle</mat-icon>
         <mat-icon *ngIf="item.status === 'FAILED'">error_outline</mat-icon>
-        {{ item.status }}
+        {{ item.status | t }}
       </span>
     </div>
   </div>

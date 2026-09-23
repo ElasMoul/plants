@@ -8,20 +8,20 @@
   <!-- PlantNet candidate chooser -->
   <ng-container *ngIf="!loading && match && hasCandidates">
 
-    <h2 class="step-title">What species is this?</h2>
+    <h2 class="step-title">{{ 'What species is this?' | t }}</h2>
     <p class="step-subtitle">
       {{ match.autoConfirmable && !showFullList
-          ? 'We\'re quite confident — confirm or choose differently.'
-          : 'Tap the species that matches your plant.' }}
+          ? ('We\'re quite confident — confirm or choose differently.' | t)
+          : ('Tap the species that matches your plant.' | t) }}
     </p>
 
     <!-- switchToProject nudge -->
     <div class="switch-nudge" *ngIf="match.switchToProject">
       <mat-icon class="nudge-icon">place</mat-icon>
       <span>
-        Better results may be available in the
-        <strong>{{ match.switchToProject }}</strong> flora — change it in
-        <a routerLink="/preferences" class="nudge-link">Preferences</a>.
+        {{ 'Better results may be available in the' | t }}
+        <strong>{{ match.switchToProject }}</strong> {{ 'flora — change it in' | t }}
+        <a routerLink="/preferences" class="nudge-link">{{ 'Preferences' | t }}</a>.
       </span>
     </div>
 
@@ -34,7 +34,7 @@
         (click)="!submitting && onConfirmCandidate(candidate)"
         tabindex="0"
         role="button"
-        [attr.aria-label]="'Confirm ' + candidate.scientificName"
+        [attr.aria-label]="('Confirm ' | t) + candidate.scientificName"
         (keydown.enter)="!submitting && onConfirmCandidate(candidate)"
         (keydown.space)="!submitting && onConfirmCandidate(candidate)">
 
@@ -89,7 +89,7 @@
     <!-- "Not this one" for auto-confirm collapsed view -->
     <div class="not-this-row" *ngIf="match.autoConfirmable && !showFullList">
       <button mat-button class="not-this-btn" [disabled]="submitting" (click)="onShowFullList()">
-        Not this one &rarr;
+        {{ 'Not this one →' | t }}
       </button>
     </div>
 
@@ -97,7 +97,7 @@
     <div class="rescan-row">
       <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
         <mat-icon>refresh</mat-icon>
-        None of these — re-scan
+        {{ 'None of these — re-scan' | t }}
       </button>
     </div>
 
@@ -114,21 +114,21 @@
   <mat-card class="step-card" *ngIf="!loading && match && !hasCandidates">
     <mat-card-content>
       <ng-container *ngIf="match.matched; else newSpecies">
-        <h2 class="step-title">Is this your plant's species?</h2>
+        <h2 class="step-title">{{ 'Is this your plant\'s species?' | t }}</h2>
         <p class="step-scientific-name">{{ match.scientificName }}</p>
         <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
       </ng-container>
       <ng-template #newSpecies>
         <ng-container *ngIf="match.scientificName; else unknownSpecies">
-          <h2 class="step-title">This looks like a new species</h2>
+          <h2 class="step-title">{{ 'This looks like a new species' | t }}</h2>
           <p class="step-scientific-name">{{ match.scientificName }}</p>
           <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
-          <p class="step-subtitle">We haven't seen this one in your garden before — add it?</p>
+          <p class="step-subtitle">{{ 'We haven\'t seen this one in your garden before — add it?' | t }}</p>
         </ng-container>
         <ng-template #unknownSpecies>
-          <h2 class="step-title">We couldn't identify a species</h2>
+          <h2 class="step-title">{{ 'We couldn\'t identify a species' | t }}</h2>
           <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
-          <p class="step-subtitle">Try a clearer photo so we can pin down the species.</p>
+          <p class="step-subtitle">{{ 'Try a clearer photo so we can pin down the species.' | t }}</p>
         </ng-template>
       </ng-template>
 
@@ -141,11 +141,11 @@
           [disabled]="submitting"
           (click)="onConfirmLegacy()">
           <mat-icon>check</mat-icon>
-          {{ match.matched ? 'Yes' : 'Yes, add it' }}
+          {{ match.matched ? ('Yes' | t) : ('Yes, add it' | t) }}
         </button>
         <button mat-stroked-button class="btn-pill" [disabled]="submitting" (click)="onRescan()">
           <mat-icon>refresh</mat-icon>
-          {{ match.matched || match.scientificName ? 'No, re-scan' : 'Re-scan' }}
+          {{ match.matched || match.scientificName ? ('No, re-scan' | t) : ('Re-scan' | t) }}
         </button>
       </div>
     </mat-card-content>
