@@ -1,3 +1,4 @@
+import { readLanguage } from './language.service';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
@@ -8,10 +9,9 @@ import { AiTranslationState } from './ai-translation-state.service';
 @Component({
   selector: 'app-ai-translation-notice', standalone: true, imports: [CommonModule],
   template: `<aside *ngIf="state.pending() || state.failed().length" role="status" aria-live="polite">
-    <span *ngIf="state.pending()">Préparation du texte IA en français…</span>
-    <span *ngIf="state.failed().length">La traduction est indisponible. Le texte original est affiché.
-      Vérifiez votre quota d’IA ou réessayez.</span>
-    <button *ngIf="state.failed().length" [disabled]="retrying" (click)="retry()">Réessayer la traduction</button>
+    <span *ngIf="state.pending()">{{ arabic ? 'جارٍ إعداد نص الذكاء الاصطناعي بالعربية…' : 'Préparation du texte IA en français…' }}</span>
+    <span *ngIf="state.failed().length">{{ arabic ? 'الترجمة غير متاحة. يُعرض النص الأصلي. تحقق من رصيد استخدام الذكاء الاصطناعي أو أعد المحاولة.' : 'La traduction est indisponible. Le texte original est affiché. Vérifiez votre quota d’IA ou réessayez.' }}</span>
+    <button *ngIf="state.failed().length" [disabled]="retrying" (click)="retry()">{{ arabic ? 'إعادة محاولة الترجمة' : 'Réessayer la traduction' }}</button>
   </aside>`,
   styles: [`aside { padding:12px 20px; margin:8px 16px; border-radius:12px; background:#f4edda;
     color:#423719; display:flex; gap:12px; flex-wrap:wrap; align-items:center; font-size:14px; }
@@ -19,6 +19,7 @@ import { AiTranslationState } from './ai-translation-state.service';
       padding:6px 12px; background:transparent; color:inherit; }`],
 })
 export class AiTranslationNoticeComponent {
+  readonly arabic = readLanguage() === 'ar';
   retrying = false;
   constructor(public readonly state: AiTranslationState, private readonly http: HttpClient) {}
   retry(): void {

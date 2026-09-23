@@ -114,4 +114,5 @@
              relativeToChangelogFile="false"/>
     <include file="db/changelog/migrations/035_user_management.sql"/>
     <include file="db/changelog/migrations/036_ai_translations.sql"/>
+    <include file="db/changelog/migrations/037_arabic_translations.sql"/>
 </databaseChangeLog>

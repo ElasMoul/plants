@@ -28,7 +28,7 @@ async function userSession(page: Page) {
 test('switches languages before login and retains the choice after a reload', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByText('Sign in to PlantPal')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Language / Langue' }).selectOption('fr');
+  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('fr');
   await expect(page.getByText('Connexion à PlantPal')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await page.getByTestId('login-email').fill('invalid');
@@ -36,7 +36,7 @@ test('switches languages before login and retains the choice after a reload', as
   await expect(page.getByText('Saisissez une adresse e-mail valide')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Connexion à PlantPal')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Language / Langue' }).selectOption('en');
+  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('en');
   await expect(page.getByText('Sign in to PlantPal')).toBeVisible();
 });
 
@@ -112,4 +112,57 @@ test('translation failure displays the original with a retry control', async ({ 
   await expect(page.getByText('Original description.', { exact: true })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('Le texte original est affiché');
   await expect(page.getByRole('button', { name: 'Réessayer la traduction' })).toBeVisible();
+});
+
+
+test('Arabic selector, RTL forms and calendar work on mobile and switching back restores LTR', async ({ page }) => {
+  await page.goto('/login');
+  const selector = page.getByRole('combobox', { name: 'Language / Langue / اللغة' });
+  await expect(selector.locator('option')).toHaveText(['EN', 'FR', 'AR']);
+  await expect(page.locator('app-language-switch')).not.toContainText('◎');
+  await selector.selectOption('ar');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.getByText('تسجيل الدخول إلى PlantPal')).toBeVisible();
+  await page.getByTestId('login-email').fill('reader@example.test');
+  await expect(page.getByTestId('login-email')).toHaveCSS('direction', 'ltr');
+  await userSession(page);
+  await page.goto('/plants/new');
+  await page.getByTestId('plant-nickname-input').fill('نبتتي Monstera');
+  await expect(page.getByTestId('plant-nickname-input')).toHaveValue('نبتتي Monstera');
+  await page.locator('mat-datepicker-toggle button').click();
+  await expect(page.locator('mat-calendar')).toContainText(/[\u0600-\u06ff]/);
+  await expect(page.locator('mat-calendar')).toHaveCSS('direction', 'rtl');
+  await page.locator('mat-calendar .mat-calendar-body-cell').first().click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator('mat-calendar')).not.toBeVisible();
+  await expect(page.locator('.cdk-overlay-pane')).toHaveCount(0);
+  await page.screenshot({ path: '../docs/screenshots/arabic-plant-form.png', fullPage: true });
+  for (const route of ['/home', '/garden', '/reminders', '/preferences']) {
+    await page.goto(route);
+    await expect(page.locator('h1, h2').first()).toContainText(/[\u0600-\u06ff]/);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).first().selectOption('en');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+});
+
+test('Arabic AI text uses the Arabic target and keeps scientific names and quantities', async ({ page }) => {
+  await userSession(page);
+  await page.addInitScript(() => localStorage.setItem('plantpal.language', 'ar'));
+  let language = '';
+  await page.route('**/api/v1/species/79', async route => {
+    language = route.request().headers()['x-content-language'];
+    await route.fulfill({ json: { success: true, data: {
+      id: 79, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
+      description: 'Water every 7 days with 100 ml.', careCards: [],
+    }, localization: { id: 'species-ar', language: 'ar', status: 'READY', texts: {
+      'Water every 7 days with 100 ml.': 'اسقِ كل 7 أيام بكمية 100 ml.',
+    } } } });
+  });
+  await page.goto('/garden/species/79');
+  await expect(page.getByText('اسقِ كل 7 أيام بكمية 100 ml.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Monstera deliciosa', exact: true })).toBeVisible();
+  expect(language).toBe('ar');
 });

@@ -9,12 +9,12 @@ export function rememberAiTexts(texts: Record<string, string>): void {
 
 /** Display-only: source DTOs remain unchanged for domain actions and requests. */
 export function aiText(source: string | null | undefined): string {
-  return source && readLanguage() === 'fr' ? translatedTexts.get(source) ?? source : source ?? '';
+  return source && readLanguage() !== 'en' ? translatedTexts.get(source) ?? source : source ?? '';
 }
 
 /** Translate flowchart labels, never node identifiers, connections, or executable syntax. */
 export function aiDiagram(source: string): string {
-  if (readLanguage() !== 'fr') return source;
+  if (readLanguage() === 'en') return source;
   const label = (raw: string) => aiText(raw.trim().replace(/^"|"$/g, ''))
     .replace(/["\r\n]/g, "'").replace(/</g, '(').replace(/>/g, ')');
   return source.replace(/([A-Za-z_][\w-]*\s*[[({])([^\][{}()\n]+)([\])}])/g,

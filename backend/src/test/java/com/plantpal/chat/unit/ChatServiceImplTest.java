@@ -84,6 +84,17 @@ class ChatServiceImplTest {
   }
 
   @Test
+  void arabicChatAddsLanguageToTheProviderSystemPrompt() {
+    when(anthropicClient.isAvailable()).thenReturn(true);
+    when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
+    when(anthropicClient.chat(any(), any())).thenReturn("مرحبًا");
+    var french = request("Help with my garden");
+    french.setLanguage("ar");
+    assertThat(chatService.chat(french, USER_ID).getReply()).isEqualTo("مرحبًا");
+    verify(anthropicClient).chat(org.mockito.ArgumentMatchers.contains("Respond in Modern Standard Arabic"), any());
+  }
+
+  @Test
   void selectedNativeDeepSeekServesChatEvenWhenOtherProvidersAreAvailable() {
     var user =
         com.plantpal.user.entity.User.builder()

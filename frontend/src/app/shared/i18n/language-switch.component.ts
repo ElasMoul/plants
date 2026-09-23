@@ -4,10 +4,11 @@ import { LanguageService } from './language.service';
 @Component({
   selector: 'app-language-switch',
   standalone: true,
-  template: `<label class="language-switch"><span aria-hidden="true">◎</span>
-    <select aria-label="Language / Langue" [value]="language.language" (change)="language.select($any($event.target).value)">
-      <option value="en" lang="en">English</option>
-      <option value="fr" lang="fr">Français</option>
+  template: `<label class="language-switch">
+    <select aria-label="Language / Langue / اللغة" [value]="language.language" (change)="language.select($any($event.target).value)">
+      <option value="en" lang="en" title="English">EN</option>
+      <option value="fr" lang="fr" title="Français">FR</option>
+      <option value="ar" lang="ar" title="العربية">AR</option>
     </select></label>`,
   styles: [`.language-switch { display:flex; align-items:center; gap:4px; margin-inline:8px; }
     select { font:inherit; font-size:14px; color:inherit; background:transparent; border:1px solid #7a967f;

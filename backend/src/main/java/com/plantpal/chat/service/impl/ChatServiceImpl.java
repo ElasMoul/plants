@@ -203,7 +203,9 @@ public class ChatServiceImpl implements ChatService {
         + historyBlock
         + ("fr".equals(request.getLanguage())
             ? "\nRespond in French. Preserve scientific names, quantities, units and safety warnings."
-            : "\nRespond in English. Preserve scientific names, quantities, units and safety warnings.");
+            : "ar".equals(request.getLanguage())
+                ? "\nRespond in Modern Standard Arabic. Preserve scientific names, quantities, units and safety warnings."
+                : "\nRespond in English. Preserve scientific names, quantities, units and safety warnings.");
   }
 
   /**

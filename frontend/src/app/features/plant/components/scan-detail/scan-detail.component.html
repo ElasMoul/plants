@@ -17,7 +17,7 @@
     <!-- Sticky header -->
     <div class="scan-header">
       <button mat-icon-button class="back-btn" (click)="goBack()" [attr.aria-label]="&#x27;Back to scans&#x27; | t">
-        <mat-icon>arrow_back</mat-icon>
+        <mat-icon class="directional-icon">arrow_back</mat-icon>
       </button>
       <div class="header-meta">
         <div class="header-date">{{ scan.createdAt | date:'mediumDate' }}</div>

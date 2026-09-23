@@ -50,10 +50,11 @@ public class TranslationResponseAdvice implements ResponseBodyAdvice<Object> {
       Class<? extends HttpMessageConverter<?>> converter,
       ServerHttpRequest request,
       ServerHttpResponse response) {
+    String language = request.getHeaders().getFirst("X-Content-Language");
     if (!(body instanceof ApiResponse<?> api)
         || !api.isSuccess()
         || api.getData() == null
-        || !"fr".equals(request.getHeaders().getFirst("X-Content-Language"))) return body;
+        || !("fr".equals(language) || "ar".equals(language))) return body;
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !(auth.getPrincipal() instanceof User user)) return body;
     ObjectNode envelope = mapper.valueToTree(body);
@@ -63,11 +64,11 @@ public class TranslationResponseAdvice implements ResponseBodyAdvice<Object> {
       boolean shared =
           request.getURI().getPath().matches("/api/v1/species/\\d+(?:/regenerate-description)?");
       envelope.set(
-          "localization", mapper.valueToTree(translations.prepare(texts, user.getId(), shared)));
+          "localization", mapper.valueToTree(translations.prepare(texts, user.getId(), shared, language)));
     } catch (RuntimeException unavailable) {
       envelope.set(
           "localization",
-          mapper.valueToTree(new TranslationResult("", "fr", "FAILED", java.util.Map.of())));
+          mapper.valueToTree(new TranslationResult("", language, "FAILED", java.util.Map.of())));
     }
     // A translated response must never enter a shared HTTP cache.
     response.getHeaders().setCacheControl("private, no-store");

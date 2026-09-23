@@ -1,8 +1,9 @@
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable } from '@angular/core';
 import { FR } from './fr';
+import { AR } from './ar';
 
-export type Language = 'en' | 'fr';
+export type Language = 'en' | 'fr' | 'ar';
 const STORAGE_KEY = 'plantpal.language';
 const EN_LABELS: Readonly<Record<string, string>> = {
   WATERING: 'Watering', LIGHT: 'Light', HUMIDITY: 'Humidity', TEMPERATURE: 'Temperature',
@@ -11,15 +12,17 @@ const EN_LABELS: Readonly<Record<string, string>> = {
 };
 export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: string; direction: 'ltr' | 'rtl' }> = [
   { code: 'en', label: 'English', locale: 'en-US', direction: 'ltr' },
+  { code: 'ar', label: 'العربية', locale: 'ar-MA', direction: 'rtl' },
   { code: 'fr', label: 'Français', locale: 'fr-FR', direction: 'ltr' },
 ];
 
 export function readLanguage(): Language {
-  try { return localStorage.getItem(STORAGE_KEY) === 'fr' ? 'fr' : 'en'; }
+  try { const value = localStorage.getItem(STORAGE_KEY); return value === 'fr' || value === 'ar' ? value : 'en'; }
   catch { return 'en'; }
 }
 
 export function pluralSuffix(count: number): string {
+  if (readLanguage() === 'ar') return '';
   return new Intl.PluralRules(readLanguage()).select(count) === 'one' ? '' : 's';
 }
 
@@ -27,7 +30,13 @@ export function pluralSuffix(count: number): string {
 export function translate(message: string, values: readonly unknown[] = []): string {
   const summary = /^(\d+) issue\(s\)$/.exec(message);
   if (summary && readLanguage() === 'fr') return `${summary[1]} problème${pluralSuffix(Number(summary[1]))}`;
-  const text = readLanguage() === 'fr' ? FR[message] ?? message : EN_LABELS[message] ?? message;
+  if (readLanguage() === 'ar') {
+    if (summary) return arabicCount(Number(summary[1]), 'issue');
+    const counted = arabicCountMessage(message, Number(values[0]));
+    if (counted !== undefined) return counted;
+  }
+  const catalog = readLanguage() === 'ar' ? AR : readLanguage() === 'fr' ? FR : EN_LABELS;
+  const text = catalog[message] ?? message;
   return text.replace(/\{(\d+)\}/g, (match, index: string) =>
     Number(index) < values.length ? String(values[Number(index)] ?? '') : match);
 }
@@ -49,5 +58,32 @@ export class LanguageService {
     catch { return; }
     // Reinitialize Angular and Material locale providers, including lazy-loaded calendars.
     window.location.reload();
+  }
+}
+
+
+function arabicCount(count: number, kind: 'plant' | 'tip' | 'day' | 'issue'): string {
+  const forms = {
+    plant: ['لا نباتات', 'نبتة واحدة', 'نبتتان', 'نباتات', 'نبتة'],
+    tip: ['لا نصائح', 'نصيحة واحدة', 'نصيحتان', 'نصائح', 'نصيحة'],
+    day: ['0 يوم', 'يوم واحد', 'يومان', 'أيام', 'يوم'],
+    issue: ['لا مشكلات', 'مشكلة واحدة', 'مشكلتان', 'مشكلات', 'مشكلة'],
+  }[kind];
+  const plural = new Intl.PluralRules('ar').select(count);
+  if (plural === 'zero') return forms[0];
+  if (plural === 'one') return forms[1];
+  if (plural === 'two') return forms[2];
+  return `${count} ${forms[plural === 'few' ? 3 : 4]}`;
+}
+
+function arabicCountMessage(message: string, count: number): string | undefined {
+  switch (message) {
+    case '{0} plant{1}': return arabicCount(count, 'plant');
+    case '{0} tip{1}': return arabicCount(count, 'tip');
+    case 'You have {0} plant{1} under your care.': return `في رعايتك: ${arabicCount(count, 'plant')}.`;
+    case 'Overdue by {0} day{1}': return `مدة التأخير: ${arabicCount(count, 'day')}`;
+    case '· Overdue by {0} day{1}': return `· مدة التأخير: ${arabicCount(count, 'day')}`;
+    case 'Next water: {0} day{1}': return `المدة حتى الري التالي: ${arabicCount(count, 'day')}`;
+    default: return undefined;
   }
 }

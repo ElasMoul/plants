@@ -222,3 +222,13 @@ h6 {
     overflow: visible;
   }
 }
+
+// Arabic text flows RTL; user content and technical inputs keep their own direction.
+html[dir='rtl'] body { font-family: Tahoma, Arial, sans-serif; }
+html[dir='rtl'] input[type='email'], html[dir='rtl'] input[type='url'],
+html[dir='rtl'] input[type='password'], html[dir='rtl'] pre, html[dir='rtl'] code {
+  direction: ltr; text-align: left; unicode-bidi: isolate;
+}
+html[dir='rtl'] .mat-icon { letter-spacing: normal; }
+
+html[dir='rtl'] .directional-icon { transform: scaleX(-1); }

@@ -22,7 +22,7 @@ public class ChatRequest {
   @Schema(example = "Why are my monstera's leaves turning yellow?")
   private String message;
 
-  @jakarta.validation.constraints.Pattern(regexp = "en|fr")
+  @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
   private String language;
 
   private Long plantId;

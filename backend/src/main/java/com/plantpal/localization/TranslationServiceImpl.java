@@ -36,22 +36,24 @@ public class TranslationServiceImpl implements TranslationService {
   }
 
   @Override
-  public TranslationResult prepare(List<String> texts, Long userId, boolean shared) {
-    if (texts.isEmpty()) return new TranslationResult("", "fr", "READY", Map.of());
+  public TranslationResult prepare(List<String> texts, Long userId, boolean shared, String language) {
+    if (!List.of("fr", "ar").contains(language)) throw new IllegalArgumentException("Unsupported language");
+    if (texts.isEmpty()) return new TranslationResult("", language, "READY", Map.of());
     String source = encode(texts);
-    String id = fingerprint((shared ? "species" : userId.toString()) + ":fr:v1:" + source);
+    String id = fingerprint((shared ? "species" : userId.toString()) + ":" + language + ":v1:" + source);
     int inserted =
         jdbc.update(
             """
         INSERT INTO ai_translations(id, owner_id, language, source_text, status, created_by, updated_by)
-        VALUES (?, ?, 'fr', ?, 'PENDING', ?, ?) ON CONFLICT DO NOTHING
+        VALUES (?, ?, ?, ?, 'PENDING', ?, ?) ON CONFLICT DO NOTHING
         """,
             id,
             shared ? null : userId,
+            language,
             source,
             userId.toString(),
             userId.toString());
-    if (inserted == 1) schedule(id, texts, userId, 1);
+    if (inserted == 1) schedule(id, texts, userId, 1, language);
     return get(id, userId);
   }
 
@@ -60,11 +62,11 @@ public class TranslationServiceImpl implements TranslationService {
     Row row = find(id, userId);
     if ("PENDING".equals(row.status()) && row.ageSeconds() > Duration.ofMinutes(10).toSeconds()) {
       fail(id, row.attempt());
-      return new TranslationResult(id, "fr", "FAILED", Map.of());
+      return new TranslationResult(id, row.language(), "FAILED", Map.of());
     }
     Map<String, String> result =
         "READY".equals(row.status()) ? decodeMap(row.translated()) : Map.of();
-    return new TranslationResult(id, "fr", row.status(), result);
+    return new TranslationResult(id, row.language(), row.status(), result);
   }
 
   @Override
@@ -79,7 +81,7 @@ public class TranslationServiceImpl implements TranslationService {
             userId.toString(),
             id,
             row.attempt());
-    if (changed == 1) schedule(id, decodeList(row.source()), userId, row.attempt() + 1);
+    if (changed == 1) schedule(id, decodeList(row.source()), userId, row.attempt() + 1, row.language());
     return get(id, userId);
   }
 
@@ -88,29 +90,29 @@ public class TranslationServiceImpl implements TranslationService {
         jdbc.query(
             """
         SELECT status, source_text, translated_text, attempt,
-        extract(epoch from now()-updated_at) AS age FROM ai_translations
+        extract(epoch from now()-updated_at) AS age, language FROM ai_translations
         WHERE id=? AND (owner_id=? OR owner_id IS NULL)
         """,
             (rs, n) ->
                 new Row(
-                    rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getLong(5)),
+                    rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getLong(5), rs.getString(6)),
             id,
             userId);
     if (rows.isEmpty()) throw new ResourceNotFoundException("Translation not found");
     return rows.get(0);
   }
 
-  private void schedule(String id, List<String> texts, Long userId, int attempt) {
+  private void schedule(String id, List<String> texts, Long userId, int attempt, String language) {
     try {
-      executor.execute(() -> generate(id, texts, userId, attempt));
+      executor.execute(() -> generate(id, texts, userId, attempt, language));
     } catch (RuntimeException rejected) {
       fail(id, attempt);
     }
   }
 
-  private void generate(String id, List<String> texts, Long userId, int attempt) {
+  private void generate(String id, List<String> texts, Long userId, int attempt, String language) {
     try {
-      Map<String, String> result = client.translate(texts, userId);
+      Map<String, String> result = client.translate(texts, userId, language);
       jdbc.update(
           """
           UPDATE ai_translations SET status='READY', translated_text=?, updated_at=now()
@@ -167,5 +169,5 @@ public class TranslationServiceImpl implements TranslationService {
   }
 
   private record Row(
-      String status, String source, String translated, int attempt, long ageSeconds) {}
+      String status, String source, String translated, int attempt, long ageSeconds, String language) {}
 }

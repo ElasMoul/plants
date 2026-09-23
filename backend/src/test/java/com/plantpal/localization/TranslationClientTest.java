@@ -20,6 +20,15 @@ class TranslationClientTest {
           provider, mock(AnthropicClient.class), mock(OllamaClient.class), mapper, usage);
 
   @Test
+  void requestsArabicAndPreservesLatinUnitsAndNumbers() throws Exception {
+    when(provider.isAvailable()).thenReturn(true);
+    when(provider.chat(anyString(), anyString())).thenReturn("[\"استخدم 5 ml كل 7 أيام.\"]");
+    assertThat(client.translate(List.of("Use 5 ml every 7 days."), 4L, "ar"))
+        .containsEntry("Use 5 ml every 7 days.", "استخدم 5 ml كل 7 أيام.");
+    verify(provider).chat(contains("Modern Standard Arabic"), anyString());
+  }
+
+  @Test
   void acceptsFrenchProseWithoutChangingDosages() throws Exception {
     var source = List.of("Mix 5 ml in 1 L. Repeat after 7 days.");
     var result =
@@ -48,7 +57,7 @@ class TranslationClientTest {
   void usesNativeDeepSeekAndCountsOnlyTheTranslationCall() throws Exception {
     when(provider.isAvailable()).thenReturn(true);
     when(provider.chat(anyString(), anyString())).thenReturn("[\"Arrosez tous les 7 jours.\"]");
-    assertThat(client.translate(List.of("Water every 7 days."), 4L))
+    assertThat(client.translate(List.of("Water every 7 days."), 4L, "fr"))
         .containsEntry("Water every 7 days.", "Arrosez tous les 7 jours.");
     verify(usage).consumeAi(4L, false);
     verify(provider).chat(contains("French"), contains("Water every 7 days."));
@@ -57,7 +66,7 @@ class TranslationClientTest {
   @Test
   void quotaFailureNeverCallsTheProvider() {
     doThrow(new IllegalStateException("quota")).when(usage).consumeAi(4L, false);
-    assertThatThrownBy(() -> client.translate(List.of("Water."), 4L))
+    assertThatThrownBy(() -> client.translate(List.of("Water."), 4L, "fr"))
         .isInstanceOf(IllegalStateException.class);
     verifyNoInteractions(provider);
   }

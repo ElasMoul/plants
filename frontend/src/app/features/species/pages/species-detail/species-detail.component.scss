@@ -38,7 +38,7 @@
 .hero-back {
   position: absolute;
   top: 14px;
-  left: 14px;
+  inset-inline-start: 14px;
   color: #fff !important;
   background: rgba(0, 0, 0, 0.32) !important;
   z-index: 2;
@@ -46,8 +46,8 @@
 
 .hero-text {
   position: absolute;
-  left: 20px;
-  right: 20px;
+  inset-inline-start: 20px;
+  inset-inline-end: 20px;
   bottom: 18px;
   z-index: 2;
   color: #fff;

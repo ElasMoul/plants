@@ -11,7 +11,7 @@
     <h2 class="state-title">{{ 'Treatment not found' | t }}</h2>
     <p class="state-subtitle">{{ 'It may have been removed, or you don\'t have access to it.' | t }}</p>
     <button mat-stroked-button type="button" class="btn-pill" routerLink="/garden">
-      <mat-icon>arrow_back</mat-icon>
+      <mat-icon class="directional-icon">arrow_back</mat-icon>
       {{ 'Back to garden' | t }}
     </button>
   </div>
@@ -25,7 +25,7 @@
         <div class="hero-overlay"></div>
 
         <button mat-icon-button class="hero-back" (click)="goToPlant()" [attr.aria-label]="&#x27;Back to plant&#x27; | t">
-          <mat-icon>arrow_back</mat-icon>
+          <mat-icon class="directional-icon">arrow_back</mat-icon>
         </button>
 
         <div class="hero-text">

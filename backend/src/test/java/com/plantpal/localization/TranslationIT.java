@@ -51,7 +51,7 @@ class TranslationIT extends AbstractIntegrationTest {
   void setup() throws Exception {
     owner = user();
     other = user();
-    when(client.translate(anyList(), anyLong()))
+    when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenAnswer(
             invocation -> {
               List<String> texts = invocation.getArgument(0);
@@ -62,13 +62,13 @@ class TranslationIT extends AbstractIntegrationTest {
 
   @Test
   void persistsAndDeduplicatesTranslationsButInvalidatesChangedSource() throws Exception {
-    var first = service.prepare(List.of("Water every 7 days."), owner.getId(), false);
+    var first = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "fr");
     ready(first.id(), owner);
-    var cached = service.prepare(List.of("Water every 7 days."), owner.getId(), false);
+    var cached = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "fr");
     assertThat(cached.id()).isEqualTo(first.id());
     assertThat(cached.texts()).containsKey("Water every 7 days.");
-    verify(client, times(1)).translate(anyList(), eq(owner.getId()));
-    var changed = service.prepare(List.of("Water every 14 days."), owner.getId(), false);
+    verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
+    var changed = service.prepare(List.of("Water every 14 days."), owner.getId(), false, "fr");
     assertThat(changed.id()).isNotEqualTo(first.id());
     ready(changed.id(), owner);
     assertThatThrownBy(() -> service.get(first.id(), other.getId()))
@@ -78,17 +78,17 @@ class TranslationIT extends AbstractIntegrationTest {
   @Test
   void sharesSpeciesTranslationsAcrossUsers() throws Exception {
     var first =
-        service.prepare(List.of("Shared species " + UUID.randomUUID()), owner.getId(), true);
+        service.prepare(List.of("Shared species " + UUID.randomUUID()), owner.getId(), true, "fr");
     ready(first.id(), owner);
     assertThat(service.get(first.id(), other.getId()).texts()).isNotEmpty();
-    verify(client, times(1)).translate(anyList(), anyLong());
+    verify(client, times(1)).translate(anyList(), anyLong(), eq("fr"));
   }
 
   @Test
   void failureIsExplicitAndRetryUsesSameJobWithoutRepeatingDomainGeneration() throws Exception {
-    when(client.translate(anyList(), anyLong()))
+    when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenThrow(new IllegalStateException("provider unavailable"));
-    var result = service.prepare(List.of("Retry source"), owner.getId(), false);
+    var result = service.prepare(List.of("Retry source"), owner.getId(), false, "fr");
     await()
         .atMost(Duration.ofSeconds(5))
         .untilAsserted(
@@ -96,7 +96,7 @@ class TranslationIT extends AbstractIntegrationTest {
     jdbc.update(
         "UPDATE ai_translations SET updated_at=now()-interval '20 seconds' WHERE id=?",
         result.id());
-    doReturn(Map.of("Retry source", "Texte traduit")).when(client).translate(anyList(), anyLong());
+    doReturn(Map.of("Retry source", "Texte traduit")).when(client).translate(anyList(), anyLong(), eq("fr"));
     service.retry(result.id(), owner.getId());
     ready(result.id(), owner);
     assertThat(service.get(result.id(), owner.getId()).texts())
@@ -126,6 +126,24 @@ class TranslationIT extends AbstractIntegrationTest {
             jdbc.queryForObject(
                 "SELECT health_notes FROM identifications WHERE id=?", String.class, id))
         .isEqualTo("Water every 7 days.");
+  }
+
+  @Test
+  void arabicAndFrenchHaveSeparateCachesAndRetryKeepsArabic() throws Exception {
+    when(client.translate(anyList(), anyLong(), eq("ar")))
+        .thenReturn(Map.of("Water every 7 days.", "اسقِ كل 7 أيام."));
+    var french = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "fr");
+    var arabic = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "ar");
+    ready(french.id(), owner);
+    ready(arabic.id(), owner);
+    assertThat(arabic.id()).isNotEqualTo(french.id());
+    assertThat(service.get(arabic.id(), owner.getId()).language()).isEqualTo("ar");
+    assertThat(service.get(arabic.id(), owner.getId()).texts())
+        .containsEntry("Water every 7 days.", "اسقِ كل 7 أيام.");
+    jdbc.update("UPDATE ai_translations SET status='FAILED', updated_at=now()-interval '20 seconds' WHERE id=?", arabic.id());
+    service.retry(arabic.id(), owner.getId());
+    ready(arabic.id(), owner);
+    verify(client, times(2)).translate(anyList(), eq(owner.getId()), eq("ar"));
   }
 
   private void ready(String id, User user) {

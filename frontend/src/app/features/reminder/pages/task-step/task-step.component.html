@@ -10,7 +10,7 @@
     <mat-icon class="error-icon">report_problem</mat-icon>
     <p>{{ 'Step not found.' | t }}</p>
     <button mat-stroked-button type="button" class="btn-pill" (click)="goBack()">
-      <mat-icon>arrow_back</mat-icon>
+      <mat-icon class="directional-icon">arrow_back</mat-icon>
       {{ 'Go back' | t }}
     </button>
   </div>
@@ -20,7 +20,7 @@
 
     <div class="step-header">
       <button mat-icon-button type="button" class="back-btn" (click)="goBack()" [attr.aria-label]="&#x27;Back&#x27; | t">
-        <mat-icon>arrow_back</mat-icon>
+        <mat-icon class="directional-icon">arrow_back</mat-icon>
       </button>
       <div class="step-title-block">
         <p class="step-order" *ngIf="step.stepOrder">{{ 'Step {0}' | t : [(step.stepOrder)] }}</p>

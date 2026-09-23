@@ -12,7 +12,7 @@ mat-dialog-content {
 
 .step-detail-list {
   margin: 0 0 16px;
-  padding-left: 22px;
+  padding-inline-start: 22px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -21,7 +21,7 @@ mat-dialog-content {
     font-size: 0.92rem;
     color: var(--color-text-secondary);
     line-height: 1.5;
-    padding-left: 4px;
+    padding-inline-start: 4px;
 
     &::marker {
       font-weight: 700;

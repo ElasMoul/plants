@@ -42,7 +42,7 @@
 
 .sticky-header.collapsed .hero-text {
   transition: all 0.25s ease;
-  left: 65px;
+  inset-inline-start: 65px;
 }
 
 .hero-img {
@@ -67,13 +67,13 @@
 
 .hero-back {
   top: 14px;
-  left: 14px;
+  inset-inline-start: 14px;
 }
 
 .hero-actions {
   position: absolute;
   top: 14px;
-  right: 60px;
+  inset-inline-end: 60px;
   display: flex;
   gap: 8px;
   z-index: 2;
@@ -81,8 +81,8 @@
 
 .hero-text {
   position: absolute;
-  left: 20px;
-  right: 20px;
+  inset-inline-start: 20px;
+  inset-inline-end: 20px;
   bottom: 18px;
   z-index: 2;
   color: #fff;
@@ -139,7 +139,7 @@
 }
 
 .more-actions-btn {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .active-section-btn {
@@ -424,7 +424,7 @@ mat-divider {
 
 .new-scan-fab {
   position: fixed;
-  right: 20px;
+  inset-inline-end: 20px;
   bottom: 84px;
   z-index: 20;
 }

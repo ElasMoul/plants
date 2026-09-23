@@ -15,7 +15,7 @@
         <div class="hero-overlay"></div>
 
         <button mat-icon-button class="hero-back" routerLink="/garden" [attr.aria-label]="&#x27;Back to garden&#x27; | t">
-          <mat-icon>arrow_back</mat-icon>
+          <mat-icon class="directional-icon">arrow_back</mat-icon>
         </button>
 
         <div class="hero-actions">
@@ -138,7 +138,7 @@
                 <span class="context-text">{{ scan.userContext | slice:0:80 }}{{ scan.userContext.length > 80 ? '…' : '' }}</span>
               </div>
             </div>
-            <mat-icon class="scan-chevron">chevron_right</mat-icon>
+            <mat-icon class="scan-chevron directional-icon">chevron_right</mat-icon>
           </div>
         </div>
 

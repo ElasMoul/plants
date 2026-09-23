@@ -17,11 +17,11 @@ export class AiLanguageInterceptor implements HttpInterceptor {
   constructor(private readonly state: AiTranslationState) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    if (readLanguage() !== 'fr' || request.responseType !== 'json'
+    if (readLanguage() === 'en' || request.responseType !== 'json'
         || !/\/api\/v1\/(identifications|species|treatments|treatment-plans|reminders|care|plants)(?:\/|\?|$)/.test(request.url)) {
       return next.handle(request);
     }
-    const localized = request.clone({ setHeaders: { 'X-Content-Language': 'fr' } });
+    const localized = request.clone({ setHeaders: { 'X-Content-Language': readLanguage() } });
     return next.handle(localized).pipe(switchMap(event => {
       if (!(event instanceof HttpResponse)) return of(event);
       const job = (event.body as { localization?: Translation } | null)?.localization;
