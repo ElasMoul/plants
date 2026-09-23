@@ -64,7 +64,8 @@ public class TranslationResponseAdvice implements ResponseBodyAdvice<Object> {
       boolean shared =
           request.getURI().getPath().matches("/api/v1/species/\\d+(?:/regenerate-description)?");
       envelope.set(
-          "localization", mapper.valueToTree(translations.prepare(texts, user.getId(), shared, language)));
+          "localization",
+          mapper.valueToTree(translations.prepare(texts, user.getId(), shared, language)));
     } catch (RuntimeException unavailable) {
       envelope.set(
           "localization",

@@ -91,7 +91,8 @@ class ChatServiceImplTest {
     var french = request("Help with my garden");
     french.setLanguage("ar");
     assertThat(chatService.chat(french, USER_ID).getReply()).isEqualTo("مرحبًا");
-    verify(anthropicClient).chat(org.mockito.ArgumentMatchers.contains("Respond in Modern Standard Arabic"), any());
+    verify(anthropicClient)
+        .chat(org.mockito.ArgumentMatchers.contains("Respond in Modern Standard Arabic"), any());
   }
 
   @Test

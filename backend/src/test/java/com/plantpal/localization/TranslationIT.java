@@ -96,7 +96,9 @@ class TranslationIT extends AbstractIntegrationTest {
     jdbc.update(
         "UPDATE ai_translations SET updated_at=now()-interval '20 seconds' WHERE id=?",
         result.id());
-    doReturn(Map.of("Retry source", "Texte traduit")).when(client).translate(anyList(), anyLong(), eq("fr"));
+    doReturn(Map.of("Retry source", "Texte traduit"))
+        .when(client)
+        .translate(anyList(), anyLong(), eq("fr"));
     service.retry(result.id(), owner.getId());
     ready(result.id(), owner);
     assertThat(service.get(result.id(), owner.getId()).texts())
@@ -140,7 +142,9 @@ class TranslationIT extends AbstractIntegrationTest {
     assertThat(service.get(arabic.id(), owner.getId()).language()).isEqualTo("ar");
     assertThat(service.get(arabic.id(), owner.getId()).texts())
         .containsEntry("Water every 7 days.", "اسقِ كل 7 أيام.");
-    jdbc.update("UPDATE ai_translations SET status='FAILED', updated_at=now()-interval '20 seconds' WHERE id=?", arabic.id());
+    jdbc.update(
+        "UPDATE ai_translations SET status='FAILED', updated_at=now()-interval '20 seconds' WHERE id=?",
+        arabic.id());
     service.retry(arabic.id(), owner.getId());
     ready(arabic.id(), owner);
     verify(client, times(2)).translate(anyList(), eq(owner.getId()), eq("ar"));

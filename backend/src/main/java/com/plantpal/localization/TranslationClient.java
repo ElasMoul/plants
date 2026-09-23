@@ -55,7 +55,8 @@ public class TranslationClient {
     this.usage = usage;
   }
 
-  public Map<String, String> translate(List<String> texts, Long userId, String language) throws Exception {
+  public Map<String, String> translate(List<String> texts, Long userId, String language)
+      throws Exception {
     Map<String, String> result = new LinkedHashMap<>();
     List<String> batch = new ArrayList<>();
     int length = 0;
@@ -73,7 +74,8 @@ public class TranslationClient {
     return result;
   }
 
-  private Map<String, String> translateBatch(List<String> texts, Long userId, String language) throws Exception {
+  private Map<String, String> translateBatch(List<String> texts, Long userId, String language)
+      throws Exception {
     String prompt = PROMPT.formatted("ar".equals(language) ? "Modern Standard Arabic" : "French");
     var bucket =
         buckets.resolveBucket(

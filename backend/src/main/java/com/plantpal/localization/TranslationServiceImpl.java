@@ -36,11 +36,14 @@ public class TranslationServiceImpl implements TranslationService {
   }
 
   @Override
-  public TranslationResult prepare(List<String> texts, Long userId, boolean shared, String language) {
-    if (!List.of("fr", "ar").contains(language)) throw new IllegalArgumentException("Unsupported language");
+  public TranslationResult prepare(
+      List<String> texts, Long userId, boolean shared, String language) {
+    if (!List.of("fr", "ar").contains(language))
+      throw new IllegalArgumentException("Unsupported language");
     if (texts.isEmpty()) return new TranslationResult("", language, "READY", Map.of());
     String source = encode(texts);
-    String id = fingerprint((shared ? "species" : userId.toString()) + ":" + language + ":v1:" + source);
+    String id =
+        fingerprint((shared ? "species" : userId.toString()) + ":" + language + ":v1:" + source);
     int inserted =
         jdbc.update(
             """
@@ -81,7 +84,8 @@ public class TranslationServiceImpl implements TranslationService {
             userId.toString(),
             id,
             row.attempt());
-    if (changed == 1) schedule(id, decodeList(row.source()), userId, row.attempt() + 1, row.language());
+    if (changed == 1)
+      schedule(id, decodeList(row.source()), userId, row.attempt() + 1, row.language());
     return get(id, userId);
   }
 
@@ -95,7 +99,12 @@ public class TranslationServiceImpl implements TranslationService {
         """,
             (rs, n) ->
                 new Row(
-                    rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getLong(5), rs.getString(6)),
+                    rs.getString(1),
+                    rs.getString(2),
+                    rs.getString(3),
+                    rs.getInt(4),
+                    rs.getLong(5),
+                    rs.getString(6)),
             id,
             userId);
     if (rows.isEmpty()) throw new ResourceNotFoundException("Translation not found");
@@ -169,5 +178,10 @@ public class TranslationServiceImpl implements TranslationService {
   }
 
   private record Row(
-      String status, String source, String translated, int attempt, long ageSeconds, String language) {}
+      String status,
+      String source,
+      String translated,
+      int attempt,
+      long ageSeconds,
+      String language) {}
 }
