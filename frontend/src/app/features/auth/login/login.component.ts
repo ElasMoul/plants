@@ -1,3 +1,4 @@
+import { translate } from '../../../shared/i18n/language.service';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -75,8 +76,8 @@ export class LoginComponent {
       },
       error: err => {
         this.loading = false;
-        const msg = err.error?.message ?? 'Login failed. Please try again.';
-        this.snackBar.open(msg, 'Close', { duration: 4000 });
+        const msg = err.error?.message ?? translate('Login failed. Please try again.');
+        this.snackBar.open(translate(msg), translate('Close'), { duration: 4000 });
       },
     });
   }

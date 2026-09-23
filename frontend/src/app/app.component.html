@@ -1,7 +1,7 @@
 <mat-toolbar class="navbar" *ngIf="!isAdminPage">
   <a class="brand" routerLink="/">
     <mat-icon class="brand-icon">local_florist</mat-icon>
-    <span class="brand-name">PlantPal</span>
+    <span class="brand-name">{{ 'PlantPal' | t }}</span>
   </a>
 
   <!-- Desktop nav — the bottom nav is mobile-only, so these are the ONLY way to
@@ -13,39 +13,40 @@
       [routerLink]="link.route"
       routerLinkActive="top-nav-item--active"
     >
-      {{ link.label }}
+      {{ link.label | t }}
     </a>
   </nav>
 
   <span class="spacer"></span>
+  <app-language-switch></app-language-switch>
 
   <ng-container *ngIf="authService.isLoggedIn(); else loginBtn">
-    <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-menu-btn" aria-label="User menu">
+    <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-menu-btn" [attr.aria-label]="&#x27;User menu&#x27; | t">
       <mat-icon>account_circle</mat-icon>
     </button>
     <mat-menu #userMenu="matMenu">
       <div mat-menu-item disabled>{{ authService.getCurrentUser()?.email }}</div>
       <mat-divider></mat-divider>
       <button mat-menu-item routerLink="/admin" *ngIf="isAdministrator">
-        <mat-icon>admin_panel_settings</mat-icon><span>Administration</span>
+        <mat-icon>admin_panel_settings</mat-icon><span>{{ 'Administration' | t }}</span>
       </button>
       <button mat-menu-item routerLink="/preferences">
         <mat-icon>tune</mat-icon>
-        <span>AI Model Settings</span>
+        <span>{{ 'AI Model Settings' | t }}</span>
       </button>
       <button mat-menu-item routerLink="/voice-test">
         <mat-icon>mic</mat-icon>
-        <span>Voice Test</span>
+        <span>{{ 'Voice Test' | t }}</span>
       </button>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>
-        <span>Sign out</span>
+        <span>{{ 'Sign out' | t }}</span>
       </button>
     </mat-menu>
   </ng-container>
 
   <ng-template #loginBtn>
-    <a mat-button routerLink="/login" class="login-btn">Sign in</a>
+    <a mat-button routerLink="/login" class="login-btn">{{ 'Sign in' | t }}</a>
   </ng-template>
 </mat-toolbar>
 
@@ -55,17 +56,18 @@
   <div class="notification-banner" *ngIf="showNotificationBanner && !isAdminPage">
     <mat-icon class="banner-icon">notifications_active</mat-icon>
     <div class="banner-text">
-      <p class="banner-title">Get reminders on your phone</p>
-      <p class="banner-sub">We'll notify you when it's time to water or care for your plants.</p>
+      <p class="banner-title">{{ 'Get reminders on your phone' | t }}</p>
+      <p class="banner-sub">{{ 'We\'ll notify you when it\'s time to water or care for your plants.' | t }}</p>
     </div>
     <div class="banner-actions">
-      <button mat-button type="button" (click)="dismissNotifications()">Not now</button>
+      <button mat-button type="button" (click)="dismissNotifications()">{{ 'Not now' | t }}</button>
       <button mat-raised-button color="primary" type="button" class="btn-pill" (click)="acceptNotifications()">
-        Enable
+        {{ 'Enable' | t }}
       </button>
     </div>
   </div>
 
+  <app-ai-translation-notice *ngIf="!isAdminPage"></app-ai-translation-notice>
   <router-outlet></router-outlet>
 </main>
 
@@ -80,7 +82,7 @@
   >
     <span class="nav-pill" [class.nav-pill--active]="rla.isActive">
       <mat-icon>{{ link.icon }}</mat-icon>
-      <span class="nav-label">{{ link.label }}</span>
+      <span class="nav-label">{{ link.label | t }}</span>
     </span>
   </a>
 </nav>

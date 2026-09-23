@@ -174,9 +174,9 @@
 // progress-line / diagram-section / step-list styles now live in the shared
 // app-treatment-step-list component (treatment-step-list.component.scss).
 app-treatment-step-list ::ng-deep .progress-line {
-  margin-left: 48px;
+  margin-inline-start: 48px;
 
   @media (max-width: 480px) {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 }

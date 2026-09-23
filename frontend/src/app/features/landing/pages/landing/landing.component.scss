@@ -68,13 +68,13 @@
 
 .hero-leaf--one {
   top: -80px;
-  left: -100px;
+  inset-inline-start: -100px;
   transform: rotate(-20deg);
 }
 
 .hero-leaf--two {
   bottom: -120px;
-  right: -100px;
+  inset-inline-end: -100px;
   transform: rotate(160deg);
 }
 
@@ -136,7 +136,7 @@
   font-weight: 600;
 
   mat-icon {
-    margin-left: 4px;
+    margin-inline-start: 4px;
   }
 }
 
@@ -184,7 +184,7 @@
 .step-index {
   position: absolute;
   top: 16px;
-  right: 20px;
+  inset-inline-end: 20px;
   font-family: var(--font-heading);
   font-size: 1.1rem;
   font-weight: 700;

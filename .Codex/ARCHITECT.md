@@ -75,3 +75,68 @@ Treatment rows summarize current state with completed/start/creation time, rathe
 pretending to have a full transition audit. Material Dialog owns accessible focus and
 keyboard behavior; standalone modal loads independent paginated history and handles
 errors/retries without replacing the account page.
+
+
+## User-interface localization (2026-09-23)
+
+Classic uses shared/i18n/fr.ts with English source messages as stable lookup keys,
+a standalone t pipe, and translate() for application-owned TypeScript copy.
+Numbered placeholders keep values outside translated text; Angular escapes rendered
+values. Never translate protocol enum comparisons, identifiers, user text, or AI
+content. Species health-summary presentation handles the existing server string
+without changing filtering comparisons. Tests verify catalog placeholder parity.
+
+plantpal.language is a per-origin browser preference (en/fr), not a database field.
+Selection reloads the current route to reinitialize LOCALE_ID, MAT_DATE_LOCALE,
+Material labels and module-level translated constants. Unsaved form state is not
+preserved; settings explains the reload. No language-based routes or extra packages.
+English is the fallback for unknown language/message and unavailable localStorage.
+French locale data is registered; Material hint/error sizing is dynamic to prevent
+long French hints overlapping following fields. Language metadata includes direction;
+Arabic still needs its catalog, plural categories beyond simple suffixes, and full
+RTL layout/accessibility QA. Atlas is an independent later integration.
+
+## French AI presentation translations (2026-09-23)
+
+Keep canonical domain DTOs and saved analyses unchanged. TranslationResponseAdvice
+runs after authorized identification/species/treatment/reminder controllers and adds
+localization metadata for X-Content-Language: fr. TranslationTextExtractor allowlists
+prose and excludes user notes, names, enums and IDs. Angular waits for translation
+jobs, then applies aiText/aiDiagram at display time; never translate action payloads.
+
+TranslationService (interface/impl) uses ai_translations (036), keyed by a fingerprint
+of sorted source prose, owner/shared species scope, language and prompt version.
+Only public species detail/regenerate-description routes use shared scope. Source
+changes create a new cache version. Atomic INSERT ON CONFLICT claims one worker on
+the bounded AI executor; attempt/status fencing prevents old retries overwriting.
+Pending jobs older than ten minutes fail on read; explicit retry has a ten-second
+cooldown. Authenticated GET/POST retry enforce owner or public-species visibility.
+
+TranslationClient uses native hosted DeepSeek, then Anthropic/Ollama. Each batch
+consumes AI usage and per-user translation rate limit; cache reads are free. Bounded
+batches and numeric/unit validation prevent unsafe structural output being saved.
+Do not regenerate diagnoses merely to change display language. Chat instead carries
+language on each request into the shared system prompt. Current target is explicitly
+French; adding Arabic requires language-aware cache/schema/prompt changes and RTL UI.
+
+## Arabic extension (2026-09-23)
+
+The French presentation-translation architecture now supports fr and ar. Migration
+037 widens the existing table check; never alter the already-applied migration 036.
+The worker receives the target explicitly, polling reads it from the persisted row,
+and retries use that row's target. French cache IDs remain unchanged. The provider
+prompt selects French or Modern Standard Arabic; numeric/unit checks remain intact.
+
+Angular registers Arabic locale data, uses ar-MA and document RTL, and reloads on
+language changes as before. aiText remains display-only; the session map resets on
+reload. Physical UI spacing/positions became logical properties; directional icons
+mirror while photo coordinates and technical inputs retain their meaning. Arabic
+counted messages use Intl.PluralRules with explicit forms, not an English s suffix.
+No admin text translation or Atlas rollout was added.
+
+## CI verification lesson (PR #159)
+Use unfiltered mvn spotless:apply followed by spotless:check, then the full verify
+lifecycle before reporting backend CI readiness. A successful filtered apply can
+match zero files; package does not execute the verify-bound Spotless gate. Preserve
+local preview uploads under target when choosing whether to run clean; full verify
+was used for this recovery without deleting those uploads.

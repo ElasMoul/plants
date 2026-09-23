@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -80,7 +81,7 @@ export class PlantFormComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.snackBar.open('Could not load plant data.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Could not load plant data.'), translate('Dismiss'), { duration: 4000 });
         this.router.navigate(['/garden']);
       },
     });
@@ -104,11 +105,11 @@ export class PlantFormComponent implements OnInit {
       };
       this.plantService.updatePlant(this.editId ?? 0, request).subscribe({
         next: () => {
-          this.snackBar.open('Plant updated.', undefined, { duration: 3000 });
+          this.snackBar.open(translate('Plant updated.'), undefined, { duration: 3000 });
           this.router.navigate(['/plants', this.editId], { replaceUrl: true });
         },
         error: () => {
-          this.snackBar.open('Could not update plant.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not update plant.'), translate('Dismiss'), { duration: 4000 });
           this.submitting = false;
         },
       });
@@ -123,11 +124,11 @@ export class PlantFormComponent implements OnInit {
       };
       this.plantService.createPlant(request).subscribe({
         next: (res) => {
-          this.snackBar.open('Plant added!', undefined, { duration: 3000 });
+          this.snackBar.open(translate('Plant added!'), undefined, { duration: 3000 });
           this.router.navigate(['/plants', res.data.id], { replaceUrl: true });
         },
         error: () => {
-          this.snackBar.open('Could not save plant.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not save plant.'), translate('Dismiss'), { duration: 4000 });
           this.submitting = false;
         },
       });

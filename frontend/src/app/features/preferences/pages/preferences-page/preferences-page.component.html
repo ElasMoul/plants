@@ -1,53 +1,57 @@
 <div class="preferences-page">
   <div class="page-header">
-    <h1 class="page-title">AI Model Settings</h1>
-    <button mat-icon-button class="close-btn" (click)="close()" aria-label="Close settings">
+    <h1 class="page-title">{{ 'AI Model Settings' | t }}</h1>
+    <button mat-icon-button class="close-btn" (click)="close()" [attr.aria-label]="&#x27;Close settings&#x27; | t">
       <mat-icon>close</mat-icon>
     </button>
   </div>
   <p class="page-subtitle">
-    Choose which model handles each kind of AI work. Switching here applies to every future
-    scan, cure-advice request, treatment plan, and chat reply.
+    {{ 'Choose which model handles each kind of AI work. Switching here applies to every future scan, cure-advice request, treatment plan, and chat reply.' | t }}
   </p>
 
   <div class="preference-section">
-    <h2>Models</h2>
+    <h2>{{ 'Language' | t }}</h2>
+    <app-language-switch></app-language-switch>
+    <p class="section-hint">{{ 'Language is saved on this device. Changing it reloads the page.' | t }}</p>
+  </div>
+
+  <div class="preference-section">
+    <h2>{{ 'Models' | t }}</h2>
     <app-model-selector class="model-selector-full"></app-model-selector>
   </div>
 
   <div class="preference-section">
-    <h2>Pl&#64;ntNet</h2>
+    <h2>{{ 'Pl@ntNet' | t }}</h2>
     <p class="section-hint">
-      Controls which botanical database and language Pl&#64;ntNet uses for species identification and
-      common names. Changes apply to every scan that uses the Pl&#64;ntNet provider.
+      {{ 'Controls which botanical database and language Pl@ntNet uses for species identification and common names. Changes apply to every scan that uses the Pl@ntNet provider.' | t }}
     </p>
 
     <p class="quota-hint" *ngIf="plantnetQuota && plantnetQuota.remaining >= 0">
       <mat-icon class="hint-icon">data_usage</mat-icon>
-      Daily quota: <strong>{{ plantnetQuota.remaining }}</strong> / {{ plantnetQuota.total }} identifications remaining today
+      {{ 'Daily quota:' | t }} <strong>{{ plantnetQuota.remaining }}</strong> {{ '/ {0} identifications remaining today' | t : [(plantnetQuota.total)] }}
     </p>
 
     <ng-container *ngIf="!plantnetLoadError; else plantnetError">
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Flora / region</mat-label>
+        <mat-label>{{ 'Flora / region' | t }}</mat-label>
         <mat-select [(ngModel)]="selectedProject" (ngModelChange)="plantnetSaved = false">
-          <mat-option value="all">World flora (default)</mat-option>
+          <mat-option value="all">{{ 'World flora (default)' | t }}</mat-option>
           <mat-option *ngFor="let p of plantnetProjects" [value]="p.id">
             {{ projectLabel(p) }}
           </mat-option>
         </mat-select>
-        <mat-hint>Restricts identification to plants known in that region — improves accuracy for local species.</mat-hint>
+        <mat-hint>{{ 'Restricts identification to plants known in that region — improves accuracy for local species.' | t }}</mat-hint>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width mt-12">
-        <mat-label>Common-name language</mat-label>
+        <mat-label>{{ 'Common-name language' | t }}</mat-label>
         <mat-select [(ngModel)]="selectedLang" (ngModelChange)="plantnetSaved = false">
           <mat-option *ngFor="let l of plantnetLanguages" [value]="l">
             {{ l | uppercase }}
           </mat-option>
-          <mat-option *ngIf="plantnetLanguages.length === 0" value="en">EN</mat-option>
+          <mat-option *ngIf="plantnetLanguages.length === 0" value="en">{{ 'EN' | t }}</mat-option>
         </mat-select>
-        <mat-hint>Language used for common plant names in the candidate list.</mat-hint>
+        <mat-hint>{{ 'Language used for common plant names in the candidate list.' | t }}</mat-hint>
       </mat-form-field>
 
       <div class="plantnet-actions">
@@ -58,44 +62,42 @@
           [disabled]="plantnetSaving"
         >
           <mat-icon *ngIf="plantnetSaved">check</mat-icon>
-          {{ plantnetSaving ? 'Saving…' : plantnetSaved ? 'Saved' : 'Save Pl@ntNet preferences' }}
+          {{ plantnetSaving ? ('Saving…' | t) : plantnetSaved ? ('Saved' | t) : ('Save Pl@ntNet preferences' | t) }}
         </button>
         <span class="location-hint">
           <mat-icon class="hint-icon">info_outline</mat-icon>
-          Flora ranking by your location is not yet available — coming in a future update.
+          {{ 'Flora ranking by your location is not yet available — coming in a future update.' | t }}
         </span>
       </div>
     </ng-container>
 
     <ng-template #plantnetError>
       <p class="section-hint error-hint">
-        Could not load Pl&#64;ntNet options — check your connection and try again.
+        {{ 'Could not load Pl@ntNet options — check your connection and try again.' | t }}
       </p>
     </ng-template>
   </div>
 
   <div class="preference-section">
-    <h2>Garden type</h2>
+    <h2>{{ 'Garden type' | t }}</h2>
     <div class="toggle-row">
       <mat-slide-toggle
         [checked]="businessTier"
         [disabled]="businessTierSaving"
         (change)="onBusinessTierChange($event)"
       >
-        This is a business or professional garden
+        {{ 'This is a business or professional garden' | t }}
       </mat-slide-toggle>
     </div>
     <p class="section-hint">
-      Self-declared — helps us understand who's using PlantPal at scale. This doesn't change
-      anything about your account today.
+      {{ 'Self-declared — helps us understand who\'s using PlantPal at scale. This doesn\'t change anything about your account today.' | t }}
     </p>
   </div>
 
   <div class="preference-section">
-    <h2>Hitting a rate limit?</h2>
+    <h2>{{ 'Hitting a rate limit?' | t }}</h2>
     <p class="section-hint">
-      Each AI model has its own hourly call budget. If you see a rate-limit message, switching to
-      a different model above lets you keep going right away instead of waiting it out.
+      {{ 'Each AI model has its own hourly call budget. If you see a rate-limit message, switching to a different model above lets you keep going right away instead of waiting it out.' | t }}
     </p>
   </div>
 </div>

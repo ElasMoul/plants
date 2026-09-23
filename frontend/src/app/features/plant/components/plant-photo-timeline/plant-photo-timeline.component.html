@@ -7,7 +7,7 @@
 
   <!-- Empty state -->
   <p *ngIf="!loading && scans.length === 0" class="timeline-empty">
-    No scans yet — your first photo will start the timeline
+    {{ 'No scans yet — your first photo will start the timeline' | t }}
   </p>
 
   <!-- Timeline strip — oldest to newest, left to right -->
@@ -24,7 +24,7 @@
         class="timeline-thumb"
         [ngClass]="healthClass(scan)"
       />
-      <span class="timeline-date">{{ scan.createdAt | date:'MMM d' }}</span>
+      <span class="timeline-date">{{ scan.createdAt | date:'mediumDate' }}</span>
     </div>
   </div>
 

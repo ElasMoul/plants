@@ -12,7 +12,7 @@
   </div>
 
   <!-- Empty state -->
-  <p *ngIf="!loading && !logs.length" class="log-empty">No care actions logged yet.</p>
+  <p *ngIf="!loading && !logs.length" class="log-empty">{{ 'No care actions logged yet.' | t }}</p>
 
   <!-- Timeline -->
   <div class="log-timeline" *ngIf="!loading && logs.length">
@@ -21,10 +21,10 @@
         <mat-icon>{{ careIcon(log.careType) }}</mat-icon>
       </div>
       <div class="log-body">
-        <p class="log-type">{{ log.careType | titlecase }}</p>
-        <p class="log-date">{{ log.performedAt | date:'MMM d, y' }} at {{ log.performedAt | date:'h:mm a' }}</p>
+        <p class="log-type">{{ log.careType | t }}</p>
+        <p class="log-date">{{ '{0} at {1}' | t : [(log.performedAt | date:'mediumDate'), (log.performedAt | date:'shortTime')] }}</p>
         <p class="log-notes" *ngIf="log.notes">{{ log.notes }}</p>
-        <button type="button" class="log-details-btn" (click)="viewDetails(log)">View details</button>
+        <button type="button" class="log-details-btn" (click)="viewDetails(log)">{{ 'View details' | t }}</button>
       </div>
     </div>
   </div>

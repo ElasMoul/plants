@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -42,7 +43,7 @@ export class PlantSelectStepComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          this.snackBar.open('Could not load your plants — please try again.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not load your plants — please try again.'), translate('Dismiss'), { duration: 4000 });
           this.loading = false;
         },
       });
@@ -73,7 +74,7 @@ export class PlantSelectStepComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.submitting = false;
-          this.snackBar.open('Could not save this plant — please try again.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not save this plant — please try again.'), translate('Dismiss'), { duration: 4000 });
         },
       });
   }

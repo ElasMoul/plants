@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, Inject, Optional, ViewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
@@ -31,15 +32,15 @@ export class IdentificationUploadDialogComponent {
 
   get title(): string {
     if (this.batchActive) {
-      return this.batchScan.running ? 'Scanning your plants…' : 'Batch scan';
+      return this.batchScan.running ? translate('Scanning your plants…') : translate('Batch scan');
     }
     if (this.data?.plantNickname) {
-      return `Add a scan for ${this.data.plantNickname}`;
+      return translate("Add a scan for {0}", [this.data.plantNickname]);
     }
     if (this.data?.speciesName) {
-      return `Add a plant of ${this.data.speciesName}`;
+      return translate("Add a plant of {0}", [this.data.speciesName]);
     }
-    return 'Identify a Plant';
+    return translate('Identify a Plant');
   }
 
   // True once a batch has been started — including after it's finished, so reopening the

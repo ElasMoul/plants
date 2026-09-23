@@ -14,12 +14,12 @@
         <img [src]="plant.photoUrl || placeholderImage" [alt]="plant.nickname" class="hero-img" />
         <div class="hero-overlay"></div>
 
-        <button mat-icon-button class="hero-back" routerLink="/garden" aria-label="Back to garden">
-          <mat-icon>arrow_back</mat-icon>
+        <button mat-icon-button class="hero-back" routerLink="/garden" [attr.aria-label]="&#x27;Back to garden&#x27; | t">
+          <mat-icon class="directional-icon">arrow_back</mat-icon>
         </button>
 
         <div class="hero-actions">
-          <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" aria-label="Edit plant">
+          <button mat-icon-button class="hero-action-btn" [routerLink]="['/plants', plant.id, 'edit']" [attr.aria-label]="&#x27;Edit plant&#x27; | t">
             <mat-icon>edit</mat-icon>
           </button>
         </div>
@@ -38,23 +38,23 @@
     <div class="section-button-bar">
       <div class="section-tabs">
         <button mat-icon-button [class.active-section-btn]="activeSection === 'overview'"
-                (click)="selectSection('overview')" matTooltip="Overview" aria-label="Overview">
+                (click)="selectSection('overview')" [matTooltip]="&#x27;Overview&#x27; | t" [attr.aria-label]="&#x27;Overview&#x27; | t">
           <mat-icon>home</mat-icon>
         </button>
         <button mat-icon-button [class.active-section-btn]="activeSection === 'careLog'"
-                (click)="selectSection('careLog')" matTooltip="Care history" aria-label="Care history">
+                (click)="selectSection('careLog')" [matTooltip]="&#x27;Care history&#x27; | t" [attr.aria-label]="&#x27;Care history&#x27; | t">
           <mat-icon>history</mat-icon>
         </button>
         <button mat-icon-button *ngIf="plant.activeTreatmentId" (click)="selectSection('treatment')"
-                matTooltip="Treatment plan" aria-label="Treatment plan">
+                [matTooltip]="&#x27;Treatment plan&#x27; | t" [attr.aria-label]="&#x27;Treatment plan&#x27; | t">
           <mat-icon>healing</mat-icon>
         </button>
         <button mat-icon-button [class.active-section-btn]="activeSection === 'scans'"
-                (click)="selectSection('scans')" matTooltip="Scans" aria-label="Scans">
+                (click)="selectSection('scans')" [matTooltip]="&#x27;Scans&#x27; | t" [attr.aria-label]="&#x27;Scans&#x27; | t">
           <mat-icon>document_scanner</mat-icon>
         </button>
       </div>
-      <button mat-icon-button class="more-actions-btn" (click)="selectSection('actions')" matTooltip="More actions" aria-label="More actions">
+      <button mat-icon-button class="more-actions-btn" (click)="selectSection('actions')" [matTooltip]="&#x27;More actions&#x27; | t" [attr.aria-label]="&#x27;More actions&#x27; | t">
         <mat-icon>more_horiz</mat-icon>
       </button>
     </div>
@@ -66,14 +66,14 @@
       <div *ngSwitchCase="'overview'" class="tab-content">
 
         <div class="status-banner" *ngIf="plant.healthStatus === 'ISSUES_DETECTED'">
-          <span class="attention-badge">ATTENTION NEEDED</span>
-          <p>This plant has reported health issues. Check the Scans section for details.</p>
+          <span class="attention-badge">{{ 'ATTENTION NEEDED' | t }}</span>
+          <p>{{ 'This plant has reported health issues. Check the Scans section for details.' | t }}</p>
         </div>
 
         <mat-divider *ngIf="plant.notes"></mat-divider>
 
         <div class="notes-section" *ngIf="plant.notes">
-          <h3>Notes</h3>
+          <h3>{{ 'Notes' | t }}</h3>
           <p>{{ plant.notes }}</p>
         </div>
 
@@ -104,8 +104,8 @@
         <!-- Empty state -->
         <div *ngIf="scanHistoryLoaded && scanHistory.length === 0" class="placeholder-tab">
           <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
-          <h3>No scans yet</h3>
-          <p>Scan this plant to see its health history here.</p>
+          <h3>{{ 'No scans yet' | t }}</h3>
+          <p>{{ 'Scan this plant to see its health history here.' | t }}</p>
         </div>
 
         <!-- History list -->
@@ -120,17 +120,17 @@
           >
             <img
               [src]="scan.photoUrl || placeholderImage"
-              [alt]="'Scan ' + (scan.createdAt | date:'shortDate')"
+              [alt]="('Scan ' | t) + (scan.createdAt | date:'shortDate')"
               class="scan-thumb"
             />
             <div class="scan-meta">
               <div class="scan-date">{{ scan.createdAt | date:'mediumDate' }}</div>
               <div class="scan-chips">
                 <span class="health-chip" [ngClass]="scanHealthClass(scan)">
-                  {{ scanHealthLabel(scan) }}
+                  {{ scanHealthLabel(scan) | t }}
                 </span>
                 <span class="care-count-chip" *ngIf="scan.carePlan?.careCards?.length">
-                  {{ scan.carePlan!.careCards.length }} tip{{ scan.carePlan!.careCards.length !== 1 ? 's' : '' }}
+                  {{ '{0} tip{1}' | t : [(scan.carePlan!.careCards.length), (scan.carePlan!.careCards.length | pluralSuffix)] }}
                 </span>
               </div>
               <div class="scan-context" *ngIf="scan.userContext">
@@ -138,12 +138,12 @@
                 <span class="context-text">{{ scan.userContext | slice:0:80 }}{{ scan.userContext.length > 80 ? '…' : '' }}</span>
               </div>
             </div>
-            <mat-icon class="scan-chevron">chevron_right</mat-icon>
+            <mat-icon class="scan-chevron directional-icon">chevron_right</mat-icon>
           </div>
         </div>
 
         <!-- FAB to add new scan -->
-        <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" aria-label="New scan">
+        <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" [attr.aria-label]="&#x27;New scan&#x27; | t">
           <mat-icon>camera_alt</mat-icon>
         </button>
 

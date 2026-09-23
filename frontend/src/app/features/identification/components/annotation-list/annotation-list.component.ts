@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { AnnotationRegion, AnnotationRegionType } from '../../models/identification.model';
 
@@ -8,9 +9,9 @@ const REGION_COLORS: Record<AnnotationRegionType, string> = {
 };
 
 const REGION_LABELS: Record<AnnotationRegionType, string> = {
-  PLANT:        'Plant',
-  DISEASE:      'Disease',
-  HEALTHY_AREA: 'Healthy Area',
+  PLANT:        translate('Plant'),
+  DISEASE:      translate('Disease'),
+  HEALTHY_AREA: translate('Healthy Area'),
 };
 
 @Component({

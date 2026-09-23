@@ -2,8 +2,8 @@
 .navbar {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -66,7 +66,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-left: 28px;
+    margin-inline-start: 28px;
     min-width: 0;
     overflow: hidden;
   }
@@ -116,8 +116,8 @@
     display: flex;
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     z-index: 100;
     background: var(--color-surface);
     border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -176,7 +176,7 @@
 .model-selector-toolbar {
   flex-shrink: 1;
   min-width: 0;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }
 
 // ── Notification permission banner ──────────────────────────────

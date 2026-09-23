@@ -32,7 +32,7 @@
 
 .btn-spinner {
   display: inline-block;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 
   ::ng-deep circle {
     stroke: currentColor;
@@ -43,7 +43,7 @@
 .add-fab {
   position: fixed;
   bottom: 80px;
-  right: 20px;
+  inset-inline-end: 20px;
   z-index: 50;
   background-color: var(--color-primary) !important;
 

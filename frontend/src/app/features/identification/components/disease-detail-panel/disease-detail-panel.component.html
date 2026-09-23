@@ -2,10 +2,10 @@
 
   <mat-card-header>
     <mat-icon mat-card-avatar color="warn">bug_report</mat-icon>
-    <mat-card-title>{{ region.label }}</mat-card-title>
+    <mat-card-title>{{ region.label | aiText }}</mat-card-title>
     <mat-card-subtitle>
       <span class="confidence-badge confidence-{{ region.confidence.toLowerCase() }}">
-        {{ region.confidence }} confidence
+        {{ '{0} confidence' | t : [(region.confidence)] }}
       </span>
     </mat-card-subtitle>
   </mat-card-header>
@@ -16,25 +16,25 @@
     <div class="panel-actions" *ngIf="!advice && !loadingAdvice && !adviceError">
       <button mat-raised-button color="accent" type="button" (click)="askForCure()">
         <mat-icon>healing</mat-icon>
-        Ask for cure
+        {{ 'Ask for cure' | t }}
       </button>
       <button mat-stroked-button type="button" disabled
-        matTooltip="Get cure advice first">
+        [matTooltip]="&#x27;Get cure advice first&#x27; | t">
         <mat-icon>playlist_add</mat-icon>
-        Add to care plan
+        {{ 'Add to care plan' | t }}
       </button>
     </div>
 
     <!-- Loading -->
     <div class="panel-loading" *ngIf="loadingAdvice">
       <mat-spinner diameter="28"></mat-spinner>
-      <span>Getting cure advice…</span>
+      <span>{{ 'Getting cure advice…' | t }}</span>
     </div>
 
     <!-- Error -->
     <div class="panel-error" *ngIf="adviceError">
       <mat-icon color="warn">error_outline</mat-icon>
-      <span>{{ adviceErrorMessage || 'Could not load advice, please try again' }}</span>
+      <span>{{ adviceErrorMessage || ('Could not load advice, please try again' | t) }}</span>
       <button
         *ngIf="!adviceErrorBlocked"
         mat-button
@@ -42,13 +42,13 @@
         type="button"
         (click)="askForCure()"
       >
-        Retry
+        {{ 'Retry' | t }}
       </button>
     </div>
 
     <!-- Advice result -->
     <ng-container *ngIf="advice">
-      <p class="advice-text">{{ advice }}</p>
+      <p class="advice-text">{{ advice | aiText }}</p>
       <app-model-usage-badge
         [reasoningModel]="reasoningModelUsed"
         prefix="Advice generated using"
@@ -58,11 +58,11 @@
           [disabled]="addingToPlan || addedToPlan"
           (click)="addToCarePlan()">
           <mat-icon>{{ addedToPlan ? 'check' : 'playlist_add' }}</mat-icon>
-          {{ addedToPlan ? 'Added to care plan' : (addingToPlan ? 'Adding…' : 'Add to care plan') }}
+          {{ addedToPlan ? ('Added to care plan' | t) : (addingToPlan ? ('Adding…' | t) : ('Add to care plan' | t)) }}
         </button>
       </div>
       <p class="advice-hint" *ngIf="addedToPlan">
-        Added to your care plan — start the treatment plan from the card below.
+        {{ 'Added to your care plan — start the treatment plan from the card below.' | t }}
       </p>
     </ng-container>
 

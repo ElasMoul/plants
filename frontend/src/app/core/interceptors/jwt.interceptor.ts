@@ -1,3 +1,4 @@
+import { translate } from '../../shared/i18n/language.service';
 import { Injectable } from '@angular/core';
 import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
@@ -64,7 +65,7 @@ export class JwtInterceptor implements HttpInterceptor {
     this.signOutInFlight = true;
 
     this.authService.logout();
-    this.snackBar.open(reasonMessage(reason), 'Close', { duration: 6000 });
+    this.snackBar.open(reasonMessage(reason), translate('Close'), { duration: 6000 });
     const returnUrl = sanitizeReturnUrl(this.router.url);
     const extras = returnUrl ? { queryParams: { returnUrl } } : undefined;
     this.router.navigate(['/login'], extras).finally(() => {

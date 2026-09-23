@@ -20,29 +20,28 @@
     <div class="hero-content fade-up">
       <span class="eyebrow">
         <mat-icon>local_florist</mat-icon>
-        Your garden, understood
+        {{ 'Your garden, understood' | t }}
       </span>
-      <h1 class="hero-title">Plant care that actually knows your plants</h1>
+      <h1 class="hero-title">{{ 'Plant care that actually knows your plants' | t }}</h1>
       <p class="hero-subline">
-        Snap a photo and PlantPal identifies the species, checks its health, and builds a
-        personalised care plan — with reminders so nothing gets missed.
+        {{ 'Snap a photo and PlantPal identifies the species, checks its health, and builds a personalised care plan — with reminders so nothing gets missed.' | t }}
       </p>
       <div class="hero-actions">
         <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
-          Get started free
-          <mat-icon>arrow_forward</mat-icon>
+          {{ 'Get started free' | t }}
+          <mat-icon class="directional-icon">arrow_forward</mat-icon>
         </a>
-        <a mat-stroked-button class="btn-pill hero-cta-secondary" routerLink="/login">Sign in</a>
+        <a mat-stroked-button class="btn-pill hero-cta-secondary" routerLink="/login">{{ 'Sign in' | t }}</a>
       </div>
-      <p class="hero-note">No credit card needed. Free to start.</p>
+      <p class="hero-note">{{ 'No credit card needed. Free to start.' | t }}</p>
     </div>
   </section>
 
   <!-- ── How it works ──────────────────────────────────────── -->
   <section class="how-it-works">
     <div class="section-inner">
-      <h2 class="section-title fade-up">How it works</h2>
-      <p class="section-subtitle fade-up">From photo to full care plan in three simple steps.</p>
+      <h2 class="section-title fade-up">{{ 'How it works' | t }}</h2>
+      <p class="section-subtitle fade-up">{{ 'From photo to full care plan in three simple steps.' | t }}</p>
 
       <ol class="steps-strip">
         <li
@@ -64,9 +63,9 @@
   <!-- ── Feature cards ─────────────────────────────────────── -->
   <section class="features">
     <div class="section-inner">
-      <h2 class="section-title fade-up">Everything your plants need</h2>
+      <h2 class="section-title fade-up">{{ 'Everything your plants need' | t }}</h2>
       <p class="section-subtitle fade-up">
-        One app for identification, health, care, and everyday questions.
+        {{ 'One app for identification, health, care, and everyday questions.' | t }}
       </p>
 
       <div class="feature-grid">
@@ -89,13 +88,13 @@
   <section class="footer-cta">
     <div class="footer-cta-inner fade-up">
       <mat-icon class="footer-cta-icon">eco</mat-icon>
-      <h2 class="footer-cta-title">Ready to grow with confidence?</h2>
+      <h2 class="footer-cta-title">{{ 'Ready to grow with confidence?' | t }}</h2>
       <p class="footer-cta-subtitle">
-        Join PlantPal and give every plant in your home the care it actually needs.
+        {{ 'Join PlantPal and give every plant in your home the care it actually needs.' | t }}
       </p>
       <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
-        Get started free
-        <mat-icon>arrow_forward</mat-icon>
+        {{ 'Get started free' | t }}
+        <mat-icon class="directional-icon">arrow_forward</mat-icon>
       </a>
     </div>
   </section>
@@ -103,9 +102,9 @@
   <footer class="landing-footer">
     <span class="brand">
       <mat-icon>local_florist</mat-icon>
-      PlantPal
+      {{ 'PlantPal' | t }}
     </span>
-    <span class="copyright">&copy; {{ currentYear }} PlantPal. Grow smarter.</span>
+    <span class="copyright">{{ '© {0} PlantPal. Grow smarter.' | t : [(currentYear)] }}</span>
   </footer>
 
 </div>

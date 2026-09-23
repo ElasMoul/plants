@@ -1,3 +1,4 @@
+import { translate } from '../../i18n/language.service';
 import { Component, Input } from '@angular/core';
 import { SpeechService } from '../../services/speech.service';
 
@@ -9,7 +10,7 @@ import { SpeechService } from '../../services/speech.service';
 })
 export class ReadAloudButtonComponent {
   @Input() text = '';
-  @Input() ariaLabel = 'Read aloud';
+  @Input() ariaLabel = translate('Read aloud');
 
   constructor(readonly speechService: SpeechService) {}
 

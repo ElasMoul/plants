@@ -15,7 +15,7 @@
       class="health-badge"
       [ngClass]="healthBadgeClass(plant.healthStatus)"
     >
-      {{ plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus }}
+      {{ (plant.healthStatus === 'ISSUES_DETECTED' ? 'ISSUES' : plant.healthStatus) | t }}
     </span>
 
     <!-- Actions menu -->
@@ -24,18 +24,18 @@
       class="card-menu-btn"
       [matMenuTriggerFor]="actionMenu"
       (click)="$event.stopPropagation()"
-      aria-label="Plant actions"
+      [attr.aria-label]="&#x27;Plant actions&#x27; | t"
     >
       <mat-icon>more_vert</mat-icon>
     </button>
     <mat-menu #actionMenu="matMenu">
       <button mat-menu-item [routerLink]="['/plants', plant.id, 'edit']" (click)="$event.stopPropagation()">
         <mat-icon>edit</mat-icon>
-        <span>Edit</span>
+        <span>{{ 'Edit' | t }}</span>
       </button>
       <button mat-menu-item class="archive-action" (click)="$event.stopPropagation(); archive.emit(plant.id)">
         <mat-icon>archive</mat-icon>
-        <span>Archive</span>
+        <span>{{ 'Archive' | t }}</span>
       </button>
     </mat-menu>
   </div>
@@ -43,12 +43,12 @@
   <!-- Card body -->
   <div class="card-body">
     <h3 class="plant-name">{{ plant.nickname }}</h3>
-    <p class="plant-species">{{ plant.commonName || plant.species || 'Species unknown' }}</p>
+    <p class="plant-species">{{ plant.commonName || plant.species || ('Species unknown' | t) }}</p>
 
     <!-- Next water chip -->
     <div class="next-water" *ngIf="plant.nextWaterDays !== null && plant.nextWaterDays !== undefined">
       <mat-icon class="water-icon">water_drop</mat-icon>
-      <span>Next water: {{ plant.nextWaterDays }} day{{ plant.nextWaterDays !== 1 ? 's' : '' }}</span>
+      <span>{{ 'Next water: {0} day{1}' | t : [(plant.nextWaterDays), (plant.nextWaterDays | pluralSuffix)] }}</span>
     </div>
   </div>
 

@@ -1,3 +1,4 @@
+import { translate } from '../../i18n/language.service';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -17,21 +18,21 @@ interface ModelOption<T extends string> {
 // Labelled by intent (what you'd pick it for), with the underlying model name as the subtitle —
 // the option list is the model-picker UI's primary teaching surface for non-experts.
 const VISION_OPTIONS: ModelOption<VisionModelPreference>[] = [
-  { value: 'GITHUB_GPT4O',     label: 'Best',      intent: 'GPT-4o',          icon: 'smart_toy',  tooltip: 'Balanced accuracy + care plan quality — ~50 vision calls/day on free tier' },
-  { value: 'GITHUB_GPT41',     label: 'Frontier',  intent: 'GPT-4.1',         icon: 'auto_awesome', tooltip: 'Latest GPT vision model — same free-tier quota as GPT-4o' },
-  { value: 'DEEPSEEK_FLASH', label: 'Fast', intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: 'Native DeepSeek API � requires a server API key' },
-  { value: 'ANTHROPIC_CLAUDE', label: 'Specialist',intent: 'Claude',          icon: 'diamond',    tooltip: 'Anthropic Claude — strong reasoning about visible health issues' },
-  { value: 'OLLAMA_GEMMA3',    label: 'Offline',   intent: 'Ollama (gemma3)', icon: 'computer',   tooltip: 'Fully local — no API quota, needs Ollama running' },
-  { value: 'PLANTNET',         label: 'Balanced',  intent: 'PlantNet',        icon: 'eco',        tooltip: 'Plant-only identification, no health/care plan' },
+  { value: 'GITHUB_GPT4O',     label: translate('Best'),      intent: 'GPT-4o',          icon: 'smart_toy',  tooltip: translate('Balanced accuracy + care plan quality — ~50 vision calls/day on free tier') },
+  { value: 'GITHUB_GPT41',     label: translate('Frontier'),  intent: 'GPT-4.1',         icon: 'auto_awesome', tooltip: translate('Latest GPT vision model — same free-tier quota as GPT-4o') },
+  { value: 'DEEPSEEK_FLASH', label: translate('Fast'), intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: translate('Native DeepSeek API — requires a server API key') },
+  { value: 'ANTHROPIC_CLAUDE', label: translate('Specialist'),intent: 'Claude',          icon: 'diamond',    tooltip: translate('Anthropic Claude — strong reasoning about visible health issues') },
+  { value: 'OLLAMA_GEMMA3',    label: translate('Offline'),   intent: 'Ollama (gemma3)', icon: 'computer',   tooltip: translate('Fully local — no API quota, needs Ollama running') },
+  { value: 'PLANTNET',         label: translate('Balanced'),  intent: 'PlantNet',        icon: 'eco',        tooltip: translate('Plant-only identification, no health/care plan') },
 ];
 
 const REASONING_OPTIONS: ModelOption<ReasoningModelPreference>[] = [
-  { value: 'DEEPSEEK_R1',       label: 'Best',      intent: 'DeepSeek-R1',     icon: 'psychology',   tooltip: 'Deep reasoning for cure advice + descriptions — ~20 calls/hour' },
-  { value: 'GITHUB_GPT41_MINI', label: 'Balanced',  intent: 'GPT-4.1 mini',    icon: 'bolt',         tooltip: 'Fast, cheap text generation — same free-tier quota' },
-  { value: 'GITHUB_O4_MINI',    label: 'Frontier',  intent: 'o4-mini',         icon: 'auto_awesome', tooltip: 'Latest reasoning-tuned model — same free-tier quota' },
-  { value: 'DEEPSEEK_FLASH', label: 'Fast', intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: 'Native DeepSeek API � requires a server API key' },
-  { value: 'ANTHROPIC_CLAUDE',  label: 'Specialist',intent: 'Claude',          icon: 'diamond',      tooltip: 'Anthropic Claude — strong plain-English explanations' },
-  { value: 'OLLAMA_GEMMA3',     label: 'Offline',   intent: 'Ollama (gemma3)', icon: 'computer',     tooltip: 'Fully local — no API quota, needs Ollama running' },
+  { value: 'DEEPSEEK_R1',       label: translate('Best'),      intent: 'DeepSeek-R1',     icon: 'psychology',   tooltip: translate('Deep reasoning for cure advice + descriptions — ~20 calls/hour') },
+  { value: 'GITHUB_GPT41_MINI', label: translate('Balanced'),  intent: 'GPT-4.1 mini',    icon: 'bolt',         tooltip: translate('Fast, cheap text generation — same free-tier quota') },
+  { value: 'GITHUB_O4_MINI',    label: translate('Frontier'),  intent: 'o4-mini',         icon: 'auto_awesome', tooltip: translate('Latest reasoning-tuned model — same free-tier quota') },
+  { value: 'DEEPSEEK_FLASH', label: translate('Fast'), intent: 'DeepSeek V4.1 Flash', icon: 'bolt', tooltip: translate('Native DeepSeek API — requires a server API key') },
+  { value: 'ANTHROPIC_CLAUDE',  label: translate('Specialist'),intent: 'Claude',          icon: 'diamond',      tooltip: translate('Anthropic Claude — strong plain-English explanations') },
+  { value: 'OLLAMA_GEMMA3',     label: translate('Offline'),   intent: 'Ollama (gemma3)', icon: 'computer',     tooltip: translate('Fully local — no API quota, needs Ollama running') },
 ];
 
 @Component({
@@ -129,13 +130,13 @@ export class ModelSelectorComponent implements OnInit, OnDestroy {
           const intent = changed === 'vision'
             ? this.visionOptions.find(o => o.value === vision)?.intent
             : this.reasoningOptions.find(o => o.value === reasoning)?.intent;
-          this.snackBar.open(`${changed === 'vision' ? 'Vision' : 'Reasoning'} model changed to ${intent}`, undefined, { duration: 2500 });
+          this.snackBar.open(translate("{0} model changed to {1}", [changed === 'vision' ? translate('Vision') : translate('Reasoning'), intent]), undefined, { duration: 2500 });
         },
         error: () => {
           this.selectedVision = previousVision;
           this.selectedReasoning = previousReasoning;
           this.saving = false;
-          this.snackBar.open('Could not update model preference.', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(translate('Could not update model preference.'), translate('Dismiss'), { duration: 4000 });
         },
       });
   }

@@ -1,3 +1,4 @@
+import { aiText } from '../../i18n/ai-text.pipe';
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { parseDetailAsList, ParsedDetail } from '../../utils/detail-list.util';
@@ -21,7 +22,7 @@ export class StepDetailDialogComponent {
     private readonly dialogRef: MatDialogRef<StepDetailDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public readonly data: StepDetailDialogData,
   ) {
-    this.detailList = parseDetailAsList(data.stepDetail);
+    this.detailList = parseDetailAsList(aiText(data.stepDetail));
   }
 
   close(): void {

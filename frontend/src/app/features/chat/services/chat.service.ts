@@ -1,3 +1,4 @@
+import { readLanguage } from '../../../shared/i18n/language.service';
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -35,7 +36,7 @@ export class ChatService {
   }
 
   private buildRequest(message: string, plantId?: number, history?: ChatMessageDto[]): ChatRequest {
-    const request: ChatRequest = { message };
+    const request: ChatRequest = { message, language: readLanguage() };
     if (plantId != null) request.plantId = plantId;
     if (history != null && history.length) request.history = history;
     return request;

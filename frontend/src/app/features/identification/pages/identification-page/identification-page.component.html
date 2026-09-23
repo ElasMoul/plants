@@ -1,7 +1,7 @@
 <div class="page-container">
 
-  <h1 class="page-title">Identify Your Plant</h1>
-  <p class="page-subtitle">Upload a photo and we'll identify your plant and check its health</p>
+  <h1 class="page-title">{{ 'Identify Your Plant' | t }}</h1>
+  <p class="page-subtitle">{{ 'Upload a photo and we\'ll identify your plant and check its health' | t }}</p>
 
   <ng-container *ngIf="hasIdentifications === false">
     <app-photo-upload (analyze)="onAnalyze($event)"></app-photo-upload>
@@ -21,7 +21,7 @@
         class="btn-spinner"
       ></mat-progress-spinner>
       <mat-icon *ngIf="!submitting">biotech</mat-icon>
-      {{ submitting ? 'Submitting…' : 'Identify Plant' }}
+      {{ submitting ? ('Submitting…' | t) : ('Identify Plant' | t) }}
     </button>
   </ng-container>
 
@@ -36,7 +36,7 @@
   color="primary"
   class="add-fab"
   (click)="openUploadDialog()"
-  aria-label="Identify a new plant"
+  [attr.aria-label]="&#x27;Identify a new plant&#x27; | t"
 >
   <mat-icon>add_a_photo</mat-icon>
 </button>

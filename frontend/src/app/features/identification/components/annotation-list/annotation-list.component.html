@@ -10,14 +10,14 @@
     >
       <span class="dot" [style.background]="regionColor(region.type)"></span>
 
-      <span class="item-label">{{ region.label }}</span>
+      <span class="item-label">{{ region.label | aiText }}</span>
 
       <span class="badges">
         <span class="badge confidence-{{ region.confidence.toLowerCase() }}">
-          {{ region.confidence }}
+          {{ region.confidence | t }}
         </span>
         <span class="badge type-{{ region.type.toLowerCase() }}">
-          {{ regionTypeLabel(region.type) }}
+          {{ regionTypeLabel(region.type) | t }}
         </span>
       </span>
 
@@ -28,7 +28,7 @@
   </ng-container>
 
   <ng-template #noRegions>
-    <p class="no-regions">No regions detected</p>
+    <p class="no-regions">{{ 'No regions detected' | t }}</p>
   </ng-template>
 
 </div>

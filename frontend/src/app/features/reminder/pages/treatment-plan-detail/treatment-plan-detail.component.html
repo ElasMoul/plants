@@ -18,11 +18,11 @@
   <!-- Error -->
   <div class="state-screen" *ngIf="state === 'error'">
     <mat-icon class="state-icon error-icon">report_problem</mat-icon>
-    <h2 class="state-title">Treatment plan not found</h2>
-    <p class="state-subtitle">It may have been removed, or you don't have access to it.</p>
+    <h2 class="state-title">{{ 'Treatment plan not found' | t }}</h2>
+    <p class="state-subtitle">{{ 'It may have been removed, or you don\'t have access to it.' | t }}</p>
     <button mat-stroked-button type="button" class="btn-pill" (click)="goToReminders()">
-      <mat-icon>arrow_back</mat-icon>
-      Back to reminders
+      <mat-icon class="directional-icon">arrow_back</mat-icon>
+      {{ 'Back to reminders' | t }}
     </button>
   </div>
 
@@ -30,13 +30,13 @@
   <ng-container *ngIf="state === 'ready' && plan">
 
     <div class="plan-header">
-      <button mat-icon-button class="back-btn" (click)="goBack()" aria-label="Back">
-        <mat-icon>arrow_back</mat-icon>
+      <button mat-icon-button class="back-btn" (click)="goBack()" [attr.aria-label]="&#x27;Back&#x27; | t">
+        <mat-icon class="directional-icon">arrow_back</mat-icon>
       </button>
-      <h1 class="plan-title">{{ plan.title }}</h1>
+      <h1 class="plan-title">{{ plan.title | aiText }}</h1>
       <span class="status-chip" [ngClass]="'status-' + plan.status.toLowerCase()">
         <mat-icon *ngIf="plan.status === 'COMPLETED'">check_circle</mat-icon>
-        {{ plan.status | titlecase }}
+        {{ plan.status | t }}
       </span>
     </div>
 

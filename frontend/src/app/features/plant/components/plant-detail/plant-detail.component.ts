@@ -1,3 +1,4 @@
+import { translate } from '../../../../shared/i18n/language.service';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -94,7 +95,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         this.loading = false;
       },
       error: () => {
-        this.snackBar.open('Plant not found.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Plant not found.'), translate('Dismiss'), { duration: 4000 });
         this.router.navigate(['/garden']);
       },
     });
@@ -205,10 +206,10 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     if (!action || !this.plant) return;
     switch (action) {
       case 'updatePhoto':
-        this.snackBar.open('Updating the plant photo isn\'t available yet.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Updating the plant photo isn\'t available yet.'), translate('Dismiss'), { duration: 4000 });
         break;
       case 'archive':
-        if (window.confirm('Are you sure you want to archive this plant?')) {
+        if (window.confirm(translate('Are you sure you want to archive this plant?'))) {
           this.onArchive();
         }
         break;
@@ -243,11 +244,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     if (!this.plant) return;
     this.plantService.archivePlant(this.plant.id).subscribe({
       next: () => {
-        this.snackBar.open('Plant archived.', undefined, { duration: 3000 });
+        this.snackBar.open(translate('Plant archived.'), undefined, { duration: 3000 });
         this.router.navigate(['/garden']);
       },
       error: () => {
-        this.snackBar.open('Could not archive plant.', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(translate('Could not archive plant.'), translate('Dismiss'), { duration: 4000 });
       },
     });
   }
@@ -258,9 +259,9 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
 
   scanHealthLabel(scan: IdentificationResponse): string {
     switch (scan.healthStatus) {
-      case 'HEALTHY': return 'Healthy';
-      case 'ISSUES_DETECTED': return 'Issues detected';
-      default: return 'Unknown';
+      case 'HEALTHY': return translate('Healthy');
+      case 'ISSUES_DETECTED': return translate('Issues detected');
+      default: return translate('Unknown');
     }
   }
 
@@ -326,7 +327,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.snackBar.open('Scan started — it will appear in the list shortly.', undefined, {
+          this.snackBar.open(translate('Scan started — it will appear in the list shortly.'), undefined, {
             duration: 4000,
           });
           this.scanHistoryLoaded = false;
@@ -338,9 +339,9 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           const message = err.status === 0
-            ? 'Connection problem — check your internet and try again'
-            : 'Could not start the scan. Please try again.';
-          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+            ? translate('Connection problem — check your internet and try again')
+            : translate('Could not start the scan. Please try again.');
+          this.snackBar.open(message, translate('Dismiss'), { duration: 5000 });
         },
       });
   }
