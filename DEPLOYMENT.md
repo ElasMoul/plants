@@ -6,43 +6,68 @@ deploy, on its own cadence; the platform observes via `app.health`).
 
 ## Production
 
-- **Backend** — Spring Boot 3.2 JAR, deployed to **Railway** (`railway up`).
-- **Frontend** — Angular PWA production build, deployed to **Vercel**.
-- **CI/CD** — `.github/workflows/deploy.yml`, triggered on push to `main`: builds
-  backend JAR + frontend `dist/`, then deploys each independently. Requires
-  `RAILWAY_TOKEN` (backend) and `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`
-  (frontend) as GitHub repository secrets.
-- **Database** — PostgreSQL 15, schema managed by **Liquibase** migrations
-  (`backend/src/main/resources/db/changelog`), not owned or touched by the platform.
-- **Cache / rate limiting** — Redis (Bucket4j).
-- **Async pipeline** — Kafka locally/dev; **production runs WITHOUT Kafka**
-  (owner decision 2026-07-15, v1.0.0): `app.identification.transport=in-process`
-  in the prod/staging profiles dispatches the identification pipeline on the
-  in-app async executor instead of a broker. The 202+poll HTTP contract is
-  unchanged. Revisit brokered async at scale.
+- **Backend** — Spring Boot 3.2 JAR on an **OVH VPS** (replaced Railway
+  2026-09-24): Docker Compose under `/opt/plantpal` runs Postgres 15, Redis 7,
+  the backend (runtime-only image, `deploy/vps/backend/Dockerfile`) and **Caddy**,
+  which terminates TLS for `https://api.plants.moulworks.com` with automatic
+  Let's Encrypt certificates. Only ports 22/80/443 are open.
+- **Frontend** — classic + atlas Angular builds on **Vercel**; each project's
+  `/api/*` and `/photos/*` are rewritten to `BACKEND_PUBLIC_URL`.
+- **CI/CD** — `.github/workflows/deploy.yml` on push to `main`: builds the JAR +
+  both `dist/`s, then `scp`s `deploy/vps/{docker-compose.yml,Caddyfile,backend/Dockerfile}`
+  and the JAR to the VPS as user `deploy` and runs `docker compose up -d --build`,
+  failing the job unless the backend container turns `healthy`. Pushing `main`
+  is a production deploy.
+- **Database** — PostgreSQL 15 (compose volume `plantpal_postgres-data`), schema
+  owned by **Liquibase**. Nightly `pg_dump` at 03:30 to `/opt/plantpal/backups`
+  (14 days kept, cron in `/etc/cron.d/plantpal-backup`).
+- **Cache / rate limiting** — Redis (password-protected, AOF persistence).
+- **Photos** — Cloudinary (`STORAGE_TYPE=cloudinary`); `local` also works now
+  that the `photos` volume survives redeploys.
+- **Async pipeline** — production runs WITHOUT Kafka (owner decision 2026-07-15):
+  `app.identification.transport=in-process` in the prod profile.
 
-### First-time production setup (T-DEPLOY.5 runbook)
+### First-time VPS setup (runbook)
 
-1. **Railway** — create a project with two add-ons (PostgreSQL, Redis) and one
-   service for the backend. The service builds via `backend/railway.json` →
-   `backend/Dockerfile.railway` (runtime-only image; CI supplies the prebuilt
-   JAR — the regular Dockerfile needs the contracts-m2 host context Railway
-   doesn't have). Set the service env vars (see `backend/.env.example`,
-   "Staging / Production" section): `SPRING_PROFILES_ACTIVE=prod`,
-   `DATABASE_URL` (⚠️ Railway's native `postgres://` URI must be translated to
-   JDBC form: `jdbc:postgresql://host:port/db?user=...&password=...`),
-   `REDIS_URL`, `JWT_SECRET` (≥64 chars), `GITHUB_TOKEN` (rotated 2026-07-15),
-   `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, `CORS_ALLOWED_ORIGINS` (the Vercel
-   domain, no trailing slash), optional `ANTHROPIC_API_KEY`/`PLANTNET_API_KEY`.
-   Do NOT set `KAFKA_BOOTSTRAP_SERVERS` — prod is in-process by design.
-2. **Vercel** — create the project once (`vercel link` locally or via
-   dashboard); no build settings needed (CI deploys a prebuilt `dist/`).
-3. **GitHub repo secrets** — `RAILWAY_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
-   `VERCEL_PROJECT_ID`, `VAPID_PUBLIC_KEY`, `SENTRY_DSN` (last two are baked
-   into the frontend build); repo **variable** `BACKEND_PUBLIC_URL` = the
-   Railway service's public URL (deploy.yml writes the Vercel `/api/*` rewrite
-   from it and fails fast if unset).
-3b. **Atlas frontend (second Vercel project)** — the atlas is a whole second app
+1. **DNS** — add an `A` record `api.plants.moulworks.com` → the VPS IPv4 (and
+   `AAAA` → IPv6 if you want it). Caddy cannot get a certificate until it resolves.
+2. **Your SSH key on the VPS** (from your PC):
+   `ssh-copy-id <ovh-user>@<vps-ip>` (OVH images log in as `ubuntu` or `debian`).
+3. **Bootstrap** — copy and run the script:
+   `scp deploy/vps/bootstrap.sh <ovh-user>@<vps-ip>:` then on the VPS
+   `sudo bash bootstrap.sh`. It installs Docker, updates, 2G swap, `ufw`,
+   fail2ban, the `deploy` user, `/opt/plantpal`, the backup cron, and switches
+   SSH to key-only (only if your key is already installed).
+4. **CI deploy key** (on your PC): `ssh-keygen -t ed25519 -f plantpal-deploy -N "" -C plantpal-ci`;
+   append `plantpal-deploy.pub` to `/home/deploy/.ssh/authorized_keys` on the VPS.
+5. **Server `.env`** — create `/opt/plantpal/.env` (owner `deploy`, `chmod 600`)
+   from `deploy/vps/.env.example`: fresh `openssl rand -hex 32` passwords, a
+   new `JWT_SECRET`, the **same** VAPID pair the frontends were built with, and
+   the Anthropic / PlantNet / Cloudinary values.
+6. **GitHub** — secrets `VPS_HOST` (IP), `VPS_SSH_KEY` (contents of the private
+   `plantpal-deploy` file), `VPS_KNOWN_HOSTS` (output of `ssh-keyscan <vps-ip>`);
+   variable `BACKEND_PUBLIC_URL=https://api.plants.moulworks.com`. `RAILWAY_TOKEN`
+   is no longer used. Existing `VERCEL_*`, `VAPID_PUBLIC_KEY`, `SENTRY_DSN`,
+   `CONTRACTS_READ_TOKEN` stay.
+7. **Deploy** — merge to `main` (or re-run the Deploy workflow). The first boot
+   runs every migration on the empty database; the job waits up to 4 minutes.
+8. **Verify** — `curl https://api.plants.moulworks.com/actuator/health` = UP;
+   register/login on `https://plants.moulworks.com`; one full identification.
+9. **Decommission Railway** once verified (delete the project; nothing deploys there).
+
+### Operating the VPS
+
+All from `/opt/plantpal` as `deploy`:
+- Logs: `docker compose logs -f --tail 200 backend`
+- Restart after editing `.env`: `docker compose up -d backend`
+- Roll back the JAR: `cp backend/app.jar.prev backend/app.jar && docker compose up -d --build backend`
+- Restore a backup: `gunzip -c backups/<file>.sql.gz | docker compose exec -T postgres psql -U plantpal plantpal`
+  (into an empty database)
+- Copy backups off the box regularly — they live on the same disk as the data.
+
+### Frontends on Vercel
+
+4. **Atlas frontend (second Vercel project)** — the atlas is a whole second app
    (its own Vercel project, its own domain, the same backend). Live setup:
    project `plants-atlas`, domain `https://plants-atlas.moulworks.com`, beside
    the classic `plants-qvj8` / `https://plants.moulworks.com`.
@@ -61,8 +86,9 @@ deploy, on its own cadence; the platform observes via `app.health`).
       both apps' `environment.prod.ts`, which is what makes the login page's
       "Continue into the Atlas" checkbox and the atlas's "Open in PlantPal"
       links point at each other instead of at localhost.
-   4. Add BOTH domains to the backend's `CORS_ALLOWED_ORIGINS` on Railway
-      (comma-separated, no spaces) and click **Apply/Deploy** — Vercel's
+   4. Add BOTH domains to the backend's `CORS_ALLOWED_ORIGINS` in the VPS
+      `/opt/plantpal/.env` (comma-separated, no spaces) and run
+      `docker compose up -d backend` — Vercel's
       rewrite proxy forwards the browser's Origin header, so Spring sees each
       frontend's own domain and 403s an unlisted one.
    5. DNS for the subdomain: add the CNAME Vercel shows for
@@ -78,21 +104,10 @@ deploy, on its own cadence; the platform observes via `app.health`).
    deploy still fails. Fix: issue a fresh token scoped to the account/team that
    owns the projects and update `VERCEL_TOKEN`; `whoami` naming the user and
    `vercel project ls` listing the project are the proof it is healthy.
-3c. **Photo storage (Cloudinary — recommended in prod)** — the Railway container
-   disk is wiped on every redeploy, so `STORAGE_TYPE=local` keeps photos only in
-   the 30-day Redis cache. For durable storage: create a free Cloudinary account
-   (no card needed), copy the **API Environment variable** from its dashboard
-   (`cloudinary://api_key:api_secret@cloud_name`), and set two Railway service
-   variables: `STORAGE_TYPE=cloudinary` and `CLOUDINARY_URL=<that value>`.
-   Same `/photos/{uuid}.{ext}` URL contract and Redis cache as local mode — no
-   frontend or DB impact; photos uploaded before the switch stay readable only
-   while their Redis cache entry lives.
-4. **Deploy** — push to `main`; `.github/workflows/deploy.yml` builds and
-   deploys both sides.
-5. **Verify** — `GET <railway>/actuator/health` = UP; register/login on the
-   Vercel domain; run one full identification (photo → 202 → poll → result)
-   to prove the in-process pipeline; watch Railway logs (structured JSON with
-   correlationId) while doing it.
+5. **Photo storage (Cloudinary)** — create a free Cloudinary account, copy the
+   **API Environment variable** (`cloudinary://api_key:api_secret@cloud_name`) and set
+   `STORAGE_TYPE=cloudinary` + `CLOUDINARY_URL=<that value>` in the VPS `.env`.
+   Same `/photos/{uuid}.{ext}` URL contract and Redis cache as local mode.
 
 ## Local (Docker Compose)
 
@@ -158,7 +173,7 @@ which only takes effect when the `platform` profile is active
   overridable via `PLATFORM_GATEWAY_ENABLED`), and the in-scope AI calls route
   through `ai-gateway` at `platform.gateway.url`.
 
-**Production (Railway) runs with no profile override beyond its own — `platform`
+**Production (OVH VPS) runs with no profile override beyond its own — `platform`
 is never activated there, and `ai-gateway` is never publicly exposed, so prod
 cannot reach it even if it wanted to.** All of the provider keys above remain
 required in every environment: the gateway swap is additive (an

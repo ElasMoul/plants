@@ -1,0 +1,16 @@
+# TLS terminator for the backend. Caddy obtains and renews the Let's Encrypt
+# certificate for API_DOMAIN automatically — the DNS A record must point at the
+# VPS before the first start.
+{
+	servers {
+		# Browsers reach the API through Vercel's /api/* rewrite, so the TCP peer
+		# is a Vercel edge node. Keep the X-Forwarded-For chain Vercel sends so
+		# ClientIpResolver (first hop) rate-limits per real client, as on Railway.
+		trusted_proxies static 0.0.0.0/0 ::/0
+	}
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8080
+}
