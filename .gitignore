@@ -9,3 +9,5 @@ frontend/nginx/certs/
 # Downloaded GitHub Actions evidence for the auth-hardening CI verifier.
 .auth-hardening-ci-reports/
 tools/auth-hardening/__pycache__/
+deploy/vps/plantpal-deploy
+deploy/vps/plantpal-deploy.pub
