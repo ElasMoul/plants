@@ -16,6 +16,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UserPreferencesRequest {
 
+  @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
+  private String language;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below. Nullable:
   // the current frontend never sends this field anymore (it only sends the two below), so a
   // @NotNull here made every save fail with a 400. When omitted, the user's existing stored

@@ -20,7 +20,7 @@
     >
       <img
         [src]="scan.photoUrl || placeholderImage"
-        [alt]="scan.commonName || scan.scientificName"
+        [alt]="(scan.commonName | aiText) || scan.scientificName"
         class="timeline-thumb"
         [ngClass]="healthClass(scan)"
       />

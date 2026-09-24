@@ -43,7 +43,7 @@
   <!-- Card body -->
   <div class="card-body">
     <h3 class="plant-name">{{ plant.nickname }}</h3>
-    <p class="plant-species">{{ plant.commonName || plant.species || ('Species unknown' | t) }}</p>
+    <p class="plant-species">{{ (plant.commonName | aiText) || plant.species || ('Species unknown' | t) }}</p>
 
     <!-- Next water chip -->
     <div class="next-water" *ngIf="plant.nextWaterDays !== null && plant.nextWaterDays !== undefined">

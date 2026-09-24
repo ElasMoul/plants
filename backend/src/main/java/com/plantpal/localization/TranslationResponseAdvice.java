@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 @RestControllerAdvice(
     basePackages = {
       "com.plantpal.identification.controller",
+      "com.plantpal.plant.controller",
       "com.plantpal.species.controller",
       "com.plantpal.treatment.controller",
       "com.plantpal.reminder.controller"
@@ -59,10 +60,15 @@ public class TranslationResponseAdvice implements ResponseBodyAdvice<Object> {
     if (auth == null || !(auth.getPrincipal() instanceof User user)) return body;
     ObjectNode envelope = mapper.valueToTree(body);
     try {
-      var texts = extractor.extract(envelope.get("data"));
-      if (texts.isEmpty()) return body;
+      var texts = new java.util.ArrayList<>(extractor.extract(envelope.get("data")));
       boolean shared =
           request.getURI().getPath().matches("/api/v1/species/\\d+(?:/regenerate-description)?");
+      texts.addAll(
+          translations
+              .cached(extractor.names(envelope.get("data")), user.getId(), shared, language)
+              .keySet());
+      texts = new java.util.ArrayList<>(texts.stream().distinct().sorted().toList());
+      if (texts.isEmpty()) return body;
       envelope.set(
           "localization",
           mapper.valueToTree(translations.prepare(texts, user.getId(), shared, language)));

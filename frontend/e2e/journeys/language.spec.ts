@@ -155,14 +155,50 @@ test('Arabic AI text uses the Arabic target and keeps scientific names and quant
   await page.route('**/api/v1/species/79', async route => {
     language = route.request().headers()['x-content-language'];
     await route.fulfill({ json: { success: true, data: {
-      id: 79, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
+      id: 79, scientificName: 'Monstera deliciosa', commonName: 'Swiss cheese plant', descriptionStatus: 'READY',
       description: 'Water every 7 days with 100 ml.', careCards: [],
     }, localization: { id: 'species-ar', language: 'ar', status: 'READY', texts: {
       'Water every 7 days with 100 ml.': 'اسقِ كل 7 أيام بكمية 100 ml.',
+      'Swiss cheese plant': 'المونستيرا',
     } } } });
   });
   await page.goto('/garden/species/79');
   await expect(page.getByText('اسقِ كل 7 أيام بكمية 100 ml.', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Monstera deliciosa', exact: true })).toBeVisible();
+  await expect(page.getByText('المونستيرا', { exact: true })).toBeVisible();
   expect(language).toBe('ar');
+});
+
+
+test('language changes are saved to the account before the interface reloads', async ({ page }) => {
+  await userSession(page);
+  let saved = '';
+  await page.route('**/api/v1/users/me/preferences', async route => {
+    if (route.request().method() === 'PUT') saved = route.request().postDataJSON().language;
+    await route.fulfill({ json: { success: true, data: { language: saved || 'fr' } } });
+  });
+  await page.goto('/preferences');
+  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).first().selectOption('ar');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  expect(saved).toBe('ar');
+});
+
+test.describe('Registration browser language', () => {
+  test.use({ locale: 'ar-MA' });
+  test('detects Arabic and sends it with registration', async ({ page }) => {
+    let language = '';
+    await page.route('**/api/v1/auth/register', async route => {
+      language = route.request().postDataJSON().language;
+      await route.fulfill({ status: 400, json: { success: false, message: 'Synthetic test response' } });
+    });
+    await page.goto('/register');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await page.getByTestId('register-name').fill('قارئ');
+    await page.locator('[formControlName="lastName"]').fill('اختبار');
+    await page.getByTestId('register-email').fill('reader@example.test');
+    await page.getByTestId('register-password').fill('TestPassword123!');
+    await page.locator('[formControlName="confirmPassword"]').fill('TestPassword123!');
+    await page.locator('button[type="submit"]').click();
+    await expect.poll(() => language).toBe('ar');
+  });
 });

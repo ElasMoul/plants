@@ -8,6 +8,7 @@ import com.plantpal.identification.client.DeepSeekClient;
 import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.identification.client.OllamaClient;
 import com.plantpal.identification.dto.CareCardDto;
+import com.plantpal.localization.SpeciesTextReady;
 import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.repository.SpeciesRepository;
@@ -20,6 +21,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,7 +48,10 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
 
+  private final ApplicationEventPublisher events;
+
   public SpeciesEnrichmentServiceImpl(
+      ApplicationEventPublisher events,
       SpeciesRepository speciesRepository,
       DeepSeekClient deepSeekClient,
       OllamaClient ollamaClient,
@@ -55,6 +60,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       ObjectMapper objectMapper,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties) {
+    this.events = events;
     this.speciesRepository = speciesRepository;
     this.deepSeekClient = deepSeekClient;
     this.ollamaClient = ollamaClient;
@@ -114,6 +120,7 @@ public class SpeciesEnrichmentServiceImpl implements SpeciesEnrichmentService {
       species.setExternalDataFetchedAt(Instant.now());
       species.setDescriptionStatus(GenerationStatus.READY);
       speciesRepository.save(species);
+      events.publishEvent(new SpeciesTextReady(speciesId));
       log.info("Species enrichment succeeded: id={}", speciesId);
 
     } catch (Exception e) {

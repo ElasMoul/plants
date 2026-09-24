@@ -78,3 +78,15 @@ describe('Arabic locale', () => {
       .toEqual(['لا نباتات', 'نبتة واحدة', 'نبتتان', '3 نباتات', '11 نبتة', '100 نبتة']);
   });
 });
+
+
+describe('Detected language', () => {
+  afterEach(() => { localStorage.clear(); jest.restoreAllMocks(); });
+  it('detects supported browser locales and lets an explicit selection override detection', () => {
+    jest.spyOn(navigator, 'languages', 'get').mockReturnValue(['ar-MA', 'fr-FR']);
+    localStorage.clear();
+    expect(readLanguage()).toBe('ar');
+    localStorage.setItem('plantpal.language', 'en');
+    expect(readLanguage()).toBe('en');
+  });
+});

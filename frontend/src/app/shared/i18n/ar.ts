@@ -1,4 +1,9 @@
 export const AR: Readonly<Record<string, string>> = {
+  "Arabic text is not ready to read aloud yet.": "النص العربي غير جاهز للقراءة الصوتية بعد.",
+  "No voice is available for this language. Install a matching voice in your device speech settings.": "لا يتوفر صوت لهذه اللغة. ثبّت صوتًا مناسبًا من إعدادات النطق في جهازك.",
+  "Could not read this text aloud. Please try again.": "تعذّرت قراءة النص صوتيًا. يرجى المحاولة مجددًا.",
+
+  "Could not save language. Please try again.": "تعذّر حفظ اللغة. يرجى المحاولة مجددًا.",
   "PlantPal": "PlantPal",
   "Administration": "الإدارة",
   "AI Model Settings": "إعدادات نموذج الذكاء الاصطناعي",

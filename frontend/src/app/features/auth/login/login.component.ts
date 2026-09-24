@@ -72,7 +72,10 @@ export class LoginComponent {
         // safe return navigation before restarting the monitor: its immediate
         // poll may evict synchronously, and must preserve the destination rather
         // than the transient /login route.
-        Promise.resolve(destination).then(() => this.sessionMonitorService.start(this.returnUrl ?? '/garden'));
+        Promise.resolve(destination).then(() => {
+          if (res.data.language && document.documentElement.lang !== res.data.language) window.location.reload();
+          else this.sessionMonitorService.start(this.returnUrl ?? '/garden');
+        });
       },
       error: err => {
         this.loading = false;
