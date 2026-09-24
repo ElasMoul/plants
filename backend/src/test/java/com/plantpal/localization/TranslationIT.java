@@ -26,6 +26,8 @@ import org.springframework.test.context.TestConstructor;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class TranslationIT extends AbstractIntegrationTest {
   private final TranslationService service;
+  private final SectionTranslationService sections;
+  private final GeneratedAdviceService advice;
   private final UserRepository users;
   private final JdbcTemplate jdbc;
   private final TestRestTemplate http;
@@ -37,6 +39,8 @@ class TranslationIT extends AbstractIntegrationTest {
 
   TranslationIT(
       TranslationService service,
+      SectionTranslationService sections,
+      GeneratedAdviceService advice,
       UserRepository users,
       JdbcTemplate jdbc,
       TestRestTemplate http,
@@ -44,6 +48,8 @@ class TranslationIT extends AbstractIntegrationTest {
       org.springframework.context.ApplicationEventPublisher events) {
     this.events = events;
     this.service = service;
+    this.sections = sections;
+    this.advice = advice;
     this.users = users;
     this.jdbc = jdbc;
     this.http = http;
@@ -119,11 +125,9 @@ class TranslationIT extends AbstractIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     Map<?, ?> data = (Map<?, ?>) response.getBody().get("data");
     assertThat(data.get("healthNotes")).isEqualTo("Water every 7 days.");
-    String jobId = (String) ((Map<?, ?>) response.getBody().get("localization")).get("id");
-    ready(jobId, owner);
+    assertThat(response.getBody()).doesNotContainKey("localization");
+    verifyNoInteractions(client);
     assertThat(get("/api/v1/identifications/" + id, other, true).getStatusCode())
-        .isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(get("/api/v1/translations/" + jobId, other, true).getStatusCode())
         .isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(get("/api/v1/identifications/" + id, owner, false).getBody())
         .doesNotContainKey("localization");
@@ -156,23 +160,19 @@ class TranslationIT extends AbstractIntegrationTest {
   @Test
   void newArabicContentIsSavedBeforeReadAndReusedForSubsetsIncludingNames() throws Exception {
     owner.setLanguage("ar");
-    users.saveAndFlush(owner);
+    owner = users.saveAndFlush(owner);
     when(client.translate(anyList(), anyLong(), eq("ar")))
         .thenAnswer(
             invocation -> {
               List<String> texts = invocation.getArgument(0);
               return texts.stream().collect(Collectors.toMap(text -> text, text -> "عربي " + text));
             });
-    events.publishEvent(
-        new GeneratedPlantText(
-            owner.getId(),
-            Map.of(
-                "commonName",
-                "Peace lily",
-                "description",
-                "Keep away from pets.",
-                "steps",
-                List.of(Map.of("instruction", "Use 5 ml.", "detail", "Repeat in 7 days.")))));
+    Long generatedId =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,common_name,health_notes) VALUES (?,'COMPLETED','Peace lily','Use 5 ml.') RETURNING id",
+            Long.class,
+            owner.getId());
+    events.publishEvent(new GeneratedPlantText("scan", generatedId, owner.getId()));
     await()
         .atMost(Duration.ofSeconds(5))
         .untilAsserted(
@@ -233,7 +233,7 @@ class TranslationIT extends AbstractIntegrationTest {
   @Test
   void scanCompletionPersistsArabicWithoutOpeningItOrBackfillingOlderScans() throws Exception {
     owner.setLanguage("ar");
-    users.saveAndFlush(owner);
+    owner = users.saveAndFlush(owner);
     when(client.translate(anyList(), anyLong(), eq("ar")))
         .thenAnswer(
             invocation -> {
@@ -273,6 +273,111 @@ class TranslationIT extends AbstractIntegrationTest {
             jdbc.queryForObject(
                 "SELECT common_name FROM identifications WHERE id=?", String.class, newId))
         .isEqualTo("Peace lily");
+  }
+
+  @Test
+  void sectionReadsNeverTranslateAndExplicitRequestsKeepAtMostThreeVersions() throws Exception {
+    Long id =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,health_notes) VALUES (?,'COMPLETED','Section care.') RETURNING id",
+            Long.class,
+            owner.getId());
+    owner.setLanguage("fr");
+    owner = users.saveAndFlush(owner);
+    var original = sections.get("scan", id, "health", owner.getId());
+    assertThat(original.originalLanguage()).isEqualTo("en");
+    assertThat(original.variants())
+        .extracting(SectionTranslationService.Variant::language)
+        .containsExactly("en");
+    verifyNoInteractions(client);
+    sections.translate("scan", id, "health", owner.getId());
+    sectionReady(id, "fr");
+    sections.translate("scan", id, "health", owner.getId());
+    verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
+    owner.setLanguage("ar");
+    owner = users.saveAndFlush(owner);
+    assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
+        .isEqualTo("en");
+    verify(client, never()).translate(anyList(), anyLong(), eq("ar"));
+    when(client.translate(anyList(), anyLong(), eq("ar")))
+        .thenReturn(Map.of("Section care.", "رعاية النبات"));
+    sections.translate("scan", id, "health", owner.getId());
+    sectionReady(id, "ar");
+    assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(3);
+    assertThatThrownBy(() -> sections.get("scan", id, "health", other.getId()))
+        .isInstanceOf(ResourceNotFoundException.class);
+    jdbc.update("UPDATE identifications SET health_notes='Changed care.' WHERE id=?", id);
+    assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(1);
+    verify(client, times(1)).translate(anyList(), anyLong(), eq("ar"));
+  }
+
+  @Test
+  void generationLanguageStaysStableWhenPreferencesChange() {
+    owner.setLanguage("fr");
+    owner = users.saveAndFlush(owner);
+    Long id =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,health_notes) VALUES (?,'COMPLETED','New French care.') RETURNING id",
+            Long.class,
+            owner.getId());
+    sections.generated("scan", id, owner.getId());
+    sectionReady(id, "fr");
+    owner.setLanguage("ar");
+    owner = users.saveAndFlush(owner);
+    sections.generated("scan", id, owner.getId());
+    var view = sections.get("scan", id, "health", owner.getId());
+    assertThat(view.originalLanguage()).isEqualTo("fr");
+    assertThat(view.targetLanguage()).isEqualTo("ar");
+    assertThat(view.variants()).hasSize(2);
+  }
+
+  @Test
+  void cureAdvicePersistsOriginalAndGeneratedLanguageWithOwnerIsolation() {
+    owner.setLanguage("fr");
+    owner = users.saveAndFlush(owner);
+    Long scanId =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status) VALUES (?,'COMPLETED') RETURNING id",
+            Long.class,
+            owner.getId());
+    Long id = advice.save(scanId, owner.getId(), Map.of("advice", "Treat roots gently."));
+    assertThat(advice.get(id, owner.getId()).path("advice").asText())
+        .isEqualTo("Treat roots gently.");
+    assertThatThrownBy(() -> advice.get(id, other.getId()))
+        .isInstanceOf(ResourceNotFoundException.class);
+    sections.generated("advice", id, owner.getId());
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(sections.get("advice", id, "advice", owner.getId()).variants())
+                    .anyMatch(v -> "fr".equals(v.language()) && "READY".equals(v.status())));
+    assertThat(sections.get("advice", id, "advice", owner.getId()).originalLanguage())
+        .isEqualTo("fr");
+  }
+
+  @Test
+  void addingOneSectionDoesNotTranslateExistingSections() throws Exception {
+    owner.setLanguage("fr");
+    owner = users.saveAndFlush(owner);
+    Long id =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,common_name,health_notes) VALUES (?,'COMPLETED','Old name','New notes') RETURNING id",
+            Long.class,
+            owner.getId());
+    sections.generated("scan", id, owner.getId(), "health");
+    sectionReady(id, "fr");
+    assertThat(sections.get("scan", id, "name", owner.getId()).variants()).hasSize(1);
+    verify(client).translate(eq(List.of("New notes")), eq(owner.getId()), eq("fr"));
+  }
+
+  private void sectionReady(Long id, String language) {
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(sections.get("scan", id, "health", owner.getId()).variants())
+                    .anyMatch(v -> language.equals(v.language()) && "READY".equals(v.status())));
   }
 
   private void ready(String id, User user) {

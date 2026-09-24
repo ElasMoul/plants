@@ -23,7 +23,7 @@
   <div class="card-detail" *ngIf="expanded">
     <mat-divider></mat-divider>
 
-    <ng-container *ngIf="detailList; else plainDetail">
+    <ng-container *ngIf="card.detail | aiDetail as detailList; else plainDetail">
       <p class="detail-text" *ngIf="detailList.intro">{{ detailList.intro }}</p>
       <ol class="detail-list">
         <li *ngFor="let item of detailList.items">{{ item }}</li>

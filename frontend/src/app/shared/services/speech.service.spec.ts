@@ -1,6 +1,5 @@
 import { NgZone } from '@angular/core';
 import { SpeechService } from './speech.service';
-import { rememberAiTexts } from '../i18n/ai-text.pipe';
 
 describe('Language-matched speech', () => {
   let service: SpeechService;
@@ -22,9 +21,12 @@ describe('Language-matched speech', () => {
   });
   afterEach(() => { service.stop(); localStorage.clear(); jest.useRealTimers(); });
   it('uses saved Arabic text and explicitly selects an Arabic voice, never the default English one', async () => {
-    rememberAiTexts({ 'Water the roots': 'اسقِ الجذور' });
-    await service.speak('Water the roots');
+    await service.speak('اسقِ الجذور', 'ar');
     expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'اسقِ الجذور', lang: 'ar-SA', voice: voices[1] }));
+  });
+  it('uses the displayed section language when the interface is Arabic', async () => {
+    await service.speak('Water the roots', 'en');
+    expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'Water the roots', voice: voices[0], lang: 'en-US' }));
   });
   it('shows a clear error without speaking English when no Arabic voice exists', async () => {
     voices = [voice('en-US')];

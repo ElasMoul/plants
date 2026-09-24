@@ -30,7 +30,7 @@
 
         <div class="hero-text">
           <a class="hero-back-link" (click)="goToPlant()" *ngIf="plant">{{ 'Back to {0}' | t : [(plant.nickname)] }}</a>
-          <h1 class="hero-name">{{ treatment.diseaseName | aiText }}</h1>
+          <h1 [appSection]="'treatment:' + treatment.id + ':name'" class="hero-name">{{ treatment.diseaseName | aiText }}</h1>
         </div>
       </div>
     </div>
@@ -58,7 +58,7 @@
           {{ treatment.status | t }}
         </span>
 
-        <div class="description-block">
+        <div class="description-block" [appSection]="treatment.descriptionStatus === 'READY' ? 'treatment:' + treatment.id + ':description' : null">
           <!-- READY -->
           <ng-container *ngIf="treatment.descriptionStatus === 'READY' && treatment.diseaseDescription">
             <app-read-aloud-button

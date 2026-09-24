@@ -137,6 +137,7 @@ class IdentificationServiceImplTest {
             speciesService,
             plantService,
             eventPublisher,
+            org.mockito.Mockito.mock(com.plantpal.localization.GeneratedAdviceService.class),
             Runnable::run,
             gatewayClient,
             new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"),

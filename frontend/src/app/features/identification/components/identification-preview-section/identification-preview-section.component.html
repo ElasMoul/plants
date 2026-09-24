@@ -11,7 +11,7 @@
   [reasoningModel]="result.reasoningModelUsed"
 ></app-model-usage-badge>
 
-<app-annotation-list
+<app-annotation-list [appSection]="'scan:' + result.id + ':health'"
   *ngIf="result.annotationRegions && result.annotationRegions.length"
   [regions]="result.annotationRegions"
   [species]="result.scientificName"

@@ -232,3 +232,11 @@ html[dir='rtl'] input[type='password'], html[dir='rtl'] pre, html[dir='rtl'] cod
 html[dir='rtl'] .mat-icon { letter-spacing: normal; }
 
 html[dir='rtl'] .directional-icon { transform: scaleX(-1); }
+
+.section-language-controls { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; margin-block:4px 10px; font-size:12px; }
+.section-language-controls button, .section-language-controls select { font:inherit; color:var(--color-text-secondary); background:transparent; border:1px solid #b8c8ba; border-radius:12px; padding:4px 8px; cursor:pointer; }
+.section-language-controls button:disabled { cursor:wait; opacity:.6; }
+
+.hero-text .section-language-controls, .hero-species .section-language-controls {
+  button, select { background: #fff; color: #214d3b; border-color: #d3ded7; }
+}

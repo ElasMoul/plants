@@ -13,7 +13,7 @@
 
   <app-mermaid-diagram
     *ngIf="data.stepDiagramContent"
-    [definition]="data.stepDiagramContent"
+    [definition]="data.stepDiagramContent | aiDiagram"
   ></app-mermaid-diagram>
 </mat-dialog-content>
 

@@ -1,4 +1,9 @@
 export const AR: Readonly<Record<string, string>> = {
+  "Saved versions": "النسخ المحفوظة",
+  "Translate to {0}": "ترجمة إلى {0}",
+  "Could not load section languages.": "تعذر تحميل لغات هذا القسم.",
+  "Translation failed. Try again.": "فشلت الترجمة. حاول مرة أخرى.",
+  "Translating\u2026": "جارٍ الترجمة…",
   "Arabic text is not ready to read aloud yet.": "النص العربي غير جاهز للقراءة الصوتية بعد.",
   "No voice is available for this language. Install a matching voice in your device speech settings.": "لا يتوفر صوت لهذه اللغة. ثبّت صوتًا مناسبًا من إعدادات النطق في جهازك.",
   "Could not read this text aloud. Please try again.": "تعذّرت قراءة النص صوتيًا. يرجى المحاولة مجددًا.",

@@ -1,6 +1,6 @@
 <mat-card class="disease-panel" *ngIf="isDisease && region">
 
-  <mat-card-header>
+  <mat-card-header [appSection]="'scan:' + identificationId + ':health'">
     <mat-icon mat-card-avatar color="warn">bug_report</mat-icon>
     <mat-card-title>{{ region.label | aiText }}</mat-card-title>
     <mat-card-subtitle>
@@ -48,7 +48,7 @@
 
     <!-- Advice result -->
     <ng-container *ngIf="advice">
-      <p class="advice-text">{{ advice | aiText }}</p>
+      <p [appSection]="sectionId ? 'advice:' + sectionId + ':advice' : null" class="advice-text">{{ advice | aiText }}</p>
       <app-model-usage-badge
         [reasoningModel]="reasoningModelUsed"
         prefix="Advice generated using"

@@ -296,6 +296,17 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       });
   }
 
+  get cardSections(): Record<string, string> {
+    const refs: Record<string, string> = {};
+    for (const scan of this.allIdentifications) {
+      if (scan.status !== 'COMPLETED') continue;
+      scan.carePlan?.careCards.forEach((card, index) => {
+        refs[card.type] ??= `scan:${scan.id}:card-${index}`;
+      });
+    }
+    return refs;
+  }
+
   get mergedCarePlan(): CarePlanDto | null {
     if (!this.allIdentifications.length) return this.latestCarePlan;
     const seen = new Set<string>();

@@ -73,47 +73,50 @@ test('French plant form keeps entered content and displays a French date picker'
   await page.screenshot({ path: '../docs/screenshots/french-plant-form.png', fullPage: true });
 });
 
-test('saved AI descriptions and care cards become French after the translation job completes', async ({ page }) => {
+test('plant sections translate only on request and retain their selected language across UI changes', async ({ page }) => {
   await userSession(page);
-  let polls = 0;
-  let language = '';
-  await page.route('**/api/v1/species/77', async route => {
-    language = route.request().headers()['x-content-language'];
-    await route.fulfill({ json: { success: true, data: {
-      id: 77, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
-      description: 'A tropical climbing plant.', careOverview: 'Water every 7 days with 100 ml.',
-      careCards: [{ type: 'WATERING', icon: 'water_drop', title: 'Water the roots',
-        summary: 'Water every 7 days with 100 ml.', detail: 'Keep the leaves dry.', urgency: 'LOW' }],
-    }, localization: { id: 'species-fr', language: 'fr', status: 'PENDING', texts: {} } } });
-  });
-  await page.route('**/api/v1/translations/species-fr', route => route.fulfill({ json: { success: true, data: {
-    id: 'species-fr', language: 'fr', status: ++polls > 1 ? 'READY' : 'PENDING', texts: {
-      'A tropical climbing plant.': 'Une plante grimpante tropicale.',
-      'Water every 7 days with 100 ml.': 'Arrosez tous les 7 jours avec 100 ml.',
-      'Water the roots': 'Arroser les racines', 'Keep the leaves dry.': 'Gardez les feuilles sèches.',
-    },
+  const saved: Record<string, string[]> = {};
+  let posts = 0;
+  await page.route('**/api/v1/species/77', route => route.fulfill({ json: { success: true, data: {
+    id: 77, scientificName: 'Monstera deliciosa', commonName: 'Swiss cheese plant', descriptionStatus: 'READY',
+    description: 'A tropical climbing plant.', careCards: [{ type: 'WATERING', icon: 'water_drop',
+      title: 'Water roots', summary: 'Use 100 ml.', detail: 'Keep leaves dry.', urgency: 'LOW' }],
   } } }));
+  await page.route('**/api/v1/content-sections/**', async route => {
+    const path = new URL(route.request().url()).pathname.replace('/translate', '');
+    const language = await page.evaluate(() => localStorage.getItem('plantpal.language'));
+    if (route.request().method() === 'POST') { posts++; (saved[path] ??= []).push(language!); }
+    const texts = language === 'ar' ? { 'A tropical climbing plant.': 'نبات استوائي متسلق.' }
+      : { 'A tropical climbing plant.': 'Une plante grimpante tropicale.' };
+    await route.fulfill({ json: { success: true, data: { id: path, originalLanguage: 'en', targetLanguage: language,
+      variants: [{ language: 'en', status: 'READY', texts: {} }, ...(saved[path] ?? []).map(lang => ({
+        language: lang, status: 'READY', texts: lang === 'fr' ? { 'A tropical climbing plant.': 'Une plante grimpante tropicale.' } : texts,
+      }))],
+    } } });
+  });
   await page.goto('/garden/species/77');
-  await expect(page.getByText('Préparation du texte IA en français…')).toBeVisible();
-  await expect(page.getByText('Une plante grimpante tropicale.')).toBeVisible();
-  await expect(page.getByText('Arroser les racines', { exact: true })).toBeVisible();
-  await expect(page.getByText('Arrosez tous les 7 jours avec 100 ml.').first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Monstera deliciosa', exact: true })).toBeVisible();
-  expect(language).toBe('fr');
+  const description = page.locator('.info-block').filter({ has: page.locator('.info-text') }).first();
+  await expect(page.getByText('A tropical climbing plant.', { exact: true })).toBeVisible();
+  expect(posts).toBe(0);
+  await expect(page.locator('app-ai-translation-notice')).toHaveCount(0);
+  await description.getByRole('button', { name: 'Traduire en FR' }).click();
+  await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Water roots', { exact: true })).toBeVisible();
+  expect(posts).toBe(1);
+  await page.evaluate(() => localStorage.setItem('plantpal.language', 'ar')); await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
+  expect(posts).toBe(1);
+  await description.getByRole('button', { name: 'ترجمة إلى AR' }).click();
+  await expect(page.getByText('نبات استوائي متسلق.', { exact: true })).toBeVisible();
+  await description.getByRole('combobox').selectOption('en');
+  await expect(page.getByText('A tropical climbing plant.', { exact: true })).toBeVisible();
+  await description.getByRole('combobox').selectOption('ar');
+  expect(posts).toBe(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '../backend/target/section-translations-mobile.png', fullPage: true });
 });
-
-test('translation failure displays the original with a retry control', async ({ page }) => {
-  await userSession(page);
-  await page.route('**/api/v1/species/78', route => route.fulfill({ json: { success: true, data: {
-    id: 78, scientificName: 'Monstera deliciosa', descriptionStatus: 'READY',
-    description: 'Original description.', careCards: [],
-  }, localization: { id: 'failed-translation', language: 'fr', status: 'FAILED', texts: {} } } }));
-  await page.goto('/garden/species/78');
-  await expect(page.getByText('Original description.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Le texte original est affiché');
-  await expect(page.getByRole('button', { name: 'Réessayer la traduction' })).toBeVisible();
-});
-
 
 test('Arabic selector, RTL forms and calendar work on mobile and switching back restores LTR', async ({ page }) => {
   await page.goto('/login');
@@ -147,28 +150,6 @@ test('Arabic selector, RTL forms and calendar work on mobile and switching back 
   await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).first().selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 });
-
-test('Arabic AI text uses the Arabic target and keeps scientific names and quantities', async ({ page }) => {
-  await userSession(page);
-  await page.addInitScript(() => localStorage.setItem('plantpal.language', 'ar'));
-  let language = '';
-  await page.route('**/api/v1/species/79', async route => {
-    language = route.request().headers()['x-content-language'];
-    await route.fulfill({ json: { success: true, data: {
-      id: 79, scientificName: 'Monstera deliciosa', commonName: 'Swiss cheese plant', descriptionStatus: 'READY',
-      description: 'Water every 7 days with 100 ml.', careCards: [],
-    }, localization: { id: 'species-ar', language: 'ar', status: 'READY', texts: {
-      'Water every 7 days with 100 ml.': 'اسقِ كل 7 أيام بكمية 100 ml.',
-      'Swiss cheese plant': 'المونستيرا',
-    } } } });
-  });
-  await page.goto('/garden/species/79');
-  await expect(page.getByText('اسقِ كل 7 أيام بكمية 100 ml.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Monstera deliciosa', exact: true })).toBeVisible();
-  await expect(page.getByText('المونستيرا', { exact: true })).toBeVisible();
-  expect(language).toBe('ar');
-});
-
 
 test('language changes are saved to the account before the interface reloads', async ({ page }) => {
   await userSession(page);
