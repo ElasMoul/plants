@@ -45,6 +45,13 @@ public class SectionSourceServiceImpl implements SectionSourceService {
   }
 
   @Override
+  public String generationLanguage(String kind, Long id, Long userId) {
+    if (!"scan".equals(kind)) return "legacy";
+    String language = scans.getIdentification(id, userId).getContentLanguage();
+    return language == null ? "legacy" : language;
+  }
+
+  @Override
   public Map<String, JsonNode> sections(String kind, Long id, Long userId) {
     Object data =
         switch (kind) {

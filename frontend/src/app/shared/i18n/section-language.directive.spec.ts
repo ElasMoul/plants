@@ -62,6 +62,22 @@ describe('Explicit section translations', () => {
     expect(fixture.nativeElement.querySelector('section').dir).toBe('rtl');
     fixture.destroy();
   });
+  it('never displays English while a new Arabic result is being prepared', fakeAsync(() => {
+    const fixture = TestBed.createComponent(Host); fixture.detectChanges();
+    const pending = { ...original, originalLanguage: 'ar', targetLanguage: 'ar', variants: [
+      ...original.variants, { language: 'ar', status: 'PENDING', texts: {} }] };
+    http.expectOne(url).flush({ data: pending }); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('p').textContent).toBe('');
+    expect(fixture.nativeElement.querySelector('[role=status]')).not.toBeNull();
+    tick(1000);
+    http.expectOne(url).flush({ data: { ...pending, variants: [...original.variants,
+      { language: 'ar', status: 'READY', texts: { 'Water roots.': 'اسقِ الجذور.' } }] } });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('p').textContent).toBe('اسقِ الجذور.');
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    http.expectNone(url + '/translate'); fixture.destroy();
+  }));
+
   it('stops waiting after two minutes without resubmitting a translation', fakeAsync(() => {
     const fixture = TestBed.createComponent(Host); fixture.detectChanges();
     http.expectOne(url).flush({ data: original }); fixture.detectChanges();

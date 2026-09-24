@@ -22,7 +22,7 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
   ngOnChanges(): void {
     if (!this.appSection || this.appSection === this.key || this.appSection.includes('null')) return;
     this.key = this.appSection; this.active.unsubscribe(); this.active = new Subscription();
-    this.busy = false; this.error = ''; this.state.view = undefined;
+    this.busy = false; this.error = ''; this.state.view = undefined; this.state.enabled = true;
     this.load();
   }
   ngOnDestroy(): void { this.active.unsubscribe(); this.clear(); }
@@ -47,7 +47,7 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
   private request(): void {
     if (this.busy) return;
     const view = this.state.view;
-    if (!view || this.state.language === view.targetLanguage) return;
+    if (!view || (this.state.language === view.targetLanguage && !this.state.awaitingOriginal)) return;
     const saved = view.variants.find(v => v.language === view.targetLanguage);
     if (saved?.status === 'READY') {
       this.state.select(view.targetLanguage); this.error = ''; this.draw(); return;
@@ -83,18 +83,19 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
     const host = this.element.nativeElement;
     this.renderer.setAttribute(host, 'dir', this.state.language === 'ar' ? 'rtl' : 'ltr');
     const view = this.state.view;
-    if (!view || (this.state.language === view.targetLanguage && !this.error)) return;
+    if (!view || (this.state.language === view.targetLanguage && !this.error && !this.state.awaitingOriginal)) return;
     const bar = this.renderer.createElement('span') as HTMLElement; this.toolbar = bar;
     this.renderer.addClass(bar, 'section-language-controls');
     this.renderer.setAttribute(bar, 'dir', document.documentElement.dir);
     const audio = host.querySelector('app-read-aloud-button');
     if (audio?.parentNode) this.renderer.insertBefore(audio.parentNode, bar, audio.nextSibling);
     else this.renderer.insertBefore(host, bar, host.firstChild);
-    if (this.state.language !== view.targetLanguage) {
+    const originalFailed = this.state.awaitingOriginal && view.variants.some(v => v.language === view.originalLanguage && v.status === 'FAILED');
+    if (this.state.language !== view.targetLanguage || originalFailed || (this.state.awaitingOriginal && this.error)) {
       this.button(bar, translate('Translate to {0}', [view.targetLanguage.toUpperCase()]), () => this.request(), this.busy);
     }
-    if (this.busy || this.error) {
-      const status = this.renderer.createElement('span'); status.textContent = this.error || translate('Translating…');
+    if (this.busy || this.error || this.state.awaitingOriginal) {
+      const status = this.renderer.createElement('span'); status.textContent = this.error || (originalFailed ? translate('Translation failed. Try again.') : translate('Translating…'));
       this.status = status;
       this.renderer.addClass(status, 'section-language-status');
       this.renderer.setAttribute(status, 'role', 'status');

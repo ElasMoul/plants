@@ -278,6 +278,11 @@ public class IdentificationServiceImpl implements IdentificationService {
         (userContext != null && !userContext.isBlank()) ? userContext.trim() : null;
     Identification identification =
         Identification.builder()
+            .contentLanguage(
+                userRepository
+                    .findById(userId)
+                    .map(com.plantpal.user.entity.User::getLanguage)
+                    .orElse("en"))
             .userId(userId)
             .plantId(plantId)
             .speciesId(speciesId)

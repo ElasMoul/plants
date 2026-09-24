@@ -197,3 +197,27 @@ test.describe('Registration browser language', () => {
     await expect.poll(() => language).toBe('ar');
   });
 });
+
+
+test('new Arabic content waits for its Arabic version without showing English or requiring translation clicks', async ({ page }) => {
+  await userSession(page);
+  await page.addInitScript(() => localStorage.setItem('plantpal.language', 'ar'));
+  await page.route('**/api/v1/species/80', route => route.fulfill({ json: { success: true, data: {
+    id: 80, scientificName: 'Aloe vera', descriptionStatus: 'READY',
+    description: 'English care must not flash.', careCards: [],
+  } } }));
+  let reads = 0;
+  let posts = 0;
+  await page.route('**/api/v1/content-sections/**', route => {
+    if (route.request().method() === 'POST') posts++;
+    return route.fulfill({ json: { success: true, data: { id: 'native-arabic', originalLanguage: 'ar', targetLanguage: 'ar',
+      variants: [{ language: 'en', status: 'READY', texts: {} },
+        { language: 'ar', status: ++reads > 1 ? 'READY' : 'PENDING', texts: { 'English care must not flash.': 'اسقِ النبات بعد جفاف التربة.' } }],
+    } } });
+  });
+  await page.goto('/garden/species/80');
+  await expect(page.getByText('English care must not flash.', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('اسقِ النبات بعد جفاف التربة.', { exact: true })).toBeVisible();
+  await expect(page.locator('.info-block .section-translate-button')).toHaveCount(0);
+  expect(posts).toBe(0);
+});

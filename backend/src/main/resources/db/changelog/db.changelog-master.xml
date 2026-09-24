@@ -117,4 +117,5 @@
     <include file="db/changelog/migrations/037_arabic_translations.sql"/>
     <include file="db/changelog/migrations/038_account_language.sql"/>
     <include file="db/changelog/migrations/039_section_versions.sql"/>
+    <include file="db/changelog/migrations/040_scan_content_language.sql"/>
 </databaseChangeLog>

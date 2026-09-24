@@ -54,7 +54,12 @@ public class SectionTranslationServiceImpl implements SectionTranslationService 
     if (count != null && count > 0) return view(key, userId);
     Map<String, String> original = new LinkedHashMap<>();
     texts.forEach(text -> original.put(text, text));
-    return new View(key, "en", language(userId), List.of(new Variant("en", "READY", original)));
+    String generation = sources.generationLanguage(kind, id, userId);
+    if ("legacy".equals(generation)) generation = "en";
+    var variants = new java.util.ArrayList<Variant>();
+    variants.add(new Variant("en", "READY", original));
+    if (!"en".equals(generation)) variants.add(new Variant(generation, "PENDING", Map.of()));
+    return new View(key, generation, language(userId), variants);
   }
 
   @Override
@@ -71,7 +76,11 @@ public class SectionTranslationServiceImpl implements SectionTranslationService 
 
   @Override
   public void generated(String kind, Long id, Long userId, String section) {
-    String language = language(userId);
+    String snapshot = sources.generationLanguage(kind, id, userId);
+    String language =
+        "scan".equals(kind) && section == null && !"legacy".equals(snapshot)
+            ? snapshot
+            : language(userId);
     var sections = sources.sections(kind, id, userId);
     var keys = new LinkedHashMap<String, String>();
     var all = new java.util.TreeSet<String>();
@@ -95,7 +104,9 @@ public class SectionTranslationServiceImpl implements SectionTranslationService 
     if ("en".equals(language) || all.isEmpty()) return;
     // One deduplicated generation job serves all sections, rather than one AI call per card.
     var job = translations.prepare(List.copyOf(all), userId, false, language);
-    keys.forEach((key, fingerprint) -> link(key, language, job.id(), fingerprint));
+    if ("FAILED".equals(job.status())) job = translations.retry(job.id(), userId);
+    String jobId = job.id();
+    keys.forEach((key, fingerprint) -> link(key, language, jobId, fingerprint));
   }
 
   private String ensure(String kind, Long id, String section, Long userId, String original) {

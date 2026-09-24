@@ -371,6 +371,42 @@ class TranslationIT extends AbstractIntegrationTest {
     verify(client).translate(eq(List.of("New notes")), eq(owner.getId()), eq("fr"));
   }
 
+  @Test
+  void newArabicScanIsPendingInArabicBeforeTheListenerAndKeepsItsCapturedLanguage()
+      throws Exception {
+    Long id =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,content_language,health_notes) VALUES (?,'COMPLETED','ar','New Arabic scan.') RETURNING id",
+            Long.class,
+            owner.getId());
+    var pending = sections.get("scan", id, "health", owner.getId());
+    assertThat(pending.originalLanguage()).isEqualTo("ar");
+    assertThat(pending.variants())
+        .anyMatch(v -> "ar".equals(v.language()) && "PENDING".equals(v.status()));
+    verifyNoInteractions(client);
+    when(client.translate(anyList(), anyLong(), eq("ar")))
+        .thenReturn(Map.of("New Arabic scan.", "فحص جديد بالعربية."));
+    sections.generated("scan", id, owner.getId());
+    sectionReady(id, "ar");
+    assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
+        .isEqualTo("ar");
+  }
+
+  @Test
+  void englishScanSnapshotIsNotChangedByLaterArabicPreference() {
+    owner.setLanguage("ar");
+    owner = users.saveAndFlush(owner);
+    Long id =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,content_language,health_notes) VALUES (?,'COMPLETED','en','English scan.') RETURNING id",
+            Long.class,
+            owner.getId());
+    sections.generated("scan", id, owner.getId());
+    assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
+        .isEqualTo("en");
+    verifyNoInteractions(client);
+  }
+
   private void sectionReady(Long id, String language) {
     await()
         .atMost(Duration.ofSeconds(5))
