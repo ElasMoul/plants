@@ -452,3 +452,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-21_0116_fulfill-demand-factory-20260914-mission
+
+## Session 23 (2026-09-24)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-24_1224_move-backend-hosting-from-railway-to-ovh.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Move backend hosting from Railway to OVH VPS (compose + Caddy + SSH deploy) -- status: partial.
+- Next step: Owner runs DEPLOYMENT.md VPS runbook steps 1-6, then open PR feature/ovh-vps-deploy -> main; merging deploys
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: spec-plantpal deploy target changed Railway->OVH VPS; no demand raised yet
+- Session: 2026-09-24_1224_move-backend-hosting-from-railway-to-ovh

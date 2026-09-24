@@ -1,6 +1,6 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # PlantPal – Production Profile (T-DEPLOY.1)
-# Deployed to Railway (railway up). Activate with SPRING_PROFILES_ACTIVE=prod.
+# Deployed to the OVH VPS (deploy/vps/). Activate with SPRING_PROFILES_ACTIVE=prod.
 # All values below are env-var driven with NO insecure defaults — see
 # backend/.env.example's "Staging / Production" section for the full list.
 # The `platform` profile (application-platform.yml) is never activated here —
@@ -62,7 +62,7 @@ spring:
 
 # ──── Server ──────────────────────────────────────────────────────────────────
 server:
-  port: ${PORT:8080}                   # Railway injects PORT
+  port: ${PORT:8080}
 
 # ──── Actuator ────────────────────────────────────────────────────────────────
 management:
@@ -103,8 +103,8 @@ app:
     expiration-ms: 86400000            # 24 hours
 
   # STORAGE_TYPE=cloudinary + CLOUDINARY_URL (cloudinary://api_key:api_secret@cloud_name)
-  # is the durable production setup — 'local' writes to the container disk, which Railway
-  # wipes on every redeploy (only the 30-day Redis byte-cache survives).
+  # is the durable production setup — 'local' writes to the container disk; on the VPS the
+  # `photos` compose volume keeps it across redeploys, but it is not backed up.
   storage:
     type: ${STORAGE_TYPE:local}
     local-path: ${STORAGE_LOCAL_PATH:/tmp/plantpal/photos}

@@ -7,6 +7,13 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Backend hosting moved from Railway to an OVH VPS (2026-09-24): `deploy/vps/`
+  holds the Compose stack (Postgres 15, Redis 7 with password + AOF, runtime-only
+  backend image, Caddy TLS for `api.plants.moulworks.com`), a one-time
+  `bootstrap.sh` (Docker, ufw, fail2ban, swap, `deploy` user, key-only SSH,
+  nightly `pg_dump`) and `.env.example`. `deploy.yml`'s backend job now `scp`s the
+  stack + JAR and waits for the container healthcheck; `backend/railway.json` and
+  `Dockerfile.railway` removed. Fresh database (no Railway data migrated).
 - Chunk 0 — platform Room bootstrap: `HEXAGON.md` and `DEPLOYMENT.md` added
   (PlantPal already carries `README.md`/`SECURITY.md`; this is the first real
   retrofit of the D013 convention onto a pre-existing, already-deployed app).
