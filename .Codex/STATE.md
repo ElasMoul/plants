@@ -203,3 +203,39 @@ opening a page, Arabic names/steps persistence, old-scan preservation, cache reu
 ownership. 572 frontend tests, production build, localization/speech lint and 18
 Chromium journeys passed. Fixed a test fixture's missing PostgreSQL JSONB cast during
 verification. Preview refreshed at 4210/8190; migration 038 applied. No push/merge.
+
+## 2026-09-24 — Explicit section translations
+
+Branch codex/explicit-section-translations from clean dev; implementation 51d3046.
+Supersedes automatic response localization described above. Removed response advice,
+AI language interceptor, global dictionary and yellow notice. Switching account/app
+language now affects static UI and future generation, never auto-translates an old view.
+
+Migration 039 adds owner/resource/section source fingerprints and EN/FR/AR version
+slots (composite primary key and language constraint), plus persisted cure advice.
+GET content-sections is read-only; POST translate resolves authorized server text and
+uses the saved account target. Cached versions/pending jobs are reused; failures need
+explicit retry. Existing plants are not backfilled. New generation prepares its account
+language in the background. New cards and annotation retries target only their changed
+section, preserving older sections. Source changes invalidate stale variants.
+
+Section controls cover common names, health/annotations, species descriptions and
+care overview, care cards/warnings, cure advice, treatment names/descriptions, plan titles,
+diagrams and steps. Each section has independent saved display selection; UI changes
+leave it intact. Merged plant cards reference their original scans. Detail lists/diagram
+labels use scoped text; read-aloud selects the displayed section's language/voice.
+Only bounded GET status polling observes existing jobs; reads never create AI jobs.
+
+Validation: full unfiltered spotless:apply verify -Ddependency.check.skip=true passed:
+485 backend unit tests, 55 integration passes (3 optional live eval skips), coverage,
+Checkstyle and Spotless. Twelve TranslationIT cases cover persistence/ownership,
+read-only behavior, max three variants, generation language and unchanged old sections.
+572 frontend tests, production build, classic/Atlas lint and 17 Chromium language/admin/
+session journeys passed. Mobile translation screenshot reviewed; fixed hero control
+contrast. Provider behavior used mocks; no new paid live translation call in this turn.
+Existing production bundle/CommonJS warnings remain.
+
+Preview refreshed: frontend 4210 returns 200; backend 8190 health UP, migration 039
+applied. Uses existing backend .env and target/admin-preview/photos, in-process scan
+transport. PIDs/logs/proxy in target/admin-preview; validation logs under backend/target.
+No push, PR or merge. Owner testing next.

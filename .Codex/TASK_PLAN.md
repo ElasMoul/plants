@@ -76,3 +76,14 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Select explicit Arabic voice, handle loading/cancellation and missing voice visibly.
 - [x] Full backend verify/Spotless/coverage, frontend build/tests/lint, 18 browser journeys.
 - [ ] Owner tests codex/arabic-generation-and-voice before publishing/merging.
+
+## Explicit section translations — complete 2026-09-24
+- [x] Branch from dev: codex/explicit-section-translations.
+- [x] Remove yellow global notice and all read-triggered translation generation.
+- [x] Preserve displayed content when app/account language changes.
+- [x] Prepare newly generated sections in saved account language, including cure advice.
+- [x] Explicit section translation, saved version selection, EN/FR/AR database slots.
+- [x] Keep old sections unchanged when a new card is added; no historical backfill.
+- [x] Scope lists, diagrams and audio to section language; resolve merged card sources.
+- [x] Full backend verify/Spotless, frontend tests/build/lint, 17 browser checks; preview up.
+- [ ] Owner tests on 4210 before publishing/merging.

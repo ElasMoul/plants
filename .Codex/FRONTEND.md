@@ -36,3 +36,15 @@
 - SpeechService explicitly selects matching voice, supports deferred enumeration and
   cancellation, reports missing voice/text. ReadAloudButton displays accessible errors.
 - Tests: speech.service.spec, language.service.spec, TranslationIT and language browser journeys.
+
+## Explicit section controls (2026-09-24; replaces interceptor/notice above)
+- Removed AiLanguageInterceptor, AiTranslationState, AiTranslationNotice and global map.
+- shared/i18n/section-language.directive.ts: authorized section metadata, explicit POST,
+  bounded GET-only completion polling, saved version selector and local inline failure.
+- section-language.state.ts: per-section EN/FR/AR selection persists across UI reloads.
+- ai-text.pipe.ts: scoped aiText, aiDetail and aiDiagram pipes. No implicit global rewriting.
+- CarePlan accepts original-scan card references for the merged plant detail care view.
+- Cure advice response carries sectionId for persisted advice versions. Canonical content
+  remains the value used by add-to-care-plan and treatment actions.
+- Speech follows the selected section language independently of document locale.
+- Tests: section-language.directive.spec, speech.service.spec, language browser journey.
