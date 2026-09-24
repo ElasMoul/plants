@@ -67,3 +67,12 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Preserve checkout-blocking files in a named stash and recover feature checkout.
 - [x] Back up divergent main commits, then align local main with origin/main.
 - [ ] Await GitHub checks and owner approval before merging.
+
+## Account language and Arabic generation — complete 2026-09-24
+- [x] Detect supported language at registration, save account preference and restore on login.
+- [x] Save language changes from the selector/settings before reloading.
+- [x] Automatically persist new Arabic care text and common names with English originals.
+- [x] Reuse saved translations across response combinations; preserve existing records.
+- [x] Select explicit Arabic voice, handle loading/cancellation and missing voice visibly.
+- [x] Full backend verify/Spotless/coverage, frontend build/tests/lint, 18 browser journeys.
+- [ ] Owner tests codex/arabic-generation-and-voice before publishing/merging.
