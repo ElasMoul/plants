@@ -48,3 +48,10 @@
   remains the value used by add-to-care-plan and treatment actions.
 - Speech follows the selected section language independently of document locale.
 - Tests: section-language.directive.spec, speech.service.spec, language browser journey.
+
+### Contextual translate icon refinement
+SectionLanguageDirective no longer renders a saved-version selector. Its icon is
+inserted immediately after the section's read-aloud component, with a section-start
+fallback. Visibility depends on displayed language versus account target, not whether
+that target is cached. Clicking a READY target selects it locally; a PENDING target
+uses GET-only observation; only missing/failed targets POST. Icon labels remain localized.

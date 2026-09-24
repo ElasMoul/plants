@@ -239,3 +239,14 @@ Preview refreshed: frontend 4210 returns 200; backend 8190 health UP, migration 
 applied. Uses existing backend .env and target/admin-preview/photos, in-process scan
 transport. PIDs/logs/proxy in target/admin-preview; validation logs under backend/target.
 No push, PR or merge. Owner testing next.
+
+## 2026-09-24 — Compact contextual translate icon
+
+Removed per-section dropdowns. The translate icon now sits beside read-aloud (section
+start if there is no audio control), with localized title/accessible label. It appears
+only when displayed language differs from the saved app target; saved READY variants
+switch locally without a POST, and pending variants are observed without resubmission.
+The control disappears on a match. No backend/database changes.
+Validation: 574 frontend tests, production build, classic/Atlas lint and seven Chromium
+language journeys passed. Reviewed mobile card layout and adjacent icon placement.
+Preview hot-reloaded on 4210; existing build warnings unchanged. No push/merge.

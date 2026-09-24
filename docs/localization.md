@@ -12,11 +12,13 @@ Existing plant content keeps its selected version. Scientific names, nicknames a
 user notes remain unchanged. New AI content is prepared in the saved account language;
 English canonical records are retained. Existing plants are never batch translated.
 
-Each plant section has a compact language control:
-- **Translate to FR/AR** appears only when that target version is missing or failed.
-- The initials selector switches between saved versions without another AI call.
-- Each section has at most one EN, FR and AR version, created progressively.
-- A section's selected version survives an app language change in that browser.
+Each plant section has a translate icon beside read-aloud (or at the section start
+when there is no audio control). There are no section language dropdowns.
+- The icon is visible only when displayed text differs from the account/app language.
+- Clicking uses a saved target immediately, or requests a missing translation.
+- Once the section matches the selected app language, the icon disappears.
+- Each section retains at most one EN, FR and AR version, created progressively.
+- Display selection survives an app language change; the icon then offers that new target.
 
 Controls cover plant/common names, health and annotation text, species descriptions,
 care overviews/cards/warnings, cure advice, treatment descriptions/names, plan titles,

@@ -87,3 +87,9 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Scope lists, diagrams and audio to section language; resolve merged card sources.
 - [x] Full backend verify/Spotless, frontend tests/build/lint, 17 browser checks; preview up.
 - [ ] Owner tests on 4210 before publishing/merging.
+
+## Translation icon refinement — complete 2026-09-24
+- [x] Remove card/section language selectors.
+- [x] Translate icon next to read-aloud; show only for a displayed/app language mismatch.
+- [x] Reuse saved targets without AI requests; hide icon after matching.
+- [x] Tests/build/lint/browser checks and mobile visual review; ready on 4210.

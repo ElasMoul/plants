@@ -188,3 +188,8 @@ diagram pipes and speech controls. Display selection is stored per owner-scoped 
 key in localStorage, independently of app UI language. Status polling is bounded to two
 minutes and observes existing jobs only; retry is a user action. Changing app language
 reloads static strings but never silently selects a different saved content variant.
+
+Section control refinement: manual selection is now a single contextual translate icon,
+not a language dropdown. A saved current-app target is selected locally, keeping the
+same persisted per-section display state and language-slot model. Visibility is exactly
+the displayed-language/app-target mismatch; no changes to server translation semantics.
