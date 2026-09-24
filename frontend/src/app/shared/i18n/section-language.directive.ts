@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Directive, ElementRef, Input, OnChanges, OnDestroy, 
 import { HttpClient } from '@angular/common/http';
 import { Subscription, timer, of } from 'rxjs';
 import { switchMap, filter, take, timeout } from 'rxjs/operators';
-import { Language, translate } from './language.service';
+import { translate } from './language.service';
 import { SectionLanguageState, SectionView } from './section-language.state';
 
 /** Section-local display state: changing UI language never switches this section's version. */
@@ -45,8 +45,16 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
   }
   private request(): void {
     if (this.busy) return;
+    const view = this.state.view;
+    if (!view || this.state.language === view.targetLanguage) return;
+    const saved = view.variants.find(v => v.language === view.targetLanguage);
+    if (saved?.status === 'READY') {
+      this.state.select(view.targetLanguage); this.error = ''; this.draw(); return;
+    }
     this.busy = true; this.error = ''; this.draw();
-    this.active.add(this.http.post<{data:SectionView}>(this.url + '/translate', {}).pipe(
+    const request = saved?.status === 'PENDING' ? of({ data: view })
+      : this.http.post<{data:SectionView}>(this.url + '/translate', {});
+    this.active.add(request.pipe(
       switchMap(initial => initial.data.variants.some(v => v.language === initial.data.targetLanguage && v.status === 'PENDING')
         ? timer(1000, 2000).pipe(switchMap(() => this.http.get<{data:SectionView}>(this.url)),
           filter(res => !res.data.variants.some(v => v.language === initial.data.targetLanguage && v.status === 'PENDING')), take(1), timeout(120000))
@@ -63,31 +71,25 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
   }
   private clear(): void {
     this.listeners.forEach(stop => stop()); this.listeners = [];
-    if (this.toolbar) this.renderer.removeChild(this.element.nativeElement, this.toolbar);
+    if (this.toolbar) this.renderer.removeChild(this.toolbar.parentNode, this.toolbar);
     this.toolbar = undefined;
   }
   private draw(): void {
     this.cdr.markForCheck();
     this.clear();
-    const bar = this.renderer.createElement('div') as HTMLElement; this.toolbar = bar;
+    const host = this.element.nativeElement;
+    this.renderer.setAttribute(host, 'dir', this.state.language === 'ar' ? 'rtl' : 'ltr');
+    const view = this.state.view;
+    if (!view || (this.state.language === view.targetLanguage && !this.error)) return;
+    const bar = this.renderer.createElement('span') as HTMLElement; this.toolbar = bar;
     this.renderer.addClass(bar, 'section-language-controls');
     this.renderer.setAttribute(bar, 'dir', document.documentElement.dir);
-    this.renderer.insertBefore(this.element.nativeElement, bar, this.element.nativeElement.firstChild);
-    const view = this.state.view;
-    if (view) {
-      const select = this.renderer.createElement('select') as HTMLSelectElement;
-      this.renderer.setAttribute(select, 'aria-label', translate('Saved versions'));
-      for (const variant of view.variants.filter(v => v.status === 'READY')) {
-        const option = this.renderer.createElement('option'); option.value = variant.language;
-        option.textContent = variant.language.toUpperCase(); this.renderer.appendChild(select, option);
-      }
-      select.value = this.state.language;
-      this.renderer.appendChild(bar, select);
-      this.listeners.push(this.renderer.listen(select, 'change', () => { this.state.select(select.value as Language); this.draw(); }));
-      const target = view.variants.find(v => v.language === view.targetLanguage);
-      if (!target || target.status === 'FAILED') this.button(bar, translate('Translate to {0}', [view.targetLanguage.toUpperCase()]), () => this.request(), this.busy);
-      if (view.variants.some(v => v.status === 'PENDING') && !this.busy) this.button(bar, translate('Refresh'), () => this.load(), false);
-    } else this.button(bar, translate('Retry'), () => this.load(), false);
+    const audio = host.querySelector('app-read-aloud-button');
+    if (audio?.parentNode) this.renderer.insertBefore(audio.parentNode, bar, audio.nextSibling);
+    else this.renderer.insertBefore(host, bar, host.firstChild);
+    if (this.state.language !== view.targetLanguage) {
+      this.button(bar, translate('Translate to {0}', [view.targetLanguage.toUpperCase()]), () => this.request(), this.busy);
+    }
     if (this.busy || this.error) {
       const status = this.renderer.createElement('span'); status.textContent = this.error || translate('Translating…');
       this.renderer.setAttribute(status, 'role', 'status'); this.renderer.appendChild(bar, status);
@@ -96,7 +98,13 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
   }
   private button(bar: HTMLElement, text: string, action: () => void, disabled: boolean): void {
     const button = this.renderer.createElement('button') as HTMLButtonElement;
-    button.type = 'button'; button.textContent = text; button.disabled = disabled;
+    button.type = 'button'; button.disabled = disabled; button.title = text;
+    this.renderer.setAttribute(button, 'aria-label', text);
+    this.renderer.addClass(button, 'section-translate-button');
+    const icon = this.renderer.createElement('span');
+    this.renderer.addClass(icon, 'material-icons');
+    this.renderer.setAttribute(icon, 'aria-hidden', 'true');
+    icon.textContent = 'translate'; this.renderer.appendChild(button, icon);
     this.renderer.appendChild(bar, button); this.listeners.push(this.renderer.listen(button, 'click', (event: Event) => { event.stopPropagation(); action(); }));
   }
 }

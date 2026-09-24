@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -6,8 +6,8 @@ import { SectionLanguageDirective } from './section-language.directive';
 import { AiTextPipe } from './ai-text.pipe';
 import { SectionView } from './section-language.state';
 
-@Component({ standalone: true, imports: [SectionLanguageDirective, AiTextPipe],
-  template: `<section appSection="scan:1:health"><p>{{ 'Water roots.' | aiText }}</p></section>` })
+@Component({ standalone: true, schemas: [CUSTOM_ELEMENTS_SCHEMA], imports: [SectionLanguageDirective, AiTextPipe],
+  template: `<section appSection="scan:1:health"><p>{{ 'Water roots.' | aiText }}</p><app-read-aloud-button></app-read-aloud-button></section>` })
 class Host {}
 
 describe('Explicit section translations', () => {
@@ -25,6 +25,7 @@ describe('Explicit section translations', () => {
     const fixture = TestBed.createComponent(Host); fixture.detectChanges();
     http.expectOne(url).flush({ data: original }); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('p').textContent).toBe('Water roots.');
+    expect(fixture.nativeElement.querySelector('app-read-aloud-button').nextElementSibling.className).toBe('section-language-controls');
     fixture.nativeElement.querySelector('button').click();
     const request = http.expectOne(url + '/translate'); expect(request.request.method).toBe('POST');
     request.flush({ data: { ...original, variants: [...original.variants,
@@ -32,10 +33,25 @@ describe('Explicit section translations', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('p').textContent).toBe('Arrosez les racines.');
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
-    const select = fixture.nativeElement.querySelector('select');
-    select.value = 'en'; select.dispatchEvent(new Event('change')); fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('p').textContent).toBe('Water roots.');
-    expect(localStorage.getItem('plantpal.section.section-1')).toBe('en');
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
+    fixture.destroy();
+  });
+  it('reuses a saved target with no translation request and hides the icon afterwards', () => {
+    const fixture = TestBed.createComponent(Host); fixture.detectChanges();
+    http.expectOne(url).flush({ data: { ...original, variants: [...original.variants,
+      { language: 'fr', status: 'READY', texts: { 'Water roots.': 'Arrosez les racines.' } }] } });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button').getAttribute('aria-label')).toBe('Traduire en FR');
+    fixture.nativeElement.querySelector('button').click(); fixture.detectChanges();
+    http.expectNone(url + '/translate');
+    expect(fixture.nativeElement.querySelector('p').textContent).toBe('Arrosez les racines.');
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    fixture.destroy();
+  });
+  it('renders no translation control when content already matches the app language', () => {
+    const fixture = TestBed.createComponent(Host); fixture.detectChanges();
+    http.expectOne(url).flush({ data: { ...original, targetLanguage: 'en' } }); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.section-language-controls')).toBeNull();
     fixture.destroy();
   });
   it('uses the generation language even when the app language differs', () => {

@@ -233,10 +233,29 @@ html[dir='rtl'] .mat-icon { letter-spacing: normal; }
 
 html[dir='rtl'] .directional-icon { transform: scaleX(-1); }
 
-.section-language-controls { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; margin-block:4px 10px; font-size:12px; }
-.section-language-controls button, .section-language-controls select { font:inherit; color:var(--color-text-secondary); background:transparent; border:1px solid #b8c8ba; border-radius:12px; padding:4px 8px; cursor:pointer; }
-.section-language-controls button:disabled { cursor:wait; opacity:.6; }
-
-.hero-text .section-language-controls, .hero-species .section-language-controls {
-  button, select { background: #fff; color: #214d3b; border-color: #d3ded7; }
+.section-language-controls {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  vertical-align: middle;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  .section-translate-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-primary, #214d3b);
+    cursor: pointer;
+    &:hover { background: rgb(33 77 59 / 8%); }
+    &:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
+    &:disabled { opacity: .5; cursor: wait; }
+  }
 }
+.hero-text .section-translate-button, .hero-species .section-translate-button { color: #fff; }

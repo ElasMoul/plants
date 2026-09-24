@@ -98,6 +98,8 @@ test('plant sections translate only on request and retain their selected languag
   const description = page.locator('.info-block').filter({ has: page.locator('.info-text') }).first();
   await expect(page.getByText('A tropical climbing plant.', { exact: true })).toBeVisible();
   expect(posts).toBe(0);
+  await expect(page.locator('app-care-card select')).toHaveCount(0);
+  await expect(page.locator('app-care-card .card-header app-read-aloud-button + .section-language-controls button')).toBeVisible();
   await expect(page.locator('app-ai-translation-notice')).toHaveCount(0);
   await description.getByRole('button', { name: 'Traduire en FR' }).click();
   await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
@@ -109,9 +111,11 @@ test('plant sections translate only on request and retain their selected languag
   expect(posts).toBe(1);
   await description.getByRole('button', { name: 'ترجمة إلى AR' }).click();
   await expect(page.getByText('نبات استوائي متسلق.', { exact: true })).toBeVisible();
-  await description.getByRole('combobox').selectOption('en');
-  await expect(page.getByText('A tropical climbing plant.', { exact: true })).toBeVisible();
-  await description.getByRole('combobox').selectOption('ar');
+  await expect(description.getByRole('combobox')).toHaveCount(0);
+  await expect(description.getByRole('button', { name: 'ترجمة إلى AR' })).toHaveCount(0);
+  await page.evaluate(() => localStorage.setItem('plantpal.language', 'fr')); await page.reload();
+  await description.getByRole('button', { name: 'Traduire en FR' }).click();
+  await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
   expect(posts).toBe(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
