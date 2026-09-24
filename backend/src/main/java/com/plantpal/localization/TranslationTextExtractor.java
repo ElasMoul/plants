@@ -51,6 +51,25 @@ public class TranslationTextExtractor {
     return texts.stream().sorted().toList();
   }
 
+  public List<String> names(JsonNode data) {
+    Set<String> texts = new LinkedHashSet<>();
+    collectNames(data, texts);
+    return texts.stream().sorted().limit(300).toList();
+  }
+
+  private void collectNames(JsonNode node, Set<String> texts) {
+    if (node == null) return;
+    if (node.isObject()) {
+      JsonNode name = node.get("commonName");
+      if (name != null && name.isTextual() && !name.asText().isBlank()) texts.add(name.asText());
+      node.fields()
+          .forEachRemaining(
+              entry -> {
+                if (!EXCLUDED.contains(entry.getKey())) collectNames(entry.getValue(), texts);
+              });
+    } else if (node.isArray()) node.forEach(child -> collectNames(child, texts));
+  }
+
   private void visit(JsonNode node, String field, Set<String> texts) {
     if (EXCLUDED.contains(field)) return;
     if (node.isTextual()

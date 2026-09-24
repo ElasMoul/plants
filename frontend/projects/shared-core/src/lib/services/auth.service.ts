@@ -12,6 +12,7 @@ interface LoginRequest {
 }
 
 interface RegisterRequest {
+  language?: 'en' | 'fr' | 'ar';
   email: string;
   password: string;
   firstName: string;
@@ -19,6 +20,7 @@ interface RegisterRequest {
 }
 
 interface AuthResponse {
+  language?: 'en' | 'fr' | 'ar';
   role?: "USER" | "ADMIN";
   token: string;
   user: User;
@@ -81,6 +83,7 @@ export class AuthService {
   }
 
   private storeSession(data: AuthResponse): void {
+    if (data.language) localStorage.setItem('plantpal.language', data.language);
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
   }

@@ -140,3 +140,28 @@ lifecycle before reporting backend CI readiness. A successful filtered apply can
 match zero files; package does not execute the verify-bound Spotless gate. Preserve
 local preview uploads under target when choosing whether to run clean; full verify
 was used for this recovery without deleting those uploads.
+
+## Account language and proactive new-content translation (2026-09-24)
+
+Migration 038 stores users.language (en/fr/ar), default en for preexisting accounts.
+Registration uses explicit UI choice or first supported navigator.languages entry.
+Signed-in selector writes preferences before local reload; auth response restores the
+saved language on login. PlantNet language remains an independent provider setting.
+
+GeneratedPlantText and SpeciesTextReady plus existing IdentificationCompletedEvent
+connect generation to localization without service dependency cycles. Async after-commit
+listeners queue Arabic translations only for accounts currently preferring Arabic.
+No historical sweep/backfill. Canonical English data remains untouched; Arabic common
+names are stored as text mappings, not overwrites of scientific/common source fields.
+Read response extraction includes names only when a saved translation exists, avoiding
+new name generation for old records merely because they were opened.
+
+TranslationService checks for a covering pending/ready job and reuses saved source
+fragments via bounded SQL lookups (private owner or public species, same language).
+This lets generated translations serve later cards/steps/detail response shapes without
+repeating provider calls. Shared cache writes never borrow private text. Persisted jobs
+retain existing retry fencing and AI quota behavior.
+
+Speech uses explicit matching SpeechSynthesisVoice, with voiceschanged handling when
+initial enumeration is empty. Missing Arabic voice/text results in an inline message;
+never allow browser default voice selection to silently fall back to English.

@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserPreferencesResponse {
 
+  private String language;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below.
   private AiModelPreference aiModelPreference;
 

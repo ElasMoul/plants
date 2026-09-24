@@ -30,6 +30,7 @@ class TranslationIT extends AbstractIntegrationTest {
   private final JdbcTemplate jdbc;
   private final TestRestTemplate http;
   private final JwtUtil jwt;
+  private final org.springframework.context.ApplicationEventPublisher events;
   @MockBean private TranslationClient client;
   private User owner;
   private User other;
@@ -39,7 +40,9 @@ class TranslationIT extends AbstractIntegrationTest {
       UserRepository users,
       JdbcTemplate jdbc,
       TestRestTemplate http,
-      JwtUtil jwt) {
+      JwtUtil jwt,
+      org.springframework.context.ApplicationEventPublisher events) {
+    this.events = events;
     this.service = service;
     this.users = users;
     this.jdbc = jdbc;
@@ -148,6 +151,128 @@ class TranslationIT extends AbstractIntegrationTest {
     service.retry(arabic.id(), owner.getId());
     ready(arabic.id(), owner);
     verify(client, times(2)).translate(anyList(), eq(owner.getId()), eq("ar"));
+  }
+
+  @Test
+  void newArabicContentIsSavedBeforeReadAndReusedForSubsetsIncludingNames() throws Exception {
+    owner.setLanguage("ar");
+    users.saveAndFlush(owner);
+    when(client.translate(anyList(), anyLong(), eq("ar")))
+        .thenAnswer(
+            invocation -> {
+              List<String> texts = invocation.getArgument(0);
+              return texts.stream().collect(Collectors.toMap(text -> text, text -> "عربي " + text));
+            });
+    events.publishEvent(
+        new GeneratedPlantText(
+            owner.getId(),
+            Map.of(
+                "commonName",
+                "Peace lily",
+                "description",
+                "Keep away from pets.",
+                "steps",
+                List.of(Map.of("instruction", "Use 5 ml.", "detail", "Repeat in 7 days.")))));
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        service.cached(
+                            List.of("Peace lily", "Use 5 ml."), owner.getId(), false, "ar"))
+                    .containsKeys("Peace lily", "Use 5 ml."));
+    var subset = service.prepare(List.of("Use 5 ml."), owner.getId(), false, "ar");
+    assertThat(subset.status()).isEqualTo("READY");
+    verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("ar"));
+    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "ar")).isEmpty();
+    assertThat(service.cached(List.of("Peace lily"), owner.getId(), false, "fr")).isEmpty();
+  }
+
+  @Test
+  void registrationAndPreferenceUpdatesPersistLanguageWithoutChangingExistingPlants() {
+    String email = UUID.randomUUID() + "@language.test";
+    var registration =
+        http.postForEntity(
+            "/api/v1/auth/register",
+            Map.of(
+                "email",
+                email,
+                "password",
+                "SafePassword123!",
+                "firstName",
+                "Test",
+                "lastName",
+                "Reader",
+                "language",
+                "ar"),
+            Map.class);
+    assertThat(registration.getStatusCode().is2xxSuccessful()).isTrue();
+    User registered = users.findByEmail(email).orElseThrow();
+    assertThat(registered.getLanguage()).isEqualTo("ar");
+    assertThat(((Map<?, ?>) registration.getBody().get("data")).get("language")).isEqualTo("ar");
+    var headers = new HttpHeaders();
+    headers.setBearerAuth(jwt.generateToken(registered, registered.getId()));
+    var update =
+        http.exchange(
+            "/api/v1/users/me/preferences",
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("language", "fr"), headers),
+            Map.class);
+    assertThat(update.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(users.findById(registered.getId()).orElseThrow().getLanguage()).isEqualTo("fr");
+    var invalid =
+        http.exchange(
+            "/api/v1/users/me/preferences",
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("language", "xx"), headers),
+            Map.class);
+    assertThat(invalid.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "ar")).isEmpty();
+  }
+
+  @Test
+  void scanCompletionPersistsArabicWithoutOpeningItOrBackfillingOlderScans() throws Exception {
+    owner.setLanguage("ar");
+    users.saveAndFlush(owner);
+    when(client.translate(anyList(), anyLong(), eq("ar")))
+        .thenAnswer(
+            invocation -> {
+              List<String> texts = invocation.getArgument(0);
+              return texts.stream().collect(Collectors.toMap(text -> text, text -> "عربي " + text));
+            });
+    Long oldId =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,health_notes) VALUES (?,'COMPLETED','Old care notes.') RETURNING id",
+            Long.class,
+            owner.getId());
+    Long newId =
+        jdbc.queryForObject(
+            "INSERT INTO identifications(user_id,status,common_name,health_notes,care_plan) VALUES (?,'COMPLETED','Peace lily','New care notes.',?::jsonb) RETURNING id",
+            Long.class,
+            owner.getId(),
+            "{\"careCards\":[{\"title\":\"Water roots\",\"actionPlan\":{\"steps\":[{\"instruction\":\"Apply 5 ml.\"}]}}]}");
+    events.publishEvent(
+        com.plantpal.identification.event.IdentificationCompletedEvent.builder()
+            .identificationId(newId)
+            .status("COMPLETED")
+            .build());
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        service.cached(
+                            List.of("Peace lily", "Apply 5 ml."), owner.getId(), false, "ar"))
+                    .containsKeys("Peace lily", "Apply 5 ml."));
+    assertThat(service.cached(List.of("Old care notes."), owner.getId(), false, "ar")).isEmpty();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT health_notes FROM identifications WHERE id=?", String.class, oldId))
+        .isEqualTo("Old care notes.");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT common_name FROM identifications WHERE id=?", String.class, newId))
+        .isEqualTo("Peace lily");
   }
 
   private void ready(String id, User user) {

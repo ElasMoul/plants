@@ -79,6 +79,7 @@ class TreatmentServiceTest {
     // description call (no real thread pool needed in unit tests).
     treatmentService =
         new TreatmentServiceImpl(
+            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
             treatmentRepository,
             plantRepository,
             treatmentPlanService,

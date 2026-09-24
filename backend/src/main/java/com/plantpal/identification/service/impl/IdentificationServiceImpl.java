@@ -599,7 +599,9 @@ public class IdentificationServiceImpl implements IdentificationService {
     ReasoningModelPreference preference = loadReasoningPreference(userId);
     String raw =
         generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel(), userId);
-    return CompletableFuture.completedFuture(parseCureAdvice(raw, preference));
+    var advice = parseCureAdvice(raw, preference);
+    eventPublisher.publishEvent(new com.plantpal.localization.GeneratedPlantText(userId, advice));
+    return CompletableFuture.completedFuture(advice);
   }
 
   @Override
@@ -636,6 +638,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       plan.setCareCards(careCards);
       identification.setCarePlan(serializeToJson(plan));
       identificationRepository.save(identification);
+      eventPublisher.publishEvent(new com.plantpal.localization.GeneratedPlantText(userId, plan));
       log.info(
           "Care card added: identificationId={}, userId={}, label={}",
           id,
@@ -901,6 +904,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
     identification.setSpeciesId(species.getId());
     identificationRepository.save(identification);
+    eventPublisher.publishEvent(new com.plantpal.localization.SpeciesTextReady(species.getId()));
 
     return SpeciesMatchDto.builder()
         .matched(true)
@@ -1073,6 +1077,10 @@ public class IdentificationServiceImpl implements IdentificationService {
       ident.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
       ident.setAnnotationModel("gpt-4o-mini");
       identificationRepository.save(ident);
+      eventPublisher.publishEvent(
+          new com.plantpal.localization.GeneratedPlantText(
+              ident.getUserId(),
+              java.util.Map.of("annotationRegions", parseAnnotationRegions(annotationJson))));
       log.info("Annotation retry completed: identificationId={}", identificationId);
     } catch (Exception e) {
       log.warn(

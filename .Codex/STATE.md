@@ -173,3 +173,33 @@ then switched to the PR branch. Preserved main's three unique local commits on
 codex/main-before-sync-20260923 before aligning inactive main with fetched origin/main.
 No files or commits discarded; do not blindly pop the stash over tracked feature files.
 PR: https://github.com/ElasMoul/plants/pull/159. Merge still awaits owner approval.
+
+## 2026-09-24 — Account language, new bilingual generation and Arabic voice
+
+Branch codex/arabic-generation-and-voice created from clean dev after PR #159 merge.
+Implementation f203b2e. Registration detects first supported browser language unless
+explicitly selected; request persists users.language. Settings/header changes save
+the account preference before reload, and login restores it from AuthResponse.
+Migration 038 adds language default en plus translation-reuse index. No plant backfill.
+
+GeneratedTranslationListener listens after commit to new identification completion,
+generated care/treatment prose/steps, annotation retry and linked species enrichment.
+Arabic-preferring users get automatically persisted source/Arabic mappings, including
+common plant names; English canonical domain records, scientific names and nicknames
+stay intact. Existing ai_translations stores both versions. Cached source fragments
+and covering pending/ready jobs are reused across cards and detail responses with
+owner/public scope and target language preserved. Provider/quota failure uses the
+existing explicit translation status/retry path; no re-identification is needed.
+
+SpeechService resolves an explicit matching voice, waits for initially empty voice
+lists, cancels stale requests, speaks translated Arabic, and exposes missing voice or
+text errors rather than reading English in Arabic mode. Actual device voice availability
+still depends on installed system/browser voices; behavior verified with voice stubs.
+
+Validation: unfiltered spotless:apply plus full mvn verify passed, including coverage,
+485 unit tests and 51 integration passes (three optional live eval tests skipped).
+Eight translation integrations cover register/update validation, generation without
+opening a page, Arabic names/steps persistence, old-scan preservation, cache reuse and
+ownership. 572 frontend tests, production build, localization/speech lint and 18
+Chromium journeys passed. Fixed a test fixture's missing PostgreSQL JSONB cast during
+verification. Preview refreshed at 4210/8190; migration 038 applied. No push/merge.
