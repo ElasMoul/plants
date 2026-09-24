@@ -93,3 +93,9 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Translate icon next to read-aloud; show only for a displayed/app language mismatch.
 - [x] Reuse saved targets without AI requests; hide icon after matching.
 - [x] Tests/build/lint/browser checks and mobile visual review; ready on 4210.
+
+## Cached language selection refinement — complete 2026-09-24
+- [x] On language changes, display a saved target automatically; no button/AI request.
+- [x] Keep existing text and explicit icon when target is missing.
+- [x] Move translation status below the card header to prevent squeezed text.
+- [x] Unit/build/lint/browser checks and mobile visual review; preview 4210 updated.

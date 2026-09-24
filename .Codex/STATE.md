@@ -250,3 +250,16 @@ The control disappears on a match. No backend/database changes.
 Validation: 574 frontend tests, production build, classic/Atlas lint and seven Chromium
 language journeys passed. Reviewed mobile card layout and adjacent icon placement.
 Preview hot-reloaded on 4210; existing build warnings unchanged. No push/merge.
+
+## 2026-09-24 — Automatically display cached language and fix card squeezing
+
+Owner refined the rule: changing app language must automatically display an already
+saved READY target version. SectionLanguageState now prioritizes that variant over the
+previous selection; missing targets preserve existing text and need an explicit icon
+click. No new AI work on reads. Supersedes prior notes saying selection always survives.
+Translation progress/failure text moved out of the icon row, below card headers, fixing
+the extremely narrow card text shown in the owner's screenshot.
+Validation: 574 frontend tests, production build, lint and seven Chromium language
+journeys passed. Mobile failure-state screenshot reviewed; browser regression checks
+header status placement and card-body width. Preview 4210 updated; no backend changes,
+no push or merge. Existing production build warnings remain.

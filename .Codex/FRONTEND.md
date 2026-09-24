@@ -55,3 +55,9 @@ inserted immediately after the section's read-aloud component, with a section-st
 fallback. Visibility depends on displayed language versus account target, not whether
 that target is cached. Clicking a READY target selects it locally; a PENDING target
 uses GET-only observation; only missing/failed targets POST. Icon labels remain localized.
+
+Latest rule (2026-09-24): SectionLanguageState.accept prioritizes a READY variant for
+the saved account target automatically, before the previous section selection. Missing
+targets leave current content visible and require explicit translation. No read-triggered
+AI calls. Translation status is rendered separately below care-card headers, preventing
+its message from consuming header text width.

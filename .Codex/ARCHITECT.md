@@ -193,3 +193,9 @@ Section control refinement: manual selection is now a single contextual translat
 not a language dropdown. A saved current-app target is selected locally, keeping the
 same persisted per-section display state and language-slot model. Visibility is exactly
 the displayed-language/app-target mismatch; no changes to server translation semantics.
+
+Latest rule (2026-09-24): SectionLanguageState.accept prioritizes a READY variant for
+the saved account target automatically, before the previous section selection. Missing
+targets leave current content visible and require explicit translation. No read-triggered
+AI calls. Translation status is rendered separately below care-card headers, preventing
+its message from consuming header text width.

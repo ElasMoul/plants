@@ -8,17 +8,18 @@ Admin and Atlas remain outside this localization rollout.
 ## Interface and plant content
 
 Changing language updates static interface text, dates and layout. Arabic uses RTL.
-Existing plant content keeps its selected version. Scientific names, nicknames and
+Existing plant content automatically displays a saved version in the selected language.
+If that version is missing, its current text remains until explicitly translated. Scientific names, nicknames and
 user notes remain unchanged. New AI content is prepared in the saved account language;
 English canonical records are retained. Existing plants are never batch translated.
 
 Each plant section has a translate icon beside read-aloud (or at the section start
 when there is no audio control). There are no section language dropdowns.
 - The icon is visible only when displayed text differs from the account/app language.
-- Clicking uses a saved target immediately, or requests a missing translation.
+- Saved target versions display automatically without any AI request; clicking requests a missing translation.
 - Once the section matches the selected app language, the icon disappears.
 - Each section retains at most one EN, FR and AR version, created progressively.
-- Display selection survives an app language change; the icon then offers that new target.
+- On app language changes, a saved target takes priority; the icon appears only if that target is missing.
 
 Controls cover plant/common names, health and annotation text, species descriptions,
 care overviews/cards/warnings, cure advice, treatment descriptions/names, plan titles,
@@ -70,3 +71,5 @@ and CommonJS warnings remain. Translation-provider results were mocked in this r
 
 Preview: http://127.0.0.1:4210 (backend 8190). Branch:
 `codex/explicit-section-translations`. Owner testing precedes publishing or merging.
+
+Translation progress/failure messages sit below care-card headers, keeping their text and audio/translation icons readable on narrow screens.
