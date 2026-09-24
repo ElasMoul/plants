@@ -59,7 +59,11 @@ echo "==> SSH hardening"
 # Only disable password login once the admin user can already log in with a key,
 # otherwise this script would lock you out.
 if [ -s "/home/${SUDO_USER_NAME}/.ssh/authorized_keys" ] || [ -s /root/.ssh/authorized_keys ]; then
-  cat > /etc/ssh/sshd_config.d/99-plantpal.conf <<EOF
+  # sshd keeps the FIRST value it reads and includes sshd_config.d/* in lexical
+  # order, so this must sort before cloud-init's 50-cloud-init.conf (which sets
+  # PasswordAuthentication yes on OVH images).
+  rm -f /etc/ssh/sshd_config.d/99-plantpal.conf
+  cat > /etc/ssh/sshd_config.d/00-plantpal.conf <<EOF
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
