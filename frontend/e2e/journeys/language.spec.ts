@@ -114,11 +114,21 @@ test('plant sections translate only on request and retain their selected languag
   await expect(description.getByRole('combobox')).toHaveCount(0);
   await expect(description.getByRole('button', { name: 'ترجمة إلى AR' })).toHaveCount(0);
   await page.evaluate(() => localStorage.setItem('plantpal.language', 'fr')); await page.reload();
-  await description.getByRole('button', { name: 'Traduire en FR' }).click();
   await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
+  await expect(description.getByRole('button', { name: 'Traduire en FR' })).toHaveCount(0);
   expect(posts).toBe(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.route('**/api/v1/content-sections/species/77/card-0/translate', route => route.fulfill({
+    json: { success: true, data: { id: 'failed-card', originalLanguage: 'en', targetLanguage: 'fr', variants: [
+      { language: 'en', status: 'READY', texts: {} }, { language: 'fr', status: 'FAILED', texts: {} },
+    ] } },
+  }));
+  const card = page.locator('app-care-card').first();
+  await card.getByRole('button', { name: 'Traduire en FR' }).click();
+  await expect(card.getByRole('status')).toContainText('Échec');
+  await expect(card.locator('.card-header [role=status]')).toHaveCount(0);
+  await expect.poll(() => card.locator('.card-body').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(80);
   await page.screenshot({ path: '../backend/target/section-translations-mobile.png', fullPage: true });
 });
 

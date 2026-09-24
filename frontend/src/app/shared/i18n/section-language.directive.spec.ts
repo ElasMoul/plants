@@ -36,13 +36,12 @@ describe('Explicit section translations', () => {
     expect(fixture.nativeElement.querySelector('select')).toBeNull();
     fixture.destroy();
   });
-  it('reuses a saved target with no translation request and hides the icon afterwards', () => {
+  it('automatically displays the saved app-language version without a request or icon', () => {
     const fixture = TestBed.createComponent(Host); fixture.detectChanges();
     http.expectOne(url).flush({ data: { ...original, variants: [...original.variants,
       { language: 'fr', status: 'READY', texts: { 'Water roots.': 'Arrosez les racines.' } }] } });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('button').getAttribute('aria-label')).toBe('Traduire en FR');
-    fixture.nativeElement.querySelector('button').click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
     http.expectNone(url + '/translate');
     expect(fixture.nativeElement.querySelector('p').textContent).toBe('Arrosez les racines.');
     expect(fixture.nativeElement.querySelector('button')).toBeNull();

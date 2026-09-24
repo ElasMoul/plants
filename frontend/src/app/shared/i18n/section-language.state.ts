@@ -15,7 +15,8 @@ export class SectionLanguageState {
     this.view = view;
     let saved: Language | null = null;
     try { saved = localStorage.getItem(`plantpal.section.${view.id}`) as Language | null; } catch { /* Use the original language. */ }
-    const desired = saved ?? view.originalLanguage;
+    const targetReady = view.variants.some(v => v.language === view.targetLanguage && v.status === 'READY');
+    const desired = targetReady ? view.targetLanguage : saved ?? view.originalLanguage;
     this.language = view.variants.some(v => v.language === desired && v.status === 'READY') ? desired : 'en';
   }
   text(source: string | null | undefined): string {

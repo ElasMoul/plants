@@ -259,3 +259,12 @@ html[dir='rtl'] .directional-icon { transform: scaleX(-1); }
   }
 }
 .hero-text .section-translate-button, .hero-species .section-translate-button { color: #fff; }
+
+.section-language-status {
+  display: block;
+  padding: 0 16px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

@@ -5,12 +5,13 @@ import { switchMap, filter, take, timeout } from 'rxjs/operators';
 import { translate } from './language.service';
 import { SectionLanguageState, SectionView } from './section-language.state';
 
-/** Section-local display state: changing UI language never switches this section's version. */
+/** Select saved target versions without starting translation work on page reads. */
 @Directive({ selector: '[appSection]', standalone: true, providers: [SectionLanguageState] })
 export class SectionLanguageDirective implements OnChanges, OnDestroy {
   @Input() appSection: string | null = null;
   private key = '';
   private toolbar?: HTMLElement;
+  private status?: HTMLElement;
   private active = new Subscription();
   private listeners: (() => void)[] = [];
   private busy = false;
@@ -73,6 +74,8 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
     this.listeners.forEach(stop => stop()); this.listeners = [];
     if (this.toolbar) this.renderer.removeChild(this.toolbar.parentNode, this.toolbar);
     this.toolbar = undefined;
+    if (this.status) this.renderer.removeChild(this.status.parentNode, this.status);
+    this.status = undefined;
   }
   private draw(): void {
     this.cdr.markForCheck();
@@ -92,7 +95,13 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
     }
     if (this.busy || this.error) {
       const status = this.renderer.createElement('span'); status.textContent = this.error || translate('Translating…');
-      this.renderer.setAttribute(status, 'role', 'status'); this.renderer.appendChild(bar, status);
+      this.status = status;
+      this.renderer.addClass(status, 'section-language-status');
+      this.renderer.setAttribute(status, 'role', 'status');
+      this.renderer.setAttribute(status, 'dir', document.documentElement.dir);
+      const header = audio?.closest('.card-header');
+      if (header?.parentNode) this.renderer.insertBefore(header.parentNode, status, header.nextSibling);
+      else this.renderer.appendChild(host, status);
     }
     this.renderer.setAttribute(this.element.nativeElement, 'dir', this.state.language === 'ar' ? 'rtl' : 'ltr');
   }
