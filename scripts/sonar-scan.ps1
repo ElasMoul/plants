@@ -11,7 +11,8 @@ param(
     [switch]$SkipTests
 )
 
-$ErrorActionPreference = 'Stop'
+# Not 'Stop': PS 5.1 turns native stderr (jest, mvn) into terminating errors when
+# output is redirected. Failures are caught via $LASTEXITCODE below instead.
 $root = Split-Path -Parent $PSScriptRoot
 
 if (-not $env:SONAR_TOKEN) {
@@ -22,7 +23,11 @@ if ($Only -in 'all', 'backend') {
     Push-Location (Join-Path $root 'backend')
     try {
         # verify = unit + integration tests + JaCoCo report (Docker needed for Testcontainers)
-        if (-not $SkipTests) { mvn clean verify --batch-mode "-Ddependency.check.skip=true" }
+        # No `clean`: running previews lock files under target/. Drop only stale coverage data.
+        if (-not $SkipTests) {
+            Remove-Item target\jacoco*.exec -ErrorAction SilentlyContinue
+            mvn verify --batch-mode "-Ddependency.check.skip=true"
+        }
         if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' }
         mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar --batch-mode
         if ($LASTEXITCODE -ne 0) { throw 'Backend Sonar analysis failed.' }
