@@ -1,9 +1,9 @@
 <p class="progress-line">{{ '{0} of {1} steps complete' | t : [(completedCount), (totalCount)] }}</p>
 
 <!-- Diagram — only when the AI included one -->
-<div class="diagram-section" *ngIf="diagramContent">
+<div [appSection]="steps[0]?.treatmentPlanId ? 'plan:' + steps[0].treatmentPlanId + ':plan' : null" class="diagram-section" *ngIf="diagramContent">
   <p class="section-label">{{ 'How this works' | t }}</p>
-  <app-mermaid-diagram [definition]="diagramContent"></app-mermaid-diagram>
+  <app-mermaid-diagram [definition]="diagramContent | aiDiagram"></app-mermaid-diagram>
 </div>
 
 <!-- Step list -->
@@ -17,7 +17,7 @@
       <div class="step-connector" *ngIf="!last"></div>
     </div>
 
-    <div class="step-body">
+    <div class="step-body" [appSection]="'step:' + step.id + ':step'">
       <div class="step-instruction-row">
         <p class="step-instruction" [class.done]="!step.enabled">{{ stepInstruction(step) | aiText }}</p>
         <button

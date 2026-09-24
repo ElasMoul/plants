@@ -90,6 +90,29 @@ public class TranslationClient {
                     .build());
     if (!bucket.tryConsume(1)) throw new RateLimitException("Translation rate limit reached", 60L);
     usage.consumeAi(userId, false);
+    JsonNode response = request(prompt, texts);
+    try {
+      return validate(texts, response);
+    } catch (PlantPalException invalid) {
+      // One bounded repair: protect exact dosages and units instead of weakening validation.
+      var protectedTexts = texts.stream().map(ProtectedTranslationText::new).toList();
+      if (!bucket.tryConsume(1))
+        throw new RateLimitException("Translation rate limit reached", 60L);
+      usage.consumeAi(userId, false);
+      var repaired =
+          request(
+              prompt
+                  + " Copy every __PP_VALUE_N__ placeholder exactly once, in order. Never translate or modify placeholders.",
+              protectedTexts.stream().map(ProtectedTranslationText::masked).toList());
+      if (!repaired.isArray() || repaired.size() != texts.size()) throw invalid;
+      var restored = mapper.createArrayNode();
+      for (int i = 0; i < texts.size(); i++)
+        restored.add(protectedTexts.get(i).restore(repaired.get(i).asText()));
+      return validate(texts, restored);
+    }
+  }
+
+  private JsonNode request(String prompt, List<String> texts) throws Exception {
     String input = mapper.writeValueAsString(texts);
     String output =
         deepSeek.isAvailable()
@@ -97,9 +120,7 @@ public class TranslationClient {
             : anthropic.isAvailable()
                 ? anthropic.chat(prompt, input)
                 : ollama.chat(prompt + "\nInput:\n" + input);
-    JsonNode translated =
-        mapper.readTree(output.trim().replaceAll("^```(?:json)?\\s*|\\s*```$", ""));
-    return validate(texts, translated);
+    return mapper.readTree(output.trim().replaceAll("^```(?:json)?\\s*|\\s*```$", ""));
   }
 
   Map<String, String> validate(List<String> texts, JsonNode translated) {

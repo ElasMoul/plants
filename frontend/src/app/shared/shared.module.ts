@@ -1,4 +1,5 @@
-import { AiTextPipe } from './i18n/ai-text.pipe';
+import { SectionLanguageDirective } from './i18n/section-language.directive';
+import { AiDiagramPipe, AiDetailPipe, AiTextPipe } from './i18n/ai-text.pipe';
 import { LanguageSwitchComponent } from './i18n/language-switch.component';
 import { PluralSuffixPipe, TranslatePipe } from './i18n/translate.pipe';
 import { NgModule } from '@angular/core';
@@ -62,8 +63,8 @@ const MATERIAL_MODULES = [
     AiBlockNoticeComponent,
     BusinessTierPromptComponent,
   ],
-  imports: [AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
-  exports: [AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
+  imports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
+  exports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
     CommonModule,
     RouterModule,
     FormsModule,

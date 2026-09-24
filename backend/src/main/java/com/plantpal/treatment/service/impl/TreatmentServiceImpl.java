@@ -182,7 +182,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       fireDiseaseDescriptionGeneration(treatment.getId(), plant, request.getDiseaseName(), userId);
     }
 
-    events.publishEvent(new GeneratedPlantText(userId, toResponse(treatment)));
+    events.publishEvent(new GeneratedPlantText("treatment", treatment.getId(), userId));
     return toResponse(treatment);
   }
 
@@ -441,11 +441,7 @@ public class TreatmentServiceImpl implements TreatmentService {
               t.setDiseaseDescriptionModel(preference.name());
               t.setDescriptionStatus(com.plantpal.shared.entity.GenerationStatus.READY);
               treatmentRepository.save(t);
-              events.publishEvent(
-                  new GeneratedPlantText(
-                      t.getUserId(),
-                      java.util.Map.of(
-                          "diseaseDescription", description, "diseaseName", t.getDiseaseName())));
+              events.publishEvent(new GeneratedPlantText("treatment", t.getId(), t.getUserId()));
               log.info("Disease description saved: treatmentId={}", treatmentId);
             });
   }

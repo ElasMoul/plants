@@ -12,7 +12,7 @@
   <!-- Species header -->
   <div class="species-header">
     <h2 class="scientific-name">{{ result.scientificName }}</h2>
-    <p class="common-name" *ngIf="result.commonName">{{ result.commonName | aiText }}</p>
+    <p [appSection]="'scan:' + result.id + ':name'" class="common-name" *ngIf="result.commonName">{{ result.commonName | aiText }}</p>
 
     <div class="badge-row">
       <span class="confidence-badge" [ngClass]="'confidence-' + confidenceLevel.toLowerCase()">
@@ -29,7 +29,7 @@
     </div>
 
     <!-- Diagnosis callout -->
-    <div class="diagnosis-callout" *ngIf="result.healthNotes && result.healthStatus === 'ISSUES_DETECTED'">
+    <div [appSection]="'scan:' + result.id + ':health'" class="diagnosis-callout" *ngIf="result.healthNotes && result.healthStatus === 'ISSUES_DETECTED'">
       <span class="diagnosis-tag">{{ 'DIAGNOSIS' | t }}</span>
       <div class="diagnosis-body">
         <mat-icon>info_outline</mat-icon>

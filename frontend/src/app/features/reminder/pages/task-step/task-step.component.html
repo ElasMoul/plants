@@ -1,4 +1,4 @@
-<div class="step-page">
+<div class="step-page" [appSection]="step ? 'step:' + step.id + ':step' : null">
 
   <!-- Loading -->
   <div *ngIf="state === 'loading'" class="center-state">
@@ -30,12 +30,12 @@
 
     <!-- Full-width Mermaid diagram -->
     <div class="diagram-section" *ngIf="step.stepDiagramContent">
-      <app-mermaid-diagram [definition]="step.stepDiagramContent"></app-mermaid-diagram>
+      <app-mermaid-diagram [definition]="step.stepDiagramContent | aiDiagram"></app-mermaid-diagram>
     </div>
 
     <!-- Step detail text -->
     <div class="detail-section" *ngIf="step.stepDetail">
-      <ng-container *ngIf="detailList; else plainDetail">
+      <ng-container *ngIf="step.stepDetail | aiDetail as detailList; else plainDetail">
         <p *ngIf="detailList.intro" class="detail-intro">{{ detailList.intro }}</p>
         <ol class="detail-list">
           <li *ngFor="let item of detailList.items">{{ item }}</li>

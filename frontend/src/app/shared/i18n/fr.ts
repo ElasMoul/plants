@@ -1,4 +1,9 @@
 export const FR: Readonly<Record<string, string>> = {
+  "Saved versions": "Versions enregistrées",
+  "Translate to {0}": "Traduire en {0}",
+  "Could not load section languages.": "Impossible de charger les langues de cette section.",
+  "Translation failed. Try again.": "Échec de la traduction. Réessayez.",
+  "Translating\u2026": "Traduction…",
   "Arabic text is not ready to read aloud yet.": "Le texte arabe n’est pas encore prêt pour la lecture vocale.",
   "No voice is available for this language. Install a matching voice in your device speech settings.": "Aucune voix disponible pour cette langue. Installez une voix adaptée dans les paramètres vocaux de votre appareil.",
   "Could not read this text aloud. Please try again.": "Impossible de lire ce texte à voix haute. Réessayez.",

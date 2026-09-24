@@ -112,7 +112,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         actionPlan.getSteps().size());
 
     var response = toResponse(plan, plant);
-    events.publishEvent(new GeneratedPlantText(userId, response));
+    events.publishEvent(new GeneratedPlantText("plan", plan.getId(), userId));
     return response;
   }
 

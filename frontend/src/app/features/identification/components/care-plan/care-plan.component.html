@@ -34,7 +34,8 @@
   <!-- Card grid -->
   <div class="card-grid">
     <app-care-card
-      *ngFor="let card of visibleCards"
+      *ngFor="let card of visibleCards; let i = index"
+      [appSection]="cardSections[card.type] || (identificationId ? 'scan:' + identificationId + ':card-' + i : null)"
       [card]="card"
       [plantId]="plantId"
       [identificationId]="identificationId"
@@ -44,7 +45,7 @@
   </div>
 
   <!-- Beginner warnings -->
-  <div class="warnings-section" *ngIf="carePlan.beginnerWarnings.length">
+  <div [appSection]="identificationId ? 'scan:' + identificationId + ':warnings' : null" class="warnings-section" *ngIf="carePlan.beginnerWarnings.length">
     <p class="warnings-label">{{ 'Watch out for' | t }}</p>
     <div class="warnings-list">
       <div *ngFor="let warning of carePlan.beginnerWarnings" class="warning-chip">

@@ -36,6 +36,9 @@ public class Identification extends AuditableEntity {
   @Column(name = "user_id", nullable = false)
   private Long userId;
 
+  @Column(name = "content_language", length = 8)
+  private String contentLanguage;
+
   @Column(name = "photo_url")
   private String photoUrl;
 

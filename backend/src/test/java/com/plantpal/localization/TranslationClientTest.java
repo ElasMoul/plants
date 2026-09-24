@@ -20,6 +20,49 @@ class TranslationClientTest {
           provider, mock(AnthropicClient.class), mock(OllamaClient.class), mapper, usage);
 
   @Test
+  @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(
+      named = "PLANTPAL_LIVE_TRANSLATION_TEST",
+      matches = "true")
+  void hostedArabicSmokePreservesTemperatureRangesAndProducesArabic() throws Exception {
+    var hosted =
+        new DeepSeekDirectClient(
+            System.getenv()
+                .getOrDefault("DEEPSEEK_HOSTED_BASE_URL", "https://api.deepseek.com/anthropic"),
+            System.getenv("DEEPSEEK_HOSTED_API_KEY"),
+            System.getenv().getOrDefault("DEEPSEEK_DIRECT_MODEL", "deepseek-flash"));
+    var live =
+        new TranslationClient(
+            hosted, mock(AnthropicClient.class), mock(OllamaClient.class), mapper, usage);
+    var texts =
+        List.of(
+            "Keep it Warm",
+            "Ideal temperatures are between 55°F and 80°F (13°C - 27°C).",
+            "Water deeply, then wait until the soil is completely dry before watering again.",
+            "Keep temperatures between 15°C and 30°C — avoid cold drafts and frost.");
+    var result = live.translate(texts, 4L, "ar");
+    assertThat(result).hasSize(texts.size());
+    assertThat(result.values()).allMatch(value -> value.matches("(?s).*[\\u0600-\\u06ff].*"));
+  }
+
+  @Test
+  void repairsLocalizedUnitsWithoutChangingTheOriginalAmounts() throws Exception {
+    when(provider.isAvailable()).thenReturn(true);
+    when(provider.chat(anyString(), anyString()))
+        .thenReturn("[\"استخدم 5 مل كل 7 أيام.\"]")
+        .thenReturn("[\"استخدم __PP_VALUE_0__ كل __PP_VALUE_1__ أيام.\"]");
+    assertThat(client.translate(List.of("Use 5 ml every 7 days."), 4L, "ar"))
+        .containsEntry("Use 5 ml every 7 days.", "استخدم 5 ml كل 7 أيام.");
+    verify(usage, times(2)).consumeAi(4L, false);
+  }
+
+  @Test
+  void rejectsMissingProtectedNumbers() {
+    var text = new ProtectedTranslationText("Keep between 15°C and 30°C.");
+    assertThat(text.masked()).isEqualTo("Keep between __PP_VALUE_0__ and __PP_VALUE_1__.");
+    assertThatThrownBy(() -> text.restore("__PP_VALUE_0__")).isInstanceOf(RuntimeException.class);
+  }
+
+  @Test
   void requestsArabicAndPreservesLatinUnitsAndNumbers() throws Exception {
     when(provider.isAvailable()).thenReturn(true);
     when(provider.chat(anyString(), anyString())).thenReturn("[\"استخدم 5 ml كل 7 أيام.\"]");

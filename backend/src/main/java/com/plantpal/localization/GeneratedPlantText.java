@@ -1,4 +1,7 @@
 package com.plantpal.localization;
 
-/** A snapshot of newly generated prose, never emitted by read endpoints. */
-public record GeneratedPlantText(Long userId, Object content) {}
+public record GeneratedPlantText(String kind, Long resourceId, Long userId, String section) {
+  public GeneratedPlantText(String kind, Long resourceId, Long userId) {
+    this(kind, resourceId, userId, null);
+  }
+}

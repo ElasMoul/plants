@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CureAdviceResponse {
 
+  @lombok.Setter private Long sectionId;
   private String advice;
   private ActionPlanDto actionPlan;
   private String reasoningModelUsed;

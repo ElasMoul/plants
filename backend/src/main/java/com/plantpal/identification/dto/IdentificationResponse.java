@@ -20,6 +20,7 @@ public class IdentificationResponse {
 
   private Long id;
   private Long plantId;
+  private String contentLanguage;
 
   @Schema(example = "Monstera deliciosa")
   private String scientificName;

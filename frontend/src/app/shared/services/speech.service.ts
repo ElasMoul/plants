@@ -1,5 +1,5 @@
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
-import { LANGUAGES, readLanguage, translate } from '../i18n/language.service';
+import { Language, LANGUAGES, readLanguage, translate } from '../i18n/language.service';
 import { aiText } from '../i18n/ai-text.pipe';
 
 @Injectable({ providedIn: 'root' })
@@ -13,11 +13,11 @@ export class SpeechService implements OnDestroy {
 
   constructor(private readonly ngZone: NgZone) {}
 
-  async speak(text: string): Promise<void> {
+  async speak(text: string, contentLanguage?: Language): Promise<void> {
     this.stop();
     if (!text || !this.isSupported) return;
     const request = this.request;
-    const language = readLanguage();
+    const language = contentLanguage ?? readLanguage();
     const spoken = aiText(text);
     if (language === 'ar' && !/[\u0600-\u06ff]/.test(spoken)) {
       this.fail(text, 'Arabic text is not ready to read aloud yet.');

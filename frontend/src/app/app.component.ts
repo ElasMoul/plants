@@ -1,8 +1,7 @@
 import { translate } from './shared/i18n/language.service';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NavigationEnd, NavigationStart, Router } from '@angular/router';
-import { AiTranslationState } from './shared/i18n/ai-translation-state.service';
+import { NavigationEnd, Router } from '@angular/router';
 import { EMPTY } from 'rxjs';
 import { catchError, filter } from 'rxjs/operators';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -40,15 +39,12 @@ export class AppComponent implements OnInit {
     private readonly http: HttpClient,
     private router: Router,
     private readonly adminService: AdminService,
-    private readonly aiTranslation: AiTranslationState,
   ) {}
 
   ngOnInit(): void {
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
     this.sessionMonitorService.start();
     this.refreshAccess();
-    this.router.events.pipe(filter(event => event instanceof NavigationStart))
-      .subscribe(() => this.aiTranslation.failed.set([]));
 
     // Always land at the top of the new page — Angular's own scroll restoration only resets
     // on forward navigation and restores position on back/forward, which isn't what we want here.
