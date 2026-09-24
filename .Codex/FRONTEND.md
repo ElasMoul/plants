@@ -26,3 +26,13 @@
 - AI interceptor sends current fr/ar target; Arabic notice, display pipes and chat language.
 - Arabic browser journeys cover login switch, form/calendar/mobile overflow, core routes,
   scientific-name/quantity preservation in AI text and switching back to LTR.
+
+## Account language and speech (2026-09-24)
+- LanguageService detects navigator locales for anonymous visitors; authenticated select
+  saves users/me/preferences before local reload and shows errors on failure.
+- RegisterComponent sends language; shared-core auth persists returned language. Classic
+  LoginComponent reloads after destination navigation only when account language differs.
+- Common-name labels use aiText; scientific names/nicknames stay canonical.
+- SpeechService explicitly selects matching voice, supports deferred enumeration and
+  cancellation, reports missing voice/text. ReadAloudButton displays accessible errors.
+- Tests: speech.service.spec, language.service.spec, TranslationIT and language browser journeys.

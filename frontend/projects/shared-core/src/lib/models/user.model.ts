@@ -25,6 +25,7 @@ export type ReasoningModelPreference =
   | 'OLLAMA_LLAVA';
 
 export interface UserPreferences {
+  language?: 'en' | 'fr' | 'ar';
   visionModelVisibility?: Partial<Record<VisionModelPreference, boolean>>;
   reasoningModelVisibility?: Partial<Record<ReasoningModelPreference, boolean>>;
   // Deprecated by the vision/reasoning split below — backend keeps the column for now (T7.1),

@@ -12,7 +12,7 @@
   <!-- Species header -->
   <div class="species-header">
     <h2 class="scientific-name">{{ result.scientificName }}</h2>
-    <p class="common-name" *ngIf="result.commonName">{{ result.commonName }}</p>
+    <p class="common-name" *ngIf="result.commonName">{{ result.commonName | aiText }}</p>
 
     <div class="badge-row">
       <span class="confidence-badge" [ngClass]="'confidence-' + confidenceLevel.toLowerCase()">

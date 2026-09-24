@@ -13,6 +13,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class RegisterRequest {
 
+  @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
+  private String language;
+
   @NotBlank
   @Email
   @Schema(example = "jane@example.com")

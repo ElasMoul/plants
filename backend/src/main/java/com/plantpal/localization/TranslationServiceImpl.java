@@ -42,6 +42,20 @@ public class TranslationServiceImpl implements TranslationService {
       throw new IllegalArgumentException("Unsupported language");
     if (texts.isEmpty()) return new TranslationResult("", language, "READY", Map.of());
     String source = encode(texts);
+    var covering =
+        jdbc.queryForList(
+            """
+        SELECT id FROM ai_translations WHERE language=? AND status IN ('PENDING','READY')
+        AND ((? AND owner_id IS NULL) OR (NOT ? AND owner_id=?))
+        AND source_text::jsonb @> ?::jsonb ORDER BY created_at DESC LIMIT 1
+        """,
+            String.class,
+            language,
+            shared,
+            shared,
+            userId,
+            source);
+    if (!covering.isEmpty()) return get(covering.get(0), userId);
     String id =
         fingerprint((shared ? "species" : userId.toString()) + ":" + language + ":v1:" + source);
     int inserted =
@@ -56,7 +70,11 @@ public class TranslationServiceImpl implements TranslationService {
             source,
             userId.toString(),
             userId.toString());
-    if (inserted == 1) schedule(id, texts, userId, 1, language);
+    if (inserted == 1) {
+      Map<String, String> saved = cached(texts, userId, shared, language);
+      if (saved.size() == texts.size()) complete(id, saved, 1);
+      else schedule(id, texts, userId, 1, language, shared);
+    }
     return get(id, userId);
   }
 
@@ -85,7 +103,8 @@ public class TranslationServiceImpl implements TranslationService {
             id,
             row.attempt());
     if (changed == 1)
-      schedule(id, decodeList(row.source()), userId, row.attempt() + 1, row.language());
+      schedule(
+          id, decodeList(row.source()), userId, row.attempt() + 1, row.language(), row.shared());
     return get(id, userId);
   }
 
@@ -94,7 +113,7 @@ public class TranslationServiceImpl implements TranslationService {
         jdbc.query(
             """
         SELECT status, source_text, translated_text, attempt,
-        extract(epoch from now()-updated_at) AS age, language FROM ai_translations
+        extract(epoch from now()-updated_at) AS age, language, owner_id IS NULL FROM ai_translations
         WHERE id=? AND (owner_id=? OR owner_id IS NULL)
         """,
             (rs, n) ->
@@ -104,36 +123,79 @@ public class TranslationServiceImpl implements TranslationService {
                     rs.getString(3),
                     rs.getInt(4),
                     rs.getLong(5),
-                    rs.getString(6)),
+                    rs.getString(6),
+                    rs.getBoolean(7)),
             id,
             userId);
     if (rows.isEmpty()) throw new ResourceNotFoundException("Translation not found");
     return rows.get(0);
   }
 
-  private void schedule(String id, List<String> texts, Long userId, int attempt, String language) {
+  private void schedule(
+      String id, List<String> texts, Long userId, int attempt, String language, boolean shared) {
     try {
-      executor.execute(() -> generate(id, texts, userId, attempt, language));
+      executor.execute(() -> generate(id, texts, userId, attempt, language, shared));
     } catch (RuntimeException rejected) {
       fail(id, attempt);
     }
   }
 
-  private void generate(String id, List<String> texts, Long userId, int attempt, String language) {
+  private void generate(
+      String id, List<String> texts, Long userId, int attempt, String language, boolean shared) {
     try {
-      Map<String, String> result = client.translate(texts, userId, language);
-      jdbc.update(
-          """
-          UPDATE ai_translations SET status='READY', translated_text=?, updated_at=now()
-          WHERE id=? AND attempt=? AND status='PENDING'
-          """,
-          encode(result),
-          id,
-          attempt);
+      Map<String, String> result =
+          new java.util.LinkedHashMap<>(cached(texts, userId, shared, language));
+      List<String> missing = texts.stream().filter(text -> !result.containsKey(text)).toList();
+      if (!missing.isEmpty()) result.putAll(client.translate(missing, userId, language));
+      complete(id, result, attempt);
     } catch (Exception failed) {
       log.warn("Translation failed: id={}, type={}", id, failed.getClass().getSimpleName());
       fail(id, attempt);
     }
+  }
+
+  @Override
+  public Map<String, String> cached(
+      List<String> texts, Long userId, boolean shared, String language) {
+    if (texts.isEmpty()) return Map.of();
+    // One bounded lookup per requested source, composed into one SQL query. No historical backfill.
+    return jdbc.query(
+        connection -> {
+          var statement =
+              connection.prepareStatement(
+                  """
+          SELECT source, cached.value FROM unnest(?) AS requested(source)
+          JOIN LATERAL (
+            SELECT translated_text::jsonb ->> source AS value FROM ai_translations
+            WHERE language=? AND status='READY'
+              AND ((? AND owner_id IS NULL) OR (NOT ? AND (owner_id=? OR owner_id IS NULL)))
+              AND translated_text::jsonb ?? source
+            ORDER BY updated_at DESC LIMIT 1
+          ) cached ON true
+          """);
+          statement.setArray(1, connection.createArrayOf("text", texts.toArray()));
+          statement.setString(2, language);
+          statement.setBoolean(3, shared);
+          statement.setBoolean(4, shared);
+          statement.setLong(5, userId);
+          return statement;
+        },
+        rs -> {
+          Map<String, String> result = new java.util.LinkedHashMap<>();
+          while (rs.next()) result.put(rs.getString(1), rs.getString(2));
+          return result;
+        });
+  }
+
+  private void complete(String id, Map<String, String> result, int attempt) {
+    jdbc.update(
+        """
+        UPDATE ai_translations SET status='READY', translated_text=?, updated_at=now()
+        WHERE id=? AND attempt=? AND status='PENDING'
+        """,
+        encode(result),
+        id,
+        attempt);
   }
 
   private void fail(String id, int attempt) {
@@ -183,5 +245,6 @@ public class TranslationServiceImpl implements TranslationService {
       String translated,
       int attempt,
       long ageSeconds,
-      String language) {}
+      String language,
+      boolean shared) {}
 }

@@ -55,6 +55,10 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "role", nullable = false, length = 20)
   private UserRole role = UserRole.USER;
 
+  @Builder.Default
+  @Column(name = "language", nullable = false, length = 8)
+  private String language = "en";
+
   @Version
   @Column(name = "version", nullable = false)
   private long version;

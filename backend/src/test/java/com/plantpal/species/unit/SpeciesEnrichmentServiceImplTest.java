@@ -58,6 +58,7 @@ class SpeciesEnrichmentServiceImplTest {
   void setUp() {
     enrichmentService =
         new SpeciesEnrichmentServiceImpl(
+            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
             speciesRepository,
             deepSeekClient,
             ollamaClient,

@@ -22,12 +22,12 @@
       (click)="onRowClick(item)"
     >
       <div class="row-photo">
-        <img [src]="item.photoUrl || placeholderImage" [alt]="item.commonName || item.scientificName" />
+        <img [src]="item.photoUrl || placeholderImage" [alt]="(item.commonName | aiText) || item.scientificName" />
       </div>
 
       <div class="row-body">
         <p class="row-name">
-          {{ item.commonName || item.scientificName || ('Identifying…' | t) }}
+          {{ (item.commonName | aiText) || item.scientificName || ('Identifying…' | t) }}
         </p>
         <p class="row-date">
           {{ item.createdAt | date:'short' }}

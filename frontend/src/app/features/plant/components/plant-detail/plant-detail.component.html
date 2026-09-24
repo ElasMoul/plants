@@ -25,8 +25,8 @@
         </div>
 
         <div class="hero-text">
-          <span class="hero-species" *ngIf="plant.commonName || plant.species">
-            {{ plant.commonName || plant.species }}
+          <span class="hero-species" *ngIf="(plant.commonName | aiText) || plant.species">
+            {{ (plant.commonName | aiText) || plant.species }}
           </span>
           <h1 class="hero-name">{{ plant.nickname }}</h1>
         </div>

@@ -7,6 +7,8 @@ import lombok.Getter;
 @Builder
 public class AuthResponse {
 
+  private String language;
+
   private String token;
 
   private String role;

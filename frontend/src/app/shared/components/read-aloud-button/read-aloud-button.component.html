@@ -9,3 +9,5 @@
 >
   <mat-icon>{{ isReading ? 'stop_circle' : 'volume_up' }}</mat-icon>
 </button>
+
+<span *ngIf="speechService.failedText === text && speechService.error" role="alert" class="speech-error">{{ speechService.error }}</span>

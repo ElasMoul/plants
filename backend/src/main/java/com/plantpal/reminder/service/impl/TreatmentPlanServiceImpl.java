@@ -2,6 +2,7 @@ package com.plantpal.reminder.service.impl;
 
 import com.plantpal.identification.dto.ActionPlanDto;
 import com.plantpal.identification.dto.TreatmentStepDto;
+import com.plantpal.localization.GeneratedPlantText;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.dto.ReminderResponse;
@@ -21,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +37,14 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
   private final ReminderRepository reminderRepository;
   private final PlantRepository plantRepository;
 
+  private final ApplicationEventPublisher events;
+
   public TreatmentPlanServiceImpl(
+      ApplicationEventPublisher events,
       TreatmentPlanRepository treatmentPlanRepository,
       ReminderRepository reminderRepository,
       PlantRepository plantRepository) {
+    this.events = events;
     this.treatmentPlanRepository = treatmentPlanRepository;
     this.reminderRepository = reminderRepository;
     this.plantRepository = plantRepository;
@@ -105,7 +111,9 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         plant.getId(),
         actionPlan.getSteps().size());
 
-    return toResponse(plan, plant);
+    var response = toResponse(plan, plant);
+    events.publishEvent(new GeneratedPlantText(userId, response));
+    return response;
   }
 
   @Override

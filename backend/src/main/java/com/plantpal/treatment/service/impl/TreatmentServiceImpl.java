@@ -15,6 +15,7 @@ import com.plantpal.identification.dto.plantnet.PlantNetDiseaseResult;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.util.ActionPlanValidator;
 import com.plantpal.identification.util.LenientJsonParser;
+import com.plantpal.localization.GeneratedPlantText;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.service.TreatmentPlanService;
@@ -46,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,7 +91,10 @@ public class TreatmentServiceImpl implements TreatmentService {
 
   private final Map<Long, Bucket> aiBuckets = new ConcurrentHashMap<>();
 
+  private final ApplicationEventPublisher events;
+
   public TreatmentServiceImpl(
+      ApplicationEventPublisher events,
       TreatmentRepository treatmentRepository,
       PlantRepository plantRepository,
       TreatmentPlanService treatmentPlanService,
@@ -103,6 +108,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties) {
+    this.events = events;
     this.treatmentRepository = treatmentRepository;
     this.plantRepository = plantRepository;
     this.treatmentPlanService = treatmentPlanService;
@@ -176,6 +182,7 @@ public class TreatmentServiceImpl implements TreatmentService {
       fireDiseaseDescriptionGeneration(treatment.getId(), plant, request.getDiseaseName(), userId);
     }
 
+    events.publishEvent(new GeneratedPlantText(userId, toResponse(treatment)));
     return toResponse(treatment);
   }
 
@@ -434,6 +441,11 @@ public class TreatmentServiceImpl implements TreatmentService {
               t.setDiseaseDescriptionModel(preference.name());
               t.setDescriptionStatus(com.plantpal.shared.entity.GenerationStatus.READY);
               treatmentRepository.save(t);
+              events.publishEvent(
+                  new GeneratedPlantText(
+                      t.getUserId(),
+                      java.util.Map.of(
+                          "diseaseDescription", description, "diseaseName", t.getDiseaseName())));
               log.info("Disease description saved: treatmentId={}", treatmentId);
             });
   }

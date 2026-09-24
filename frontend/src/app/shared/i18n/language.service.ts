@@ -2,6 +2,9 @@ import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable } from '@angular/core';
 import { FR } from './fr';
 import { AR } from './ar';
+import { HttpClient } from '@angular/common/http';
+import { Optional } from '@angular/core';
+import { finalize } from 'rxjs/operators';
 
 export type Language = 'en' | 'fr' | 'ar';
 const STORAGE_KEY = 'plantpal.language';
@@ -17,8 +20,15 @@ export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: s
 ];
 
 export function readLanguage(): Language {
-  try { const value = localStorage.getItem(STORAGE_KEY); return value === 'fr' || value === 'ar' ? value : 'en'; }
-  catch { return 'en'; }
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    if (value === 'en' || value === 'fr' || value === 'ar') return value;
+  } catch { /* Browser preference still works when storage is unavailable. */ }
+  for (const locale of navigator.languages?.length ? navigator.languages : [navigator.language]) {
+    const code = locale.toLowerCase().split('-')[0];
+    if (code === 'en' || code === 'fr' || code === 'ar') return code;
+  }
+  return 'en';
 }
 
 export function pluralSuffix(count: number): string {
@@ -47,18 +57,33 @@ export class LanguageService {
   readonly language = readLanguage();
   readonly locale = LANGUAGES.find(item => item.code === this.language)!.locale;
 
-  constructor(@Inject(DOCUMENT) document: Document) {
+  saving = false;
+  error = '';
+
+  constructor(@Inject(DOCUMENT) document: Document, @Optional() private readonly http?: HttpClient) {
     document.documentElement.lang = this.language;
     document.documentElement.dir = LANGUAGES.find(item => item.code === this.language)!.direction;
   }
 
   select(language: string): void {
-    if (!LANGUAGES.some(item => item.code === language) || language === this.language) return;
+    if (this.saving || !LANGUAGES.some(item => item.code === language) || language === this.language) return;
+    this.error = '';
+    if (localStorage.getItem('plantpal_token') && this.http) {
+      this.saving = true;
+      this.http.put('/api/v1/users/me/preferences', { language })
+        .pipe(finalize(() => this.saving = false))
+        .subscribe({ next: () => this.apply(language), error: () => {
+          this.error = translate('Could not save language. Please try again.');
+        } });
+    } else this.apply(language);
+  }
+
+  private apply(language: string): void {
     try { localStorage.setItem(STORAGE_KEY, language); }
-    catch { return; }
-    // Reinitialize Angular and Material locale providers, including lazy-loaded calendars.
+    catch { this.error = translate('Could not save language. Please try again.'); return; }
     window.location.reload();
   }
+
 }
 
 

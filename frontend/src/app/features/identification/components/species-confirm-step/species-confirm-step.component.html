@@ -116,18 +116,18 @@
       <ng-container *ngIf="match.matched; else newSpecies">
         <h2 class="step-title">{{ 'Is this your plant\'s species?' | t }}</h2>
         <p class="step-scientific-name">{{ match.scientificName }}</p>
-        <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+        <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName | aiText }}</p>
       </ng-container>
       <ng-template #newSpecies>
         <ng-container *ngIf="match.scientificName; else unknownSpecies">
           <h2 class="step-title">{{ 'This looks like a new species' | t }}</h2>
           <p class="step-scientific-name">{{ match.scientificName }}</p>
-          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName | aiText }}</p>
           <p class="step-subtitle">{{ 'We haven\'t seen this one in your garden before — add it?' | t }}</p>
         </ng-container>
         <ng-template #unknownSpecies>
           <h2 class="step-title">{{ 'We couldn\'t identify a species' | t }}</h2>
-          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName }}</p>
+          <p class="step-common-name" *ngIf="match.commonName">{{ match.commonName | aiText }}</p>
           <p class="step-subtitle">{{ 'Try a clearer photo so we can pin down the species.' | t }}</p>
         </ng-template>
       </ng-template>

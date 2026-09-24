@@ -14,9 +14,9 @@
       *ngFor="let scan of scans; trackBy: trackByScanId"
       (click)="select(scan)"
     >
-      <img [src]="scan.photoUrl || placeholderImage" [alt]="scan.commonName || scan.scientificName" class="history-thumb" />
+      <img [src]="scan.photoUrl || placeholderImage" [alt]="(scan.commonName | aiText) || scan.scientificName" class="history-thumb" />
       <div class="history-meta">
-        <span class="history-name">{{ scan.commonName || scan.scientificName }}</span>
+        <span class="history-name">{{ (scan.commonName | aiText) || scan.scientificName }}</span>
         <span class="history-date">{{ scan.createdAt | date:'medium' }}</span>
       </div>
     </button>

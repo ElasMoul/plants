@@ -1,4 +1,4 @@
-import { translate } from '../../../shared/i18n/language.service';
+import { readLanguage, translate } from '../../../shared/i18n/language.service';
 import { Component } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -61,7 +61,7 @@ export class RegisterComponent {
       password: string;
     };
 
-    this.authService.register(payload).subscribe({
+    this.authService.register({ ...payload, language: readLanguage() }).subscribe({
       next: () => this.router.navigate(['/garden']),
       error: err => {
         this.loading = false;

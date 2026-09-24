@@ -51,7 +51,11 @@ class TreatmentPlanServiceTest {
   @BeforeEach
   void setUp() {
     treatmentPlanService =
-        new TreatmentPlanServiceImpl(treatmentPlanRepository, reminderRepository, plantRepository);
+        new TreatmentPlanServiceImpl(
+            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+            treatmentPlanRepository,
+            reminderRepository,
+            plantRepository);
   }
 
   private Plant plant() {
