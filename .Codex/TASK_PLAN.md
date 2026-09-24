@@ -76,3 +76,26 @@ see the expansion below and STATE.md for the current administrator identity.
 - [x] Select explicit Arabic voice, handle loading/cancellation and missing voice visibly.
 - [x] Full backend verify/Spotless/coverage, frontend build/tests/lint, 18 browser journeys.
 - [ ] Owner tests codex/arabic-generation-and-voice before publishing/merging.
+
+## Explicit section translations — complete 2026-09-24
+- [x] Branch from dev: codex/explicit-section-translations.
+- [x] Remove yellow global notice and all read-triggered translation generation.
+- [x] Preserve displayed content when app/account language changes.
+- [x] Prepare newly generated sections in saved account language, including cure advice.
+- [x] Explicit section translation, saved version selection, EN/FR/AR database slots.
+- [x] Keep old sections unchanged when a new card is added; no historical backfill.
+- [x] Scope lists, diagrams and audio to section language; resolve merged card sources.
+- [x] Full backend verify/Spotless, frontend tests/build/lint, 17 browser checks; preview up.
+- [ ] Owner tests on 4210 before publishing/merging.
+
+## Translation icon refinement — complete 2026-09-24
+- [x] Remove card/section language selectors.
+- [x] Translate icon next to read-aloud; show only for a displayed/app language mismatch.
+- [x] Reuse saved targets without AI requests; hide icon after matching.
+- [x] Tests/build/lint/browser checks and mobile visual review; ready on 4210.
+
+## Cached language selection refinement — complete 2026-09-24
+- [x] On language changes, display a saved target automatically; no button/AI request.
+- [x] Keep existing text and explicit icon when target is missing.
+- [x] Move translation status below the card header to prevent squeezed text.
+- [x] Unit/build/lint/browser checks and mobile visual review; preview 4210 updated.

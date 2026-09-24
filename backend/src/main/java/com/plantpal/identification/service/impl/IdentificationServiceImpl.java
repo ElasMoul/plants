@@ -185,6 +185,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   private final SpeciesService speciesService;
   private final PlantService plantService;
   private final ApplicationEventPublisher eventPublisher;
+  private final com.plantpal.localization.GeneratedAdviceService generatedAdvice;
   private final Executor aiTaskExecutor;
   private final GatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
@@ -217,6 +218,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       SpeciesService speciesService,
       PlantService plantService,
       ApplicationEventPublisher eventPublisher,
+      com.plantpal.localization.GeneratedAdviceService generatedAdvice,
       @Qualifier("aiTaskExecutor") Executor aiTaskExecutor,
       GatewayClient gatewayClient,
       GatewayProperties gatewayProperties,
@@ -244,6 +246,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.speciesService = speciesService;
     this.plantService = plantService;
     this.eventPublisher = eventPublisher;
+    this.generatedAdvice = generatedAdvice;
     this.aiTaskExecutor = aiTaskExecutor;
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
@@ -275,6 +278,11 @@ public class IdentificationServiceImpl implements IdentificationService {
         (userContext != null && !userContext.isBlank()) ? userContext.trim() : null;
     Identification identification =
         Identification.builder()
+            .contentLanguage(
+                userRepository
+                    .findById(userId)
+                    .map(com.plantpal.user.entity.User::getLanguage)
+                    .orElse("en"))
             .userId(userId)
             .plantId(plantId)
             .speciesId(speciesId)
@@ -600,7 +608,9 @@ public class IdentificationServiceImpl implements IdentificationService {
     String raw =
         generateCureAdviceForPreference(preference, req.getSpecies(), req.getRegionLabel(), userId);
     var advice = parseCureAdvice(raw, preference);
-    eventPublisher.publishEvent(new com.plantpal.localization.GeneratedPlantText(userId, advice));
+    advice.setSectionId(generatedAdvice.save(id, userId, advice));
+    eventPublisher.publishEvent(
+        new com.plantpal.localization.GeneratedPlantText("advice", advice.getSectionId(), userId));
     return CompletableFuture.completedFuture(advice);
   }
 
@@ -638,7 +648,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       plan.setCareCards(careCards);
       identification.setCarePlan(serializeToJson(plan));
       identificationRepository.save(identification);
-      eventPublisher.publishEvent(new com.plantpal.localization.GeneratedPlantText(userId, plan));
+      eventPublisher.publishEvent(
+          new com.plantpal.localization.GeneratedPlantText(
+              "scan", id, userId, "card-" + (careCards.size() - 1)));
       log.info(
           "Care card added: identificationId={}, userId={}, label={}",
           id,
@@ -1079,8 +1091,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       identificationRepository.save(ident);
       eventPublisher.publishEvent(
           new com.plantpal.localization.GeneratedPlantText(
-              ident.getUserId(),
-              java.util.Map.of("annotationRegions", parseAnnotationRegions(annotationJson))));
+              "scan", ident.getId(), ident.getUserId(), "health"));
       log.info("Annotation retry completed: identificationId={}", identificationId);
     } catch (Exception e) {
       log.warn(

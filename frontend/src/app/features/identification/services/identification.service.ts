@@ -90,8 +90,8 @@ export class IdentificationService {
     identificationId: number,
     regionLabel: string,
     species: string,
-  ): Observable<{ advice: string; actionPlan: ActionPlanDto | null; reasoningModelUsed?: string | null }> {
-    return this.http.post<ApiResponse<{ advice: string; actionPlan: ActionPlanDto | null; reasoningModelUsed?: string | null }>>(
+  ): Observable<{ sectionId?: number; advice: string; actionPlan: ActionPlanDto | null; reasoningModelUsed?: string | null }> {
+    return this.http.post<ApiResponse<{ sectionId?: number; advice: string; actionPlan: ActionPlanDto | null; reasoningModelUsed?: string | null }>>(
       `${this.baseUrl}/${identificationId}/cure-advice`,
       { regionLabel, species },
     ).pipe(map(res => res.data));

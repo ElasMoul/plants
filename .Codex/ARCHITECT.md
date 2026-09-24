@@ -165,3 +165,37 @@ retain existing retry fencing and AI quota behavior.
 Speech uses explicit matching SpeechSynthesisVoice, with voiceschanged handling when
 initial enumeration is empty. Missing Arabic voice/text results in an inline message;
 never allow browser default voice selection to silently fall back to English.
+
+## Explicit content sections (2026-09-24; supersedes automatic response localization)
+
+Canonical domain DTOs remain English. SectionSourceService resolves owner-authorized
+scan/treatment/plan/step/advice data and shared species text. SectionTranslationService
+uses an owner/resource/section hash and source fingerprint; migration 039 gives each
+section at most one EN, FR and AR slot. English is identity text; non-English slots
+reference reusable ai_translations jobs. Fingerprints prevent stale provider results
+from being linked to changed text. SQL parameters never contain client-authored prompts.
+
+GET /content-sections/{kind}/{id}/{section} performs no writes or AI scheduling. POST
+/translate uses users.language and only prepares a missing/failed target; retries retain
+existing quota/cooldown fencing. Generation events register new section language and
+batch text asynchronously. Add-card/annotation events specify the changed section,
+avoiding accidental old-content translation. GeneratedAdviceService persists canonical
+cure advice before publishing its resource event; dependencies remain acyclic.
+
+There is no response-localization advice or global frontend translation interceptor.
+SectionLanguageDirective provides a local SectionLanguageState to impure text/detail/
+diagram pipes and speech controls. Display selection is stored per owner-scoped section
+key in localStorage, independently of app UI language. Status polling is bounded to two
+minutes and observes existing jobs only; retry is a user action. Changing app language
+reloads static strings but never silently selects a different saved content variant.
+
+Section control refinement: manual selection is now a single contextual translate icon,
+not a language dropdown. A saved current-app target is selected locally, keeping the
+same persisted per-section display state and language-slot model. Visibility is exactly
+the displayed-language/app-target mismatch; no changes to server translation semantics.
+
+Latest rule (2026-09-24): SectionLanguageState.accept prioritizes a READY variant for
+the saved account target automatically, before the previous section selection. Missing
+targets leave current content visible and require explicit translation. No read-triggered
+AI calls. Translation status is rendered separately below care-card headers, preventing
+its message from consuming header text width.

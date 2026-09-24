@@ -1,106 +1,75 @@
 # PlantPal languages
 
-The standard user app supports English, French and Modern Standard Arabic. Choose
-**EN**, **FR** or **AR** in the compact header selector or language settings.
-The selector has no globe symbol; native-language titles identify each option. The header selector is also
-available before login. With no saved choice, the app detects the first supported
-browser language (en/fr/ar). Registration saves it on the account; a manual choice
-overrides detection. Signed-in changes are saved before reloading, and login restores
-the account language. The local browser choice remains available after logout.
-Changing language reloads the current page; save unfinished edits first.
+The standard user app supports EN, FR and AR. Registration detects the first supported
+browser language unless the user chooses one. The language is saved on the account;
+settings/header changes save it before reloading. Login restores the account preference.
+Admin and Atlas remain outside this localization rollout.
 
-This rollout translates the user interface, forms, common messages, calendars,
-dates, pagination, and accessibility labels. Voice input and read-aloud use the
-selected document language. User-entered content, scientific names and the separate
-Pl@ntNet common-name language setting are preserved. AI descriptions, care cards,
-health notes, treatment advice and step instructions have saved French and Arabic display versions.
-New chat replies are generated directly in the selected language. Unknown server messages may remain English.
-The admin console and Atlas are not translated in this rollout.
+## Interface and plant content
 
-## Development
+Changing language updates static interface text, dates and layout. Arabic uses RTL.
+Existing plant content automatically displays a saved version in the selected language.
+If that version is missing, its current text remains until explicitly translated. Scientific names, nicknames and
+user notes remain unchanged. New AI content is prepared in the saved account language;
+English canonical records are retained. Existing plants are never batch translated.
 
-Messages live in `frontend/src/app/shared/i18n/fr.ts` and `ar.ts`, keyed by their
-English source. Arabic has all 590 catalog entries, with matching placeholders.
-Use `{{ 'Save changes' | t }}` for templates and `translate('Save changes')` for
-application-owned TypeScript messages. Use numbered parameters for dynamic values,
-not concatenated translated fragments. Never translate API values or comparisons.
-English fallback allows new copy to remain readable, but add its French translation
-in the same change. Tests check numbered placeholder parity and language persistence.
+Each plant section has a translate icon beside read-aloud (or at the section start
+when there is no audio control). There are no section language dropdowns.
+- The icon is visible only when displayed text differs from the account/app language.
+- Saved target versions display automatically without any AI request; clicking requests a missing translation.
+- Once the section matches the selected app language, the icon disappears.
+- Each section retains at most one EN, FR and AR version, created progressively.
+- On app language changes, a saved target takes priority; the icon appears only if that target is missing.
 
-`LanguageService` owns supported languages, locales and document direction. Locale
-providers and module-level labels initialize at startup, so language changes reload.
-The account language is persisted; anonymous visitors retain a browser-local choice. Migration 036 adds persistent AI translation jobs; migration 037 permits Arabic;
-migration 038 adds the account language and translation reuse index, without rewriting plants.
+Controls cover plant/common names, health and annotation text, species descriptions,
+care overviews/cards/warnings, cure advice, treatment descriptions/names, plan titles,
+diagrams and individual steps. Cards merged from older scans keep their original
+section identity. Adding a new card does not translate the older cards.
 
-Arabic sets document direction to RTL and uses the ar-MA locale for dates and speech.
-Logical CSS spacing and positioning mirror the user interface; navigation arrows
-mirror while email, password and code inputs remain LTR. Counted plant, tip, day
-and issue messages handle Arabic zero, singular, dual, few and many forms.
-Atlas remains separate future work.
+Read-aloud uses the displayed section language and explicitly selects a matching
+system voice. If no matching voice is installed, it displays an error. Device voice
+availability still depends on the browser/OS. New chat replies use the app language.
 
-## Validation
+## Translation behavior
 
-Production build passed (existing bundle/CommonJS warnings); 572 frontend unit tests, 485 backend unit tests, 51 backend integration tests
-(including eight translation tests) and 18 Chromium journeys passed. Three optional
-live evaluation tests remain skipped. Full backend verify includes Spotless and coverage. These cover language switching, translated saved content, pending
-jobs, failure/retry UI, ownership, cache reuse and existing admin workflows.
-Hosted DeepSeek was also verified using synthetic plant-care text. See `docs/screenshots/french-plant-form.png`.
+There is no yellow global translation notice and opening an old plant never starts
+translation. Explicit translation uses configured native hosted DeepSeek first
+(`DEEPSEEK_HOSTED_API_KEY`, `DEEPSEEK_HOSTED_BASE_URL`), with Anthropic/Ollama fallback.
+Cached reads consume no AI allowance; newly translated batches consume AI allowance,
+not scan allowance. Failed jobs require an explicit retry. Status checks only observe
+an existing job and stop after two minutes in the browser. Interrupted jobs become
+retryable after the existing server stale-job window/cooldown.
 
-## AI content in French and Arabic
+English source text stays intact. Translation preserves scientific names, warnings,
+quantities and units; numeric values and units are validated before saving. A changed
+source invalidates its stale translated versions without creating additional language
+slots. Translation does not perform another identification or diagnosis.
 
-Select FR or AR, then open an existing scan, species page or treatment. The first
-view prepares a version in the selected language in the background and shows a progress notice.
-Subsequent views reuse the saved translation. Switching to English shows the original.
-This also applies to newly generated analyses, without repeating identification.
-User notes and plant nicknames remain as entered. Diagram labels and read-aloud use
-translated text; diagram identifiers and the underlying treatment data stay intact.
+## Implementation
 
-Translation uses configured native hosted DeepSeek first (DEEPSEEK_HOSTED_API_KEY
-and DEEPSEEK_HOSTED_BASE_URL), then Anthropic or Ollama when available. Each new
-translation batch consumes the user's AI allowance, never their scan allowance;
-cached reads consume neither. Shared species translations can be reused across users.
-Private scan and treatment translations remain scoped to their owner.
+Migration 038 stores users.language. Migration 039 adds plant_text_sections,
+plant_text_versions and generated_cure_advice. The per-section language primary key
+and language constraint allow at most three variants. Existing ai_translations jobs
+provide reusable provider results; no historical data migration is performed.
 
-If a provider or quota prevents translation, the original text remains visible with
-a French notice and retry control. Failed jobs are not automatically billed again on
-every view. Retry has a short cooldown; an interrupted pending job can be retried
-once its ten-minute stale window expires. Numeric values and measurement units are
-validated before saving; translation is instructed to preserve botanical names and
-warnings and must not perform a fresh diagnosis.
+GET `/api/v1/content-sections/{kind}/{id}/{section}` resolves authorized server content
+and reads metadata. POST on its `/translate` child uses the saved account target.
+Client-authored translation text is never accepted. GeneratedTranslationListener
+prepares new content after generation; card/annotation updates specify their section.
+The old X-Content-Language response-localization mechanism is removed.
 
-The API keeps canonical data unchanged and adds localization metadata for requests
-with X-Content-Language: fr or ar. Cache keys include language; retries retain
-the saved target, so Arabic never overwrites French. The frontend polls the translation job, then applies
-text only at display time. It never submits translated DTOs back as domain changes.
-Arabic AI output and RTL are included. Atlas remains future work.
+Frontend SectionLanguageDirective supplies section-local display state to aiText,
+aiDetail, aiDiagram and read-aloud. LanguageService handles static catalogs and account
+settings separately. Selected content language persists per section in localStorage.
 
+## Validation and preview
 
-Arabic preview screenshot: `docs/screenshots/arabic-plant-form.png`.
-The owner will test this feature branch before approving a merge to dev.
+Full backend verify passed: 485 unit tests, 55 integration passes, 3 optional live eval
+skips, coverage, Checkstyle and unfiltered Spotless. Frontend: 572 tests, production
+build, lint and 17 Chromium language/admin/session journeys passed. Existing bundle
+and CommonJS warnings remain. Translation-provider results were mocked in this run.
 
+Preview: http://127.0.0.1:4210 (backend 8190). Branch:
+`codex/explicit-section-translations`. Owner testing precedes publishing or merging.
 
-## Account language and new Arabic content
-
-The account preference is `users.language` (migration 038), exposed at registration,
-auth responses and `/users/me/preferences`. Supported values are en/fr/ar. Existing
-accounts default to English until changed; existing plants/scans are never backfilled.
-
-For Arabic-preferring users, successful new scan generation automatically schedules
-saved Arabic text alongside the canonical English source. The same applies to newly
-generated cure advice, treatment descriptions, plan steps, annotation retries, and
-species prose associated with an Arabic user's scan. Arabic common names are saved
-in the same source-to-translation records and rendered on plant/scan/species views;
-Latin scientific names and user nicknames remain unchanged. There is no startup sweep.
-Changing language affects subsequent generation; it does not regenerate old analyses.
-
-`GeneratedTranslationListener` handles content events after commit on the AI executor.
-The existing `ai_translations` table stores both source text and Arabic text. Complete
-or pending jobs can be reused for a subset of their text, and new response combinations
-reuse individual saved translations with ownership/language checks. Translation remains
-subject to provider availability and the user's AI allowance; failure/retry behavior is
-unchanged. There is no extra scan merely to produce the Arabic version.
-
-Read-aloud explicitly selects a voice matching the selected language, including when
-voices arrive asynchronously. It speaks translated text, preserves cancellation, and
-shows an inline error if no matching voice exists. Install an Arabic system/browser
-voice when that message appears; the app never substitutes an English voice for Arabic.
+Translation progress/failure messages sit below care-card headers, keeping their text and audio/translation icons readable on narrow screens.

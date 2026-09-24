@@ -9,6 +9,7 @@ import { ActionPlanDto, AnnotationRegion, CarePlanDto } from '../../models/ident
 import { IdentificationService } from '../../services/identification.service';
 
 interface CureCacheEntry {
+  sectionId: number | null;
   advice: string;
   actionPlan: ActionPlanDto | null;
   addedToPlan: boolean;
@@ -34,6 +35,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
   @Input() plantId: number | null = null;
   @Output() readonly carePlanUpdated = new EventEmitter<CarePlanDto>();
 
+  sectionId: number | null = null;
   advice: string | null = null;
   actionPlan: ActionPlanDto | null = null;
   reasoningModelUsed: string | null = null;
@@ -68,11 +70,13 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
     const key = this.cacheKey();
     const cached = key ? this.cureCache.get(key) : undefined;
     if (cached) {
+      this.sectionId = cached.sectionId;
       this.advice = cached.advice;
       this.actionPlan = cached.actionPlan;
       this.addedToPlan = cached.addedToPlan;
       this.reasoningModelUsed = cached.reasoningModelUsed;
     } else {
+      this.sectionId = null;
       this.advice = null;
       this.actionPlan = null;
       this.addedToPlan = false;
@@ -88,6 +92,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
     const key = this.cacheKey();
     if (!key || !this.advice) return;
     this.cureCache.set(key, {
+      sectionId: this.sectionId,
       advice: this.advice,
       actionPlan: this.actionPlan,
       addedToPlan: this.addedToPlan,
@@ -114,6 +119,7 @@ export class DiseaseDetailPanelComponent implements OnChanges, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: result => {
+          this.sectionId = result.sectionId ?? null;
           this.advice = result.advice;
           this.actionPlan = result.actionPlan;
           this.reasoningModelUsed = result.reasoningModelUsed ?? null;

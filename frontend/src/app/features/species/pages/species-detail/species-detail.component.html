@@ -16,7 +16,7 @@
         <mat-icon class="directional-icon">arrow_back</mat-icon>
       </button>
 
-      <div class="hero-text">
+      <div class="hero-text" [appSection]="'species:' + species.id + ':name'">
         <h1 class="species-name">{{ species.scientificName }}</h1>
         <p class="species-common-name">{{ (species.commonName | aiText) || ('Common name unknown' | t) }}</p>
         <p *ngIf="species.family || species.genus" class="species-taxonomy">
@@ -73,7 +73,7 @@
           </div>
 
           <!-- Description: READY -->
-          <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block">
+          <div *ngIf="species.descriptionStatus === 'READY' && species.description" class="info-block" [appSection]="'species:' + species.id + ':description'">
             <div class="info-heading-row">
               <h2 class="info-heading">{{ 'About' | t }}</h2>
               <app-read-aloud-button
@@ -94,7 +94,7 @@
             </button>
           </div>
 
-          <div *ngIf="species.careOverview" class="info-block">
+          <div *ngIf="species.careOverview" class="info-block" [appSection]="'species:' + species.id + ':overview'">
             <h2 class="info-heading">{{ 'Care overview' | t }}</h2>
             <p class="info-text">{{ species.careOverview | aiText }}</p>
           </div>
@@ -111,7 +111,8 @@
             <h2 class="info-heading">{{ 'How to care for it' | t }}</h2>
             <div class="care-cards-grid">
               <app-care-card
-                *ngFor="let card of species.careCards"
+                *ngFor="let card of species.careCards; let i = index"
+                [appSection]="'species:' + species.id + ':card-' + i"
                 [card]="card"
                 [plantId]="null"
               ></app-care-card>

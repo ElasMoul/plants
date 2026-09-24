@@ -36,3 +36,28 @@
 - SpeechService explicitly selects matching voice, supports deferred enumeration and
   cancellation, reports missing voice/text. ReadAloudButton displays accessible errors.
 - Tests: speech.service.spec, language.service.spec, TranslationIT and language browser journeys.
+
+## Explicit section controls (2026-09-24; replaces interceptor/notice above)
+- Removed AiLanguageInterceptor, AiTranslationState, AiTranslationNotice and global map.
+- shared/i18n/section-language.directive.ts: authorized section metadata, explicit POST,
+  bounded GET-only completion polling, saved version selector and local inline failure.
+- section-language.state.ts: per-section EN/FR/AR selection persists across UI reloads.
+- ai-text.pipe.ts: scoped aiText, aiDetail and aiDiagram pipes. No implicit global rewriting.
+- CarePlan accepts original-scan card references for the merged plant detail care view.
+- Cure advice response carries sectionId for persisted advice versions. Canonical content
+  remains the value used by add-to-care-plan and treatment actions.
+- Speech follows the selected section language independently of document locale.
+- Tests: section-language.directive.spec, speech.service.spec, language browser journey.
+
+### Contextual translate icon refinement
+SectionLanguageDirective no longer renders a saved-version selector. Its icon is
+inserted immediately after the section's read-aloud component, with a section-start
+fallback. Visibility depends on displayed language versus account target, not whether
+that target is cached. Clicking a READY target selects it locally; a PENDING target
+uses GET-only observation; only missing/failed targets POST. Icon labels remain localized.
+
+Latest rule (2026-09-24): SectionLanguageState.accept prioritizes a READY variant for
+the saved account target automatically, before the previous section selection. Missing
+targets leave current content visible and require explicit translation. No read-triggered
+AI calls. Translation status is rendered separately below care-card headers, preventing
+its message from consuming header text width.

@@ -44,7 +44,7 @@
         [selectedRegionIndex]="selectedRegionIndex"
       ></app-photo-annotator>
 
-      <app-annotation-list
+      <app-annotation-list [appSection]="'scan:' + scan.id + ':health'"
         [regions]="scan.annotationRegions"
         [species]="null"
         [identificationId]="scan.id"
