@@ -29,10 +29,10 @@
         <springdoc.version>2.5.0</springdoc.version>
         <spotless.version>2.43.0</spotless.version>
         <google-java-format.version>1.19.2</google-java-format.version>
-        <!-- SonarCloud (run from CI: mvn sonar:sonar, needs SONAR_TOKEN) -->
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.organization>elasmoul</sonar.organization>
-        <sonar.projectKey>ElasMoul_plants_backend</sonar.projectKey>
+        <!-- Local SonarQube Community Edition — see scripts/sonar-scan.ps1 -->
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.projectKey>plantpal-backend</sonar.projectKey>
+        <sonar.projectName>PlantPal Backend</sonar.projectName>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
         <!-- 1.19.7 cannot negotiate Docker Desktop 29's minimum API on Windows npipe.
