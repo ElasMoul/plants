@@ -768,27 +768,34 @@ public class IdentificationServiceImpl implements IdentificationService {
       List<List<Integer>> groups = parseDuplicateGroups(raw);
 
       for (List<Integer> group : groups) {
-        // The AI's refs are untrusted: drop out-of-range/repeated indices so one hallucinated ref
-        // can't throw mid-pass (leaving earlier removals applied and later groups unprocessed).
-        List<Integer> valid =
-            group.stream().filter(i -> i >= 0 && i < refs.size()).distinct().sorted().toList();
-        if (valid.size() < 2) continue;
-        // Newest-first order: the smallest index is the card to keep.
-        for (int idx : valid.subList(1, valid.size())) {
-          CareCardRef removed = refs.get(idx);
-          if (removeCareCard(removed)) {
-            // Name the REMOVED disease: the listener dismisses the treatment tracking the card
-            // that is now gone, not the one the user still sees.
-            eventPublisher.publishEvent(
-                new DuplicateCareCardRemovedEvent(plantId, removed.card().getTitle()));
-          }
-        }
+        removeDuplicateGroup(plantId, refs, group);
       }
     } catch (PlantPalException e) {
       log.warn(
           "Duplicate care card check failed, leaving cards as-is: plantId={}, error={}",
           plantId,
           e.getMessage());
+    }
+  }
+
+  /**
+   * Keeps the newest card of one AI-reported duplicate group and removes the rest. The AI's refs
+   * are untrusted: out-of-range/repeated indices are dropped so one hallucinated ref can't throw
+   * mid-pass (leaving earlier removals applied and later groups unprocessed).
+   */
+  private void removeDuplicateGroup(Long plantId, List<CareCardRef> refs, List<Integer> group) {
+    List<Integer> valid =
+        group.stream().filter(i -> i >= 0 && i < refs.size()).distinct().sorted().toList();
+    if (valid.size() < 2) return;
+    // Newest-first order: the smallest index is the card to keep.
+    for (int idx : valid.subList(1, valid.size())) {
+      CareCardRef removed = refs.get(idx);
+      if (removeCareCard(removed)) {
+        // Name the REMOVED disease: the listener dismisses the treatment tracking the card that is
+        // now gone, not the one the user still sees.
+        eventPublisher.publishEvent(
+            new DuplicateCareCardRemovedEvent(plantId, removed.card().getTitle()));
+      }
     }
   }
 
@@ -1667,15 +1674,15 @@ public class IdentificationServiceImpl implements IdentificationService {
         .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
   }
 
+  /** Annotation output plus the model that actually produced it (stored as annotationModel). */
+  private record AnnotationRun(String json, String model) {}
+
   /**
    * Gap G1 follow-up: routes the always-on gpt-4o-mini annotation call (visual region polygons)
    * through the gateway when enabled — same additive if/else shape used throughout this class for
    * D022's gateway swap. {@code userId} may be {@code null} for system-initiated retries with no
    * resolvable user (falls back to "system", matching the convention used for species enrichment).
    */
-  /** Annotation output plus the model that actually produced it (stored as annotationModel). */
-  private record AnnotationRun(String json, String model) {}
-
   private AnnotationRun runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
     if (userId != null && loadVisionPreference(userId) == VisionModelPreference.DEEPSEEK_FLASH)
       return new AnnotationRun(

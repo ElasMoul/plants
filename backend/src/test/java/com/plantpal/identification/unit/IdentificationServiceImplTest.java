@@ -2435,7 +2435,7 @@ class IdentificationServiceImplTest {
     private Identification scanWithPestCards(long id, String... titles) {
       StringBuilder cards = new StringBuilder();
       for (String title : titles) {
-        if (cards.length() > 0) cards.append(',');
+        if (!cards.isEmpty()) cards.append(',');
         cards
             .append("{\"type\":\"PEST\",\"title\":\"")
             .append(title)
@@ -2971,7 +2971,7 @@ class IdentificationServiceImplTest {
     @Test
     @DisplayName(
         "annotation retry for a DeepSeek Flash user records the Flash model, not gpt-4o-mini")
-    void annotationRetryRecordsFlashModel() throws Exception {
+    void annotationRetryRecordsFlashModel() {
       Identification ident =
           buildIdentification(
               IdentificationStatus.COMPLETED,
