@@ -5,6 +5,7 @@ import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.user.service.UsageService;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -22,9 +23,14 @@ public class UsageServiceImpl implements UsageService {
   @Transactional(propagation = Propagation.MANDATORY)
   public void requirePlantCapacity(Long userId) {
     Limits limits = lock(userId);
+    // count(*) is never NULL, but queryForObject is nullable — don't auto-unbox it blindly.
     long count =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM plants WHERE user_id=? AND status='ACTIVE'", Long.class, userId);
+        Objects.requireNonNullElse(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM plants WHERE user_id=? AND status='ACTIVE'",
+                Long.class,
+                userId),
+            0L);
     if (count >= limits.plants())
       throw new PlantPalException(
           "Your plant limit has been reached. Archive a plant or ask an administrator to increase your allowance.",

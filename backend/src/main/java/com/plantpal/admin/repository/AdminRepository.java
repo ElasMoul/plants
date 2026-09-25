@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -99,7 +100,8 @@ public class AdminRepository {
                 rs.getLong("pending")));
   }
 
+  /** Null-safe: a NULL aggregate (e.g. a future SUM over no rows) reads as 0, never an NPE. */
   private long count(String sql) {
-    return jdbc.queryForObject(sql, Long.class);
+    return Objects.requireNonNullElse(jdbc.queryForObject(sql, Long.class), 0L);
   }
 }

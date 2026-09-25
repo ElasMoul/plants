@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { BehaviorSubject } from 'rxjs';
+import { take } from 'rxjs/operators';
 import { AiErrorService } from '../../../core/services/ai-error.service';
 import { IdentificationService } from './identification.service';
 
@@ -96,9 +97,14 @@ export class BatchScanService {
     this.patchItem(id, { status: 'SCANNING' });
     this.identificationService.analyze([item.file], ['auto'], undefined, undefined, item.userContext).subscribe({
       next: res => {
-        this.identificationService.pollUntilComplete(res.data.identificationId).subscribe({
-          next: () => {
-            this.patchItem(id, { status: 'DONE' });
+        // take(1): the batch only needs the core outcome. pollUntilComplete keeps emitting every
+        // 3s while annotation/candidates enrich, which re-announced the finished batch each time.
+        this.identificationService.pollUntilComplete(res.data.identificationId).pipe(take(1)).subscribe({
+          next: result => {
+            // A scan the backend marks FAILED is a failed item, not an added plant.
+            this.patchItem(id, result.status === 'FAILED'
+              ? { status: 'FAILED', errorMessage: translate('Analysis failed — please try again') }
+              : { status: 'DONE' });
             this.checkAllResolved();
           },
           error: () => {

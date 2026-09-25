@@ -22,6 +22,9 @@ module.exports = {
     // Verbatim extracts of the pinned prototype — pins, not code under test.
     '!projects/atlas/src/app/world/world.bodies.ts',
     '!projects/atlas/src/app/chrome/overview.html.ts',
+    // Shared by both apps (auth, session hand-off, the chat SSE parser) — production code too.
+    'projects/shared-core/src/lib/**/*.ts',
+    '!projects/shared-core/src/lib/**/*.spec.ts',
   ],
   // Honest floor: the measured global line coverage over the scope above is
   // ~16.8% (it was ~6.2% before the atlas sources joined the denominator). The

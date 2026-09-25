@@ -8,6 +8,7 @@ import { ChatService } from '../services/chat.service';
 import { PlantService } from '../../plant/services/plant.service';
 import { ChatMessageDto } from '../models/chat.model';
 import { AiErrorService } from '../../../core/services/ai-error.service';
+import { SseParser } from '@plantpal/shared-core';
 
 interface ChatMessage {
   id: number;
@@ -17,6 +18,8 @@ interface ChatMessage {
   // dedicated block notice instead of the text bubble (platform D023: never a generic error).
   blocked?: boolean;
   blockReason?: string | null;
+  // The reply failed (error text or "no reply" notice shown instead) — never sent back as history.
+  failed?: boolean;
 }
 
 // The canned opening greeting isn't a real conversation turn — excluded from history sent to the AI.
@@ -104,11 +107,9 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     const aiMessageId = this.nextId++;
     this.messages.push({ id: aiMessageId, sender: 'ai', text: '' });
 
-    // Tracks how much of HttpDownloadProgressEvent.partialText (cumulative from the start of the
-    // response) has already been processed, so each progress tick only parses the NEW bytes.
-    let consumedLength = 0;
-    // A `data: ` line can arrive split across two progress ticks -- buffer until a full line.
-    let lineBuffer = '';
+    // Reads the cumulative partialText incrementally, exactly as Spring frames tokens: multi-line
+    // tokens are rejoined with their newlines and a token's own leading space is kept.
+    const parser = new SseParser();
 
     this.chatService.sendMessageStream(text, this.contextPlantId ?? undefined, history)
       .pipe(takeUntil(this.destroy$))
@@ -116,23 +117,14 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
         next: event => {
           if (event.type === HttpEventType.DownloadProgress) {
             const progress = event as HttpDownloadProgressEvent;
-            const partialText = progress.partialText ?? '';
-            lineBuffer += partialText.slice(consumedLength);
-            consumedLength = partialText.length;
-
-            const lines = lineBuffer.split('\n');
-            lineBuffer = lines.pop() ?? ''; // last element may be an incomplete line — keep it
-
-            for (const line of lines) {
-              if (!line.startsWith('data:')) continue;
-              const token = line.slice(5).replace(/^ /, '');
-              this.appendToAiMessage(aiMessageId, token);
-            }
+            parser.feed(progress.partialText ?? '').forEach(token => this.appendToAiMessage(aiMessageId, token));
           } else if (event.type === HttpEventType.Response) {
+            parser.end().forEach(token => this.appendToAiMessage(aiMessageId, token));
             this.sending = false;
             const msg = this.messages.find(m => m.id === aiMessageId);
             if (msg && !msg.text) {
               msg.text = translate("Sorry, I didn't get a reply. Please try again.");
+              msg.failed = true;
             }
           }
         },
@@ -147,6 +139,7 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
             msg.blockReason = this.aiErrorService.blockReason(err);
           } else {
             msg.text = this.aiErrorService.handle(err);
+            msg.failed = true;
           }
         },
       });
@@ -158,10 +151,11 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
   }
 
   // Excludes the canned greeting and the not-yet-pushed current-turn message -- this is called
-  // before that message is pushed, so "all messages so far" is exactly the prior turns.
+  // before that message is pushed, so "all messages so far" is exactly the prior turns. Failed or
+  // blocked replies are UI notices, not things the assistant said, so they stay out too.
   private buildHistory(): ChatMessageDto[] {
     return this.messages
-      .filter(m => m.id !== GREETING_ID)
+      .filter(m => m.id !== GREETING_ID && !m.failed && !m.blocked)
       .map(m => ({ role: m.sender === 'ai' ? 'assistant' : 'user', content: m.text }));
   }
 

@@ -58,13 +58,18 @@ export class ReminderListComponent implements OnInit, OnDestroy {
     return getCareIcon(careType);
   }
 
+  // Calendar days, like the care calendar (which files anything due today under "Today"): a
+  // reminder due earlier today is due today, not "Overdue by 0 days".
   isOverdue(reminder: ReminderResponse): boolean {
-    return new Date(reminder.nextDueAt).getTime() < Date.now();
+    return this.daysOverdue(reminder) > 0;
   }
 
   daysOverdue(reminder: ReminderResponse): number {
-    const diff = Date.now() - new Date(reminder.nextDueAt).getTime();
-    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    const due = new Date(reminder.nextDueAt);
+    due.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.round((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
   }
 
   openCreateDialog(): void {
@@ -97,10 +102,13 @@ export class ReminderListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          if (reminder.recurring) {
-            this.inFlightOrDoneIds.delete(reminder.id);
-          }
-          this.loadReminders();
+          // A recurring reminder unlocks only once its new schedule has loaded — unlocking before
+          // the reload let a second tap log the same care twice.
+          this.loadReminders(() => {
+            if (reminder.recurring) {
+              this.inFlightOrDoneIds.delete(reminder.id);
+            }
+          });
         },
         error: (err: HttpErrorResponse) => {
           this.completingId = null;
@@ -132,7 +140,7 @@ export class ReminderListComponent implements OnInit, OnDestroy {
     return reminder.id;
   }
 
-  private loadReminders(): void {
+  private loadReminders(onSettled?: () => void): void {
     this.loading = true;
     this.completingId = null;
     this.reminderService.getReminders()
@@ -143,10 +151,12 @@ export class ReminderListComponent implements OnInit, OnDestroy {
             (a, b) => new Date(a.nextDueAt).getTime() - new Date(b.nextDueAt).getTime(),
           );
           this.loading = false;
+          onSettled?.();
           this.cdr.markForCheck();
         },
         error: () => {
           this.loading = false;
+          onSettled?.();
           this.cdr.markForCheck();
         },
       });

@@ -45,6 +45,24 @@ class TranslationClientTest {
   }
 
   @Test
+  void unfenceStripsJsonFencesLikeTheFormerRegex() {
+    assertThat(TranslationClient.unfence("```json\n[\"a\"]\n```")).isEqualTo("[\"a\"]");
+    assertThat(TranslationClient.unfence("  ```[\"a\"]```  ")).isEqualTo("[\"a\"]");
+    assertThat(TranslationClient.unfence("```json [\"a\"]")).isEqualTo("[\"a\"]");
+    assertThat(TranslationClient.unfence("[\"a\"]")).isEqualTo("[\"a\"]");
+    assertThat(TranslationClient.unfence("```")).isEmpty();
+  }
+
+  @Test
+  void unfenceStaysLinearOnLongWhitespace() {
+    String reply = "[\"a\"]" + " ".repeat(40_000) + "x";
+    String result =
+        org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
+            java.time.Duration.ofSeconds(1), () -> TranslationClient.unfence(reply));
+    assertThat(result).startsWith("[\"a\"]").endsWith("x");
+  }
+
+  @Test
   void repairsLocalizedUnitsWithoutChangingTheOriginalAmounts() throws Exception {
     when(provider.isAvailable()).thenReturn(true);
     when(provider.chat(anyString(), anyString()))
