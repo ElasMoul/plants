@@ -4,6 +4,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -204,7 +205,8 @@ public class AnthropicClient {
               .body(AnthropicApiResponse.class);
 
       if (response == null || response.content() == null || response.content().isEmpty()) {
-        throw new PlantPalException("Empty response from " + label.toLowerCase() + " service", 503);
+        throw new PlantPalException(
+            "Empty response from " + label.toLowerCase(Locale.ROOT) + " service", 503);
       }
 
       String raw =
@@ -244,16 +246,7 @@ public class AnthropicClient {
   }
 
   private static long extractRetryAfterSeconds(RestClientResponseException e) {
-    String header =
-        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("retry-after") : null;
-    if (header != null) {
-      try {
-        return Long.parseLong(header.trim());
-      } catch (NumberFormatException ignored) {
-        // fall through to default
-      }
-    }
-    return DEFAULT_RETRY_AFTER_SECONDS;
+    return RetryAfterSeconds.from(e, null, DEFAULT_RETRY_AFTER_SECONDS);
   }
 
   private record AnthropicApiResponse(List<AnthropicContentBlock> content) {}
