@@ -20,7 +20,12 @@ export function parseDetailAsList(detail: string | null | undefined): ParsedDeta
 }
 
 function parseNumbered(detail: string): ParsedDetail | null {
-  const matches = [...detail.matchAll(NUMBERED_MARKER)];
+  // Only a 1., 2., 3. … sequence counts as a list: prose often ends sentences with numbers
+  // ("between 18 and 24. Avoid drafts below 10.") and those must stay part of the text.
+  const matches: RegExpMatchArray[] = [];
+  for (const match of detail.matchAll(NUMBERED_MARKER)) {
+    if (parseInt(match[0], 10) === matches.length + 1) matches.push(match);
+  }
   if (matches.length < 2) return null;
 
   const firstIndex = matches[0].index ?? 0;
