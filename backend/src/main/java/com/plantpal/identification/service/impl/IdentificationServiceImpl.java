@@ -63,6 +63,7 @@ import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.shared.transaction.AfterCommit;
 import com.plantpal.shared.util.ImageUtil;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.repository.SpeciesRepository;
@@ -431,9 +432,10 @@ public class IdentificationServiceImpl implements IdentificationService {
       String annotationJson;
       if ("ISSUES_DETECTED".equals(healthStatusForAnnotation)) {
         try {
-          annotationJson = runAnnotation(imageBytes, mediaType, userId);
+          AnnotationRun annotation = runAnnotation(imageBytes, mediaType, userId);
+          annotationJson = annotation.json();
           identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
-          identification.setAnnotationModel("gpt-4o-mini");
+          identification.setAnnotationModel(annotation.model());
         } catch (Exception e) {
           log.warn(
               "Annotation stage failed for identification id={}: {}",
@@ -766,14 +768,7 @@ public class IdentificationServiceImpl implements IdentificationService {
       List<List<Integer>> groups = parseDuplicateGroups(raw);
 
       for (List<Integer> group : groups) {
-        if (group.size() < 2) continue;
-        int keepIndex = group.stream().min(Integer::compareTo).orElseThrow();
-        String diseaseName = refs.get(keepIndex).card().getTitle();
-        for (int idx : group) {
-          if (idx == keepIndex) continue;
-          removeCareCard(refs.get(idx));
-          eventPublisher.publishEvent(new DuplicateCareCardRemovedEvent(plantId, diseaseName));
-        }
+        removeDuplicateGroup(plantId, refs, group);
       }
     } catch (PlantPalException e) {
       log.warn(
@@ -783,10 +778,32 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private void removeCareCard(CareCardRef ref) {
-    identificationRepository
+  /**
+   * Keeps the newest card of one AI-reported duplicate group and removes the rest. The AI's refs
+   * are untrusted: out-of-range/repeated indices are dropped so one hallucinated ref can't throw
+   * mid-pass (leaving earlier removals applied and later groups unprocessed).
+   */
+  private void removeDuplicateGroup(Long plantId, List<CareCardRef> refs, List<Integer> group) {
+    List<Integer> valid =
+        group.stream().filter(i -> i >= 0 && i < refs.size()).distinct().sorted().toList();
+    if (valid.size() < 2) return;
+    // Newest-first order: the smallest index is the card to keep.
+    for (int idx : valid.subList(1, valid.size())) {
+      CareCardRef removed = refs.get(idx);
+      if (removeCareCard(removed)) {
+        // Name the REMOVED disease: the listener dismisses the treatment tracking the card that is
+        // now gone, not the one the user still sees.
+        eventPublisher.publishEvent(
+            new DuplicateCareCardRemovedEvent(plantId, removed.card().getTitle()));
+      }
+    }
+  }
+
+  /** Returns true only when a card was actually removed and persisted. */
+  private boolean removeCareCard(CareCardRef ref) {
+    return identificationRepository
         .findById(ref.identificationId())
-        .ifPresent(
+        .map(
             ident -> {
               CarePlanDto plan = parseCarePlan(ident.getCarePlan());
               List<CareCardDto> cards = new ArrayList<>(plan.getCareCards());
@@ -796,7 +813,7 @@ public class IdentificationServiceImpl implements IdentificationService {
                           "PEST".equals(c.getType())
                               && ref.card().getTitle() != null
                               && ref.card().getTitle().equals(c.getTitle()));
-              if (!removed) return;
+              if (!removed) return false;
               plan.setCareCards(cards);
               ident.setCarePlan(serializeToJson(plan));
               identificationRepository.save(ident);
@@ -804,7 +821,9 @@ public class IdentificationServiceImpl implements IdentificationService {
                   "Removed duplicate care card: identificationId={}, title={}",
                   ident.getId(),
                   ref.card().getTitle());
-            });
+              return true;
+            })
+        .orElse(false);
   }
 
   private List<List<Integer>> parseDuplicateGroups(String raw) {
@@ -1012,7 +1031,8 @@ public class IdentificationServiceImpl implements IdentificationService {
               .organs(null)
               .requestedAt(Instant.now())
               .build();
-      identificationDispatcher.dispatch(event);
+      // Dispatch only once the PENDING reset is committed — see AfterCommit.
+      AfterCommit.run(() -> identificationDispatcher.dispatch(event));
       log.info("Retried failed identification (core): id={}", identification.getId());
     } else {
       // Core COMPLETED — re-queue only the failed enrichment stages.
@@ -1028,36 +1048,17 @@ public class IdentificationServiceImpl implements IdentificationService {
         identification = identificationRepository.save(identification);
         final long savedId = identification.getId();
         if (annotationNeeded) {
-          CompletableFuture.runAsync(() -> enrichAnnotationForRetry(savedId), aiTaskExecutor);
+          AfterCommit.run(
+              () ->
+                  CompletableFuture.runAsync(
+                      () -> enrichAnnotationForRetry(savedId), aiTaskExecutor));
         }
         if (candidateNeeded) {
           String[] pnPrefs = loadPlantNetPreferences(userId);
           final String project = pnPrefs[0];
           final String lang = pnPrefs[1];
           final String photoUrl = identification.getPhotoUrl();
-          CompletableFuture.runAsync(
-              () -> {
-                try {
-                  byte[] rawBytes = fileStorageService.loadPhotoBytes(photoUrl);
-                  String mediaType = resolveMediaType(photoUrl);
-                  byte[] imageBytes =
-                      ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
-                  enrichWithPlantNetCandidates(savedId, imageBytes, mediaType, null, project, lang);
-                } catch (Exception e) {
-                  log.warn(
-                      "PlantNet candidate retry load failed: identificationId={}, error={}",
-                      savedId,
-                      e.getMessage());
-                  identificationRepository
-                      .findById(savedId)
-                      .ifPresent(
-                          ident -> {
-                            ident.setCandidateStatus(IdentificationStageStatus.FAILED);
-                            identificationRepository.save(ident);
-                          });
-                }
-              },
-              aiTaskExecutor);
+          AfterCommit.run(() -> retryCandidates(savedId, photoUrl, project, lang));
         }
         log.info(
             "Retried enrichment stages: id={}, annotation={}, candidates={}",
@@ -1068,6 +1069,33 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     return getIdentification(id, userId);
+  }
+
+  /** Fire-and-forget PlantNet candidate retry: reloads the stored photo, then re-enriches. */
+  private void retryCandidates(Long savedId, String photoUrl, String project, String lang) {
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            byte[] rawBytes = fileStorageService.loadPhotoBytes(photoUrl);
+            String mediaType = resolveMediaType(photoUrl);
+            byte[] imageBytes =
+                ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
+            enrichWithPlantNetCandidates(savedId, imageBytes, mediaType, null, project, lang);
+          } catch (Exception e) {
+            log.warn(
+                "PlantNet candidate retry load failed: identificationId={}, error={}",
+                savedId,
+                e.getMessage());
+            identificationRepository
+                .findById(savedId)
+                .ifPresent(
+                    ident -> {
+                      ident.setCandidateStatus(IdentificationStageStatus.FAILED);
+                      identificationRepository.save(ident);
+                    });
+          }
+        },
+        aiTaskExecutor);
   }
 
   /**
@@ -1084,10 +1112,11 @@ public class IdentificationServiceImpl implements IdentificationService {
       byte[] rawBytes = fileStorageService.loadPhotoBytes(ident.getPhotoUrl());
       String mediaType = resolveMediaType(ident.getPhotoUrl());
       byte[] imageBytes = ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
-      String annotationJson = runAnnotation(imageBytes, mediaType, ident.getUserId());
+      AnnotationRun annotation = runAnnotation(imageBytes, mediaType, ident.getUserId());
+      String annotationJson = annotation.json();
       ident.setAnnotationRegions(annotationJson);
       ident.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
-      ident.setAnnotationModel("gpt-4o-mini");
+      ident.setAnnotationModel(annotation.model());
       identificationRepository.save(ident);
       eventPublisher.publishEvent(
           new com.plantpal.localization.GeneratedPlantText(
@@ -1645,15 +1674,19 @@ public class IdentificationServiceImpl implements IdentificationService {
         .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
   }
 
+  /** Annotation output plus the model that actually produced it (stored as annotationModel). */
+  private record AnnotationRun(String json, String model) {}
+
   /**
    * Gap G1 follow-up: routes the always-on gpt-4o-mini annotation call (visual region polygons)
    * through the gateway when enabled — same additive if/else shape used throughout this class for
    * D022's gateway swap. {@code userId} may be {@code null} for system-initiated retries with no
    * resolvable user (falls back to "system", matching the convention used for species enrichment).
    */
-  private String runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
+  private AnnotationRun runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
     if (userId != null && loadVisionPreference(userId) == VisionModelPreference.DEEPSEEK_FLASH)
-      return deepSeekDirect.analyzeRegions(imageBytes, mediaType);
+      return new AnnotationRun(
+          deepSeekDirect.analyzeRegions(imageBytes, mediaType), deepSeekDirect.getModel());
     if (gatewayProperties.enabled()) {
       AiRequest request =
           new AiRequest()
@@ -1664,9 +1697,14 @@ public class IdentificationServiceImpl implements IdentificationService {
               .putContextItem("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT)
               .putContextItem("maxTokens", GATEWAY_MAX_TOKENS)
               .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
-      return gatewayClient.request(request).getResult();
+      return new AnnotationRun(
+          gatewayClient.request(request).getResult(), gitHubModelsClient.getAnnotationModel());
     }
-    return visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+    // The @Primary VisionAnnotationClient (DeepSeekAnnotationClient) runs GitHub's annotation
+    // model.
+    return new AnnotationRun(
+        visionAnnotationClient.analyzeRegions(imageBytes, mediaType),
+        gitHubModelsClient.getAnnotationModel());
   }
 
   private PlantNetResponse parsePlantNetResponse(String rawJson) {
@@ -1683,8 +1721,9 @@ public class IdentificationServiceImpl implements IdentificationService {
           + "\"healthStatus\":\"UNKNOWN\",\"healthNotes\":null}";
     }
     PlantNetResult top = response.results().get(0);
-    String species =
-        top.species() != null ? top.species().scientificNameWithoutAuthor() : "Unknown";
+    // null, not "Unknown": a placeholder name would pass resolveSpecies()' blank-name guard and
+    // could be saved as a shared Species row.
+    String species = top.species() != null ? top.species().scientificNameWithoutAuthor() : null;
     String commonName = "Unknown Plant";
     if (top.species() != null
         && top.species().commonNames() != null
