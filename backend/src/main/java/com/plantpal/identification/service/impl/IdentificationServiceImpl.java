@@ -1209,9 +1209,13 @@ public class IdentificationServiceImpl implements IdentificationService {
   /** Body of the first closed ```/~~~ fence (optional "json" tag), found in linear time. */
   static Optional<String> fencedBlock(String text) {
     int open = firstFence(text, 0);
-    if (open < 0) return Optional.empty();
+    if (open < 0) {
+      return Optional.empty();
+    }
     int bodyStart = open + FENCES.get(0).length();
-    if (text.startsWith(FENCE_LANGUAGE, bodyStart)) bodyStart += FENCE_LANGUAGE.length();
+    if (text.startsWith(FENCE_LANGUAGE, bodyStart)) {
+      bodyStart += FENCE_LANGUAGE.length();
+    }
     int close = firstFence(text, bodyStart);
     return close < 0 ? Optional.empty() : Optional.of(text.substring(bodyStart, close).strip());
   }
@@ -1220,7 +1224,9 @@ public class IdentificationServiceImpl implements IdentificationService {
     int first = -1;
     for (String fence : FENCES) {
       int at = text.indexOf(fence, from);
-      if (at >= 0 && (first < 0 || at < first)) first = at;
+      if (at >= 0 && (first < 0 || at < first)) {
+        first = at;
+      }
     }
     return first;
   }

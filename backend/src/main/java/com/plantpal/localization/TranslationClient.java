@@ -133,9 +133,13 @@ public class TranslationClient {
     String text = output.strip();
     if (text.startsWith(FENCE)) {
       text = text.substring(FENCE.length());
-      if (text.startsWith(FENCE_LANGUAGE)) text = text.substring(FENCE_LANGUAGE.length());
+      if (text.startsWith(FENCE_LANGUAGE)) {
+        text = text.substring(FENCE_LANGUAGE.length());
+      }
     }
-    if (text.endsWith(FENCE)) text = text.substring(0, text.length() - FENCE.length());
+    if (text.endsWith(FENCE)) {
+      text = text.substring(0, text.length() - FENCE.length());
+    }
     return text.strip();
   }
 
