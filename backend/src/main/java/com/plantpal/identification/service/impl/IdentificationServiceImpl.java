@@ -432,9 +432,10 @@ public class IdentificationServiceImpl implements IdentificationService {
       String annotationJson;
       if ("ISSUES_DETECTED".equals(healthStatusForAnnotation)) {
         try {
-          annotationJson = runAnnotation(imageBytes, mediaType, userId);
+          AnnotationRun annotation = runAnnotation(imageBytes, mediaType, userId);
+          annotationJson = annotation.json();
           identification.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
-          identification.setAnnotationModel("gpt-4o-mini");
+          identification.setAnnotationModel(annotation.model());
         } catch (Exception e) {
           log.warn(
               "Annotation stage failed for identification id={}: {}",
@@ -1104,10 +1105,11 @@ public class IdentificationServiceImpl implements IdentificationService {
       byte[] rawBytes = fileStorageService.loadPhotoBytes(ident.getPhotoUrl());
       String mediaType = resolveMediaType(ident.getPhotoUrl());
       byte[] imageBytes = ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
-      String annotationJson = runAnnotation(imageBytes, mediaType, ident.getUserId());
+      AnnotationRun annotation = runAnnotation(imageBytes, mediaType, ident.getUserId());
+      String annotationJson = annotation.json();
       ident.setAnnotationRegions(annotationJson);
       ident.setAnnotationStatus(IdentificationStageStatus.COMPLETED);
-      ident.setAnnotationModel("gpt-4o-mini");
+      ident.setAnnotationModel(annotation.model());
       identificationRepository.save(ident);
       eventPublisher.publishEvent(
           new com.plantpal.localization.GeneratedPlantText(
@@ -1671,9 +1673,13 @@ public class IdentificationServiceImpl implements IdentificationService {
    * D022's gateway swap. {@code userId} may be {@code null} for system-initiated retries with no
    * resolvable user (falls back to "system", matching the convention used for species enrichment).
    */
-  private String runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
+  /** Annotation output plus the model that actually produced it (stored as annotationModel). */
+  private record AnnotationRun(String json, String model) {}
+
+  private AnnotationRun runAnnotation(byte[] imageBytes, String mediaType, Long userId) {
     if (userId != null && loadVisionPreference(userId) == VisionModelPreference.DEEPSEEK_FLASH)
-      return deepSeekDirect.analyzeRegions(imageBytes, mediaType);
+      return new AnnotationRun(
+          deepSeekDirect.analyzeRegions(imageBytes, mediaType), deepSeekDirect.getModel());
     if (gatewayProperties.enabled()) {
       AiRequest request =
           new AiRequest()
@@ -1684,9 +1690,14 @@ public class IdentificationServiceImpl implements IdentificationService {
               .putContextItem("systemPrompt", GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT)
               .putContextItem("maxTokens", GATEWAY_MAX_TOKENS)
               .addMediaItem(new AiRequestMediaInner().data(imageBytes).mimeType(mediaType));
-      return gatewayClient.request(request).getResult();
+      return new AnnotationRun(
+          gatewayClient.request(request).getResult(), gitHubModelsClient.getAnnotationModel());
     }
-    return visionAnnotationClient.analyzeRegions(imageBytes, mediaType);
+    // The @Primary VisionAnnotationClient (DeepSeekAnnotationClient) runs GitHub's annotation
+    // model.
+    return new AnnotationRun(
+        visionAnnotationClient.analyzeRegions(imageBytes, mediaType),
+        gitHubModelsClient.getAnnotationModel());
   }
 
   private PlantNetResponse parsePlantNetResponse(String rawJson) {

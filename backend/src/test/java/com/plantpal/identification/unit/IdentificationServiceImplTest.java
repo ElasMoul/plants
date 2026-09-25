@@ -2958,11 +2958,46 @@ class IdentificationServiceImplTest {
       when(identificationMapper.toResponse(any()))
           .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
 
+      when(gitHubModelsClient.getAnnotationModel()).thenReturn("gpt-4o-mini-configured");
+
       identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
 
       assertThat(ident.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(ident.getAnnotationModel()).isEqualTo("gpt-4o-mini-configured");
       assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
       verify(identificationDispatcher, never()).dispatch(any());
+    }
+
+    @Test
+    @DisplayName(
+        "annotation retry for a DeepSeek Flash user records the Flash model, not gpt-4o-mini")
+    void annotationRetryRecordsFlashModel() throws Exception {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.COMPLETED,
+              IdentificationStageStatus.COMPLETED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.COMPLETED);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationRepository.save(any())).thenReturn(ident);
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.DEEPSEEK_FLASH)
+                      .build()));
+      when(deepSeekDirect.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      when(deepSeekDirect.getModel()).thenReturn("deepseek-flash");
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
+
+      assertThat(ident.getAnnotationModel()).isEqualTo("deepseek-flash");
+      verify(visionAnnotationClient, never()).analyzeRegions(any(), any());
       verify(kafkaTemplate, never()).send(any(), any());
     }
 
