@@ -236,6 +236,199 @@ class OllamaClientTest {
     }
   }
 
+  @Nested
+  @DisplayName("chatStream() — Ollama-reported errors")
+  class ChatStreamErrors {
+
+    @Test
+    @DisplayName("an HTTP error status (e.g. model not pulled) fails instead of an empty reply")
+    void httpErrorStatusFails() {
+      server.enqueue(
+          new MockResponse()
+              .setResponseCode(404)
+              .addHeader("Content-Type", "application/json")
+              .setBody("{\"error\":\"model 'phi3' not found, try pulling it first\"}"));
+
+      List<String> tokens = new ArrayList<>();
+      assertThatThrownBy(() -> ollamaClient.chatStream("prompt", tokens::add))
+          .isInstanceOf(PlantPalException.class)
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(503);
+      assertThat(tokens).isEmpty();
+    }
+
+    @Test
+    @DisplayName("an error line mid-stream fails instead of silently truncating")
+    void midStreamErrorFails() {
+      server.enqueue(
+          new MockResponse()
+              .setResponseCode(200)
+              .addHeader("Content-Type", "application/x-ndjson")
+              .setBody(
+                  "{\"message\":{\"role\":\"assistant\",\"content\":\"A \"},\"done\":false}\n"
+                      + "{\"error\":\"out of memory\"}\n"));
+
+      // Spring Boot's ObjectMapper ignores unknown properties, so "error" must be modelled
+      // explicitly rather than relying on a strict mapper to reject the line.
+      OllamaClient springLike =
+          new OllamaClient(
+              server.url("/").toString(),
+              MODEL,
+              5,
+              10,
+              "10m",
+              new ObjectMapper()
+                  .configure(
+                      com.fasterxml.jackson.databind.DeserializationFeature
+                          .FAIL_ON_UNKNOWN_PROPERTIES,
+                      false));
+
+      List<String> tokens = new ArrayList<>();
+      assertThatThrownBy(() -> springLike.chatStream("prompt", tokens::add))
+          .isInstanceOf(PlantPalException.class);
+      assertThat(tokens).containsExactly("A ");
+    }
+
+    @Test
+    @DisplayName("a malformed stream line is a 503")
+    void malformedLineFails() {
+      server.enqueue(
+          new MockResponse()
+              .setResponseCode(200)
+              .addHeader("Content-Type", "application/x-ndjson")
+              .setBody("not json\n"));
+
+      assertThatThrownBy(() -> ollamaClient.chatStream("prompt", token -> {}))
+          .isInstanceOf(PlantPalException.class)
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(503);
+    }
+  }
+
+  @Nested
+  @DisplayName("text helpers")
+  class TextHelpers {
+
+    @Test
+    @DisplayName("a reply with a null content is an empty response")
+    void nullContentIsEmpty() {
+      server.enqueue(jsonResponse("{\"message\":{\"role\":\"assistant\"},\"done\":true}"));
+
+      assertThatThrownBy(() -> ollamaClient.chat("prompt"))
+          .isInstanceOf(PlantPalException.class)
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(502);
+    }
+
+    @Test
+    @DisplayName("enrichment, cure advice and disease description prepend their system prompt")
+    void textHelpersUseSystemPrompts() throws Exception {
+      server.enqueue(chatReply("```json\n{\"description\":\"d\"}\n```"));
+      server.enqueue(chatReply("<think>x</think>{\"advice\":\"a\"}"));
+      server.enqueue(chatReply("It is a fungus."));
+
+      assertThat(ollamaClient.generateSpeciesEnrichment("Ficus lyrata", "Fiddle-leaf fig"))
+          .isEqualTo("{\"description\":\"d\"}");
+      assertThat(ollamaClient.generateCureAdvice(null, "Rust")).isEqualTo("{\"advice\":\"a\"}");
+      assertThat(ollamaClient.generateDiseaseDescription("Rose", "Rust"))
+          .isEqualTo("It is a fungus.");
+
+      assertThat(sentBody()).contains("expert botanist").contains("Common name: Fiddle-leaf fig");
+      assertThat(sentBody()).contains("plant pathologist").contains("My Unknown plant has");
+      assertThat(sentBody()).contains("Disease/pest issue: Rust");
+      assertThat(ollamaClient.getModel()).isEqualTo(MODEL);
+    }
+  }
+
+  @Nested
+  @DisplayName("vision (/api/generate)")
+  class Vision {
+
+    @Test
+    @DisplayName("identifyPlant sends a resized JPEG, keep_alive and the user context")
+    void identifyPlant() throws Exception {
+      server.enqueue(generateReply("{\"species\":\"Ficus\"}"));
+      server.enqueue(generateReply("{\"species\":\"Ficus\"}"));
+
+      assertThat(ollamaClient.identifyPlant(pngBytes(), "image/png", "brown tips"))
+          .isEqualTo("{\"species\":\"Ficus\"}");
+      ollamaClient.identifyPlant(pngBytes(), "image/png");
+
+      RecordedRequest first = server.takeRequest();
+      assertThat(first.getPath()).isEqualTo("/api/generate");
+      var json = new ObjectMapper().readTree(first.getBody().readUtf8());
+      assertThat(json.path("model").asText()).isEqualTo(MODEL);
+      assertThat(json.path("keep_alive").asText()).isEqualTo("10m");
+      assertThat(json.path("stream").asBoolean()).isFalse();
+      assertThat(json.path("images")).hasSize(1);
+      assertThat(json.path("prompt").asText()).contains("The user wants to know: brown tips.");
+      assertThat(sentBody()).doesNotContain("The user wants to know");
+    }
+
+    @Test
+    @DisplayName("analyzeRegions uses the annotation prompt")
+    void analyzeRegions() throws Exception {
+      server.enqueue(generateReply("{\"regions\":[]}"));
+
+      assertThat(ollamaClient.analyzeRegions(pngBytes(), "image/png"))
+          .isEqualTo("{\"regions\":[]}");
+      assertThat(sentBody()).contains("identify all plant and disease regions");
+    }
+
+    @Test
+    @DisplayName("blank vision replies are 502, unreachable Ollama is 503")
+    void visionFailures() throws IOException {
+      byte[] image = pngBytes();
+      server.enqueue(generateReply("  "));
+      server.enqueue(generateReply(""));
+
+      assertThatThrownBy(() -> ollamaClient.identifyPlant(image, "image/png"))
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(502);
+      assertThatThrownBy(() -> ollamaClient.analyzeRegions(image, "image/png"))
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(502);
+
+      server.shutdown();
+      assertThatThrownBy(() -> ollamaClient.identifyPlant(image, "image/png"))
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(503);
+      assertThatThrownBy(() -> ollamaClient.analyzeRegions(image, "image/png"))
+          .extracting(e -> ((PlantPalException) e).getErrorCode())
+          .isEqualTo(503);
+    }
+  }
+
+  private String sentBody() throws InterruptedException {
+    return server.takeRequest().getBody().readUtf8();
+  }
+
+  private static MockResponse jsonResponse(String body) {
+    return new MockResponse()
+        .setResponseCode(200)
+        .addHeader("Content-Type", "application/json")
+        .setBody(body);
+  }
+
+  private static MockResponse chatReply(String content) throws IOException {
+    return jsonResponse(
+        "{\"message\":{\"role\":\"assistant\",\"content\":"
+            + new ObjectMapper().writeValueAsString(content)
+            + "},\"done\":true}");
+  }
+
+  private static MockResponse generateReply(String response) throws IOException {
+    return jsonResponse(
+        "{\"response\":" + new ObjectMapper().writeValueAsString(response) + ",\"done\":true}");
+  }
+
+  private static byte[] pngBytes() throws IOException {
+    var image = new java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB);
+    var out = new java.io.ByteArrayOutputStream();
+    javax.imageio.ImageIO.write(image, "png", out);
+    return out.toByteArray();
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private MockResponse ollamaResponse(String content) {
