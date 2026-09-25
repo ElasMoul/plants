@@ -21,3 +21,5 @@ export {
   SESSION_TOKEN_KEY,
   SESSION_USER_KEY,
 } from './lib/session-handoff';
+
+export { SseParser, frameToken } from './lib/sse/sse-parse';
