@@ -11,6 +11,18 @@ Sentry.init({
   enabled: !!environment.sentryDsn,
 });
 
+// Vercel Web Analytics, dependency-free (@vercel/analytics' optional Svelte peer
+// conflicts with Angular's vite). Same snippet Vercel documents for plain HTML:
+// queue calls on window.va until the script served by Vercel loads.
+if (environment.vercelAnalytics) {
+  const w = window as unknown as { va?: (...args: unknown[]) => void; vaq?: unknown[][] };
+  w.va = w.va || ((...args: unknown[]) => { (w.vaq = w.vaq || []).push(args); });
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = '/_vercel/insights/script.js';
+  document.head.appendChild(script);
+}
+
 platformBrowserDynamic()
   .bootstrapModule(AppModule)
   .catch(err => console.error(err));
