@@ -57,6 +57,10 @@ public class SecurityConfig {
       ObjectMapper objectMapper)
       throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        // CSRF is safe to disable ONLY because auth is a Bearer token in the Authorization header
+        // (JwtAuthFilter), sessions are STATELESS and no auth/session cookie is ever set — a
+        // browser never attaches that header to a cross-site request. CsrfExposureIT fails if
+        // cookie-based auth is introduced; any such change must re-enable CSRF (Sonar S4502).
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .headers(this::configureHeaders)
