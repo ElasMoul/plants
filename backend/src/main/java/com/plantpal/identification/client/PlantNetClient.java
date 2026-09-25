@@ -217,7 +217,9 @@ public class PlantNetClient {
    * project list changes rarely. Pass lat/lon to get a location-ranked list; omit both for the
    * global, unranked list (ship without geo first per T8.4 task prompt).
    */
-  @Cacheable(value = "plantnet-projects", key = "#lang")
+  // Key includes lat/lon: a location-ranked list cached under lang alone would be served to every
+  // user of that language for the cache's 24h TTL.
+  @Cacheable(value = "plantnet-projects", key = "#lang + ':' + #lat + ':' + #lon")
   public List<PlantNetProjectDto> getProjects(
       @Nullable Double lat, @Nullable Double lon, String lang) {
     try {

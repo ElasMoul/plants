@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -79,7 +80,7 @@ class TreatmentServiceTest {
     // description call (no real thread pool needed in unit tests).
     treatmentService =
         new TreatmentServiceImpl(
-            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+            mock(org.springframework.context.ApplicationEventPublisher.class),
             treatmentRepository,
             plantRepository,
             treatmentPlanService,
@@ -113,6 +114,130 @@ class TreatmentServiceTest {
         treatmentService,
         "gatewayProperties",
         new com.plantpal.gateway.GatewayProperties(true, "http://localhost:8085"));
+  }
+
+  @Nested
+  @DisplayName("disease description timing vs. the surrounding transaction")
+  class DescriptionAfterCommit {
+
+    private final List<Runnable> submitted = new java.util.ArrayList<>();
+
+    private TreatmentServiceImpl recordingService() {
+      return new TreatmentServiceImpl(
+          mock(org.springframework.context.ApplicationEventPublisher.class),
+          treatmentRepository,
+          plantRepository,
+          treatmentPlanService,
+          identificationRepository,
+          deepSeekClient,
+          ollamaClient,
+          anthropicClient,
+          deepSeekDirect,
+          userRepository,
+          objectMapper,
+          submitted::add,
+          gatewayClient,
+          new com.plantpal.gateway.GatewayProperties(false, "http://localhost:8085"));
+    }
+
+    private void givenNewTreatmentCanBeCreated() {
+      when(plantRepository.findByIdAndUserId(PLANT_ID, USER_ID))
+          .thenReturn(Optional.of(ownedPlant()));
+      when(treatmentRepository.findByPlantIdAndDiseaseNameAndStatusIn(
+              eq(PLANT_ID), eq("Powdery mildew"), any()))
+          .thenReturn(List.of());
+      when(treatmentRepository.save(any(Treatment.class)))
+          .thenAnswer(
+              inv -> {
+                Treatment t = inv.getArgument(0);
+                t.setId(99L);
+                return t;
+              });
+    }
+
+    private CreateTreatmentRequest request() {
+      return CreateTreatmentRequest.builder()
+          .plantId(PLANT_ID)
+          .diseaseName("Powdery mildew")
+          .build();
+    }
+
+    @Test
+    @DisplayName("createTreatment starts the description only after the transaction commits")
+    void createStartsAfterCommit() {
+      givenNewTreatmentCanBeCreated();
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .initSynchronization();
+      try {
+        recordingService().createTreatment(request(), USER_ID);
+
+        assertThat(submitted)
+            .as("the background task must not read/write the row before it is committed")
+            .isEmpty();
+
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .getSynchronizations()
+            .forEach(
+                org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+        assertThat(submitted).hasSize(1);
+      } finally {
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .clearSynchronization();
+      }
+    }
+
+    @Test
+    @DisplayName("a rolled-back createTreatment never starts the description")
+    void rollbackNeverStarts() {
+      givenNewTreatmentCanBeCreated();
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .initSynchronization();
+      try {
+        recordingService().createTreatment(request(), USER_ID);
+
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .getSynchronizations()
+            .forEach(
+                s ->
+                    s.afterCompletion(
+                        org.springframework.transaction.support.TransactionSynchronization
+                            .STATUS_ROLLED_BACK));
+        assertThat(submitted).isEmpty();
+      } finally {
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .clearSynchronization();
+      }
+    }
+
+    @Test
+    @DisplayName("regenerateDescription starts only after its PENDING reset commits")
+    void regenerateStartsAfterCommit() {
+      when(treatmentRepository.findByIdAndUserId(99L, USER_ID))
+          .thenReturn(
+              Optional.of(
+                  Treatment.builder()
+                      .id(99L)
+                      .plantId(PLANT_ID)
+                      .userId(USER_ID)
+                      .diseaseName("Powdery mildew")
+                      .build()));
+      when(plantRepository.findById(PLANT_ID)).thenReturn(Optional.of(ownedPlant()));
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .initSynchronization();
+      try {
+        recordingService().regenerateDescription(99L, USER_ID);
+
+        assertThat(submitted).isEmpty();
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .getSynchronizations()
+            .forEach(
+                org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+        assertThat(submitted).hasSize(1);
+      } finally {
+        org.springframework.transaction.support.TransactionSynchronizationManager
+            .clearSynchronization();
+      }
+    }
   }
 
   @Nested

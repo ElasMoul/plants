@@ -1,5 +1,6 @@
 package com.plantpal.identification.unit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -7,6 +8,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.client.DeepSeekAnnotationClient;
 import com.plantpal.identification.client.GitHubModelsClient;
 import com.plantpal.shared.exception.PlantPalException;
@@ -94,7 +97,7 @@ class GitHubModelsClientTest {
 
       // When/Then — no exception
       String result = client.identifyPlant(image, MediaType.IMAGE_JPEG_VALUE);
-      org.assertj.core.api.Assertions.assertThat(result).contains("Monstera deliciosa");
+      assertThat(result).contains("Monstera deliciosa");
     }
   }
 
@@ -116,8 +119,8 @@ class GitHubModelsClientTest {
       byte[] image = "img".getBytes(StandardCharsets.UTF_8);
       String result = client.identifyPlant(image, MediaType.IMAGE_JPEG_VALUE);
 
-      org.assertj.core.api.Assertions.assertThat(result).contains("Monstera deliciosa");
-      org.assertj.core.api.Assertions.assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
+      assertThat(result).contains("Monstera deliciosa");
+      assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
     }
 
     @Test
@@ -131,9 +134,7 @@ class GitHubModelsClientTest {
       assertThatThrownBy(() -> client.identifyPlant(image, MediaType.IMAGE_JPEG_VALUE))
           .isInstanceOf(RateLimitException.class);
 
-      org.assertj.core.api.Assertions.assertThat(mockWebServer.getRequestCount())
-          .as("429 must not trigger a retry")
-          .isEqualTo(1);
+      assertThat(mockWebServer.getRequestCount()).as("429 must not trigger a retry").isEqualTo(1);
     }
 
     @Test
@@ -148,7 +149,134 @@ class GitHubModelsClientTest {
       assertThatThrownBy(() -> client.identifyPlant(image, MediaType.IMAGE_JPEG_VALUE))
           .isInstanceOf(PlantPalException.class);
 
-      org.assertj.core.api.Assertions.assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
+      assertThat(mockWebServer.getRequestCount()).isEqualTo(2);
+    }
+  }
+
+  @Nested
+  @DisplayName("Request shape and annotation")
+  class RequestShapeAndAnnotation {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    @DisplayName("gpt-4.1 routing, user context and model getters")
+    void gpt41WithUserContext() throws Exception {
+      client = clientWithBudget(40_000);
+      mockWebServer.enqueue(jsonResponse(VALID_IDENTIFICATION_RESPONSE));
+      mockWebServer.enqueue(jsonResponse(VALID_IDENTIFICATION_RESPONSE));
+      byte[] image = "img".getBytes(StandardCharsets.UTF_8);
+
+      client.identifyPlantWithGpt41(image, MediaType.IMAGE_PNG_VALUE, "yellow leaves");
+      client.identifyPlantWithGpt41(image, MediaType.IMAGE_PNG_VALUE);
+
+      var first = sentJson();
+      assertThat(first.path("model").asText()).isEqualTo("gpt-4.1");
+      var content = first.path("messages").path(1).path("content");
+      assertThat(content.path(0).path("image_url").path("url").asText())
+          .startsWith("data:image/png;base64,");
+      assertThat(content.path(1).path("text").asText())
+          .contains("The user wants to know: yellow leaves.");
+      assertThat(sentJson().path("messages").path(1).path("content").path(1).path("text").asText())
+          .doesNotContain("The user wants to know");
+      assertThat(client.getIdentificationModel()).isEqualTo("gpt-4o");
+      assertThat(client.getGpt41Model()).isEqualTo("gpt-4.1");
+      assertThat(client.getAnnotationModel()).isEqualTo("gpt-4o-mini");
+    }
+
+    @Test
+    @DisplayName("a 429 carries GitHub's own \"wait N seconds\" hint")
+    void rateLimitCarriesUpstreamWait() {
+      client = clientWithBudget(40_000);
+      mockWebServer.enqueue(
+          new MockResponse()
+              .setResponseCode(429)
+              .setBody(
+                  "Rate limit of 1 per 60s exceeded. Please wait 37 seconds before retrying."));
+
+      assertThatThrownBy(() -> client.identifyPlant("img".getBytes(), MediaType.IMAGE_JPEG_VALUE))
+          .isInstanceOfSatisfying(
+              RateLimitException.class, e -> assertThat(e.getRetryAfterSeconds()).isEqualTo(37L));
+    }
+
+    @Test
+    @DisplayName("empty choices fail the identification without a retry")
+    void emptyChoices() {
+      client = clientWithBudget(40_000);
+      mockWebServer.enqueue(jsonResponse("{\"choices\":[]}"));
+
+      assertThatThrownBy(() -> client.identifyPlant("img".getBytes(), MediaType.IMAGE_JPEG_VALUE))
+          .hasMessage("Empty response from identification service");
+      assertThat(mockWebServer.getRequestCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("analyzeRegions uses the annotation model and strips a fenced reply")
+    void analyzeRegions() throws Exception {
+      client = clientWithBudget(40_000);
+      mockWebServer.enqueue(
+          jsonResponse(
+              "{\"choices\":[{\"message\":{\"content\":\"```json\\n{\\\"regions\\\":[]}\\n```\"}}]}"));
+
+      String result = client.analyzeRegions("img".getBytes(), MediaType.IMAGE_JPEG_VALUE);
+
+      assertThat(result).isEqualTo("{\"regions\":[]}");
+      var json = sentJson();
+      assertThat(json.path("model").asText()).isEqualTo("gpt-4o-mini");
+      assertThat(json.path("messages").path(0).path("content").asText())
+          .isEqualTo(GitHubModelsClient.ANNOTATION_SYSTEM_PROMPT);
+    }
+
+    @Test
+    @DisplayName("analyzeRegions maps empty, HTTP-error and unreachable replies to a 503")
+    void analyzeRegionsFailures() throws IOException {
+      client = clientWithBudget(40_000);
+      byte[] image = "img".getBytes();
+      mockWebServer.enqueue(jsonResponse("{\"choices\":[]}"));
+      mockWebServer.enqueue(new MockResponse().setResponseCode(500));
+
+      assertThatThrownBy(() -> client.analyzeRegions(image, MediaType.IMAGE_JPEG_VALUE))
+          .hasMessage("Empty response from annotation service");
+      assertThatThrownBy(() -> client.analyzeRegions(image, MediaType.IMAGE_JPEG_VALUE))
+          .hasMessage("Annotation service unavailable");
+      mockWebServer.shutdown();
+      assertThatThrownBy(() -> client.analyzeRegions(image, MediaType.IMAGE_JPEG_VALUE))
+          .hasMessage("Annotation service unavailable");
+    }
+
+    @Test
+    @DisplayName(
+        "an annotation 429 surfaces as a rate limit, and the annotation client won't retry it")
+    void analyzeRegionsRateLimit() {
+      client = clientWithBudget(40_000);
+      mockWebServer.enqueue(new MockResponse().setResponseCode(429).setBody("wait 9 seconds"));
+
+      DeepSeekAnnotationClient annotationClient = new DeepSeekAnnotationClient(client);
+
+      assertThatThrownBy(
+              () -> annotationClient.analyzeRegions("img".getBytes(), MediaType.IMAGE_JPEG_VALUE))
+          .isInstanceOfSatisfying(
+              RateLimitException.class, e -> assertThat(e.getRetryAfterSeconds()).isEqualTo(9L));
+      assertThat(mockWebServer.getRequestCount()).as("429 must not be retried").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("analyzeRegions respects the token budget")
+    void analyzeRegionsBudget() {
+      client = clientWithBudget(1);
+
+      assertThatThrownBy(() -> client.analyzeRegions(new byte[3000], MediaType.IMAGE_JPEG_VALUE))
+          .isInstanceOf(RateLimitException.class);
+      assertThat(mockWebServer.getRequestCount()).isZero();
+    }
+
+    private JsonNode sentJson() throws Exception {
+      return objectMapper.readTree(
+          mockWebServer.takeRequest().getBody().readString(StandardCharsets.UTF_8));
+    }
+
+    private MockResponse jsonResponse(String body) {
+      return new MockResponse().setHeader("Content-Type", "application/json").setBody(body);
     }
   }
 
@@ -167,7 +295,7 @@ class GitHubModelsClientTest {
       DeepSeekAnnotationClient annotationClient = new DeepSeekAnnotationClient(mockGitHub);
       String result = annotationClient.analyzeRegions(new byte[] {1, 2, 3}, "image/jpeg");
 
-      org.assertj.core.api.Assertions.assertThat(result).isEqualTo("{\"regions\":[]}");
+      assertThat(result).isEqualTo("{\"regions\":[]}");
       verify(mockGitHub, times(2)).analyzeRegions(any(), any());
     }
 
@@ -184,6 +312,25 @@ class GitHubModelsClientTest {
           .isInstanceOf(RateLimitException.class);
 
       verify(mockGitHub, times(1)).analyzeRegions(any(), any());
+    }
+
+    @Test
+    @DisplayName("should give up with a 500 after two non-429 failures")
+    void shouldGiveUpAfterTwoFailures() {
+      GitHubModelsClient mockGitHub = mock(GitHubModelsClient.class);
+      when(mockGitHub.analyzeRegions(any(), any()))
+          .thenThrow(new PlantPalException("Annotation service unavailable", 503));
+
+      DeepSeekAnnotationClient annotationClient = new DeepSeekAnnotationClient(mockGitHub);
+
+      assertThatThrownBy(() -> annotationClient.analyzeRegions(new byte[] {1}, "image/jpeg"))
+          .isInstanceOfSatisfying(
+              PlantPalException.class,
+              e -> {
+                assertThat(e.getErrorCode()).isEqualTo(500);
+                assertThat(e).hasMessageContaining("Annotation service unavailable");
+              });
+      verify(mockGitHub, times(2)).analyzeRegions(any(), any());
     }
   }
 }

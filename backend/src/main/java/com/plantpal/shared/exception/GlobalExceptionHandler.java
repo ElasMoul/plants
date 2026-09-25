@@ -49,9 +49,13 @@ public class GlobalExceptionHandler {
         "Rate limit exceeded: {}, retryAfterSeconds={}",
         ex.getMessage(),
         ex.getRetryAfterSeconds());
-    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-        .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
-        .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode(), ex.getRetryAfterSeconds()));
+    ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+    // Never emit "Retry-After: null" — an unknown wait simply omits the header.
+    if (ex.getRetryAfterSeconds() != null) {
+      response.header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
+    }
+    return response.body(
+        ApiResponse.error(ex.getMessage(), ex.getErrorCode(), ex.getRetryAfterSeconds()));
   }
 
   // Catch-all for any other PlantPalException subclass not matched above

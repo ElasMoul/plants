@@ -11,3 +11,7 @@ frontend/nginx/certs/
 tools/auth-hardening/__pycache__/
 deploy/vps/plantpal-deploy
 deploy/vps/plantpal-deploy.pub
+
+# SonarQube scanner cache
+.scannerwork/
+.idea/*

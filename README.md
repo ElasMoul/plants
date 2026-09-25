@@ -206,6 +206,16 @@ cd backend && mvn jacoco:report
 # Report at: backend/target/site/jacoco/index.html
 ```
 
+### Code quality — local SonarQube
+
+Runs against a local SonarQube Community Edition server at `http://localhost:9000`
+(projects `plantpal-backend` and `plantpal-frontend`, auto-created on first scan).
+
+```powershell
+$env:SONAR_TOKEN = "<global analysis token>"   # My Account -> Security
+.\scripts\sonar-scan.ps1                         # -Only backend|frontend, -SkipTests
+```
+
 ---
 
 ## Branch Strategy

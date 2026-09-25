@@ -84,7 +84,7 @@ public class OllamaClient {
               .retrieve()
               .body(OllamaChatResponse.class);
 
-      if (response == null || response.message() == null) {
+      if (response == null || response.message() == null || response.message().content() == null) {
         throw new PlantPalException("Empty response received from Ollama", 502);
       }
 
@@ -140,6 +140,13 @@ public class OllamaClient {
           continue;
         }
         OllamaChatResponse chunk = objectMapper.readValue(line, OllamaChatResponse.class);
+        if (chunk.error() != null) {
+          // Ollama reports failures (OOM, model unloaded, ...) as an {"error": ...} line; the
+          // lenient Spring ObjectMapper would otherwise skip it and end the reply silently.
+          log.error("Ollama stream error [model={}]: {}", model, chunk.error());
+          throw new PlantPalException(
+              "AI service unavailable — ensure Ollama is running locally", 503);
+        }
         if (chunk.message() != null && chunk.message().content() != null) {
           onToken.accept(chunk.message().content());
         }
@@ -299,7 +306,7 @@ public class OllamaClient {
 
   private record OllamaMessage(String role, String content) {}
 
-  private record OllamaChatResponse(OllamaMessage message, boolean done) {}
+  private record OllamaChatResponse(OllamaMessage message, boolean done, String error) {}
 
   private record OllamaGenerateResponse(String response, boolean done) {}
 }

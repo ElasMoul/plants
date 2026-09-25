@@ -24,6 +24,9 @@ public class GitHubModelsClient {
 
   private static final Logger log = LoggerFactory.getLogger(GitHubModelsClient.class);
 
+  // Fallback wait when a 429 carries neither a Retry-After header nor a "wait N seconds" hint.
+  private static final long DEFAULT_RETRY_AFTER_SECONDS = 60;
+
   // public: reused by com.plantpal.gateway call sites building AiRequest.context["systemPrompt"]
   // so the gateway path never restates the prompt (Chunk 3, D022 gateway swap).
   public static final String PLANT_IDENTIFICATION_SYSTEM_PROMPT =
@@ -261,7 +264,10 @@ public class GitHubModelsClient {
 
       } catch (RestClientResponseException e) {
         if (e.getStatusCode().value() == 429) {
-          throw new RateLimitException("GitHub Models rate limit reached — try again later", null);
+          throw new RateLimitException(
+              "GitHub Models rate limit reached — try again later",
+              RetryAfterSeconds.from(
+                  e, RetryAfterSeconds.WAIT_SECONDS_IN_BODY, DEFAULT_RETRY_AFTER_SECONDS));
         }
         lastException = e;
         log.warn(
@@ -342,6 +348,13 @@ public class GitHubModelsClient {
           "GitHubModels annotation error status={}, body={}",
           e.getStatusCode().value(),
           e.getResponseBodyAsString());
+      if (e.getStatusCode().value() == 429) {
+        // Surface as a 429 so DeepSeekAnnotationClient propagates it instead of retrying.
+        throw new RateLimitException(
+            "GitHub Models rate limit reached — try again later",
+            RetryAfterSeconds.from(
+                e, RetryAfterSeconds.WAIT_SECONDS_IN_BODY, DEFAULT_RETRY_AFTER_SECONDS));
+      }
       throw new PlantPalException("Annotation service unavailable", 503);
     } catch (PlantPalException e) {
       throw e;
