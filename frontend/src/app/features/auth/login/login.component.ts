@@ -3,8 +3,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AuthService, buildAtlasHandoffUrl } from '@plantpal/shared-core';
-import { environment } from '../../../../environments/environment';
+import { AuthService } from '@plantpal/shared-core';
 import { sanitizeReturnUrl } from '../../../core/return-url';
 import { SessionMonitorService } from '../../../core/services/session-monitor.service';
 
@@ -36,9 +35,6 @@ export class LoginComponent {
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
-      // "Continue into the Atlas" — on success, redirect to the atlas origin
-      // carrying the fresh session (see shared-core's session-handoff).
-      openAtlas: [false],
     });
   }
 
@@ -46,7 +42,7 @@ export class LoginComponent {
     if (this.form.invalid) return;
     this.loading = true;
 
-    const { email, password, openAtlas } = this.form.getRawValue();
+    const { email, password } = this.form.getRawValue();
     this.authService.login({ email, password }).subscribe({
       next: res => {
         // A server-authoritative eviction can return the user to this route
@@ -55,14 +51,6 @@ export class LoginComponent {
         this.loading = false;
         if (res.data.role === 'ADMIN') {
           void this.router.navigateByUrl('/admin').then(() => this.sessionMonitorService.start('/admin'));
-          return;
-        }
-        if (openAtlas) {
-          // Full navigation to the atlas origin; the session rides the URL
-          // fragment (never the query string) and is consumed+scrubbed on boot.
-          window.location.assign(
-            buildAtlasHandoffUrl(environment.atlasUrl, res.data.token, res.data.user),
-          );
           return;
         }
         const destination = this.returnUrl
