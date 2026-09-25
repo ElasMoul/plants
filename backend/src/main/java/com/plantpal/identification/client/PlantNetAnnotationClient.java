@@ -4,9 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.dto.plantnet.PlantNetResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetResult;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +29,7 @@ public class PlantNetAnnotationClient implements VisionAnnotationClient {
   @Override
   public String analyzeRegions(byte[] imageBytes, String mediaType) {
     try {
-      MultipartFile file = new ByteArrayMultipartFile(imageBytes, mediaType);
+      MultipartFile file = new PlantNetDiseaseClient.ByteArrayMultipartFile(imageBytes, mediaType);
       PlantNetResponse response = plantNetClient.identify(List.of(file), List.of("auto"));
       return toAnnotationJson(response);
     } catch (Exception e) {
@@ -47,7 +44,11 @@ public class PlantNetAnnotationClient implements VisionAnnotationClient {
     }
     List<Map<String, Object>> regions = new ArrayList<>();
     for (PlantNetResult result : response.results()) {
-      if (result.species() == null) continue;
+      // Skip unusable results individually — Map.of() rejects a null label, and that exception
+      // would otherwise reach analyzeRegions()' catch-all and discard every region.
+      if (result.species() == null || isBlank(result.species().scientificNameWithoutAuthor())) {
+        continue;
+      }
       String label = result.species().scientificNameWithoutAuthor();
       List<String> commonNames = result.species().commonNames();
       if (commonNames != null && !commonNames.isEmpty()) {
@@ -72,53 +73,7 @@ public class PlantNetAnnotationClient implements VisionAnnotationClient {
     }
   }
 
-  private static final class ByteArrayMultipartFile implements MultipartFile {
-    private final byte[] bytes;
-    private final String contentType;
-
-    ByteArrayMultipartFile(byte[] bytes, String contentType) {
-      this.bytes = bytes;
-      this.contentType = contentType;
-    }
-
-    @Override
-    public String getName() {
-      return "image";
-    }
-
-    @Override
-    public String getOriginalFilename() {
-      return "image.jpg";
-    }
-
-    @Override
-    public String getContentType() {
-      return contentType;
-    }
-
-    @Override
-    public boolean isEmpty() {
-      return bytes.length == 0;
-    }
-
-    @Override
-    public long getSize() {
-      return bytes.length;
-    }
-
-    @Override
-    public byte[] getBytes() {
-      return bytes;
-    }
-
-    @Override
-    public InputStream getInputStream() {
-      return new ByteArrayInputStream(bytes);
-    }
-
-    @Override
-    public void transferTo(File dest) {
-      throw new UnsupportedOperationException();
-    }
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 }
