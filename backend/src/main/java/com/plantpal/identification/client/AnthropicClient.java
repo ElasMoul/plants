@@ -1,9 +1,11 @@
 package com.plantpal.identification.client;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -41,6 +43,7 @@ public class AnthropicClient {
   // Anthropic doesn't document a fixed wait in the error body the way GitHub Models does; fall
   // back to the same default the other clients use when retry-after isn't present as a header.
   private static final long DEFAULT_RETRY_AFTER_SECONDS = 60;
+  private static final String MAX_TOKENS_STOP_REASON = "max_tokens";
 
   private final RestClient restClient;
   private final String apiKey;
@@ -204,7 +207,8 @@ public class AnthropicClient {
               .body(AnthropicApiResponse.class);
 
       if (response == null || response.content() == null || response.content().isEmpty()) {
-        throw new PlantPalException("Empty response from " + label.toLowerCase() + " service", 503);
+        throw new PlantPalException(
+            "Empty response from " + label.toLowerCase(Locale.ROOT) + " service", 503);
       }
 
       String raw =
@@ -212,6 +216,19 @@ public class AnthropicClient {
               .filter(block -> "text".equals(block.type()) && block.text() != null)
               .map(AnthropicContentBlock::text)
               .collect(Collectors.joining());
+      if (raw.isBlank()) {
+        throw new PlantPalException(
+            "Empty response from " + label.toLowerCase(Locale.ROOT) + " service", 503);
+      }
+      if (MAX_TOKENS_STOP_REASON.equals(response.stopReason())) {
+        // Output hit DEFAULT_MAX_TOKENS: structured-JSON callers will fail to parse the partial
+        // text and fall back (e.g. "Unknown Plant"). Logged so truncation is diagnosable.
+        log.warn(
+            "{} via Anthropic was truncated at max_tokens={} [model={}]",
+            label,
+            DEFAULT_MAX_TOKENS,
+            requestModel);
+      }
       log.info(
           "{} via Anthropic completed in {}ms [model={}]",
           label,
@@ -244,19 +261,11 @@ public class AnthropicClient {
   }
 
   private static long extractRetryAfterSeconds(RestClientResponseException e) {
-    String header =
-        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("retry-after") : null;
-    if (header != null) {
-      try {
-        return Long.parseLong(header.trim());
-      } catch (NumberFormatException ignored) {
-        // fall through to default
-      }
-    }
-    return DEFAULT_RETRY_AFTER_SECONDS;
+    return RetryAfterSeconds.from(e, null, DEFAULT_RETRY_AFTER_SECONDS);
   }
 
-  private record AnthropicApiResponse(List<AnthropicContentBlock> content) {}
+  private record AnthropicApiResponse(
+      List<AnthropicContentBlock> content, @JsonProperty("stop_reason") String stopReason) {}
 
   private record AnthropicContentBlock(String type, String text) {}
 }

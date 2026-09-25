@@ -5,8 +5,8 @@ import com.plantpal.shared.exception.RateLimitException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,7 +192,12 @@ public class DeepSeekClient {
   // UserByModelByMinute." Used as the retry-after fallback when the error body doesn't carry a
   // parseable wait time.
   private static final long DEFAULT_RETRY_AFTER_SECONDS = 60;
-  private static final Pattern RETRY_AFTER_PATTERN = Pattern.compile("wait (\\d+) seconds?");
+  private static final String THINK_CLOSE = "</think>";
+  private static final String FENCE = "```";
+  // A fence's info string on its own line ("json", "JSON", or empty).
+  private static final Pattern FENCE_LANGUAGE_TAG = Pattern.compile("[A-Za-z0-9_+-]*");
+  // A language tag directly followed by the JSON on the same line ("json {...}").
+  private static final Pattern INLINE_LANGUAGE_TAG = Pattern.compile("^[A-Za-z]+\\s+(?=[\\[{])");
   // o4-mini (and other o-series reasoning models) reject "temperature" and use
   // "max_completion_tokens" in place of an implicit cap — see chatCompletion().
   private static final int O4_MINI_MAX_COMPLETION_TOKENS = 4096;
@@ -241,17 +246,8 @@ public class DeepSeekClient {
   }
 
   private static long extractRetryAfterSeconds(RestClientResponseException e) {
-    String header =
-        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("Retry-After") : null;
-    if (header != null) {
-      try {
-        return Long.parseLong(header.trim());
-      } catch (NumberFormatException ignored) {
-        // fall through to body parsing
-      }
-    }
-    Matcher matcher = RETRY_AFTER_PATTERN.matcher(String.valueOf(e.getResponseBodyAsString()));
-    return matcher.find() ? Long.parseLong(matcher.group(1)) : DEFAULT_RETRY_AFTER_SECONDS;
+    return RetryAfterSeconds.from(
+        e, RetryAfterSeconds.WAIT_SECONDS_IN_BODY, DEFAULT_RETRY_AFTER_SECONDS);
   }
 
   /**
@@ -370,7 +366,7 @@ public class DeepSeekClient {
           || response.choices().isEmpty()
           || response.choices().get(0).message() == null) {
         throw new PlantPalException(
-            "Empty response from " + errorLabel.toLowerCase() + " service", 503);
+            "Empty response from " + errorLabel.toLowerCase(Locale.ROOT) + " service", 503);
       }
 
       String raw = response.choices().get(0).message().content();
@@ -563,19 +559,29 @@ public class DeepSeekClient {
    */
   static String stripThinkTags(String raw) {
     if (raw == null) return null;
-    int endThink = raw.indexOf("</think>");
+    int endThink = raw.indexOf(THINK_CLOSE);
     String stripped =
-        endThink != -1 ? raw.substring(endThink + "</think>".length()).strip() : raw.strip();
-    if (stripped.startsWith("```")) {
-      int firstNewline = stripped.indexOf('\n');
-      if (firstNewline != -1) {
-        stripped = stripped.substring(firstNewline + 1);
-      }
-      if (stripped.endsWith("```")) {
-        stripped = stripped.substring(0, stripped.lastIndexOf("```")).strip();
-      }
+        endThink != -1 ? raw.substring(endThink + THINK_CLOSE.length()).strip() : raw.strip();
+    return stripped.startsWith(FENCE) ? unwrapFence(stripped) : stripped;
+  }
+
+  /**
+   * Unwraps a leading markdown fence. Tolerates prose after the closing fence ("```" then "Hope
+   * this helps!") and single-line fences ("```{...}```" / "```json {...}```"); an unclosed fence
+   * (truncated output) keeps everything after the opening line.
+   */
+  private static String unwrapFence(String fenced) {
+    int close = fenced.lastIndexOf(FENCE);
+    String inner =
+        close > 0 ? fenced.substring(FENCE.length(), close) : fenced.substring(FENCE.length());
+    int firstNewline = inner.indexOf('\n');
+    String firstLine = firstNewline != -1 ? inner.substring(0, firstNewline) : inner;
+    if (firstNewline != -1 && FENCE_LANGUAGE_TAG.matcher(firstLine.strip()).matches()) {
+      inner = inner.substring(firstNewline + 1);
+    } else {
+      inner = INLINE_LANGUAGE_TAG.matcher(inner).replaceFirst("");
     }
-    return stripped;
+    return inner.strip();
   }
 
   private record DeepSeekApiResponse(List<Choice> choices) {}

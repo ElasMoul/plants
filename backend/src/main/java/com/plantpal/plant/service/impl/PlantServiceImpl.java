@@ -171,7 +171,9 @@ public class PlantServiceImpl implements PlantService {
   @Transactional(readOnly = true)
   @Cacheable(
       value = PLANTS_CACHE,
-      key = "'u:' + #userId + ':p:' + #pageable.pageNumber + ':s:' + #pageable.pageSize")
+      key =
+          "'u:' + #userId + ':p:' + #pageable.pageNumber + ':s:' + #pageable.pageSize"
+              + " + ':o:' + #pageable.sort")
   public Page<PlantResponse> getUserPlants(Long userId, Pageable pageable) {
     log.info("Fetching plants for userId={}, page={}", userId, pageable.getPageNumber());
     Page<Plant> plants =
@@ -185,7 +187,7 @@ public class PlantServiceImpl implements PlantService {
       value = PLANTS_CACHE,
       key =
           "'u:' + #userId + ':sp:' + #speciesId + ':p:' + #pageable.pageNumber + ':s:'"
-              + " + #pageable.pageSize")
+              + " + #pageable.pageSize + ':o:' + #pageable.sort")
   public Page<PlantResponse> getUserPlants(Long userId, Long speciesId, Pageable pageable) {
     log.info(
         "Fetching plants for userId={}, speciesId={}, page={}",
