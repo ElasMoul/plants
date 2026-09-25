@@ -24,7 +24,7 @@ function parseNumbered(detail: string): ParsedDetail | null {
   // ("between 18 and 24. Avoid drafts below 10.") and those must stay part of the text.
   const matches: RegExpMatchArray[] = [];
   for (const match of detail.matchAll(NUMBERED_MARKER)) {
-    if (parseInt(match[0], 10) === matches.length + 1) matches.push(match);
+    if (Number.parseInt(match[0], 10) === matches.length + 1) matches.push(match);
   }
   if (matches.length < 2) return null;
 
