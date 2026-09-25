@@ -1,0 +1,63 @@
+{
+  "profileName": "PlantPal way",
+  "parent": "Sonar way",
+  "qualityGate": "Sonar way",
+  "profiles": {
+    "java": {
+      "projects": ["plantpal-backend"],
+      "activate": [
+        { "rule": "java:S138",   "params": { "max": "50" },       "why": "House rule: no method longer than 50 lines" },
+        { "rule": "java:S1213",  "why": "House rule: mandatory class member order (logger, constants, fields, constructor, methods)" },
+        { "rule": "java:S1312",  "params": { "format": "log" },   "why": "House rule: logger is 'private static final Logger log'" },
+        { "rule": "java:S3749",  "why": "Spring singletons must not carry non-injected mutable state" },
+        { "rule": "java:S4605",  "why": "Spring beans must be reachable by component scan" },
+        { "rule": "java:S6904",  "why": "No FetchType.EAGER — lazy loading is the JPA default we rely on" },
+        { "rule": "java:S5128",  "why": "Bean Validation must be wired correctly (@Valid on nested/params)" },
+        { "rule": "java:S3553",  "why": "Optional is a return type, never a parameter" },
+        { "rule": "java:S1166",  "why": "Exception handlers keep the original cause (error-handling depth)" },
+        { "rule": "java:S134",   "why": "Control flow nested at most 3 deep" },
+        { "rule": "java:S104",   "why": "Files stay under 750 lines of code" },
+        { "rule": "java:S3740",  "why": "No raw generic types" },
+        { "rule": "java:S1449",  "why": "String case/format ops pass an explicit Locale (app is multilingual)" },
+        { "rule": "java:S1943",  "why": "No reliance on the platform default charset" },
+        { "rule": "java:S3546",  "why": "Custom closeable resources are closed" },
+        { "rule": "java:S2444",  "why": "Concurrency: lazy static init is synchronized" },
+        { "rule": "java:S2693",  "why": "Concurrency: no threads started in constructors" },
+        { "rule": "java:S1147",  "why": "Never call System.exit" },
+        { "rule": "java:S1244",  "why": "No floating-point equality checks" },
+        { "rule": "java:S2141",  "why": "Only hash types that define hashCode()" },
+        { "rule": "java:S4551",  "why": "Compare enums with ==" },
+        { "rule": "java:S2208",  "why": "No wildcard imports" },
+        { "rule": "java:S121",   "why": "Control structures always use braces" },
+        { "rule": "java:S1996",  "why": "One top-level type per file" },
+        { "rule": "java:S5194",  "why": "Prefer switch expressions (Java 21)" },
+        { "rule": "java:S5979",  "why": "Tests: annotated Mockito mocks are initialized" },
+        { "rule": "java:S6073",  "why": "Tests: Mockito matchers used on all arguments" },
+        { "rule": "java:NoSonar","why": "NOSONAR is not allowed — accept/false-positive issues in the UI instead" }
+      ]
+    },
+    "ts": {
+      "projects": ["plantpal-frontend"],
+      "activate": [
+        { "rule": "typescript:S138",   "params": { "max": "50" }, "why": "Same 50-line function limit as the backend" },
+        { "rule": "typescript:S104",   "why": "Files stay under 1000 lines of code" },
+        { "rule": "typescript:S134",   "why": "Control flow nested at most 3 deep" },
+        { "rule": "typescript:S4204",  "why": "No 'any' — strict-mode repo" },
+        { "rule": "typescript:S4325",  "why": "No redundant casts or non-null assertions" },
+        { "rule": "typescript:S1117",  "why": "No variable shadowing" },
+        { "rule": "typescript:S3353",  "why": "Unchanged variables are const" },
+        { "rule": "typescript:S1440",  "why": "Always === / !==" },
+        { "rule": "typescript:S106",   "why": "No console.* logging left in app code" },
+        { "rule": "typescript:S125",   "why": "No commented-out code" },
+        { "rule": "typescript:S1172",  "why": "No unused function parameters" },
+        { "rule": "typescript:S1066",  "why": "Merge collapsible if statements" },
+        { "rule": "typescript:S3801",  "why": "Functions return consistently" },
+        { "rule": "typescript:S4326",  "why": "No redundant await" },
+        { "rule": "typescript:S1488",  "why": "Don't declare-then-immediately-return" },
+        { "rule": "typescript:S5914",  "why": "Tests: no trivially-true assertions" },
+        { "rule": "typescript:S8960",  "why": "Tests: one async completion style per callback" },
+        { "rule": "typescript:S1291",  "why": "NOSONAR is not allowed — accept/false-positive issues in the UI instead" }
+      ]
+    }
+  }
+}
