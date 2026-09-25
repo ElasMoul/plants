@@ -11,7 +11,7 @@ Sentry.init({
   enabled: !!environment.sentryDsn,
 });
 
-// Vercel Web Analytics, dependency-free (@vercel/analytics' optional Svelte peer
+// Vercel Web Analytics + Speed Insights, dependency-free (@vercel/analytics' optional Svelte peer
 // conflicts with Angular's vite). Same snippet Vercel documents for plain HTML:
 // queue calls on window.va until the script served by Vercel loads.
 if (environment.vercelAnalytics) {
@@ -21,6 +21,15 @@ if (environment.vercelAnalytics) {
   script.defer = true;
   script.src = '/_vercel/insights/script.js';
   document.head.appendChild(script);
+
+  // Vercel Speed Insights (Core Web Vitals), same dependency-free pattern:
+  // queue on window.si until /_vercel/speed-insights/script.js loads.
+  const s = window as unknown as { si?: (...args: unknown[]) => void; siq?: unknown[][] };
+  s.si = s.si || ((...args: unknown[]) => { (s.siq = s.siq || []).push(args); });
+  const speedScript = document.createElement('script');
+  speedScript.defer = true;
+  speedScript.src = '/_vercel/speed-insights/script.js';
+  document.head.appendChild(speedScript);
 }
 
 platformBrowserDynamic()

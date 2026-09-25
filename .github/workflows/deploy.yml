@@ -97,7 +97,7 @@ jobs:
           # key — without this line a deployed atlas can never subscribe, whatever the
           # backend holds. Unset secret leaves the empty placeholder (push refused in words).
           sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" projects/atlas/src/environments/environment.prod.ts
-          # This build is the Vercel upload, the only host serving /_vercel/insights.
+          # This build is the Vercel upload, the only host serving /_vercel/* (Analytics + Speed Insights).
           sed -i "s|vercelAnalytics: false|vercelAnalytics: true|" src/environments/environment.prod.ts
           if [ -n "$CLASSIC_PUBLIC_URL" ]; then
             sed -i "s|classicAppUrl: 'https://localhost:8444'|classicAppUrl: '${CLASSIC_PUBLIC_URL}'|" projects/atlas/src/environments/environment.prod.ts
