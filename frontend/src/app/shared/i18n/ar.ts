@@ -29,7 +29,6 @@ export const AR: Readonly<Record<string, string>> = {
   "Password": "كلمة المرور",
   "Password is required": "كلمة المرور مطلوبة",
   "At least 8 characters": "8 أحرف على الأقل",
-  "Continue into the Atlas — the botanical network view": "تابع إلى Atlas — عرض الشبكة النباتية",
   "Don't have an account?": "ليس لديك حساب؟",
   "Create one": "أنشئ حسابًا",
   "Create your account": "أنشئ حسابك",
