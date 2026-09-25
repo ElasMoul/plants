@@ -27,7 +27,8 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               { "glob": "**/*", "input": "src/assets", "output": "assets" },
-              "src/manifest.webmanifest"
+              "src/manifest.webmanifest",
+              "src/favicon.svg"
             ],
             "styles": ["src/styles.scss"],
             "scripts": []

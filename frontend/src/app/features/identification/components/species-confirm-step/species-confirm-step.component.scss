@@ -129,7 +129,7 @@
   min-height: 22px;
   border-radius: 11px;
 
-  &--high  { background: var(--color-success, #4caf50) !important; color: #fff !important; }
+  &--high  { background: var(--color-success, var(--color-secondary)) !important; color: #fff !important; }
   &--medium { background: var(--color-warning, #ff9800) !important; color: #fff !important; }
   &--low   { background: var(--color-text-disabled, #9e9e9e) !important; color: #fff !important; }
 }

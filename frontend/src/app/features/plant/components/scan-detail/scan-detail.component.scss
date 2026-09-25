@@ -63,8 +63,8 @@
   font-weight: 600;
 
   &.health-healthy {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: var(--color-success-soft);
+    color: var(--color-primary-light);
   }
 
   &.health-issues {

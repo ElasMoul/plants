@@ -27,17 +27,17 @@ async function userSession(page: Page) {
 
 test('switches languages before login and retains the choice after a reload', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.getByText('Sign in to PlantPal')).toBeVisible();
+  await expect(page.getByText('Sign in to Planotell')).toBeVisible();
   await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('fr');
-  await expect(page.getByText('Connexion à PlantPal')).toBeVisible();
+  await expect(page.getByText('Connexion à Planotell')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await page.getByTestId('login-email').fill('invalid');
   await page.getByTestId('login-password').focus();
   await expect(page.getByText('Saisissez une adresse e-mail valide')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Connexion à PlantPal')).toBeVisible();
+  await expect(page.getByText('Connexion à Planotell')).toBeVisible();
   await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('en');
-  await expect(page.getByText('Sign in to PlantPal')).toBeVisible();
+  await expect(page.getByText('Sign in to Planotell')).toBeVisible();
 });
 
 test('French user journeys cover home, garden, identification, reminders and settings', async ({ page }) => {
@@ -140,7 +140,7 @@ test('Arabic selector, RTL forms and calendar work on mobile and switching back 
   await selector.selectOption('ar');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByText('تسجيل الدخول إلى PlantPal')).toBeVisible();
+  await expect(page.getByText('تسجيل الدخول إلى Planotell')).toBeVisible();
   await page.getByTestId('login-email').fill('reader@example.test');
   await expect(page.getByTestId('login-email')).toHaveCSS('direction', 'ltr');
   await userSession(page);
