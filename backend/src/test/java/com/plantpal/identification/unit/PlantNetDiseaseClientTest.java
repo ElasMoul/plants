@@ -37,6 +37,8 @@ class PlantNetDiseaseClientTest {
       }
       """;
 
+  private static final List<String> AUTO = List.of("auto");
+  private final List<MultipartFile> oneImage = List.of(image("leaf.jpg"));
   private MockWebServer server;
   private PlantNetDiseaseClient client;
 
@@ -107,8 +109,7 @@ class PlantNetDiseaseClientTest {
     void quotaExhausted() {
       server.enqueue(json(429, "{}"));
 
-      assertThatThrownBy(
-              () -> client.identifyDisease(List.of(image("leaf.jpg")), List.of("auto"), "en"))
+      assertThatThrownBy(() -> client.identifyDisease(oneImage, AUTO, "en"))
           .isInstanceOf(RateLimitException.class);
     }
 
@@ -117,8 +118,7 @@ class PlantNetDiseaseClientTest {
     void serverError() {
       server.enqueue(json(500, "{}"));
 
-      assertThatThrownBy(
-              () -> client.identifyDisease(List.of(image("leaf.jpg")), List.of("auto"), "en"))
+      assertThatThrownBy(() -> client.identifyDisease(oneImage, AUTO, "en"))
           .isInstanceOfSatisfying(
               PlantPalException.class, e -> assertThat(e.getErrorCode()).isEqualTo(502));
     }
@@ -174,7 +174,8 @@ class PlantNetDiseaseClientTest {
             }
           };
 
-      assertThatThrownBy(() -> client.identifyDisease(List.of(huge), null, "en"))
+      List<MultipartFile> hugeOnly = List.of(huge);
+      assertThatThrownBy(() -> client.identifyDisease(hugeOnly, null, "en"))
           .isInstanceOf(ValidationException.class);
       assertThat(server.getRequestCount()).isZero();
     }
@@ -193,7 +194,8 @@ class PlantNetDiseaseClientTest {
     assertThat(file.getBytes()).containsExactly(1, 2, 3);
     assertThat(file.getInputStream().readAllBytes()).containsExactly(1, 2, 3);
     assertThat(new ByteArrayMultipartFile(new byte[0], "image/png").isEmpty()).isTrue();
-    assertThatThrownBy(() -> file.transferTo(new java.io.File("x")))
+    java.io.File target = new java.io.File("x");
+    assertThatThrownBy(() -> file.transferTo(target))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 

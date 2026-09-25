@@ -265,8 +265,10 @@ class OllamaClientTest {
               .setResponseCode(200)
               .addHeader("Content-Type", "application/x-ndjson")
               .setBody(
-                  "{\"message\":{\"role\":\"assistant\",\"content\":\"A \"},\"done\":false}\n"
-                      + "{\"error\":\"out of memory\"}\n"));
+                  """
+                  {"message":{"role":"assistant","content":"A "},"done":false}
+                  {"error":"out of memory"}
+                  """));
 
       // Spring Boot's ObjectMapper ignores unknown properties, so "error" must be modelled
       // explicitly rather than relying on a strict mapper to reject the line.

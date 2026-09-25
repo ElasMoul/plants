@@ -3,6 +3,7 @@ package com.plantpal.identification.client;
 import java.util.OptionalLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClientResponseException;
 
 /**
@@ -17,8 +18,8 @@ final class RetryAfterSeconds {
   private RetryAfterSeconds() {}
 
   static long from(RestClientResponseException e, Pattern bodyPattern, long fallbackSeconds) {
-    String header =
-        e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst("Retry-After") : null;
+    HttpHeaders headers = e.getResponseHeaders();
+    String header = headers != null ? headers.getFirst("Retry-After") : null;
     OptionalLong fromHeader = parseNonNegative(header);
     if (fromHeader.isPresent()) {
       return fromHeader.getAsLong();

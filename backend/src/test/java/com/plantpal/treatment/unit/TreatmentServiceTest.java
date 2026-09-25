@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -79,7 +80,7 @@ class TreatmentServiceTest {
     // description call (no real thread pool needed in unit tests).
     treatmentService =
         new TreatmentServiceImpl(
-            org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+            mock(org.springframework.context.ApplicationEventPublisher.class),
             treatmentRepository,
             plantRepository,
             treatmentPlanService,
@@ -123,7 +124,7 @@ class TreatmentServiceTest {
 
     private TreatmentServiceImpl recordingService() {
       return new TreatmentServiceImpl(
-          org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+          mock(org.springframework.context.ApplicationEventPublisher.class),
           treatmentRepository,
           plantRepository,
           treatmentPlanService,

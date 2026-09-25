@@ -33,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 @DisplayName("PlantNetClient — status mapping, catalog endpoints, helpers")
 class PlantNetClientCatalogTest {
 
+  private final List<MultipartFile> oneImage = List.of(image());
   private MockWebServer server;
   private PlantNetClient client;
 
@@ -58,7 +59,7 @@ class PlantNetClientCatalogTest {
     void mapsErrorStatuses(int plantNetStatus, int plantPalCode) {
       server.enqueue(new MockResponse().setResponseCode(plantNetStatus));
 
-      assertThatThrownBy(() -> client.identify(List.of(image()), null))
+      assertThatThrownBy(() -> client.identify(oneImage, null))
           .isInstanceOfSatisfying(
               PlantPalException.class, e -> assertThat(e.getErrorCode()).isEqualTo(plantPalCode));
     }
@@ -68,7 +69,7 @@ class PlantNetClientCatalogTest {
     void quotaExhausted() {
       server.enqueue(new MockResponse().setResponseCode(429));
 
-      assertThatThrownBy(() -> client.identify(List.of(image()), null))
+      assertThatThrownBy(() -> client.identify(oneImage, null))
           .isInstanceOf(RateLimitException.class);
     }
 
@@ -77,7 +78,7 @@ class PlantNetClientCatalogTest {
     void unmappedStatus() {
       server.enqueue(new MockResponse().setResponseCode(503));
 
-      assertThatThrownBy(() -> client.identify(List.of(image()), null))
+      assertThatThrownBy(() -> client.identify(oneImage, null))
           .isInstanceOfSatisfying(
               PlantPalException.class, e -> assertThat(e.getErrorCode()).isEqualTo(503));
     }
@@ -112,7 +113,8 @@ class PlantNetClientCatalogTest {
               return 51L * 1024 * 1024;
             }
           };
-      assertThatThrownBy(() -> client.identify(List.of(huge), null))
+      List<MultipartFile> hugeOnly = List.of(huge);
+      assertThatThrownBy(() -> client.identify(hugeOnly, null))
           .isInstanceOf(ValidationException.class);
       assertThat(server.getRequestCount()).isZero();
     }

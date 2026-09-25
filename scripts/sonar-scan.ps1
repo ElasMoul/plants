@@ -27,8 +27,8 @@ if ($Only -in 'all', 'backend') {
         if (-not $SkipTests) {
             Remove-Item target\jacoco*.exec -ErrorAction SilentlyContinue
             mvn verify --batch-mode "-Ddependency.check.skip=true"
+            if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' }
         }
-        if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' }
         mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar --batch-mode
         if ($LASTEXITCODE -ne 0) { throw 'Backend Sonar analysis failed.' }
     } finally { Pop-Location }
@@ -38,8 +38,10 @@ if ($Only -in 'all', 'frontend') {
     Push-Location (Join-Path $root 'frontend')
     try {
         # Coverage for Sonar only — the 15% gate lives in `npm run test:coverage`.
-        if (-not $SkipTests) { npx jest --coverage "--coverageThreshold={}" }
-        if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed.' }
+        if (-not $SkipTests) {
+            npx jest --coverage "--coverageThreshold={}"
+            if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed.' }
+        }
         npx --yes @sonar/scan
         if ($LASTEXITCODE -ne 0) { throw 'Frontend Sonar analysis failed.' }
     } finally { Pop-Location }
