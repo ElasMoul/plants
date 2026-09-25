@@ -80,12 +80,12 @@ export class AdminComponent implements OnInit {
   };
   readonly descriptions: Record<string, string> = {
     overview:
-      "A living picture of your PlantPal community, from first scans to ongoing care.",
+      "A living picture of your Planotell community, from first scans to ongoing care.",
     users: "Find a grower, manage access, and keep your community flourishing.",
     detail:
-      "Manage this account’s profile, membership, and access to PlantPal.",
+      "Manage this account’s profile, membership, and access to Planotell.",
     ai: "Curate the models your community discovers in AI Settings.",
-    activity: "A transparent record of administrative changes across PlantPal.",
+    activity: "A transparent record of administrative changes across Planotell.",
   };
   access?: AdminAccess;
   overview?: AdminOverview;
@@ -408,7 +408,7 @@ export class AdminComponent implements OnInit {
     if (error.status === 403)
       return "Your account no longer has administrator access.";
     return (
-      error.error?.message ?? "We couldn’t reach PlantPal. Please try again."
+      error.error?.message ?? "We couldn’t reach Planotell. Please try again."
     );
   }
 }

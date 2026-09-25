@@ -47,7 +47,7 @@ mat-dialog-content {
   }
 
   &.status-done {
-    color: var(--color-success, #2e7d32);
+    color: var(--color-success, var(--color-primary-light));
   }
 
   &.status-failed {

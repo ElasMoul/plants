@@ -5,9 +5,21 @@
 @include mat.elevation-classes();
 @include mat.app-background();
 
-$plantpal-primary: mat.m2-define-palette(mat.$m2-green-palette, 900, 700, 900);
-$plantpal-accent:  mat.m2-define-palette(mat.$m2-light-green-palette, 400, 200, 600);
-$plantpal-warn:    mat.m2-define-palette(mat.$m2-red-palette, 400, 200, 700);
+// Planotell brand palette — primary #14532D, secondary #22C55E, accent #84CC16
+$planotell-green: (
+  50: #edf7ef, 100: #d3ecd9, 200: #a7d9b3, 300: #6fbf85, 400: #3fa35f,
+  500: #22863f, 600: #1c7336, 700: #186330, 800: #155a2e, 900: #14532d,
+  A100: #bbf7d0, A200: #86efac, A400: #22c55e, A700: #16a34a,
+  contrast: (
+    50: rgba(0,0,0,.87), 100: rgba(0,0,0,.87), 200: rgba(0,0,0,.87), 300: rgba(0,0,0,.87),
+    400: #fff, 500: #fff, 600: #fff, 700: #fff, 800: #fff, 900: #fff,
+    A100: rgba(0,0,0,.87), A200: rgba(0,0,0,.87), A400: rgba(0,0,0,.87), A700: #fff,
+  )
+);
+
+$plantpal-primary: mat.m2-define-palette($planotell-green, 900, 500, 900);
+$plantpal-accent:  mat.m2-define-palette(mat.$m2-light-green-palette, 600, 200, 800);
+$plantpal-warn:    mat.m2-define-palette(mat.$m2-red-palette, 600, 200, 800);
 
 $plantpal-theme: mat.m2-define-light-theme((
   color: (
@@ -25,20 +37,29 @@ $plantpal-theme: mat.m2-define-light-theme((
 
 // ── Design Tokens ──────────────────────────────────────────────
 :root {
-  --color-primary:           #1a3c2a;
-  --color-primary-light:     #4e8c64;
-  --color-background:        #f2ede6;
-  --color-surface:           #ffffff;
-  --color-surface-secondary: #e5efe9;
-  --color-text-primary:      #1a2e20;
-  --color-text-secondary:    #7a8c80;
-  --color-error:             #e05252;
-  --color-warning:           #f0a030;
-  --color-success:           #5bbf6e;
+  // Planotell brand tokens (see brand board: Primary / Secondary / Accent / Light /
+  // Background / Surface / Text Primary / Text Secondary)
+  --color-primary:           #14532D;
+  --color-primary-light:     #1F7A45;
+  --color-primary-soft:      #DCEFE1;
+  --color-secondary:         #22C55E;
+  --color-accent:            #84CC16;
+  --color-background:        #FAFCF8;
+  --color-surface:           #FFFFFF;
+  --color-surface-secondary: #F1F7EF;
+  --color-border:            #E3EBE0;
+  --color-text-primary:      #0F172A;
+  --color-text-secondary:    #64748B;
+  --color-error:             #DC2626;
+  --color-error-soft:        #FDE8E8;
+  --color-warning:           #EAB308;
+  --color-warning-soft:      #FEF6D8;
+  --color-success:           #22C55E;
+  --color-success-soft:      #E3F6E8;
   --radius-card:             16px;
   --radius-chip:             50px;
-  --shadow-card:             0 2px 12px rgba(0, 0, 0, 0.08);
-  --font-heading:            'Lora', Georgia, serif;
+  --shadow-card:             0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(20, 83, 45, 0.06);
+  --font-heading:            'Playfair Display', Georgia, serif;
   --font-body:               'Inter', 'Roboto', sans-serif;
 }
 
@@ -95,6 +116,23 @@ h6 {
 .mat-mdc-card {
   border-radius: var(--radius-card) !important;
   box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--color-border);
+}
+
+h1, h2, h3,
+.mat-mdc-card-title,
+.mat-mdc-dialog-title {
+  font-family: var(--font-heading) !important;
+  letter-spacing: -0.01em;
+}
+
+.mat-mdc-raised-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-outlined-button,
+.mat-mdc-button {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
 }
 
 .mat-mdc-raised-button.mat-primary,
@@ -106,40 +144,49 @@ h6 {
 
 .mat-mdc-outlined-button.mat-primary {
   color: var(--color-primary) !important;
-  border-color: var(--color-primary) !important;
+  border-color: var(--color-border) !important;
+  background: var(--color-surface);
 }
 
 // ── Health / Status Badge Utilities ───────────────────────────
 .health-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 3px 10px;
   border-radius: var(--radius-chip);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  &::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
 
   &.badge-healthy {
-    background: var(--color-success);
-    color: #fff;
+    background: var(--color-success-soft);
+    color: #15803D;
   }
 
   &.badge-issues,
   &.badge-issues_detected {
-    background: var(--color-error);
-    color: #fff;
+    background: var(--color-error-soft);
+    color: var(--color-error);
   }
 
   &.badge-unknown {
-    background: #ccc;
-    color: #555;
+    background: #EEF1F4;
+    color: var(--color-text-secondary);
   }
 
   &.badge-attention {
-    background: #fce4e4;
-    color: var(--color-error);
+    background: var(--color-warning-soft);
+    color: #A16207;
   }
 }
 
@@ -154,7 +201,7 @@ h6 {
   text-transform: uppercase;
 
   &.urgent {
-    background: #fce4e4;
+    background: var(--color-error-soft);
     color: var(--color-error);
   }
 

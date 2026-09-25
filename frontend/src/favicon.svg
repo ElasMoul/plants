@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Planotell">
+  <circle cx="30" cy="37" r="23" fill="#E8F3E1"/>
+  <path d="M28 61 C29 51 31 42 37 34" fill="none" stroke="#14532D" stroke-width="3" stroke-linecap="round"/>
+  <path d="M29 51 C16 47 8 35 9 22 C22 24 31 35 29 51 Z" fill="#14532D"/>
+  <path d="M27.5 48 C22 40 16 32 12.5 25.5" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M31 47 C32 37 40 29 53 28 C52 39 44 47 31 47 Z" fill="#6DBE45"/>
+  <path d="M32.5 45.5 C38 39 44 34 49.5 30.5" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M36 5 H54 A5 5 0 0 1 59 10 V19 A5 5 0 0 1 54 24 H42 L36 29 V24 A5 5 0 0 1 31 19 V10 A5 5 0 0 1 36 5 Z" fill="#FFFFFF" stroke="#14532D" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="39" cy="14.5" r="2" fill="#2E8B3E"/>
+  <circle cx="45" cy="14.5" r="2" fill="#2E8B3E"/>
+  <circle cx="51" cy="14.5" r="2" fill="#2E8B3E"/>
+</svg>
