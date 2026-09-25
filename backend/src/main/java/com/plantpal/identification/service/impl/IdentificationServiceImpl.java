@@ -63,6 +63,7 @@ import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.storage.FileStorageService;
+import com.plantpal.shared.transaction.AfterCommit;
 import com.plantpal.shared.util.ImageUtil;
 import com.plantpal.species.entity.Species;
 import com.plantpal.species.repository.SpeciesRepository;
@@ -1012,7 +1013,8 @@ public class IdentificationServiceImpl implements IdentificationService {
               .organs(null)
               .requestedAt(Instant.now())
               .build();
-      identificationDispatcher.dispatch(event);
+      // Dispatch only once the PENDING reset is committed — see AfterCommit.
+      AfterCommit.run(() -> identificationDispatcher.dispatch(event));
       log.info("Retried failed identification (core): id={}", identification.getId());
     } else {
       // Core COMPLETED — re-queue only the failed enrichment stages.
@@ -1028,36 +1030,17 @@ public class IdentificationServiceImpl implements IdentificationService {
         identification = identificationRepository.save(identification);
         final long savedId = identification.getId();
         if (annotationNeeded) {
-          CompletableFuture.runAsync(() -> enrichAnnotationForRetry(savedId), aiTaskExecutor);
+          AfterCommit.run(
+              () ->
+                  CompletableFuture.runAsync(
+                      () -> enrichAnnotationForRetry(savedId), aiTaskExecutor));
         }
         if (candidateNeeded) {
           String[] pnPrefs = loadPlantNetPreferences(userId);
           final String project = pnPrefs[0];
           final String lang = pnPrefs[1];
           final String photoUrl = identification.getPhotoUrl();
-          CompletableFuture.runAsync(
-              () -> {
-                try {
-                  byte[] rawBytes = fileStorageService.loadPhotoBytes(photoUrl);
-                  String mediaType = resolveMediaType(photoUrl);
-                  byte[] imageBytes =
-                      ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
-                  enrichWithPlantNetCandidates(savedId, imageBytes, mediaType, null, project, lang);
-                } catch (Exception e) {
-                  log.warn(
-                      "PlantNet candidate retry load failed: identificationId={}, error={}",
-                      savedId,
-                      e.getMessage());
-                  identificationRepository
-                      .findById(savedId)
-                      .ifPresent(
-                          ident -> {
-                            ident.setCandidateStatus(IdentificationStageStatus.FAILED);
-                            identificationRepository.save(ident);
-                          });
-                }
-              },
-              aiTaskExecutor);
+          AfterCommit.run(() -> retryCandidates(savedId, photoUrl, project, lang));
         }
         log.info(
             "Retried enrichment stages: id={}, annotation={}, candidates={}",
@@ -1068,6 +1051,33 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
 
     return getIdentification(id, userId);
+  }
+
+  /** Fire-and-forget PlantNet candidate retry: reloads the stored photo, then re-enriches. */
+  private void retryCandidates(Long savedId, String photoUrl, String project, String lang) {
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            byte[] rawBytes = fileStorageService.loadPhotoBytes(photoUrl);
+            String mediaType = resolveMediaType(photoUrl);
+            byte[] imageBytes =
+                ImageUtil.resizeAndConvertToJpeg(rawBytes, SOURCE_IMAGE_MAX_SIDE_PX);
+            enrichWithPlantNetCandidates(savedId, imageBytes, mediaType, null, project, lang);
+          } catch (Exception e) {
+            log.warn(
+                "PlantNet candidate retry load failed: identificationId={}, error={}",
+                savedId,
+                e.getMessage());
+            identificationRepository
+                .findById(savedId)
+                .ifPresent(
+                    ident -> {
+                      ident.setCandidateStatus(IdentificationStageStatus.FAILED);
+                      identificationRepository.save(ident);
+                    });
+          }
+        },
+        aiTaskExecutor);
   }
 
   /**

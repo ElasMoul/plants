@@ -24,6 +24,7 @@ import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
+import com.plantpal.shared.transaction.AfterCommit;
 import com.plantpal.treatment.dto.CreateTreatmentRequest;
 import com.plantpal.treatment.dto.TreatmentResponse;
 import com.plantpal.treatment.entity.Treatment;
@@ -51,8 +52,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class TreatmentServiceImpl implements TreatmentService {
@@ -375,33 +374,14 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
     String species = plant.getSpecies() != null ? plant.getSpecies() : plant.getCommonName();
     ReasoningModelPreference preference = loadReasoningPreference(userId);
-    runAfterCommit(
+    // Callers are @Transactional — see AfterCommit for why the task must wait for commit.
+    AfterCommit.run(
         () ->
             CompletableFuture.runAsync(
                 () ->
                     generateAndSaveDiseaseDescription(
                         treatmentId, preference, species, diseaseName, userId),
                 aiTaskExecutor));
-  }
-
-  /**
-   * Callers are {@code @Transactional}: the background task reloads and saves the treatment row, so
-   * starting it before commit lets it miss the new row (a fast failure then never marks it FAILED)
-   * or be overwritten by the caller's stale snapshot on commit (description stuck PENDING). Runs
-   * immediately when no transaction is active.
-   */
-  private static void runAfterCommit(Runnable task) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      task.run();
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            task.run();
-          }
-        });
   }
 
   /**

@@ -73,6 +73,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
@@ -2669,6 +2671,66 @@ class IdentificationServiceImplTest {
       assertThat(ident.getIdentificationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
       verify(identificationDispatcher, never()).dispatch(any());
       verify(kafkaTemplate, never()).send(any(), any());
+    }
+
+    @Test
+    @DisplayName("core retry dispatches only after the PENDING reset commits")
+    void coreRetryDispatchesAfterCommit() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.FAILED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationRepository.save(any())).thenReturn(ident);
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      TransactionSynchronizationManager.initSynchronization();
+      try {
+        identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
+
+        // A fast-failing re-run would otherwise mark FAILED and then be overwritten by this
+        // transaction's PENDING — leaving a scan that 409s "already in progress" forever.
+        verify(identificationDispatcher, never()).dispatch(any());
+        TransactionSynchronizationManager.getSynchronizations()
+            .forEach(TransactionSynchronization::afterCommit);
+        verify(identificationDispatcher).dispatch(any());
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
+    }
+
+    @Test
+    @DisplayName("enrichment retry starts only after the PENDING reset commits")
+    void enrichmentRetryStartsAfterCommit() throws Exception {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.COMPLETED,
+              IdentificationStageStatus.COMPLETED,
+              IdentificationStageStatus.FAILED,
+              IdentificationStageStatus.COMPLETED);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationRepository.save(any())).thenReturn(ident);
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(visionAnnotationClient.analyzeRegions(any(), any())).thenReturn("{\"regions\":[]}");
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(IdentificationResponse.builder().id(IDENTIFICATION_ID).build());
+
+      TransactionSynchronizationManager.initSynchronization();
+      try {
+        identificationService.retryIdentification(IDENTIFICATION_ID, USER_ID);
+
+        verify(visionAnnotationClient, never()).analyzeRegions(any(), any());
+        assertThat(ident.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.PENDING);
+        TransactionSynchronizationManager.getSynchronizations()
+            .forEach(TransactionSynchronization::afterCommit);
+        verify(visionAnnotationClient).analyzeRegions(any(), any());
+        assertThat(ident.getAnnotationStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      } finally {
+        TransactionSynchronizationManager.clearSynchronization();
+      }
     }
 
     @Test
