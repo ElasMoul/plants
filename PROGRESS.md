@@ -478,3 +478,29 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none needed
 - Session: 2026-09-24_2336_add-sonarcloud-analysis-to-ci-pipeline
+
+## Session 25 (2026-09-25)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-25_0005_raise-backend-test-coverage-watch-for-hi.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise backend test coverage, watch for hidden bugs -- status: done.
+- Next step: Merge #170/#172; decide: Anthropic auto-retry, truncated Claude replies, dead generateCarePlan, 32s scan poll timeout, Atlas backend logout
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-25_0005_raise-backend-test-coverage-watch-for-hi
+
+## Session 26 (2026-09-25)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-25_1703_add-vercel-web-analytics-to-classic-fron.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Add Vercel Web Analytics to classic frontend (planotell) -- status: done.
+- Next step: Merge PR #176 into dev after CI; after next Vercel deploy confirm visitors in Vercel > plants > Analytics
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-25_1703_add-vercel-web-analytics-to-classic-fron
