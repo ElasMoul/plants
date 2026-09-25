@@ -767,13 +767,20 @@ public class IdentificationServiceImpl implements IdentificationService {
       List<List<Integer>> groups = parseDuplicateGroups(raw);
 
       for (List<Integer> group : groups) {
-        if (group.size() < 2) continue;
-        int keepIndex = group.stream().min(Integer::compareTo).orElseThrow();
-        String diseaseName = refs.get(keepIndex).card().getTitle();
-        for (int idx : group) {
-          if (idx == keepIndex) continue;
-          removeCareCard(refs.get(idx));
-          eventPublisher.publishEvent(new DuplicateCareCardRemovedEvent(plantId, diseaseName));
+        // The AI's refs are untrusted: drop out-of-range/repeated indices so one hallucinated ref
+        // can't throw mid-pass (leaving earlier removals applied and later groups unprocessed).
+        List<Integer> valid =
+            group.stream().filter(i -> i >= 0 && i < refs.size()).distinct().sorted().toList();
+        if (valid.size() < 2) continue;
+        // Newest-first order: the smallest index is the card to keep.
+        for (int idx : valid.subList(1, valid.size())) {
+          CareCardRef removed = refs.get(idx);
+          if (removeCareCard(removed)) {
+            // Name the REMOVED disease: the listener dismisses the treatment tracking the card
+            // that is now gone, not the one the user still sees.
+            eventPublisher.publishEvent(
+                new DuplicateCareCardRemovedEvent(plantId, removed.card().getTitle()));
+          }
         }
       }
     } catch (PlantPalException e) {
@@ -784,10 +791,11 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
-  private void removeCareCard(CareCardRef ref) {
-    identificationRepository
+  /** Returns true only when a card was actually removed and persisted. */
+  private boolean removeCareCard(CareCardRef ref) {
+    return identificationRepository
         .findById(ref.identificationId())
-        .ifPresent(
+        .map(
             ident -> {
               CarePlanDto plan = parseCarePlan(ident.getCarePlan());
               List<CareCardDto> cards = new ArrayList<>(plan.getCareCards());
@@ -797,7 +805,7 @@ public class IdentificationServiceImpl implements IdentificationService {
                           "PEST".equals(c.getType())
                               && ref.card().getTitle() != null
                               && ref.card().getTitle().equals(c.getTitle()));
-              if (!removed) return;
+              if (!removed) return false;
               plan.setCareCards(cards);
               ident.setCarePlan(serializeToJson(plan));
               identificationRepository.save(ident);
@@ -805,7 +813,9 @@ public class IdentificationServiceImpl implements IdentificationService {
                   "Removed duplicate care card: identificationId={}, title={}",
                   ident.getId(),
                   ref.card().getTitle());
-            });
+              return true;
+            })
+        .orElse(false);
   }
 
   private List<List<Integer>> parseDuplicateGroups(String raw) {

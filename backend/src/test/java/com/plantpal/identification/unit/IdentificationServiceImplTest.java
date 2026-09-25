@@ -37,6 +37,7 @@ import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.event.DuplicateCareCardRemovedEvent;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
 import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
@@ -2249,6 +2250,125 @@ class IdentificationServiceImplTest {
 
     private CureAdviceRequest req() {
       return new CureAdviceRequest("Yellowing leaf — possible overwatering", "Monstera deliciosa");
+    }
+  }
+
+  @Nested
+  @DisplayName("duplicate care-card cleanup (after addCareCard)")
+  class DuplicateCareCardCleanup {
+
+    private static final Long DUP_PLANT_ID = 10L;
+
+    private Identification scanWithPestCards(long id, String... titles) {
+      StringBuilder cards = new StringBuilder();
+      for (String title : titles) {
+        if (cards.length() > 0) cards.append(',');
+        cards
+            .append("{\"type\":\"PEST\",\"title\":\"")
+            .append(title)
+            .append("\",\"detail\":\"d\",\"urgency\":\"HIGH\"}");
+      }
+      return Identification.builder()
+          .id(id)
+          .userId(USER_ID)
+          .plantId(DUP_PLANT_ID)
+          .carePlan("{\"careCards\":[" + cards + "]}")
+          .build();
+    }
+
+    /** Adds "Chlorosis on leaves" to the newest scan, then runs the check over all scans. */
+    private void addCardWithDuplicateGroups(String groupsJson, Identification... olderScans) {
+      Identification newest = scanWithPestCards(3L);
+      when(identificationRepository.findById(3L)).thenReturn(Optional.of(newest));
+      List<Identification> all = new java.util.ArrayList<>();
+      all.add(newest);
+      all.addAll(List.of(olderScans));
+      when(identificationRepository.findByPlantIdOrderByCreatedAtDesc(
+              eq(DUP_PLANT_ID), any(Pageable.class)))
+          .thenReturn(new org.springframework.data.domain.PageImpl<>(all));
+      org.mockito.Mockito.lenient()
+          .when(deepSeekClient.detectDuplicateCareCards(any()))
+          .thenReturn("{\"duplicateGroups\":" + groupsJson + "}");
+
+      identificationService.addCareCard(
+          3L,
+          AddCareCardRequest.builder()
+              .regionLabel("Chlorosis on leaves")
+              .adviceText("Feed with iron chelate.")
+              .build(),
+          USER_ID);
+    }
+
+    private List<String> removedDiseaseNames() {
+      ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
+      verify(eventPublisher, org.mockito.Mockito.atLeast(0)).publishEvent(events.capture());
+      return events.getAllValues().stream()
+          .filter(DuplicateCareCardRemovedEvent.class::isInstance)
+          .map(e -> ((DuplicateCareCardRemovedEvent) e).getDiseaseName())
+          .toList();
+    }
+
+    @Test
+    @DisplayName("removes the older duplicate and names the REMOVED disease in the event")
+    void namesRemovedDisease() {
+      Identification older = scanWithPestCards(1L, "Leaf yellowing");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(older));
+
+      addCardWithDuplicateGroups("[[\"0\",\"1\"]]", older);
+
+      assertThat(older.getCarePlan()).doesNotContain("Leaf yellowing");
+      // The listener dismisses the treatment "tracking the now-removed disease" — naming the kept
+      // card would dismiss the treatment of a card the user still has.
+      assertThat(removedDiseaseNames()).containsExactly("Leaf yellowing");
+    }
+
+    @Test
+    @DisplayName("a hallucinated out-of-range index does not abort the remaining groups")
+    void outOfRangeIndexIsIgnored() {
+      Identification older = scanWithPestCards(1L, "Leaf yellowing");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(older));
+
+      addCardWithDuplicateGroups("[[\"5\",\"9\"],[\"0\",\"1\"]]", older);
+
+      assertThat(older.getCarePlan()).doesNotContain("Leaf yellowing");
+      assertThat(removedDiseaseNames()).containsExactly("Leaf yellowing");
+    }
+
+    @Test
+    @DisplayName("no event when the duplicate card could not actually be removed")
+    void noEventWithoutRemoval() {
+      Identification older = scanWithPestCards(1L, "Leaf yellowing");
+      when(identificationRepository.findById(1L)).thenReturn(Optional.empty());
+
+      addCardWithDuplicateGroups("[[\"0\",\"1\"]]", older);
+
+      assertThat(removedDiseaseNames()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("fewer than two PEST cards skips the AI check entirely")
+    void singleCardSkipsCheck() {
+      addCardWithDuplicateGroups("[]");
+
+      verify(deepSeekClient, never()).detectDuplicateCareCards(any());
+    }
+
+    @Test
+    @DisplayName("malformed AI output and AI failures leave every card in place")
+    void malformedOrFailingAiLeavesCards() {
+      Identification older = scanWithPestCards(1L, "Leaf yellowing");
+
+      addCardWithDuplicateGroups("\"not a list\"", older);
+      assertThat(older.getCarePlan()).contains("Leaf yellowing");
+
+      when(deepSeekClient.detectDuplicateCareCards(any()))
+          .thenThrow(new PlantPalException("AI down", 503));
+      identificationService.addCareCard(
+          3L,
+          AddCareCardRequest.builder().regionLabel("Another issue").adviceText("x").build(),
+          USER_ID);
+      assertThat(older.getCarePlan()).contains("Leaf yellowing");
+      assertThat(removedDiseaseNames()).isEmpty();
     }
   }
 
