@@ -31,6 +31,8 @@ public class TranslationClient {
       Preserve Markdown structure. Translate prose only. If text is already in the target language, keep it.
       Never convert measurement units or decimal separators. Preserve each numeric token exactly.
       """;
+  private static final String FENCE = "```";
+  private static final String FENCE_LANGUAGE = "json";
   private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,]\\d+)?");
   private static final Pattern MEASUREMENT =
       Pattern.compile(
@@ -120,7 +122,21 @@ public class TranslationClient {
             : anthropic.isAvailable()
                 ? anthropic.chat(prompt, input)
                 : ollama.chat(prompt + "\nInput:\n" + input);
-    return mapper.readTree(output.trim().replaceAll("^```(?:json)?\\s*|\\s*```$", ""));
+    return mapper.readTree(unfence(output));
+  }
+
+  /**
+   * Strips a leading ``` / ```json and a trailing ``` from a model reply. Plain string checks
+   * rather than the former regex, which backtracked quadratically on long whitespace runs.
+   */
+  static String unfence(String output) {
+    String text = output.strip();
+    if (text.startsWith(FENCE)) {
+      text = text.substring(FENCE.length());
+      if (text.startsWith(FENCE_LANGUAGE)) text = text.substring(FENCE_LANGUAGE.length());
+    }
+    if (text.endsWith(FENCE)) text = text.substring(0, text.length() - FENCE.length());
+    return text.strip();
   }
 
   Map<String, String> validate(List<String> texts, JsonNode translated) {
