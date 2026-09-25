@@ -82,14 +82,13 @@ jobs:
       # environment.prod.ts ships with empty vapidPublicKey/sentryDsn placeholders —
       # fill them from repository secrets before the production build bakes them in.
       # Empty/unset secrets leave the placeholders empty (features degrade gracefully).
-      # ATLAS_PUBLIC_URL / CLASSIC_PUBLIC_URL (repo variables) rewrite the localhost
-      # cross-app links when the atlas is deployed too; unset leaves them local-only.
+      # CLASSIC_PUBLIC_URL (repo variable) rewrites the atlas's localhost link back to
+      # the classic app when the atlas is deployed too; unset leaves it local-only.
       - name: Inject production runtime config
         working-directory: frontend
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          ATLAS_PUBLIC_URL: ${{ vars.ATLAS_PUBLIC_URL }}
           CLASSIC_PUBLIC_URL: ${{ vars.CLASSIC_PUBLIC_URL }}
         run: |
           sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" src/environments/environment.prod.ts
@@ -100,9 +99,6 @@ jobs:
           sed -i "s|vapidPublicKey: ''|vapidPublicKey: '${VAPID_PUBLIC_KEY}'|" projects/atlas/src/environments/environment.prod.ts
           # This build is the Vercel upload, the only host serving /_vercel/insights.
           sed -i "s|vercelAnalytics: false|vercelAnalytics: true|" src/environments/environment.prod.ts
-          if [ -n "$ATLAS_PUBLIC_URL" ]; then
-            sed -i "s|atlasUrl: 'https://localhost:8445'|atlasUrl: '${ATLAS_PUBLIC_URL}'|" src/environments/environment.prod.ts
-          fi
           if [ -n "$CLASSIC_PUBLIC_URL" ]; then
             sed -i "s|classicAppUrl: 'https://localhost:8444'|classicAppUrl: '${CLASSIC_PUBLIC_URL}'|" projects/atlas/src/environments/environment.prod.ts
           fi
