@@ -36,7 +36,7 @@
     width: 20px;
     height: 20px;
     margin-top: 2px;
-    &.ok      { color: #4caf50; }
+    &.ok      { color: var(--color-secondary); }
     &.warn    { color: #ff9800; }
     &.fail    { color: #f44336; }
     &.neutral { color: #9e9e9e; }
@@ -95,7 +95,7 @@
 .level-fill {
   height: 100%;
   width: 0;
-  background: #4caf50;
+  background: var(--color-secondary);
   border-radius: 9px;
   transition: width 0.06s ease-out, background 0.1s;
   &.medium { background: #8bc34a; }
@@ -115,14 +115,14 @@
 .panel-result {
   font-size: 0.85rem;
   min-height: 20px;
-  .result-ok   { color: #4caf50; font-weight: 500; }
+  .result-ok   { color: var(--color-secondary); font-weight: 500; }
   .result-warn { color: #ff9800; }
 }
 
 .status-row {
   margin: 4px 0 8px;
   min-height: 20px;
-  .status-label { font-size: 0.9rem; color: #666; &.listening { color: #4caf50; font-weight: 500; } }
+  .status-label { font-size: 0.9rem; color: #666; &.listening { color: var(--color-secondary); font-weight: 500; } }
 }
 
 .transcript-box {

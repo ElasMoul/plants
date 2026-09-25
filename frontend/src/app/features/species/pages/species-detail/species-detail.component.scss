@@ -226,7 +226,7 @@
   font-weight: 600;
   font-style: normal;
 
-  &.iucn-lc { background: #e8f5e9; color: #2e7d32; }
+  &.iucn-lc { background: var(--color-success-soft); color: var(--color-primary-light); }
   &.iucn-nt { background: #fff8e1; color: #f57f17; }
   &.iucn-vu { background: #fff3e0; color: #e65100; }
   &.iucn-en { background: #fbe9e7; color: #c62828; }

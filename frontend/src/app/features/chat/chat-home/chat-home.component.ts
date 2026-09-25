@@ -39,7 +39,7 @@ export class ChatHomeComponent implements OnInit, OnDestroy {
     {
       id: 1,
       sender: 'ai',
-      text: translate("Hi! I'm your PlantPal AI assistant. Ask me anything about your garden — watering, light, pests, or diagnosing issues."),
+      text: translate("Hi! I'm your Planotell AI assistant. Ask me anything about your garden — watering, light, pests, or diagnosing issues."),
     },
   ];
 

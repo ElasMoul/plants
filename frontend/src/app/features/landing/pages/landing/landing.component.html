@@ -18,18 +18,16 @@
     </div>
 
     <div class="hero-content fade-up">
-      <span class="eyebrow">
-        <mat-icon>local_florist</mat-icon>
-        {{ 'Your garden, understood' | t }}
-      </span>
+      <img class="hero-mark" src="assets/images/planotell-mark.svg" alt="" width="112" height="112">
+      <span class="eyebrow">{{ 'Your plants are telling you something.' | t }}</span>
       <h1 class="hero-title">{{ 'Plant care that actually knows your plants' | t }}</h1>
       <p class="hero-subline">
-        {{ 'Snap a photo and PlantPal identifies the species, checks its health, and builds a personalised care plan — with reminders so nothing gets missed.' | t }}
+        {{ 'Snap a photo and Planotell identifies the species, checks its health, and builds a personalised care plan — with reminders so nothing gets missed.' | t }}
       </p>
       <div class="hero-actions">
         <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
           {{ 'Get started free' | t }}
-          <mat-icon class="directional-icon">arrow_forward</mat-icon>
+          <mat-icon class="directional-icon" iconPositionEnd>arrow_forward</mat-icon>
         </a>
         <a mat-stroked-button class="btn-pill hero-cta-secondary" routerLink="/login">{{ 'Sign in' | t }}</a>
       </div>
@@ -87,24 +85,24 @@
   <!-- ── Footer CTA ────────────────────────────────────────── -->
   <section class="footer-cta">
     <div class="footer-cta-inner fade-up">
-      <mat-icon class="footer-cta-icon">eco</mat-icon>
+      <img class="footer-cta-mark" src="assets/images/planotell-mark.svg" alt="" width="64" height="64">
       <h2 class="footer-cta-title">{{ 'Ready to grow with confidence?' | t }}</h2>
       <p class="footer-cta-subtitle">
-        {{ 'Join PlantPal and give every plant in your home the care it actually needs.' | t }}
+        {{ 'Join Planotell and give every plant in your home the care it actually needs.' | t }}
       </p>
       <a mat-raised-button color="primary" class="btn-pill hero-cta" routerLink="/register">
         {{ 'Get started free' | t }}
-        <mat-icon class="directional-icon">arrow_forward</mat-icon>
+        <mat-icon class="directional-icon" iconPositionEnd>arrow_forward</mat-icon>
       </a>
     </div>
   </section>
 
   <footer class="landing-footer">
     <span class="brand">
-      <mat-icon>local_florist</mat-icon>
-      {{ 'PlantPal' | t }}
+      <img class="brand-mark" src="assets/images/planotell-mark.svg" alt="" width="26" height="26">
+      {{ 'Planotell' | t }}
     </span>
-    <span class="copyright">{{ '© {0} PlantPal. Grow smarter.' | t : [(currentYear)] }}</span>
+    <span class="copyright">{{ '© {0} Planotell. Grow smarter.' | t : [(currentYear)] }}</span>
   </footer>
 
 </div>

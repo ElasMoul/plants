@@ -10,7 +10,7 @@
   border-radius: 10px;
   text-transform: uppercase;
 
-  &.confidence-high   { background: #e8f5e9; color: #2e7d32; }
+  &.confidence-high   { background: var(--color-success-soft); color: var(--color-primary-light); }
   &.confidence-medium { background: #fff8e1; color: #f57f17; }
   &.confidence-low    { background: #ffebee; color: #c62828; }
 }

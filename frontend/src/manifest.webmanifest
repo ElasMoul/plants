@@ -1,12 +1,12 @@
 {
-  "name": "PlantPal",
-  "short_name": "PlantPal",
-  "theme_color": "#4caf50",
-  "background_color": "#ffffff",
+  "name": "Planotell",
+  "short_name": "Planotell",
+  "theme_color": "#14532D",
+  "background_color": "#FAFCF8",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",
-  "description": "AI-powered plant care assistant",
+  "description": "Your plants are telling you something.",
   "icons": [
     {
       "src": "https://placehold.co/72x72",
