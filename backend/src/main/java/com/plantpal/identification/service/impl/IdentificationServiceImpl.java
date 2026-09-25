@@ -1703,8 +1703,9 @@ public class IdentificationServiceImpl implements IdentificationService {
           + "\"healthStatus\":\"UNKNOWN\",\"healthNotes\":null}";
     }
     PlantNetResult top = response.results().get(0);
-    String species =
-        top.species() != null ? top.species().scientificNameWithoutAuthor() : "Unknown";
+    // null, not "Unknown": a placeholder name would pass resolveSpecies()' blank-name guard and
+    // could be saved as a shared Species row.
+    String species = top.species() != null ? top.species().scientificNameWithoutAuthor() : null;
     String commonName = "Unknown Plant";
     if (top.species() != null
         && top.species().commonNames() != null

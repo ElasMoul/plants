@@ -469,6 +469,179 @@ class IdentificationServiceImplTest {
   }
 
   @Nested
+  @DisplayName("PlantNet candidates and species match")
+  class PlantNetCandidates {
+
+    private static final Long SCAN_ID = 60L;
+    private static final Long MONSTERA_SPECIES_ID = 8L;
+
+    private final com.plantpal.identification.dto.plantnet.PlantNetResult monstera =
+        new com.plantpal.identification.dto.plantnet.PlantNetResult(
+            0.92,
+            new com.plantpal.identification.dto.plantnet.PlantNetSpecies(
+                "Monstera deliciosa",
+                List.of("Swiss cheese plant"),
+                new com.plantpal.identification.dto.plantnet.PlantNetTaxon("Monstera"),
+                new com.plantpal.identification.dto.plantnet.PlantNetTaxon("Araceae")),
+            new com.plantpal.identification.dto.plantnet.PlantNetGbifRef("2868241"),
+            new com.plantpal.identification.dto.plantnet.PlantNetPowoRef("87270-1"),
+            new com.plantpal.identification.dto.plantnet.PlantNetIucnRef("x", "LC"),
+            List.of(
+                new com.plantpal.identification.dto.plantnet.PlantNetReferenceImage(
+                    new com.plantpal.identification.dto.plantnet.PlantNetImageUrls(
+                        "s.jpg", "m.jpg", null, null),
+                    "Ann",
+                    "cc-by",
+                    "Ann / PlantNet")));
+
+    private Identification pendingScan() {
+      return Identification.builder()
+          .id(1L)
+          .userId(USER_ID)
+          .status(IdentificationStatus.PENDING)
+          .identificationStatus(IdentificationStageStatus.PENDING)
+          .candidateStatus(IdentificationStageStatus.PENDING)
+          .build();
+    }
+
+    @Test
+    @DisplayName("always-on enrichment stores mapped candidates, taxonomy and quota")
+    void enrichmentStoresCandidates() throws Exception {
+      org.springframework.test.util.ReflectionTestUtils.setField(
+          identificationService, "plantNetAlwaysOn", true);
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(gitHubModelsClient.identifyPlant(any(), any(), any()))
+          .thenReturn(validIdentificationJson());
+      when(plantNetClient.identify(any(), any(), any(), any()))
+          .thenReturn(
+              new com.plantpal.identification.dto.plantnet.PlantNetResponse(
+                  List.of(monstera), "Monstera deliciosa", "weurope", null, "2025-01", 321));
+      Identification scan = pendingScan();
+      when(identificationRepository.save(any())).thenReturn(scan);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(scan));
+
+      identificationService.processIdentification(
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID));
+
+      assertThat(scan.getCandidateStatus()).isEqualTo(IdentificationStageStatus.COMPLETED);
+      assertThat(scan.getPlantnetBestMatch()).isEqualTo("Monstera deliciosa");
+      assertThat(scan.getPlantnetSwitchToProject()).isEqualTo("weurope");
+      assertThat(scan.getPlantnetQuotaRemaining()).isEqualTo(321);
+      assertThat(scan.getPlantnetCandidates())
+          .contains("\"genus\":\"Monstera\"")
+          .contains("\"family\":\"Araceae\"")
+          .contains("\"gbifId\":\"2868241\"")
+          .contains("\"iucnCategory\":\"LC\"")
+          .contains("\"smallUrl\":\"s.jpg\"");
+    }
+
+    @Test
+    @DisplayName("a PLANTNET scan whose top result has no species stores no scientific name")
+    void plantNetTopResultWithoutSpecies() throws Exception {
+      when(userRepository.findById(USER_ID))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.user.entity.User.builder()
+                      .id(USER_ID)
+                      .visionModelPreference(
+                          com.plantpal.user.entity.VisionModelPreference.PLANTNET)
+                      .build()));
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(fileStorageService.loadPhotoBytes(any())).thenReturn(new byte[] {1, 2, 3});
+      when(plantNetClient.identify(any(), any(), any(), any()))
+          .thenReturn(
+              new com.plantpal.identification.dto.plantnet.PlantNetResponse(
+                  List.of(
+                      new com.plantpal.identification.dto.plantnet.PlantNetResult(
+                          0.5, null, null, null, null, null)),
+                  null,
+                  null,
+                  null,
+                  null,
+                  10));
+      Identification scan = pendingScan();
+      when(identificationRepository.save(any())).thenReturn(scan);
+      when(identificationRepository.findById(1L)).thenReturn(Optional.of(scan));
+
+      identificationService.processIdentification(
+          submitAndCaptureEvent(List.of(validImage()), null, null, USER_ID));
+
+      // "Unknown" would pass resolveSpecies' blank-name guard and create a shared Species row.
+      assertThat(scan.getScientificName()).isNull();
+      assertThat(scan.getCommonName()).isEqualTo("Unknown Plant");
+    }
+
+    private Identification scanWithCandidates(String candidatesJson) {
+      return Identification.builder()
+          .id(SCAN_ID)
+          .userId(USER_ID)
+          .scientificName("Monstera deliciosa")
+          .plantnetCandidates(candidatesJson)
+          .plantnetBestMatch("Monstera deliciosa")
+          .plantnetVersion("2025-01")
+          .build();
+    }
+
+    @Test
+    @DisplayName("species match from candidates: auto-confirmable only with a clear, confident top")
+    void autoConfirmable() {
+      org.springframework.test.util.ReflectionTestUtils.setField(
+          identificationService, "autoConfirmScore", 0.8);
+      String clearWinner =
+          "[{\"score\":0.92,\"scientificName\":\"Monstera deliciosa\","
+              + "\"commonNames\":[\"Swiss cheese plant\"]},"
+              + "{\"score\":0.05,\"scientificName\":\"Monstera adansonii\"}]";
+      String closeRunnerUp =
+          "[{\"score\":0.85,\"scientificName\":\"Monstera deliciosa\"},"
+              + "{\"score\":0.80,\"scientificName\":\"Monstera adansonii\"}]";
+      String lowScore = "[{\"score\":0.5,\"scientificName\":\"Monstera deliciosa\"}]";
+      when(speciesRepository.findByScientificName("Monstera deliciosa"))
+          .thenReturn(
+              Optional.of(
+                  com.plantpal.species.entity.Species.builder()
+                      .id(MONSTERA_SPECIES_ID)
+                      .scientificName("Monstera deliciosa")
+                      .build()));
+
+      when(identificationRepository.findById(SCAN_ID))
+          .thenReturn(Optional.of(scanWithCandidates(clearWinner)));
+      SpeciesMatchDto clear = identificationService.getSpeciesMatch(SCAN_ID, USER_ID);
+      assertThat(clear.isAutoConfirmable()).isTrue();
+      assertThat(clear.isMatched()).isTrue();
+      assertThat(clear.getSpeciesId()).isEqualTo(MONSTERA_SPECIES_ID);
+      assertThat(clear.getCommonName()).isEqualTo("Swiss cheese plant");
+      assertThat(clear.getCandidates()).hasSize(2);
+      assertThat(clear.getPlantNetVersion()).isEqualTo("2025-01");
+
+      when(identificationRepository.findById(SCAN_ID))
+          .thenReturn(Optional.of(scanWithCandidates(closeRunnerUp)));
+      assertThat(identificationService.getSpeciesMatch(SCAN_ID, USER_ID).isAutoConfirmable())
+          .isFalse();
+
+      when(identificationRepository.findById(SCAN_ID))
+          .thenReturn(Optional.of(scanWithCandidates(lowScore)));
+      assertThat(identificationService.getSpeciesMatch(SCAN_ID, USER_ID).isAutoConfirmable())
+          .isFalse();
+    }
+
+    @Test
+    @DisplayName("malformed stored candidates fall back to the plain scientific-name match")
+    void malformedCandidatesFallBack() {
+      when(identificationRepository.findById(SCAN_ID))
+          .thenReturn(Optional.of(scanWithCandidates("{not json")));
+      when(speciesRepository.findByScientificName("Monstera deliciosa"))
+          .thenReturn(Optional.empty());
+
+      SpeciesMatchDto match = identificationService.getSpeciesMatch(SCAN_ID, USER_ID);
+
+      assertThat(match.isMatched()).isFalse();
+      assertThat(match.getScientificName()).isEqualTo("Monstera deliciosa");
+      assertThat(match.getCandidates()).isNullOrEmpty();
+    }
+  }
+
+  @Nested
   @DisplayName("AI JSON fence recovery — extractJson()")
   class AiJsonFenceRecovery {
 
