@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject, interval } from 'rxjs';
+import { Subject, interval, of } from 'rxjs';
 import { filter, map, switchMap, take, takeUntil, takeWhile, timeout } from 'rxjs/operators';
 import { AiErrorService } from '../../../../core/services/ai-error.service';
 import { TreatmentService } from '../../../plant/services/treatment.service';
@@ -17,8 +17,11 @@ type PageState = 'loading' | 'ready' | 'error';
 type Section = 'overview' | 'plan';
 
 // Same convention as IdentificationService.pollUntilComplete() — 3s interval, bounded timeout.
+// The bound must outlast the backend: after a 429 it waits up to 65s
+// (TreatmentServiceImpl.MAX_DISEASE_DESCRIPTION_RETRY_WAIT_SECONDS) and then regenerates, so a 30s
+// bound gave up while it was still working and left a spinner with no retry.
 const DESCRIPTION_POLL_INTERVAL_MS = 3000;
-const DESCRIPTION_POLL_TIMEOUT_MS = 30000;
+const DESCRIPTION_POLL_TIMEOUT_MS = 120000;
 
 @Component({
     selector: 'app-treatment-detail',
@@ -127,23 +130,30 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           this.plan = res.data;
-          // The backend has no automatic sync between TreatmentPlan completion and the
-          // Treatment's own status — flip it here once every step is done.
           if (this.plan.status === 'COMPLETED' && this.treatment && this.treatment.status !== 'COMPLETED') {
-            this.completeTreatment();
+            this.syncCompletedTreatment(this.treatment.id);
           }
         },
       });
   }
 
-  private completeTreatment(): void {
-    if (!this.treatment) return;
-    this.treatmentService.completeTreatment(this.treatment.id)
-      .pipe(takeUntil(this.destroy$))
+  // Completing the last step already completes the Treatment server-side
+  // (TreatmentPlanCompletedEvent → syncFromTreatmentPlanCompletion, same request), so re-read it;
+  // PATCHing it again would 400 ("Only an IN_PROGRESS treatment can be completed") and leave this
+  // page showing a stale IN_PROGRESS. Complete it here only if the backend has not.
+  private syncCompletedTreatment(treatmentId: number): void {
+    this.treatmentService.getTreatment(treatmentId)
+      .pipe(
+        switchMap(res => res.data.status === 'IN_PROGRESS'
+          ? this.treatmentService.completeTreatment(treatmentId)
+          : of(res)),
+        takeUntil(this.destroy$),
+      )
       .subscribe({
         next: res => {
           this.treatment = res.data;
         },
+        error: () => { /* keep the current view; a reload shows the server state */ },
       });
   }
 
@@ -195,7 +205,8 @@ export class TreatmentDetailComponent implements OnInit, OnDestroy {
       switchMap(() => this.treatmentService.getTreatment(treatmentId)),
       map(res => res.data),
       takeWhile(t => !t.descriptionStatus || t.descriptionStatus === 'PENDING', true),
-      filter(t => t.descriptionStatus !== 'PENDING'),
+      // Only a settled status (READY/FAILED) ends the wait — a missing one is not "done".
+      filter(t => !!t.descriptionStatus && t.descriptionStatus !== 'PENDING'),
       take(1),
       timeout(DESCRIPTION_POLL_TIMEOUT_MS),
       takeUntil(this.destroy$),

@@ -54,9 +54,14 @@ export class TreatmentStepListComponent {
     this.router.navigate(['/plans', step.treatmentPlanId, 'steps', step.id], extras);
   }
 
+  // Calendar days between local midnights (same rule as CareCalendarComponent), not rounded
+  // elapsed hours — 11 pm → 8 am tomorrow is "Due in 1 day", not "Due today".
   dueLabel(step: ReminderResponse): string {
-    const diffMs = new Date(step.nextDueAt).getTime() - Date.now();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const due = new Date(step.nextDueAt);
+    due.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < 0) {
       const overdueDays = Math.abs(diffDays);
       return translate("Overdue by {0} day{1}", [overdueDays, overdueDays !== 1 ? 's' : '']);
