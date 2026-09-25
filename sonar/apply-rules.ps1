@@ -36,9 +36,14 @@ foreach ($lang in $config.profiles.PSObject.Properties.Name) {
         if ($r.params) {
             $body.params = ($r.params.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ';'
         }
-        Invoke-Sonar Post '/api/qualityprofiles/activate_rule' $body | Out-Null
+        # Template rules (e.g. java:S3546) and removed rules return 400 — report and continue.
+        try {
+            Invoke-Sonar Post '/api/qualityprofiles/activate_rule' $body | Out-Null
+        } catch {
+            Write-Warning "[$lang] could not activate $($r.rule): $($_.ErrorDetails.Message)"
+        }
     }
-    Write-Host "[$lang] $($spec.activate.Count) extra rules active on top of '$($config.parent)'"
+    Write-Host "[$lang] $($spec.activate.Count) extra rules processed on top of '$($config.parent)'"
 
     foreach ($project in $spec.projects) {
         Invoke-Sonar Post '/api/qualityprofiles/add_project' @{

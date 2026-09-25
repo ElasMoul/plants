@@ -20,7 +20,6 @@
         { "rule": "java:S3740",  "why": "No raw generic types" },
         { "rule": "java:S1449",  "why": "String case/format ops pass an explicit Locale (app is multilingual)" },
         { "rule": "java:S1943",  "why": "No reliance on the platform default charset" },
-        { "rule": "java:S3546",  "why": "Custom closeable resources are closed" },
         { "rule": "java:S2444",  "why": "Concurrency: lazy static init is synchronized" },
         { "rule": "java:S2693",  "why": "Concurrency: no threads started in constructors" },
         { "rule": "java:S1147",  "why": "Never call System.exit" },
