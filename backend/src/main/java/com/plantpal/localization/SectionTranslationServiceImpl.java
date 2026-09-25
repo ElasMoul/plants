@@ -152,6 +152,10 @@ public class SectionTranslationServiceImpl implements SectionTranslationService 
     String source =
         jdbc.queryForObject(
             "SELECT source_text FROM plant_text_sections WHERE id=?", String.class, key);
+    if (source == null) {
+      // source_text is NOT NULL in the schema; fail with context rather than an NPE in hash().
+      throw new IllegalStateException("Translation section has no source text: " + key);
+    }
     var job = translations.prepare(decodeList(source), userId, false, target);
     if ("FAILED".equals(job.status())) job = translations.retry(job.id(), userId);
     link(key, target, job.id(), hash(source));

@@ -91,8 +91,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -126,10 +124,11 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   // Some providers (and the ai-gateway passthrough path, which bypasses each client's own
   // stripThinkTags()) ignore response_format and wrap JSON in a markdown code fence, or precede it
-  // with prose. Matches a ```json / ``` / ~~~ fenced block anywhere in the string (see
-  // extractJson()).
-  private static final Pattern FENCED_JSON =
-      Pattern.compile("(?:```|~~~)(?:json)?\\s*(.*?)\\s*(?:```|~~~)", Pattern.DOTALL);
+  // with prose. extractJson() looks for a ```json / ``` / ~~~ fenced block anywhere in the string —
+  // with indexOf, not a regex: the former lazy regex backtracked quadratically on an unclosed fence
+  // followed by whitespace (a truncated reply), e.g. ~19s for 40k characters.
+  private static final List<String> FENCES = List.of("```", "~~~");
+  private static final String FENCE_LANGUAGE = "json";
 
   // ai-gateway's AnthropicAdapter defaults max_tokens to 2048 when the request context carries no
   // "maxTokens" entry (ctx.containsKey("maxTokens") ? ... : 2048) — half the budget the direct
@@ -1220,9 +1219,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       return candidate;
     }
 
-    Matcher fenceMatch = FENCED_JSON.matcher(candidate);
-    if (fenceMatch.find()) {
-      candidate = fenceMatch.group(1).strip();
+    Optional<String> fenced = fencedBlock(candidate);
+    if (fenced.isPresent()) {
+      candidate = fenced.get();
     }
     if (candidate.startsWith("{") || candidate.startsWith("[")) {
       return candidate;
@@ -1234,6 +1233,31 @@ public class IdentificationServiceImpl implements IdentificationService {
       return candidate.substring(firstBrace, lastBrace + 1);
     }
     return candidate;
+  }
+
+  /** Body of the first closed ```/~~~ fence (optional "json" tag), found in linear time. */
+  static Optional<String> fencedBlock(String text) {
+    int open = firstFence(text, 0);
+    if (open < 0) {
+      return Optional.empty();
+    }
+    int bodyStart = open + FENCES.get(0).length();
+    if (text.startsWith(FENCE_LANGUAGE, bodyStart)) {
+      bodyStart += FENCE_LANGUAGE.length();
+    }
+    int close = firstFence(text, bodyStart);
+    return close < 0 ? Optional.empty() : Optional.of(text.substring(bodyStart, close).strip());
+  }
+
+  private static int firstFence(String text, int from) {
+    int first = -1;
+    for (String fence : FENCES) {
+      int at = text.indexOf(fence, from);
+      if (at >= 0 && (first < 0 || at < first)) {
+        first = at;
+      }
+    }
+    return first;
   }
 
   private DeepSeekPlantResult parseIdentificationResult(String raw) {
