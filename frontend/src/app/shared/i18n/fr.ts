@@ -29,7 +29,6 @@ export const FR: Readonly<Record<string, string>> = {
   "Password": "Mot de passe",
   "Password is required": "Le mot de passe est obligatoire",
   "At least 8 characters": "Au moins 8 caractères",
-  "Continue into the Atlas — the botanical network view": "Continuer dans Atlas — la vue du réseau botanique",
   "Don't have an account?": "Vous n’avez pas de compte ?",
   "Create one": "Créer un compte",
   "Create your account": "Créez votre compte",

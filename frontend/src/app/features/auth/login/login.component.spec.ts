@@ -34,7 +34,7 @@ describe('LoginComponent session monitoring', () => {
       { open: jest.fn() } as unknown as MatSnackBar,
       sessionMonitor,
     );
-    component.form.setValue({ email: 'gardener@example.com', password: 'correct-password', openAtlas: false });
+    component.form.setValue({ email: 'gardener@example.com', password: 'correct-password' });
     return { component, router, sessionMonitor };
   }
 
@@ -49,9 +49,8 @@ describe('LoginComponent session monitoring', () => {
     expect(sessionMonitor.start).toHaveBeenCalledWith('/garden');
   }));
 
-  it('sends administrators to the console, even with an Atlas or garden destination', fakeAsync(() => {
+  it('sends administrators to the console, even with a garden destination', fakeAsync(() => {
     const {component,router,sessionMonitor}=buildComponent('/garden/42', 'ADMIN');
-    component.form.patchValue({openAtlas:true});
     component.submit(); tick();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
     expect(sessionMonitor.start).toHaveBeenCalledWith('/admin');
