@@ -517,3 +517,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-25_1950_archive-this-demande-and-tell-factory-it
+
+## Session 28 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0317_fulfill-demand-launcher-20260926-plantpa.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand launcher-20260926-plantpal-frontend-atlas-port-8182 (capability: plantpal's frontend-atlas stops publishing 0.0.0.0:8182 -- it squats tutor's allocated port and breaks loopback-only publishing (D040), from: launcher, target: plantpal). Acceptance criteria: - frontend-atlas in plantpal... -- status: done.
+- Next step: Open PR bugfix/PP-110-atlas-loopback-port -> dev; launcher confirms tutor on 8182
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: needed: registry should record plantpal-frontend-atlas at 8183 (+8445)
+- Session: 2026-09-27_0317_fulfill-demand-launcher-20260926-plantpa
