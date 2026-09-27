@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform/contracts/delivery/delivery.producer-result",
+  "title": "DeliveryProducerResult",
+  "description": "A normalized result that an evidence PRODUCER (agent-runner, ci-runner, or the app's dev-deploy mechanism) returns for one operation Factory correlates to a delivery. Producers may expose this directly or Factory may derive it from their existing native record (`runner.run-record`, the `ci.run` state event / `BuildResult`, an app deployment receipt); either way `nativeRef` must let Factory re-fetch the native record and verify it. Factory turns it into `delivery.evidence` with `basis: machine-observation`. It is never acceptance: a successful run, exit 0 or a coordinator approval does not resolve anything. See `docs/task-delivery.md` §Producers for each producer's mapping and the gaps.",
+  "type": "object",
+  "required": ["producer", "operationId", "correlation", "repository", "branch", "revision", "outcome", "exitCode", "observedAt", "nativeRef", "artifactRef", "environment", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "producer": { "type": "string", "enum": ["agent-runner", "ci-runner", "app-deploy"] },
+    "operationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The producer's own stable id for the operation (runner run id, `<runId>/<jobId>`, deployment id). Lookup by this id after a restart must return the same result or a later settled one."
+    },
+    "correlation": { "$ref": "#/$defs/correlation" },
+    "repository": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$" },
+    "branch": { "type": ["string", "null"] },
+    "revision": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Full SHA the operation actually ran against, as observed by the producer. `null` when it could not be determined; such a result can never pass a revision gate."
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["passed", "failed", "unknown", "unavailable", "pending"],
+      "description": "`pending`: still running; poll again. `unknown`: finished or lost without a determinable result. `unavailable`: producer could not be reached or has no such capability."
+    },
+    "exitCode": { "type": ["integer", "null"], "description": "Actual exit status; `null` when not reported (never defaulted to 0)." },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "nativeRef": { "type": "string", "minLength": 1, "description": "Re-fetchable native record reference, e.g. `agent-runner:runs/<id>`. For `app-deploy` it is `<repository>:deployments/<deploymentId>` and resolves to a `delivery.deployment-receipt` (v0.36.0), which carries the rollback identity; see `docs/task-delivery.md` §App-deploy." },
+    "artifactRef": { "type": ["string", "null"] },
+    "environment": {
+      "oneOf": [{ "$ref": "delivery.evidence.json#/$defs/environment" }, { "type": "null" }],
+      "description": "For `app-deploy`: the running deployment's reported identity and revision. `null` for other producers."
+    },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/check" },
+      "description": "Individual commands/jobs/smoke checks inside the operation."
+    }
+  },
+  "$defs": {
+    "correlation": {
+      "title": "DeliveryProducerCorrelation",
+      "type": "object",
+      "required": ["deliveryId", "operationKey"],
+      "additionalProperties": false,
+      "properties": {
+        "deliveryId": { "type": ["string", "null"], "format": "uuid" },
+        "operationKey": {
+          "type": ["string", "null"],
+          "description": "Factory's reserved key for the request that started this operation (e.g. the runner dispatch). `null` when the producer cannot echo it; Factory then correlates by repository+revision+operationId only and must not assume a match it cannot verify."
+        }
+      }
+    },
+    "check": {
+      "title": "DeliveryProducerCheck",
+      "type": "object",
+      "required": ["name", "outcome", "exitCode"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "criterionId": { "type": ["string", "null"] },
+        "outcome": { "type": "string", "enum": ["passed", "failed", "unknown", "unavailable", "skipped"] },
+        "exitCode": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}
