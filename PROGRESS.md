@@ -517,3 +517,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-25_1950_archive-this-demande-and-tell-factory-it
+
+## Session 29 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0326_raise-local-forge-sonar-gate-demand.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise local-forge sonar-gate demand -- status: partial.
+- Next step: Owner decides: GitHub ruleset + self-hosted runner for sonar-gate, or keep the forge demand
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand drafted, held pending owner re-decision
+- Session: 2026-09-27_0326_raise-local-forge-sonar-gate-demand
