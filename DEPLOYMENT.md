@@ -109,6 +109,21 @@ All from `/opt/plantpal` as `deploy`:
    `STORAGE_TYPE=cloudinary` + `CLOUDINARY_URL=<that value>` in the VPS `.env`.
    Same `/photos/{uuid}.{ext}` URL contract and Redis cache as local mode.
 
+## Dev delivery — Planotell dev candidate (D113)
+
+A dev-only environment, separate from both production and the local stack below.
+`tools/dev-delivery/dev_delivery.py deploy` builds a revision **already merged into
+`origin/dev`** whose required checks passed, runs it as compose project
+`plantpal-devdelivery` (`deploy/dev-delivery/`, published on `127.0.0.1:8184` only,
+own volumes, generated dev-only secrets, no Kafka) and writes a receipt
+(`.dev-delivery/receipts/`). `lookup <id>` returns a contracts v0.31.0
+`delivery.producer-result`; `rollback` redeploys the previous passed deployment's
+images. The running backend reports its revision at `GET /actuator/info`.
+It never touches `main`, `deploy/vps/` or production secrets. The hostname
+`planotell.platform.localhost` is routed by `runtime`/`launcher`, not here, and is
+only reported as verified when a check through it observes the deployed revision.
+Full procedure, checks and remaining prerequisites: `docs/dev-delivery.md`.
+
 ## Local (Docker Compose)
 
 `docker-compose.yml` at repo root brings up the full stack: Postgres, Redis,
@@ -253,7 +268,9 @@ path in `backend/Dockerfile`, the `additional_contexts` path in
 ## Health check
 
 `GET /actuator/health` — Spring Boot Actuator, public (`SecurityConfig` permits
-it unauthenticated). Exposed endpoints: `health,info,metrics`
+it unauthenticated). `GET /actuator/info` is public too and reports the running
+deployment identity (`deployment.revision` etc., `null` when not stamped — production
+does not stamp it today). Exposed endpoints: `health,info,metrics`
 (`application.yml`).
 
 ## Security posture

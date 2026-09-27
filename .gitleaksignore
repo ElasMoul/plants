@@ -2,3 +2,15 @@
 # d073711 checkpoint. HEAD constructs the value from segments; retain this
 # exact historical fingerprint so new-commit scans do not mistake it for a key.
 d0737114e1fbc386a5aad158e5327559c3254c36:frontend/e2e/journeys/session-monitor-resumption.spec.ts:generic-api-key:18
+
+# D113 dev-delivery evidence review copies (commit 4fcc50c). The flagged value is
+# the deploy tool's caller-chosen idempotency label, "plantpal-d113-verify-20260927"
+# and its "-prev" sibling -- a run name, not a credential. The generic-api-key rule
+# matches the "operationKey" field name plus the label's entropy. These are exact
+# historical fingerprints: they suppress those four lines in that one commit and
+# cannot mask any other value, since a new commit gets a new fingerprint. The
+# authoritative receipts in .dev-delivery/receipts/ are gitignored and unscanned.
+4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927103855-e3bcd1f889de-receipt.json:generic-api-key:14
+4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927103855-e3bcd1f889de-producer-result.json:generic-api-key:6
+4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927104017-35e82764a24f-receipt.json:generic-api-key:14
+4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927104017-35e82764a24f-producer-result.json:generic-api-key:6

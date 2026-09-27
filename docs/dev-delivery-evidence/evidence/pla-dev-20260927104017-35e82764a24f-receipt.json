@@ -1,0 +1,155 @@
+{
+  "schema": "plantpal.dev-deployment-receipt/1",
+  "kind": "deploy",
+  "deploymentId": "pla-dev-20260927104017-35e82764a24f",
+  "repository": "plantpal",
+  "branch": "dev",
+  "revision": "35e82764a24feaf147e64120e88743509b5190a5",
+  "revisionRole": "merged",
+  "environment": "dev",
+  "composeProject": "plantpal-devdelivery",
+  "port": 8184,
+  "correlation": {
+    "deliveryId": null,
+    "operationKey": "plantpal-d113-verify-20260927-prev"
+  },
+  "result": "passed",
+  "exitCode": 0,
+  "startedAt": "2026-09-27T10:40:17+00:00",
+  "finishedAt": "2026-09-27T10:40:34+00:00",
+  "observedAt": "2026-09-27T10:40:34+00:00",
+  "imageDigests": {
+    "backend": "sha256:e38864a5e66adeca97956708697e67f0489bb5b0fcf0fba6a8325bbdc00a1621",
+    "frontend": "sha256:e77358400899162376183be87d5b6fee76e107f6f72366c294c15d31f865d33a"
+  },
+  "digestKind": "local docker image id (sha256 of image config; no registry push)",
+  "preDeployChecks": [
+    {
+      "name": "ci:Backend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Frontend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Detect secrets",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "quality:sonar-gate",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null,
+      "prHead": "877f8da463a34d6cd21efc23b29ab086a6ede9fd"
+    }
+  ],
+  "checks": [
+    {
+      "name": "ci:Backend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Frontend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Detect secrets",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "quality:sonar-gate",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null,
+      "prHead": "877f8da463a34d6cd21efc23b29ab086a6ede9fd"
+    },
+    {
+      "name": "identity:app",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:revision",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:deployment",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:environment",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "smoke:frontend-index",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null,
+      "detail": "GET / -> 200 (expected 200, contains '<app-root')"
+    },
+    {
+      "name": "smoke:backend-health",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null,
+      "detail": "GET /actuator/health -> 200 (expected 200, contains '\"UP\"')"
+    },
+    {
+      "name": "smoke:api-auth-guard",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null,
+      "detail": "GET /api/v1/plants -> 401 (expected 401)"
+    },
+    {
+      "name": "criterion:AC3-info",
+      "criterionId": "AC3-info",
+      "outcome": "passed",
+      "exitCode": null,
+      "detail": "GET /actuator/info -> 200 (expected 200, contains 'appIdentity')"
+    },
+    {
+      "name": "route:planotell",
+      "criterionId": null,
+      "outcome": "unavailable",
+      "exitCode": null,
+      "detail": "http://planotell.platform.localhost/actuator/info not reachable or not plantpal"
+    }
+  ],
+  "observed": {
+    "appIdentity": "plantpal",
+    "revision": "35e82764a24feaf147e64120e88743509b5190a5",
+    "deploymentId": "pla-dev-20260927104017-35e82764a24f",
+    "environment": "dev"
+  },
+  "testUrl": "http://127.0.0.1:8184",
+  "rollback": {
+    "deploymentId": "pla-dev-20260927103855-e3bcd1f889de",
+    "revision": "e3bcd1f889de3e06caa191e1e3428373c873e2f6",
+    "imageDigests": {
+      "backend": "sha256:b3cc14520a9082efeb76511c96a1c52a706d6883e21ea8b119e67beff939672e",
+      "frontend": "sha256:0ded6fa1600ba8c749376b32e48da7a2e25e79ae2aa182851e2da36eeedd8e10"
+    }
+  },
+  "log": ".dev-delivery\\logs\\pla-dev-20260927104017-35e82764a24f.log"
+}

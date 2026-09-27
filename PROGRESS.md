@@ -521,6 +521,7 @@ below is a **generated projection** of it, produced mechanically by
 ## Session 28 (2026-09-27)
 
 Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0317_fulfill-demand-launcher-20260926-plantpa.md`
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0326_raise-local-forge-sonar-gate-demand.md`
 (the session file is the source of truth in this D052-piloted repo -- the block
 below is a **generated projection** of it, produced mechanically by
 `brain session close`, not a second hand-written account).
@@ -534,6 +535,67 @@ below is a **generated projection** of it, produced mechanically by
 ## Session 29 (2026-09-27)
 
 Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0557_fulfill-demand-contracts-20260927-plantp.md`
+- State: Raise local-forge sonar-gate demand -- status: partial.
+- Next step: Owner decides: GitHub ruleset + self-hosted runner for sonar-gate, or keep the forge demand
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand drafted, held pending owner re-decision
+- Session: 2026-09-27_0326_raise-local-forge-sonar-gate-demand
+
+## Session 29 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise sonar-gate demands (D109 ruling + ci-runner plants runner) -- status: done.
+- Next step: Owner rules D109 clause 5 in vault; ci-runner registers plants runner; then add sonar-gate job to ci.yml
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand raised: plantpal-20260927-d109-sonar-gate-enforcement
+- Session: 2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci
+
+## Session 30 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0409_close-loop-on-sonar-gate-demands-d112-pl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Close loop on sonar-gate demands (D112 + plants runner) -- status: done.
+- Next step: Build sonar-gate job in ci.yml (runs-on self-hosted,platform; merge-ref scan; qualitygate.wait), then owner adds sonar-gate to dev ruleset
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0409_close-loop-on-sonar-gate-demands-d112-pl
+
+## Session 31 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0413_build-sonar-gate-ci-job-d112-raise-layer.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Build sonar-gate CI job (D112) + raise layer-2 CI stage-view demands -- status: done.
+- Next step: Owner adds SONAR_TOKEN repo secret, sets fork approval to all outside contributors, re-runs sonar-gate on the PR; after a green run adds sonar-gate to the dev ruleset
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0413_build-sonar-gate-ci-job-d112-raise-layer
+
+## Session 32 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fix sonar-gate: install Maven on self-hosted runner -- status: done.
+- Next step: Owner adds sonar-gate to the dev ruleset required checks and sets fork approval to all outside contributors
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos
+
+## Session 33 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli.md`
 (the session file is the source of truth in this D052-piloted repo -- the block
 below is a **generated projection** of it, produced mechanically by
 agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
@@ -545,3 +607,21 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-27_0557_fulfill-demand-contracts-20260927-plantp
+- State: Fulfill demand factory-20260927-dev-delivery (capability: Provide Planotell dev-only delivery and observed candidate identity, from: factory, target: plantpal). Acceptance criteria: - Document and implement task-branch to dev integration with required CI/security/quality checks including D112 sonar-... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli
+
+## Session 34 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_1135_fulfill-demand-factory-20260927-dev-deli.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260927-dev-delivery (capability: Provide Planotell dev-only delivery and observed candidate identity, from: factory, target: plantpal). Acceptance criteria: - Document and implement task-branch to dev integration with required CI/security/quality checks including D112 sonar-... -- status: done.
+- Next step: Owner: rule the plantpal coordination-publication path (and the optional paths-ignore on deploy.yml), approve the pending vault report, then Factory/runtime wire planotell.platform.localhost -> 127.0.0.1:8184
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: no vault write; demand plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path is pending-approval (port recorded, coordination ruling blocked at the owner)
+- Session: 2026-09-27_1135_fulfill-demand-factory-20260927-dev-deli
