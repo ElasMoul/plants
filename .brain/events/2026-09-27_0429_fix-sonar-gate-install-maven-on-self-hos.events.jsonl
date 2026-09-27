@@ -1,0 +1,2 @@
+{"ev": "session_start", "ts": "2026-09-27T04:29:35+00:00", "agent": "plantpal", "model": "claude-opus-5-5"}
+{"ev": "session_stop", "ts": "2026-09-27T04:48:12+00:00"}

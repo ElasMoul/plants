@@ -530,3 +530,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none needed
 - Session: 2026-09-27_0413_build-sonar-gate-ci-job-d112-raise-layer
+
+## Session 29 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fix sonar-gate: install Maven on self-hosted runner -- status: done.
+- Next step: Owner adds sonar-gate to the dev ruleset required checks and sets fork approval to all outside contributors
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos
