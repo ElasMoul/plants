@@ -208,10 +208,16 @@ def resolve_merged_revision(root: Path, revision: str | None) -> str:
     target = run(["git", "rev-parse", "--verify", f"{target}^{{commit}}"], check=True, cwd=root).stdout.strip()
     if not SHA_RE.match(target):
         raise DeliveryError(f"could not resolve a full revision: {target!r}")
-    merged = run(["git", "merge-base", "--is-ancestor", target, f"origin/{BRANCH}"], cwd=root)
-    if merged.returncode != 0:
-        raise DeliveryError(f"refused: {target} is not merged into origin/{BRANCH} (task-branch revisions are never deployed)")
+    if not on_first_parent_line(root, target):
+        raise DeliveryError(f"refused: {target} is not a revision of origin/{BRANCH} itself "
+                            "(task-branch revisions are never deployed, even once merged)")
     return target
+
+
+def on_first_parent_line(root: Path, sha: str) -> bool:
+    """True only for commits `dev` itself pointed at (merge results), not commits merged in from a task branch."""
+    line = run(["git", "rev-list", "--first-parent", f"origin/{BRANCH}"], check=True, cwd=root).stdout.split()
+    return sha in line
 
 
 def check_outcome(conclusions: list[str | None], status_all_completed: bool) -> str:

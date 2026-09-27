@@ -45,8 +45,9 @@ tools/dev-delivery/.venv/Scripts/python tools/dev-delivery/dev_delivery.py deplo
 `deploy` does the following, in order, and refuses at any failed step:
 
 1. `git fetch origin dev`, then resolves the target. The default is the head of
-   `origin/dev`. The target must be **reachable from `origin/dev`**. A
-   task-branch revision is refused.
+   `origin/dev`. The target must be on **`origin/dev`'s first-parent line**, meaning a
+   revision `dev` itself pointed at, such as a PR merge result. A task-branch
+   revision is refused, even after it has been merged in.
 2. **Pre-deploy gate:** `Backend CI`, `Frontend CI` and `Detect secrets` must
    show `success` on the merged SHA's push run. `sonar-gate` must show
    `success` on the head of the PR whose merge commit is that SHA. A pending,
