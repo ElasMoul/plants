@@ -10,7 +10,7 @@ acceptance-criteria:
   - "The existing elmoul/conventions runner keeps working unchanged"
   - "DEPLOYMENT.md documents how to add a runner for another repo"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — register a `ci-runner` runner for `ElasMoul/plants`

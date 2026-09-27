@@ -11,7 +11,7 @@ acceptance-criteria:
   - "The fork-safety rule for self-hosted runners on public repos is recorded (job runs only for same-repo PR heads; fork workflows need owner approval)"
   - "The public-vs-private trade-off below is ruled or explicitly left open"
 needs-owner: true
-status: open
+status: archived
 ---
 
 # Demand — enforce the SonarQube quality gate on merges into `dev` (D109 clause 5)
