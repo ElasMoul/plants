@@ -610,3 +610,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: no vault write; demand plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path is pending-approval (port recorded, coordination ruling blocked at the owner)
 - Session: 2026-09-27_1135_fulfill-demand-factory-20260927-dev-deli
+
+## Session 35 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2259_close-satisfied-demand-loops-ci-run-step.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Close satisfied demand loops (ci-run steps x3, planotell/D114) + deploy paths-ignore -- status: done.
+- Next step: Watch this PR's sonar-gate on /ci for the live stage bar; contracts-app-deploy-receipt-and-identity still open
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_2259_close-satisfied-demand-loops-ci-run-step
