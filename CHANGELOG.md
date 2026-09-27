@@ -7,6 +7,17 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Planotell dev-only delivery (D113, demand `factory-20260927-dev-delivery`):
+  `tools/dev-delivery/dev_delivery.py` deploys a revision merged into `origin/dev`
+  (after its `Backend CI`/`Frontend CI`/`Detect secrets` and PR `sonar-gate` checks
+  passed) to an isolated compose project `plantpal-devdelivery`
+  (`deploy/dev-delivery/`, loopback `:8184`, own volumes, generated dev-only secrets),
+  observes the running identity, runs smoke/criterion checks, and stores an app-owned
+  receipt with rollback identity; `lookup` emits contracts v0.31.0
+  `delivery.producer-result`. Backend reports `deployment.{appIdentity,revision,
+  deploymentId,environment}` at the now-public `GET /actuator/info`
+  (`DeploymentIdentityInfoContributor`; `backend/Dockerfile` stamps `APP_REVISION`).
+  See `docs/dev-delivery.md`.
 - Backend hosting moved from Railway to an OVH VPS (2026-09-24): `deploy/vps/`
   holds the Compose stack (Postgres 15, Redis 7 with password + AOF, runtime-only
   backend image, Caddy TLS for `api.plants.moulworks.com`), a one-time
