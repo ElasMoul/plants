@@ -1,0 +1,97 @@
+# Planotell dev-delivery stack (D113) — one isolated dev candidate of plantpal.
+#
+# Driven ONLY by tools/dev-delivery/dev_delivery.py, which builds it from a
+# clean `git archive` of a revision already merged into origin/dev and fills the
+# ${...} variables below. Not a production path: production is deploy/vps/ via
+# deploy.yml on main, and nothing here reads its secrets.
+#
+# Isolation from the long-lived local stack (repo-root docker-compose.yml):
+#   - own compose project name -> own network and own named volumes;
+#   - Postgres and Redis publish NO host ports (reachable only inside the stack);
+#   - no Kafka: APP_IDENTIFICATION_TRANSPORT=in-process, as in production;
+#   - one published port, loopback-only (D040): the http frontend, which proxies
+#     /api/, /photos/ and /actuator/{health,info} to this stack's own backend.
+name: plantpal-devdelivery
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: plantpal_devdelivery
+      POSTGRES_USER: plantpal
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:?set by dev_delivery.py}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plantpal -d plantpal_devdelivery"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    image: plantpal-devdelivery-backend:${APP_REVISION:?set by dev_delivery.py}
+    build:
+      context: ../../backend
+      additional_contexts:
+        contracts-m2: ${CONTRACTS_M2:?set by dev_delivery.py}
+      args:
+        APP_REVISION: ${APP_REVISION}
+    restart: unless-stopped
+    env_file:
+      - ${DEV_DELIVERY_ENV_FILE:?set by dev_delivery.py}
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plantpal_devdelivery
+      DB_USERNAME: plantpal
+      DB_PASSWORD: ${DEV_DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      APP_IDENTIFICATION_TRANSPORT: in-process
+      KAFKA_BOOTSTRAP_SERVERS: localhost:9092   # bound eagerly, never dialed (in-process)
+      APP_DEPLOYMENT_ID: ${APP_DEPLOYMENT_ID:?set by dev_delivery.py}
+      APP_ENVIRONMENT: dev
+    volumes:
+      - photos_data:/tmp/plantpal/photos
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  frontend:
+    image: plantpal-devdelivery-frontend:${APP_REVISION}
+    build:
+      context: ../../frontend
+      dockerfile: ../deploy/dev-delivery/frontend.Dockerfile
+      additional_contexts:
+        devdelivery: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DEV_DELIVERY_PORT:-8184}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  photos_data:

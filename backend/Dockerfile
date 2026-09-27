@@ -38,6 +38,13 @@ USER plantpal
 
 COPY --from=build /api/target/plantpal-backend-*.jar app.jar
 
+# D113 dev delivery: the full commit SHA this image was built from, stamped by
+# the builder (tools/dev-delivery passes it from the exact archived tree). The
+# app reports it at /actuator/info -> deployment.revision; empty = not reported.
+ARG APP_REVISION=
+ENV APP_REVISION=${APP_REVISION}
+LABEL org.opencontainers.image.revision=${APP_REVISION}
+
 EXPOSE 8080
 
 # Container-aware JVM flags: respect cgroup memory limits
