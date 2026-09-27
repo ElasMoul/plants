@@ -153,6 +153,6 @@ be recorded as `failed`.
 |---|---|---|---|
 | 1 | Add `Detect secrets` to the `dev` ruleset's required checks | owner (repo settings) | open. The check runs on every push and the deploy gate enforces it, but a PR merge does not require it |
 | 2 | Tagged receipt / identity / lookup shapes (incl. rollback identity) | `contracts` | demand `plantpal-20260927-contracts-app-deploy-receipt-and-identity` |
-| 3 | Record port 8184 and rule how plantpal publishes coordination commits (a push to `main` deploys) | `platform-vault` (owner) | demand `plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path` |
+| 3 | Record port 8184 and rule how plantpal publishes coordination commits (a push to `main` deploys) | `platform-vault` (owner) | port 8184 **recorded** in the D040 register (vault commit `6e06b0b`, 2026-09-27) and plantpal's default stands; the coordination-publication ruling came back **blocked at the owner** (no existing rule covers it), so the practice in §1 stands until ruled |
 | 4 | Managed hosting of the candidate, and `planotell.platform.localhost` → `127.0.0.1:8184` (launcher name proxy on port 80; today launcher maps `planotell` to `:8444`, the long-lived local stack) | `runtime`, which raises its own `launcher`/`gateway` demands | Factory demand `factory-20260927-dev-delivery-routing` (after this one) |
 | 5 | Factory calling `dev_delivery.py` (execution host, repo lock) | `factory` / `agent-runner` | not built |
