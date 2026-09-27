@@ -9,7 +9,7 @@ acceptance-criteria:
   - "An owner ruling (or a recorded existing rule) states where plantpal's coordination commits (demand raises, fulfillment reports) are published, given that .github/workflows/deploy.yml deploys production on every push to main with no path filter"
   - "The ruling says whether plantpal may add a paths-ignore filter for demands/**, .brain/** and docs-only changes to deploy.yml's push trigger, which would take effect only on the owner's next dev→main release"
 needs-owner: true
-status: open
+status: archived
 ---
 
 # Demand — Planotell dev-delivery port + plantpal's coordination-publication path

@@ -10,7 +10,7 @@ acceptance-criteria:
   - "Polling is fire-and-forget and never delays or fails webhook handling; with GITHUB_TOKEN unset it degrades to webhook-only steps"
   - "A plantpal sonar-gate run is observable on the state-feed with steps moving through in_progress to completed"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — send CI step progress on `ci.run` (CI stage view, layer 2)

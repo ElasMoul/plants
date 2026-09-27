@@ -11,7 +11,7 @@ acceptance-criteria:
   - "A failed stage is visually distinct and links to the GitHub Actions job log"
   - "A plantpal `sonar-gate` job is recognisable as the merge gate on the wall (e.g. by job name), with both quality-gate stages visible"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — CI stage view on `/ci` (layer 2)
