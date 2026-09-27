@@ -75,6 +75,12 @@ class CheckOutcome(unittest.TestCase):
     def test_skipped_is_not_passed(self):
         self.assertEqual(dd.check_outcome(["skipped"], True), "unknown")
 
+    def test_skipped_twin_of_a_real_run_is_ignored(self):
+        self.assertEqual(dd.check_outcome(["skipped", "success"], True), "passed")
+
+    def test_neutral_is_not_passed(self):
+        self.assertEqual(dd.check_outcome(["neutral"], True), "unknown")
+
     def test_any_failure_fails(self):
         self.assertEqual(dd.check_outcome(["success", "failure"], True), "failed")
 

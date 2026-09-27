@@ -216,10 +216,13 @@ def resolve_merged_revision(root: Path, revision: str | None) -> str:
 
 def check_outcome(conclusions: list[str | None], status_all_completed: bool) -> str:
     """GitHub check-run conclusions -> passed|failed|pending|unknown (unknown stays unknown)."""
-    if not conclusions:
-        return "unknown"
+    # A job skipped by its `if:` (e.g. sonar-gate's push-event twin of the PR run) is not a
+    # verdict; judge the runs that actually ran. Only-skipped means nothing ran: unknown.
     if not status_all_completed:
         return "pending"
+    conclusions = [c for c in conclusions if c != "skipped"]
+    if not conclusions:
+        return "unknown"
     if any(c in ("failure", "timed_out", "cancelled", "action_required") for c in conclusions):
         return "failed"
     if all(c == "success" for c in conclusions):
