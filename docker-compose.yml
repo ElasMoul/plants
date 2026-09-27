@@ -106,8 +106,8 @@ services:
     container_name: plantpal-frontend-atlas
     restart: unless-stopped
     ports:
-      - "8182:80"
-      - "8445:443"
+      - "127.0.0.1:8183:80"
+      - "127.0.0.1:8445:443"
     depends_on:
       backend:
         condition: service_healthy
