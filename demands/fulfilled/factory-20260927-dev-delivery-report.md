@@ -12,6 +12,7 @@ shipped:
   - "Observed dev candidate: deployment pla-dev-20260927103855-e3bcd1f889de at merged revision e3bcd1f889de3e06caa191e1e3428373c873e2f6 — result passed, exitCode 0, 12/12 gating checks passed, route:planotell recorded unavailable (does not gate)"
   - "Rollback identity exercised: pla-dev-20260927104017-35e82764a24f records rollback -> the previous passed deployment (deploymentId, revision, both image digests), and rollback deployment pla-dev-20260927104038-e3bcd1f889de restored the earlier images with no rebuild and passed"
   - "Review copies of the three native receipts and their contracts v0.31.0 producer-results committed at docs/dev-delivery-evidence/evidence/ with the handoff doc candidate-e3bcd1f.md"
+  - ".gitleaksignore — four documented historical fingerprints for the review copies' caller-chosen operationKey labels, which gitleaks' generic-api-key rule flags as a false positive; verified by A/B scan of the failing commit 4fcc50c with gitleaks 8.21.2 (4 leaks before, 0 after), commit 7086e77"
   - "Demands raised before consuming, per the criteria — plantpal-20260927-contracts-app-deploy-receipt-and-identity and plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path, both in commit 7569ea6"
 summaryRef: "commits 8072f48, ec689d5, 1098d5e and c21dc58 reached dev through PR #188 and PR #189 (dev head e3bcd1f); the observed run and evidence are from 2026-09-27 10:38–10:41Z"
 ---
@@ -132,7 +133,7 @@ Prerequisites that remain (**none of them plantpal's to close**):
 
 | # | Prerequisite | Owner | Status |
 |---|---|---|---|
-| 1 | Add `Detect secrets` to the `dev` ruleset's required checks | owner (repo settings) | open — the check runs and the deploy gate enforces it, but a PR merge does not require it |
+| 1 | Add `Detect secrets` to the `dev` ruleset's required checks | owner (repo settings) | open — the check runs and the deploy gate enforces it, but a PR merge does not require it. It false-positives on a committed receipt; see the caveat on `operationKey` below |
 | 2 | Tagged receipt / identity / lookup shapes incl. rollback identity | `contracts` | demand `plantpal-20260927-contracts-app-deploy-receipt-and-identity` |
 | 3 | Port 8184 in the D040 register — **done**; a ruling on where plantpal publishes coordination commits — **open at the owner** | `platform-vault` recorded the port; the ruling is the owner's | `plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path` — the vault reported while this session ran: criterion 1 done ("8184 = plantpal dev-delivery frontend … plantpal's default stands, so plantpal has nothing to adopt"), criteria 2–3 blocked because no existing rule covers the case and the vault records rulings rather than making them |
 | 4 | Managed hosting of the candidate, and `planotell.platform.localhost` → `127.0.0.1:8184` | `runtime` (+ `launcher`) | Factory demand `factory-20260927-dev-delivery-routing` (after this one) |
@@ -163,6 +164,20 @@ Prerequisites that remain (**none of them plantpal's to close**):
   the contracts demand asks to have named). If Factory must read a receipt from another
   host, that needs a durable or remote lookup and is not built; it is criterion 4 of the
   contracts demand.
+- **Committing a receipt trips the secret scanner.** gitleaks' `generic-api-key` rule
+  matches a receipt's `correlation.operationKey` (a caller-chosen idempotency label, not a
+  credential), so the evidence commit `4fcc50c` came back red on `Detect secrets` with four
+  findings — the first time this flow has tripped that check. Fixed on this branch with
+  four `.gitleaksignore` fingerprints bound to that commit (`7086e77`), verified locally
+  with gitleaks 8.21.2, the build the workflow pins, over the range CI failed on: 4 leaks
+  without the entry, 0 with it, one commit scanned in both runs. Two consequences the
+  owner needs: the **green re-run on PR #190 does not exercise the ignore** (its range
+  starts at the already-scanned commit, so it would be green either way — the A/B above is
+  the evidence, not the tick), and a **squash-merge rewrites `4fcc50c`, which invalidates
+  the fingerprints** and makes the dev push flag those four lines again; a merge commit
+  preserves it. The durable fix is a config-level allowlist, but that changes gitleaks'
+  config resolution for the whole repo and is the owner's call. `Detect secrets` is not in
+  the `dev` ruleset (prerequisite 1), so it did not block the PR.
 - **The candidate is running right now** as compose project `plantpal-devdelivery` on
   `127.0.0.1:8184`, and is left up because it *is* the deliverable runtime has to route.
   `dev_delivery.py down` stops it and keeps the volumes.
