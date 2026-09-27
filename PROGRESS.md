@@ -530,3 +530,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: demand drafted, held pending owner re-decision
 - Session: 2026-09-27_0326_raise-local-forge-sonar-gate-demand
+
+## Session 30 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise sonar-gate demands (D109 ruling + ci-runner plants runner) -- status: done.
+- Next step: Owner rules D109 clause 5 in vault; ci-runner registers plants runner; then add sonar-gate job to ci.yml
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand raised: plantpal-20260927-d109-sonar-gate-enforcement
+- Session: 2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci
