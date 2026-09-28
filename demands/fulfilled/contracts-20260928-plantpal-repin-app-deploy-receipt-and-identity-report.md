@@ -126,6 +126,22 @@ Without this the gate would only run when an operator remembered to.
    — they are on disk, which is what the coordinator reads, but the owner should
    know the raises rode a branch rather than `main`. The coordination-publication
    ruling (prerequisites table, `docs/dev-delivery.md` §5) is still with the owner.
+
+   *Re-verified 2026-09-28 (second pass), and the blocker is now precise:* D114
+   (`749c8b4`, "skip production deploy for coordination-only changes") added
+   `paths-ignore: demands/**, .brain/**, **/*.md` to `deploy.yml`, but that commit
+   is **on `dev` only** — `origin/main`'s `deploy.yml` still triggers on every
+   push with no path filter. So today a coordination-only push to `main` would
+   still deploy production, exactly as recorded; **once the owner releases
+   `dev` → `main`, coordination commits become safe to push directly**, and that
+   release is what unblocks plantpal's demand doorbell. Nothing for this demand
+   to do — flagged so the two raises are not read as lost.
+
+   *Also re-verified:* the coordinator registers this report from the **filesystem
+   working tree** (`BoardService.scanBoard` walks `<root>/<plantpal>/demands/`, no
+   git), so it appears on `/board` only while the shared `plantpal` checkout is on
+   this branch. It is absent from `dev` and `main`. Merging PR #192 is therefore
+   what makes this fulfillment register durably rather than incidentally.
 2. **The new CI job is not a required check.** It reports on every push and PR but
    is not in the `dev` ruleset, which is owner-managed — so it does not gate a
    merge until the owner adds it. Flagging rather than changing repo settings.
