@@ -147,47 +147,50 @@ document, whose shape is closed. Mapping: `contracts` `docs/task-delivery.md`
 | `dev_delivery.py observe` | what the loopback URL and the Planotell URL report right now |
 | `dev_delivery.py reconcile <id>` | settles a receipt left `pending` by a crash, by re-observing only (never redeploys); the result is `unknown` or `failed`, never `passed` |
 
-**Lookup transport.** Both commands are the CLI transport named in
+**CLI transport.** Both commands are the CLI transport named in
 `contracts` §App-deploy: run from the repository root in the plantpal checkout
 **on the host that deployed**, with the tool's own venv. On success: exit `0`
 and exactly one JSON document on stdout. On a miss: exit `4`, stderr exactly
 `deployment_not_found: <id>`, nothing on stdout — Factory reads that as
 `unavailable`, never `failed`, and never as grounds to redeploy under the same
 operation key. Any other non-zero exit, or stdout that does not parse, is
-`unavailable` too. There is no HTTP route.
+`unavailable` too. The CLI is **not withdrawn** by the HTTP route below (D031).
 
-**Ruling — the CLI is the only sanctioned transport (2026-09-28).** Factory
-cannot use it: its outbound surface is read-only HTTP GETs to named platform
-service ports (`spec-factory.md` §4), it may not write to or import from a sibling
-repo (§3), and it has no execution host — even deployed it runs in a container on
-the internal dashboard network, not on the deploying host where the checkout and
-`.dev-delivery/receipts/` live. Demand
-`factory-20260928-plantpal-reachable-receipt-transport` therefore asks plantpal for
-a lookup Factory can call, or for this ruling if plantpal holds there is only one
-sanctioned transport.
+### HTTP lookup route (contracts v0.37.0)
 
-plantpal does not hand-roll the alternative. An HTTP route Factory binds to is a
-cross-repo interface, and `contracts` v0.36.0 §App-deploy states the order
-explicitly — "plantpal must offer a new transport and **contracts must publish
-it**" — which is also this repo's standing rule that all cross-repo interfaces
-come from `contracts`. So: the CLI above remains the **only sanctioned transport**
-until `contracts` publishes a route, and plantpal has raised
-`plantpal-20260928-contracts-app-deploy-lookup-route` asking it to, proposing
-`GET /delivery/v1/app-deploy/deployments/{id}/receipt` (and `/producer-result`) on
-this stack's existing published port, so no process runs inside the checkout to
-answer a call.
+`contracts` **v0.37.0** published `schemas/delivery-api/app-deploy-lookup.openapi.yaml`
+(off `plantpal-20260928-contracts-app-deploy-lookup-route`), and
+`dev_delivery.py serve` implements it. This is the transport Factory can reach:
+Factory cannot run the CLI (no execution host, read-only HTTP surface —
+`spec-factory.md` §3/§4).
 
-Consequences while that is open, stated so the gap is visible rather than silent:
+| Route | 200 `data` |
+|---|---|
+| `GET /delivery/v1/app-deploys/{deploymentId}` | `delivery.producer-result` — identical to `lookup <id>` |
+| `GET /delivery/v1/app-deploys/{deploymentId}/receipt` | `delivery.deployment-receipt` (v0.36.0 tagged shape), identical to `receipt <id>`, incl. `rollback` |
 
-- Factory's consuming leg **stalls**. `plantpal-20260928-factory-consume-app-deploy-receipt`
-  stays **blocked** on its fetch criteria, and a receipt's rollback identity is
-  read by nobody.
-- Factory must **not** bind to the native `plantpal.dev-deployment-receipt/1`
-  document as a substitute, and must not treat a lookup it cannot perform as
-  grounds to redeploy under the same operation key.
-- Nothing in this section changes for the CLI's existing consumers: both commands
-  keep emitting exactly what they emit today, and `contracts`' §App-deploy miss
-  contract (exit `4` → `unavailable`, never `failed`) is unchanged.
+Success is `{"data": ...}`; every failure is `{"error": delivery.error}`:
+
+| `error.code` | Status | `retryable` | When |
+|---|---|---|---|
+| `deployment_not_found` | 404 | `false` | No receipt for that id in this host's store. The **only** 404. A miss → `unavailable`, never `failed` |
+| `invalid_request` | 422 | `false` | Malformed id (outside `[A-Za-z0-9._:-]{1,128}`), unknown path, or a non-GET |
+| `caller_not_authorized` | 403 | `false` | Missing or wrong bearer — checked **first**, so an unauthenticated caller never learns whether an id exists |
+| `producer_unavailable` | 503 | `true` | Store unreadable, a corrupt receipt, or a receipt that fails tagged validation (never served as a near-miss) |
+
+A `pending` receipt is a normal 200.
+
+**Producer-owned parts (§Published-interface ruling) — plantpal's choices:**
+
+| | |
+|---|---|
+| Host | `127.0.0.1` only (D040). `serve` refuses any non-loopback `--host` |
+| Port | **8185** (default `--port`; next free 81xx after 8184, probed free 2026-09-28). Registration in PLATFORM_STATE §3 is requested from `platform-vault` by demand |
+| Credential (`deployCaller`) | A bearer token: `$DEV_DELIVERY_LOOKUP_TOKEN` if set, else `.dev-delivery/lookup-token` (32 random bytes, generated on first `serve`, gitignored). Read-only; grants these two GETs and nothing else. The caller obtains it from the deploying host |
+| Process | Host process, not a container — the receipt store is `.dev-delivery/receipts/` in the checkout. Run it in the background: `python tools/dev-delivery/dev_delivery.py serve > .dev-delivery/logs/lookup.log 2>&1 &`. Access log carries method, path and status only — never the token |
+
+Reaching it from a container (Factory's deployed form) needs the host's loopback
+exposed to that network; that routing is `runtime`'s, not this repo's.
 
 **What `receipt` validates before it emits.** Three checks, because each catches
 what the others miss:
@@ -247,7 +250,7 @@ be recorded as `failed`.
 | 2 | Tagged receipt / identity / lookup shapes (incl. rollback identity) | `contracts` | **done** — shipped in contracts **v0.36.0**; plantpal's consuming leg repinned to it (`delivery.deployment-receipt` from `receipt <id>`, `app/deployment-identity` is the `/actuator/info` block). Consumers: **bind to v0.36.0** |
 | 3 | Record port 8184 and rule how plantpal publishes coordination commits (a push to `main` deploys) | `platform-vault` (owner) | port 8184 **recorded** in the D040 register (vault commit `6e06b0b`, 2026-09-27) and plantpal's default stands; the coordination-publication ruling came back **blocked at the owner** (no existing rule covers it), so the practice in §1 stands until ruled |
 | 4 | Managed hosting of the candidate, and `planotell.platform.localhost` → `127.0.0.1:8184` (launcher name proxy on port 80; today launcher maps `planotell` to `:8444`, the long-lived local stack) | `runtime`, which raises its own `launcher`/`gateway` demands | Factory demand `factory-20260927-dev-delivery-routing` (after this one) |
-| 5 | Factory re-fetching the receipt (execution host, repo lock, or a reachable transport) | `contracts` → then plantpal; `factory` consumes | **re-ruled 2026-09-28.** Factory can never call the CLI (no execution host, read-only HTTP surface — see §3's ruling), so `contracts` is asked to publish an app-deploy lookup route (`plantpal-20260928-contracts-app-deploy-lookup-route`); plantpal implements it on that publication. Until then Factory's fetch leg stalls visibly and it must not bind to the native document |
+| 5 | Factory re-fetching the receipt (execution host, repo lock, or a reachable transport) | `contracts` → plantpal → `factory` | **plantpal leg done 2026-09-28.** contracts v0.37.0 published the route; `dev_delivery.py serve` implements it on `127.0.0.1:8185` (§3 "HTTP lookup route"). Open: `platform-vault` records port 8185; `factory` binds to the route; `runtime` routes to it if Factory runs in a container |
 
 ### Committing a receipt trips the secret scanner
 
