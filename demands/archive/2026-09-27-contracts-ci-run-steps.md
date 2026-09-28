@@ -10,7 +10,7 @@ acceptance-criteria:
   - "An existing ci.run event without jobId/steps still validates (purely additive, minor release)"
   - "The release tag is named in the fulfillment report"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — optional `steps[]` on `ci.run` (CI stage view, layer 2)

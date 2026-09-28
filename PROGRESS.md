@@ -614,6 +614,7 @@ below is a **generated projection** of it, produced mechanically by
 ## Session 35 (2026-09-27)
 
 Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0030_fulfill-demand-contracts-20260928-plantp.md`
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2259_close-satisfied-demand-loops-ci-run-step.md`
 (the session file is the source of truth in this D052-piloted repo -- the block
 below is a **generated projection** of it, produced mechanically by
 `brain session close`, not a second hand-written account).
@@ -623,3 +624,21 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none -- no vault write this session; the two demands raised target factory and runtime, not the vault. The coordination-publication ruling (docs/dev-delivery.md prerequisite 3) is unchanged: still blocked at the owner.
 - Session: 2026-09-28_0030_fulfill-demand-contracts-20260928-plantp
+- State: Close satisfied demand loops (ci-run steps x3, planotell/D114) + deploy paths-ignore -- status: done.
+- Next step: Watch this PR's sonar-gate on /ci for the live stage bar; contracts-app-deploy-receipt-and-identity still open
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_2259_close-satisfied-demand-loops-ci-run-step
+
+## Session 36 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2309_raise-dashboard-demand-skipped-cancelled.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise dashboard demand: skipped/cancelled ci.run shown as FAILED -- status: done.
+- Next step: PR #191 sonar-gate verdict, then owner merges; dashboard skipped-status demand open
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_2309_raise-dashboard-demand-skipped-cancelled
