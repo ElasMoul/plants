@@ -10,7 +10,7 @@ acceptance-criteria:
   - "Factory treats a lookup miss as unavailable, never failed: exit 4 with `deployment_not_found: <id>` on stderr and nothing on stdout, and never as grounds to redeploy under the same operation key."
   - "If Factory cannot re-fetch from the deploying host (its execution host is not built yet), it says so and this demand stays open rather than binding to plantpal's native plantpal.dev-deployment-receipt/1 document."
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Consume the tagged app-deploy receipt (contracts v0.36.0)
@@ -54,3 +54,13 @@ Per D031 this release is **additive** and no consumer is obligated to move.
 This demand exists so the loop is closed explicitly rather than by assumption —
 if you are not ready to bind, leave it open and say why; there is no deadline
 attached to it from our side.
+
+## Closure (2026-09-28, owner decision)
+
+Closed **unmet (blocked)**, not satisfied. Factory's report
+(`factory-20260928-plantpal-reachable-receipt-transport`) showed criteria 2–3 cannot be
+met: the v0.36.0 lookup transport is CLI-only and runs inside the plantpal checkout on
+the deploying host, which Factory (loopback-only, container, no execution host) cannot
+reach. The remaining need is carried by
+`plantpal-20260928-contracts-app-deploy-lookup-route` (publish an HTTP route); once that
+lands plantpal implements it and raises a fresh demand to `factory`.

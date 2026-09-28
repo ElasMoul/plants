@@ -489,5 +489,93 @@ class LookupTransport(unittest.TestCase):
         self.assertIn("mergedRevision", err)
 
 
+class HttpLookupRoute(unittest.TestCase):
+    """contracts v0.37.0 app-deploy-lookup.openapi.yaml: envelope, status table, auth first."""
+
+    TOKEN = "test-caller-token"
+    AUTH = f"Bearer {TOKEN}"
+    MISS = "pla-dev-20260101000000-ffffffffffff"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.state = dd.state_dir(Path(self.tmp.name))
+
+    def _get(self, path, auth=AUTH):
+        return dd.lookup_response(self.state, self.TOKEN, path, auth)
+
+    def test_result_route_serves_the_cli_lookup_document(self):
+        dd.save_receipt(self.state, native())
+        status, body = self._get(f"/delivery/v1/app-deploys/{DEP}")
+        self.assertEqual(200, status)
+        self.assertEqual(dd.producer_result_document(self.state, DEP), body["data"])
+        self.assertEqual("app-deploy", body["data"]["producer"])
+
+    def test_receipt_route_serves_the_cli_receipt_document_verbatim(self):
+        dd.save_receipt(self.state, native())
+        status, body = self._get(f"/delivery/v1/app-deploys/{DEP}/receipt")
+        self.assertEqual(200, status)
+        self.assertEqual(dd.tagged_receipt_document(self.state, DEP), body["data"])
+        self.assertEqual(DEPLOY_PREV, body["data"]["rollback"]["deploymentId"])
+
+    def test_a_pending_receipt_is_a_200_not_a_miss(self):
+        dd.save_receipt(self.state, receipt())
+        status, body = self._get(f"/delivery/v1/app-deploys/{DEP}")
+        self.assertEqual(200, status)
+        self.assertEqual("pending", body["data"]["outcome"])
+
+    def test_a_miss_is_the_only_404_and_carries_the_published_body(self):
+        for suffix in ("", "/receipt"):
+            with self.subTest(suffix):
+                status, body = self._get(f"/delivery/v1/app-deploys/{self.MISS}{suffix}")
+                self.assertEqual(404, status)
+                self.assertEqual({"code": "deployment_not_found", "retryable": False},
+                                 {k: body["error"][k] for k in ("code", "retryable")})
+
+    def test_unauthenticated_is_403_never_404(self):
+        for auth in (None, "", "Bearer wrong", f"Basic {self.TOKEN}", self.TOKEN):
+            with self.subTest(auth=auth):
+                status, body = self._get(f"/delivery/v1/app-deploys/{self.MISS}", auth)
+                self.assertEqual(403, status)
+                self.assertEqual("caller_not_authorized", body["error"]["code"])
+
+    def test_malformed_id_is_422(self):
+        for bad in ("", "a%2F..%2Fb", "x" * 129, "a b"):
+            with self.subTest(bad=bad):
+                status, body = self._get(f"/delivery/v1/app-deploys/{bad}")
+                self.assertEqual(422, status)
+                self.assertEqual("invalid_request", body["error"]["code"])
+
+    def test_unreadable_store_is_503_retryable(self):
+        (self.state / "receipts" / f"{DEP}.json").write_text("{not json", encoding="utf-8")
+        status, body = self._get(f"/delivery/v1/app-deploys/{DEP}")
+        self.assertEqual(503, status)
+        self.assertEqual({"code": "producer_unavailable", "retryable": True},
+                         {k: body["error"][k] for k in ("code", "retryable")})
+
+    def test_a_receipt_that_breaks_the_contract_is_never_served(self):
+        dd.save_receipt(self.state, native(observed={"appIdentity": "plantpal", "revision": OTHER,
+                                                     "deploymentId": DEP, "environment": "dev"}))
+        status, body = self._get(f"/delivery/v1/app-deploys/{DEP}/receipt")
+        self.assertEqual(503, status)
+        self.assertNotIn("data", body)
+
+    def test_every_error_body_is_a_delivery_error(self):
+        for status, body in (self._get("/x", None), self._get("/delivery/v1/app-deploys/a b"),
+                             self._get(f"/delivery/v1/app-deploys/{self.MISS}")):
+            self.assertEqual({"code", "message", "retryable"}, set(body["error"]))
+
+    def test_token_is_generated_once_and_env_overrides(self):
+        first = dd.lookup_token(self.state)
+        self.assertEqual(first, dd.lookup_token(self.state))
+        self.assertGreaterEqual(len(first), 32)
+        with mock.patch.dict(dd.os.environ, {dd.LOOKUP_TOKEN_ENV: "from-env"}):
+            self.assertEqual("from-env", dd.lookup_token(self.state))
+
+    def test_serve_refuses_a_non_loopback_host(self):
+        with self.assertRaises(dd.DeliveryError):
+            dd.cmd_serve(mock.Mock(host="0.0.0.0", port=0))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,11 @@ nativeRef ``plantpal:deployments/<id>``):
     ``tools/dev-delivery/schemas/`` and against the cross-field rules the schema
     cannot express.
 
-A miss on either is exit 4 with ``deployment_not_found: <id>`` on stderr and
+The same two documents are served over HTTP by ``serve`` (contracts **v0.37.0**
+``app-deploy-lookup.openapi.yaml``): ``GET /delivery/v1/app-deploys/<id>`` and
+``.../receipt``, bearer-authenticated, loopback-only.
+
+A miss on either CLI command is exit 4 with ``deployment_not_found: <id>`` on stderr and
 nothing on stdout: Factory reads that as ``unavailable``, never as ``failed``.
 
 Hard lines (see docs/dev-delivery.md):
@@ -37,6 +41,7 @@ Usage (from the repo root):
   python tools/dev-delivery/dev_delivery.py reconcile <deploymentId>
   python tools/dev-delivery/dev_delivery.py rollback [--to <deploymentId>]
   python tools/dev-delivery/dev_delivery.py down
+  python tools/dev-delivery/dev_delivery.py serve [--port 8185]
 """
 
 from __future__ import annotations
@@ -55,6 +60,7 @@ import sys
 import tarfile
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 REPOSITORY = "plantpal"
@@ -829,25 +835,138 @@ def cmd_reconcile(args) -> int:
     return 0
 
 
-def cmd_lookup(args) -> int:
-    state = state_dir(repo_root())
-    print(json.dumps(to_producer_result(load_receipt(state, args.deployment_id)), indent=2))
-    return 0
+def producer_result_document(state: Path, deployment_id: str) -> dict:
+    """The ``delivery.producer-result`` both transports emit for one deployment."""
+    return to_producer_result(load_receipt(state, deployment_id))
 
 
-def cmd_receipt(args) -> int:
-    """Print the tagged delivery.deployment-receipt (the lookup transport for the full record).
+def tagged_receipt_document(state: Path, deployment_id: str) -> dict:
+    """The ``delivery.deployment-receipt`` both transports emit for one deployment.
 
     Refuses rather than emitting a receipt that does not satisfy the tag it claims: a
     consumer that binds to the shape has no way to tell a near-miss from a real one.
     """
-    state = state_dir(repo_root())
-    tagged = to_tagged_receipt(load_receipt(state, args.deployment_id))
+    tagged = to_tagged_receipt(load_receipt(state, deployment_id))
     problems = validate_tagged_receipt(tagged)
     if problems:
-        raise DeliveryError(f"refused: {args.deployment_id} does not satisfy "
+        raise DeliveryError(f"refused: {deployment_id} does not satisfy "
                             f"delivery.deployment-receipt ({CONTRACTS_TAG}): {'; '.join(problems)}")
-    print(json.dumps(normalize_tagged_receipt(tagged), indent=2))
+    return normalize_tagged_receipt(tagged)
+
+
+def cmd_lookup(args) -> int:
+    state = state_dir(repo_root())
+    print(json.dumps(producer_result_document(state, args.deployment_id), indent=2))
+    return 0
+
+
+def cmd_receipt(args) -> int:
+    """Print the tagged delivery.deployment-receipt (the lookup transport for the full record)."""
+    state = state_dir(repo_root())
+    print(json.dumps(tagged_receipt_document(state, args.deployment_id), indent=2))
+    return 0
+
+
+# ── HTTP lookup transport (contracts v0.37.0, app-deploy-lookup.openapi.yaml) ──
+# Additive to the CLI (D031): the same two documents, wrapped as {"data": ...}, with
+# the published miss/failure table. Host, port and credential are plantpal's own
+# (docs/dev-delivery.md §3 "HTTP lookup route"); loopback-only per D040.
+
+LOOKUP_PORT = 8185
+LOOKUP_TOKEN_ENV = "DEV_DELIVERY_LOOKUP_TOKEN"
+LOOKUP_ROUTE_RE = re.compile(r"^/delivery/v1/app-deploys/([^/]*)(/receipt)?$")
+DEPLOYMENT_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+
+
+def lookup_token(state: Path) -> str:
+    """The deployCaller bearer credential: env var if set, else ``.dev-delivery/lookup-token``.
+
+    Generated on first use and kept in the (gitignored) state dir, so the caller reads
+    it from the deploying host; it grants nothing but these two read-only GETs.
+    """
+    token = os.environ.get(LOOKUP_TOKEN_ENV, "").strip()
+    if token:
+        return token
+    path = state / "lookup-token"
+    if not path.exists():
+        path.write_text(secrets.token_urlsafe(32) + "\n", encoding="utf-8")
+    return path.read_text(encoding="utf-8").strip()
+
+
+def delivery_error(status: int, code: str, message: str, retryable: bool) -> tuple[int, dict]:
+    return status, {"error": {"code": code, "message": message, "retryable": retryable}}
+
+
+def lookup_response(state: Path, token: str, path: str, authorization: str | None) -> tuple[int, dict]:
+    """Answer one GET. Pure: (status, body) — the handler only writes it out.
+
+    Order matters: an unauthenticated call is a 403 before anything else, so a caller
+    without the credential can never learn whether an id exists (never a 404).
+    """
+    scheme, _, presented = (authorization or "").partition(" ")
+    presented = presented.strip() if scheme == "Bearer" else ""
+    if not presented or not secrets.compare_digest(presented, token):
+        return delivery_error(403, "caller_not_authorized", "missing or unenrolled deployCaller credential", False)
+    match = LOOKUP_ROUTE_RE.match(path.split("?", 1)[0])
+    if not match:
+        return delivery_error(422, "invalid_request", f"no such route: {path}", False)
+    deployment_id, is_receipt = match.group(1), bool(match.group(2))
+    if not DEPLOYMENT_ID_RE.match(deployment_id):
+        return delivery_error(422, "invalid_request", f"not a deployment id: {deployment_id!r}", False)
+    if not (state / "receipts").is_dir():
+        return delivery_error(503, "producer_unavailable", "receipt store is not readable", True)
+    try:
+        document = (tagged_receipt_document if is_receipt else producer_result_document)(state, deployment_id)
+    except DeliveryError as e:
+        if e.exit_code == 4:
+            return delivery_error(404, "deployment_not_found", f"deployment_not_found: {deployment_id}", False)
+        return delivery_error(503, "producer_unavailable", str(e), True)
+    except (OSError, ValueError, KeyError) as e:
+        return delivery_error(503, "producer_unavailable", f"receipt store unreadable: {e}", True)
+    return 200, {"data": document}
+
+
+def lookup_server(state: Path, token: str, host: str, port: int):
+    class Handler(BaseHTTPRequestHandler):
+        server_version = "plantpal-dev-delivery-lookup"
+
+        def do_GET(self):
+            status, body = lookup_response(state, token, self.path, self.headers.get("Authorization"))
+            self._send(status, body)
+
+        def _refuse(self):
+            self._send(*delivery_error(422, "invalid_request", "read-only: GET only", False))
+
+        do_POST = do_PUT = do_PATCH = do_DELETE = _refuse
+
+        def _send(self, status, body):
+            raw = json.dumps(body, indent=2).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def log_message(self, fmt, *args):  # no bearer tokens or bodies in logs
+            sys.stderr.write(f"lookup {self.command} {self.path.split('?', 1)[0]} -> {args[1] if len(args) > 1 else '?'}\n")
+
+    return ThreadingHTTPServer((host, port), Handler)
+
+
+def cmd_serve(args) -> int:
+    if args.host not in ("127.0.0.1", "::1", "localhost"):
+        raise DeliveryError("refused: the lookup route is loopback-only (D040)")
+    state = state_dir(repo_root())
+    server = lookup_server(state, lookup_token(state), args.host, args.port)
+    print(f"dev-delivery lookup: http://{args.host}:{args.port}/delivery/v1/app-deploys/<id>[/receipt] "
+          f"(contracts v0.37.0; bearer from ${LOOKUP_TOKEN_ENV} or .dev-delivery/lookup-token)",
+          file=sys.stderr, flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
     return 0
 
 
@@ -895,6 +1014,10 @@ def main(argv=None) -> int:
     p.add_argument("--port", type=int, default=DEFAULT_PORT)
     p.set_defaults(func=cmd_observe)
     sub.add_parser("down").set_defaults(func=cmd_down)
+    p = sub.add_parser("serve")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=LOOKUP_PORT)
+    p.set_defaults(func=cmd_serve)
     args = parser.parse_args(argv)
     try:
         return args.func(args)

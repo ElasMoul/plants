@@ -58,3 +58,9 @@ Repin the dev-delivery tool to the new tag. Emit the receipt and identity
 through the new bindings, keeping the native fields as they are. Add
 round-trip tests against the new schemas. Tell Factory and runtime which tag to
 consume.
+
+## Closure (2026-09-28)
+
+Satisfied by contracts **v0.36.0** (`delivery.deployment-receipt`, running-app identity,
+CLI lookup transport named in `docs/task-delivery.md` §App-deploy); plantpal re-pinned —
+see `demands/fulfilled/contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity-report.md`.

@@ -697,3 +697,44 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful
+
+## Session 39 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0335_fulfill-demand-factory-20260928-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260928-plantpal-reachable-receipt-transport: record the ruling and raise the contracts demand for an app-deploy lookup route -- status: done.
+- Next step: contracts publishes the route (or rules path/host/auth producer-owned) -> implement it in the dev-delivery stack on the existing published port serving the tagged documents verbatim -> raise a demand to factory with the route, the contracts tag and live hit/miss/unauthorized evidence
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0335_fulfill-demand-factory-20260928-plantpal
+
+## Session 40 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0431_fulfill-demand-factory-20260928-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand factory-20260928-plantpal-reachable-receipt-transport (capability: Offer the app-deploy receipt lookup over a transport Factory can actually reach, so Factory can read rollback identity from delivery.deployment-receipt, from: factory, target: plantpal). Acceptance criteria: - Publish ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0431_fulfill-demand-factory-20260928-plantpal.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0431_fulfill-demand-factory-20260928-plantpal
+
+## Session 41 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: fulfill contracts-20260928-plantpal-implement-app-deploy-lookup-route -- status: done.
+- Next step: PR chore/PP-118 into dev; owner hands lookup token to Factory config
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand plantpal-20260928-platform-vault-lookup-port-8185 raised (register 8185 in PLATFORM_STATE §3)
+- Session: 2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl
