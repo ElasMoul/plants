@@ -11,7 +11,7 @@ acceptance-criteria:
   - "The lookup transport for app-deploy nativeRef plantpal:deployments/<id> is named (CLI JSON on stdout, file, or HTTP route) so Factory knows how to re-fetch it"
   - "Python binding for the new shapes at a tagged release; a Java binding only if contracts judges one needed (plantpal's producer is Python, see below)"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — app-deploy receipt, lookup and running-app identity shapes (D113)
@@ -58,3 +58,9 @@ Repin the dev-delivery tool to the new tag. Emit the receipt and identity
 through the new bindings, keeping the native fields as they are. Add
 round-trip tests against the new schemas. Tell Factory and runtime which tag to
 consume.
+
+## Closure (2026-09-28)
+
+Satisfied by contracts **v0.36.0** (`delivery.deployment-receipt`, running-app identity,
+CLI lookup transport named in `docs/task-delivery.md` §App-deploy); plantpal re-pinned —
+see `demands/fulfilled/contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity-report.md`.
