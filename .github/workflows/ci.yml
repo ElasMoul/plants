@@ -164,6 +164,28 @@ jobs:
       #     if-no-files-found: ignore
       #     retention-days: 7
 
+  # Dev delivery tool (D113) — the app-deploy receipt and lookup transports. This is
+  # the gate that keeps consumers of the tagged shapes honest: `receipt` refuses to
+  # emit a document that fails the JSON Schema or the cross-field rules, and both
+  # transports' exit codes are part of the transport contract. The contracts schemas
+  # are vendored, so this needs no contracts checkout, only the pinned binding.
+  dev-delivery-tool-ci:
+    name: Dev Delivery Tool CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # A venv, not system pip: the runner's python is externally managed (PEP 668).
+      - name: Install the pinned contracts binding
+        run: |
+          python3 -m venv tools/dev-delivery/.venv-ci
+          tools/dev-delivery/.venv-ci/bin/pip install -r tools/dev-delivery/requirements.txt
+
+      - name: Unit tests (tagged receipt, running-app identity, lookup transport)
+        run: tools/dev-delivery/.venv-ci/bin/python -m unittest discover -s tools/dev-delivery -p "test_*.py" -v
+
   # Auth hardening wave 1 characterization evidence. Keep these exact-file
   # runners separate from the full suites above so their reports prove that
   # every required security boundary actually executed.

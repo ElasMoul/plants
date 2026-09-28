@@ -3,9 +3,21 @@
 
 Deploys ONE isolated dev candidate of plantpal from a revision that is already
 merged into ``origin/dev``, observes what the running app reports about itself,
-runs smoke checks, and stores an app-owned deployment receipt. ``lookup`` maps a
-receipt to the tagged contracts v0.31.0 ``delivery.producer-result`` shape
-(producer ``app-deploy``, nativeRef ``plantpal:deployments/<id>``).
+runs smoke checks, and stores an app-owned deployment receipt.
+
+The on-disk record is native (``plantpal.dev-deployment-receipt/1``). Both lookup
+transports emit the tagged contracts **v0.36.0** shapes (producer ``app-deploy``,
+nativeRef ``plantpal:deployments/<id>``):
+
+  * ``lookup <id>``  -> ``delivery.producer-result``, built through the receipt by
+    the §App-deploy mapping.
+  * ``receipt <id>`` -> ``delivery.deployment-receipt``, the full tagged receipt
+    (including rollback identity), validated against the JSON Schema in
+    ``tools/dev-delivery/schemas/`` and against the cross-field rules the schema
+    cannot express.
+
+A miss on either is exit 4 with ``deployment_not_found: <id>`` on stderr and
+nothing on stdout: Factory reads that as ``unavailable``, never as ``failed``.
 
 Hard lines (see docs/dev-delivery.md):
   * dev only. This tool never touches ``main``, deploy/vps/ or production secrets.
@@ -53,7 +65,12 @@ COMPOSE_PROJECT = "plantpal-devdelivery"
 COMPOSE_FILE = Path("deploy/dev-delivery/docker-compose.yml")
 DEFAULT_PORT = 8184
 PLANOTELL_URL = "http://planotell.platform.localhost"
-RECEIPT_SCHEMA = "plantpal.dev-deployment-receipt/1"  # plantpal-native until contracts tags one
+RECEIPT_SCHEMA = "plantpal.dev-deployment-receipt/1"  # the on-disk native record
+CONTRACTS_TAG = "v0.36.0"                             # the tagged shapes both lookup transports emit
+TAGGED_DIGEST_KIND = "local-image-id"                 # plantpal's digests are local engine image ids
+# Vendored verbatim from the tag above; see schemas/README.md. Used only to validate.
+SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
+PRIMARY_COMPONENT = "backend"  # the component that serves /actuator/info, so it carries artifactRef
 
 # Checks that must have passed on GitHub before a revision may be deployed.
 # The three run on the push of the merged SHA to dev; sonar-gate runs on the PR
@@ -62,6 +79,9 @@ PUSH_CHECKS = ("Backend CI", "Frontend CI", "Detect secrets")
 PR_CHECK = "sonar-gate"
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+
+# The tagged running-app identity fields, in the order app/deployment-identity declares them.
+IDENTITY_FIELDS = ("appIdentity", "revision", "deploymentId", "environment")
 
 # Keys a dev env file may carry. Anything else, and any production-only key, is
 # refused so a production .env can't be pointed at this stack by accident.
@@ -83,11 +103,17 @@ UNSET = "unset-in-dev-delivery"
 
 
 class DeliveryError(Exception):
-    """A refusal or failure with a message meant for the operator."""
+    """A refusal or failure with a message meant for the operator.
 
-    def __init__(self, message: str, exit_code: int = 2):
+    ``bare`` suppresses the ``dev-delivery:`` prefix. The lookup transports have a
+    machine-read stderr contract (``deployment_not_found: <id>``, §App-deploy), so
+    their miss message is printed verbatim.
+    """
+
+    def __init__(self, message: str, exit_code: int = 2, bare: bool = False):
         super().__init__(message)
         self.exit_code = exit_code
+        self.bare = bare
 
 
 # ── paths / state ─────────────────────────────────────────────────────────────
@@ -140,7 +166,7 @@ def save_receipt(state: Path, receipt: dict) -> None:
 def load_receipt(state: Path, deployment_id: str) -> dict:
     path = receipt_path(state, deployment_id)
     if not path.exists():
-        raise DeliveryError(f"deployment_not_found: {deployment_id}", exit_code=4)
+        raise DeliveryError(f"deployment_not_found: {deployment_id}", exit_code=4, bare=True)
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -164,40 +190,185 @@ def rollback_identity(previous: dict | None) -> dict | None:
     }
 
 
-def to_producer_result(receipt: dict) -> dict:
-    """Map a native receipt to contracts v0.31.0 delivery.producer-result, validated by the binding."""
-    observed = receipt.get("observed") or {}
-    environment = None
-    if (observed.get("appIdentity") and observed.get("deploymentId")
-            and SHA_RE.match(observed.get("revision") or "")):
-        environment = {
-            "name": "dev",
-            "appIdentity": observed["appIdentity"],
-            "deploymentId": observed["deploymentId"],
-            "deployedRevision": observed["revision"],
-            "url": receipt["testUrl"],
-        }
-    result = {
-        "producer": "app-deploy",
-        "operationId": receipt["deploymentId"],
-        "correlation": receipt["correlation"],
-        "repository": REPOSITORY,
+def to_tagged_receipt(receipt: dict) -> dict:
+    """Native ``plantpal.dev-deployment-receipt/1`` -> contracts v0.36.0 ``delivery.deployment-receipt``.
+
+    The tagged shape is closed, so the native-only fields stay in the on-disk file and
+    are dropped here (contracts ``docs/task-delivery.md`` §Upgrade / repin v0.36.0):
+    ``schema``, ``revisionRole``, ``composeProject``, ``port`` and ``log``, plus
+    ``preDeployChecks`` (already the head of ``checks``). The native per-check
+    ``detail``/``prHead`` are dropped for the same reason: ``check`` is closed too.
+    """
+    return {
+        "deploymentId": receipt["deploymentId"],
+        "kind": receipt["kind"],
+        "repository": receipt["repository"],
         "branch": receipt["branch"],
-        "revision": receipt["revision"],
-        "outcome": receipt["result"],
+        "mergedRevision": receipt["revision"],           # the revision that was DEPLOYED
+        "imageDigests": receipt["imageDigests"],
+        "digestKind": TAGGED_DIGEST_KIND,
+        "result": receipt["result"],
         "exitCode": receipt["exitCode"],
-        "observedAt": receipt.get("observedAt") or receipt["startedAt"],
-        "nativeRef": f"plantpal:deployments/{receipt['deploymentId']}",
-        "artifactRef": (receipt.get("imageDigests") or {}).get("backend"),
-        "environment": environment,
+        "startedAt": receipt["startedAt"],
+        "finishedAt": receipt["finishedAt"],
+        "observedAt": receipt["observedAt"],
+        "environment": {"name": receipt["environment"], "url": receipt["testUrl"]},
+        "observed": receipt["observed"],                 # the revision that is SERVED
         "checks": [
             {"name": c["name"], "criterionId": c.get("criterionId"),
              "outcome": c["outcome"], "exitCode": c.get("exitCode")}
             for c in receipt["checks"]
         ],
+        "correlation": receipt["correlation"],
+        "rollback": receipt["rollback"],
+        "rollbackOf": receipt.get("rollbackOf"),          # explicit null for kind: deploy
+        "restores": receipt.get("restores"),
+        "nativeRef": f"{REPOSITORY}:deployments/{receipt['deploymentId']}",
     }
+
+
+def producer_result_from_tagged(tagged: dict) -> dict:
+    """The §App-deploy receipt -> producer-result mapping, as contracts states it.
+
+    ``environment`` is built **only** from what the running app reported (``observed``),
+    never from the receipt's own ``deploymentId``/``mergedRevision``: a producer that
+    filled it from its intentions would report a deployment verified that nobody
+    observed. Rollback identity is deliberately not mapped — Factory reads ``rollback``
+    from the receipt it re-fetches through ``nativeRef``.
+    """
+    observed = tagged["observed"]
+    environment = None
+    if observed is not None and observed.get("revision") is not None and observed.get("deploymentId") is not None:
+        environment = {
+            "name": tagged["environment"]["name"],
+            "appIdentity": observed["appIdentity"],
+            "deploymentId": observed["deploymentId"],
+            "deployedRevision": observed["revision"],
+            "url": tagged["environment"]["url"],
+        }
+    return {
+        "producer": "app-deploy",
+        "operationId": tagged["deploymentId"],
+        "correlation": tagged["correlation"],
+        "repository": tagged["repository"],
+        "branch": tagged["branch"],
+        "revision": tagged["mergedRevision"],
+        "outcome": tagged["result"],
+        "exitCode": tagged["exitCode"],
+        "observedAt": tagged["observedAt"] or tagged["startedAt"],
+        "nativeRef": tagged["nativeRef"],
+        "artifactRef": tagged["imageDigests"].get(PRIMARY_COMPONENT),
+        "environment": environment,
+        "checks": tagged["checks"],
+    }
+
+
+def to_producer_result(receipt: dict) -> dict:
+    """Map a native receipt to delivery.producer-result through the tagged receipt."""
     from platform_contracts.delivery.delivery_producer_result import DeliveryProducerResult
-    return DeliveryProducerResult.model_validate(result).model_dump(mode="json")
+    return DeliveryProducerResult.model_validate(producer_result_from_tagged(to_tagged_receipt(receipt))).model_dump(mode="json")
+
+
+# ── tagged validation: schema + the rules the schema cannot express ───────────
+
+def check_deployment_semantics(tagged: dict) -> list[str]:
+    """The app-deploy cross-field rules, ported from contracts ``tests/validate_delivery.py``.
+
+    Equality between two fields of one document (the revision the app reports serving
+    vs the one that was deployed) has no draft 2020-12 keyword, and it is exactly the
+    claim a receipt exists to prove — so it must be checked here. Validating against
+    the schema alone would happily accept a ``passed`` receipt whose URL serves
+    something else.
+    """
+    out = []
+    if tagged["nativeRef"] != f"{tagged['repository']}:deployments/{tagged['deploymentId']}":
+        out.append("nativeRef must be <repository>:deployments/<deploymentId>")
+    rollback = tagged.get("rollback")
+    if rollback is not None and rollback["deploymentId"] == tagged["deploymentId"]:
+        out.append("rollback identity must name an EARLIER deployment")
+    if tagged["kind"] == "rollback" and tagged["deploymentId"] in (tagged.get("restores"), tagged.get("rollbackOf")):
+        out.append("a rollback is a new deployment, never the one it restores or replaces")
+    if tagged["result"] == "passed":
+        observed = tagged.get("observed") or {}
+        if observed.get("revision") != tagged["mergedRevision"]:
+            out.append("passed requires the running app to report mergedRevision")
+        if observed.get("deploymentId") != tagged["deploymentId"]:
+            out.append("passed requires the running app to report this deploymentId")
+        if tagged["environment"]["name"] != observed.get("environment"):
+            out.append("passed requires the running app to report the receipt's environment")
+    return out
+
+
+def schema_dir() -> Path:
+    """Where the JSON Schemas live: an explicit override, else the copies pinned beside this tool."""
+    override = os.environ.get("PLATFORM_CONTRACTS_SCHEMAS")
+    return Path(override) if override else SCHEMA_DIR
+
+
+def schema_registry(where: Path):
+    """A registry resolving the vendored schemas by ``$id`` and by the relative names their ``$ref``s use."""
+    from referencing import Registry, Resource
+    registry = Registry()
+    for path in (where / "delivery").glob("*.json"):
+        resource = Resource.from_contents(json.loads(path.read_text(encoding="utf-8")))
+        registry = registry.with_resource(resource.contents["$id"], resource)
+        registry = registry.with_resource(path.name, resource)
+        registry = registry.with_resource("https://platform/contracts/delivery/" + path.name, resource)
+    identity = Resource.from_contents(json.loads((where / "app" / "deployment-identity.json").read_text(encoding="utf-8")))
+    registry = registry.with_resource(identity.contents["$id"], identity)
+    registry = registry.with_resource("https://platform/contracts/app/deployment-identity.json", identity)
+    return registry
+
+
+def schema_problems(tagged: dict) -> list[str]:
+    """Validate against the JSON Schema itself — not only the generated binding.
+
+    The binding is generated from the schema and does not implement its ``if``/``then``
+    conditionals, so it accepts documents the schema rejects (contracts
+    ``docs/task-delivery.md`` §Binding caveat).
+    """
+    try:
+        from jsonschema import Draft202012Validator, FormatChecker
+    except ImportError as e:  # a partial venv would otherwise silently skip this check
+        raise DeliveryError(f"jsonschema is required to validate the tagged receipt ({e}); "
+                            "install tools/dev-delivery/requirements.txt") from e
+    where = schema_dir()
+    if not (where / "delivery" / "delivery.deployment-receipt.json").exists():
+        raise DeliveryError(f"no delivery.deployment-receipt schema under {where} — "
+                            "see tools/dev-delivery/schemas/README.md")
+    schema = json.loads((where / "delivery" / "delivery.deployment-receipt.json").read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema, registry=schema_registry(where), format_checker=FormatChecker())
+    return [f"schema: {list(e.absolute_path)}: {e.message}" for e in validator.iter_errors(tagged)]
+
+
+def normalize_tagged_receipt(tagged: dict) -> dict:
+    """The receipt as the binding round-trips it, so both transports emit identical scalars.
+
+    Without this the raw mapping and the binding's own dump disagree on incidental
+    formatting (``AnyUrl`` grows a trailing slash), and a consumer comparing
+    ``environment.url`` across the two transports would see two different strings.
+    """
+    from platform_contracts.delivery.delivery_deployment_receipt import DeliveryDeploymentReceipt
+    return DeliveryDeploymentReceipt.model_validate(tagged).model_dump(mode="json")
+
+
+def validate_tagged_receipt(tagged: dict) -> list[str]:
+    """Binding + JSON Schema + cross-field rules. Empty list means the receipt is well formed.
+
+    All three, because each catches something the others do not: the schema catches a
+    wrong enum or a leaked native field, the cross-field rules catch a ``passed``
+    receipt that proves nothing, and the binding catches what plantpal will actually emit.
+    """
+    from pydantic import ValidationError
+    from platform_contracts.delivery.delivery_deployment_receipt import DeliveryDeploymentReceipt
+    problems = []
+    try:
+        DeliveryDeploymentReceipt.model_validate(tagged)
+    except ValidationError as e:
+        problems += [f"binding: {list(err['loc'])}: {err['msg']}" for err in e.errors()[:5]]
+    problems += schema_problems(tagged)
+    problems += check_deployment_semantics(tagged)
+    return problems
 
 
 # ── pre-deploy gate: merged + required checks ─────────────────────────────────
@@ -417,17 +588,26 @@ def http(method: str, url: str, timeout: float = 10.0) -> tuple[int | None, str]
         return None, ""
 
 
-def observe_identity(base_url: str) -> dict | None:
-    status, body = http("GET", f"{base_url}/actuator/info")
-    if status != 200:
-        return None
+def observe_identity_block(body: str) -> dict | None:
+    """The ``/actuator/info`` ``deployment`` block as served, narrowed to the tagged fields.
+
+    This block IS ``app/deployment-identity``: a field the app did not report stays
+    absent here and reads as ``null``, never as a default. ``None`` means the body
+    carried no identity block at all — which is not the same as an app that reported
+    nothing, and neither ever counts as verified.
+    """
     try:
         deployment = json.loads(body).get("deployment")
     except (ValueError, AttributeError):
         return None
     if not isinstance(deployment, dict):
         return None
-    return {k: deployment.get(k) for k in ("appIdentity", "revision", "deploymentId", "environment")}
+    return {k: deployment.get(k) for k in IDENTITY_FIELDS}
+
+
+def observe_identity(base_url: str) -> dict | None:
+    status, body = http("GET", f"{base_url}/actuator/info")
+    return observe_identity_block(body) if status == 200 else None
 
 
 def compare(observed_value, expected) -> str:
@@ -656,8 +836,18 @@ def cmd_lookup(args) -> int:
 
 
 def cmd_receipt(args) -> int:
+    """Print the tagged delivery.deployment-receipt (the lookup transport for the full record).
+
+    Refuses rather than emitting a receipt that does not satisfy the tag it claims: a
+    consumer that binds to the shape has no way to tell a near-miss from a real one.
+    """
     state = state_dir(repo_root())
-    print(json.dumps(load_receipt(state, args.deployment_id), indent=2))
+    tagged = to_tagged_receipt(load_receipt(state, args.deployment_id))
+    problems = validate_tagged_receipt(tagged)
+    if problems:
+        raise DeliveryError(f"refused: {args.deployment_id} does not satisfy "
+                            f"delivery.deployment-receipt ({CONTRACTS_TAG}): {'; '.join(problems)}")
+    print(json.dumps(normalize_tagged_receipt(tagged), indent=2))
     return 0
 
 
@@ -709,7 +899,7 @@ def main(argv=None) -> int:
     try:
         return args.func(args)
     except DeliveryError as e:
-        print(f"dev-delivery: {e}", file=sys.stderr)
+        print(str(e) if e.bare else f"dev-delivery: {e}", file=sys.stderr)
         return e.exit_code
 
 
