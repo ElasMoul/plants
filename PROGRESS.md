@@ -753,3 +753,31 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-28_0536_close-the-loop-on-demand-plantpal-202609
+
+## Session 43 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0602_close-the-loop-on-demand-plantpal-202609.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Close the loop on demand plantpal-20260928-platform-vault-lookup-port-8185. It was approved at 2026-09-28T04:40:07.689603Z -- the only thing left is this repo's own archive bookkeeping, which nobody has done yet. 1. GET http://localhost:8082/satisfied/plantpal -- find plantpal-20260928-platform-vaul... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0602_close-the-loop-on-demand-plantpal-202609.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0602_close-the-loop-on-demand-plantpal-202609
+
+## Session 44 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0640_close-the-loop-on-demand-plantpal-202609.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Close the loop on demand plantpal-20260928-factory-bind-app-deploy-lookup-route. It was approved at 2026-09-28T05:01:43.221986Z -- the only thing left is this repo's own archive bookkeeping, which nobody has done yet. 1. GET http://localhost:8082/satisfied/plantpal -- find plantpal-20260928-factory-... -- status: done.
+- Next step: Owner merges PR #200 into dev (checks were still IN_PROGRESS, mergeStateStatus BLOCKED at session end). Worktree deliberately left on chore/PP-121-... so the on-disk demands/ state matches the verified board reading; switch back to dev after the merge.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0640_close-the-loop-on-demand-plantpal-202609
