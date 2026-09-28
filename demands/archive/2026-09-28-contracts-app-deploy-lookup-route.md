@@ -11,7 +11,7 @@ acceptance-criteria:
   - "A statement that the CLI transport in §App-deploy is not withdrawn: the route is additive, so plantpal keeps emitting the CLI JSON on stdout unchanged and no existing consumer is obligated to move (D031)."
   - "If an OpenAPI document is the publication vehicle, it lands under schemas/delivery-api/ (the ci-runner-results.openapi.yaml precedent) and is covered by the route checks in tests/validate_delivery.py."
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — app-deploy lookup over a transport Factory can reach
@@ -87,3 +87,10 @@ published miss code so Factory reads `unavailable`, never `failed`. Keep both CL
 commands emitting exactly what they emit today. Then raise a demand to `factory`
 with the exact route, the contracts tag it serves, and a live call's evidence —
 hit, miss and unauthorized — rather than configuration alone.
+
+## Closure (2026-09-28)
+
+Satisfied by contracts **v0.37.0** (`schemas/delivery-api/app-deploy-lookup.openapi.yaml`,
+the `deployment_not_found` code, the §Published-interface ruling that host/port/credential
+are the producer's, and the CLI kept). plantpal implemented it: see
+`demands/fulfilled/contracts-20260928-plantpal-implement-app-deploy-lookup-route-report.md`.
