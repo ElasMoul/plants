@@ -48,6 +48,20 @@ jobs:
         working-directory: backend
         run: mvn clean verify --batch-mode --no-transfer-progress -Ddependency.check.skip=true
 
+      # Inputs for sonar-gate (below): compiled classes + JaCoCo report, so the
+      # self-hosted scan never rebuilds or reruns Testcontainers.
+      - name: Upload Sonar inputs (backend)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-backend
+          path: |
+            backend/target/classes/
+            backend/target/test-classes/
+            backend/target/site/jacoco/jacoco.xml
+          if-no-files-found: error
+          retention-days: 1
+
       #- name: Trivy vulnerability scan
       #  uses: aquasecurity/trivy-action@master
       #  with:
@@ -95,9 +109,19 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      # --coverage feeds sonar-gate; the 15% threshold stays in `npm run test:coverage`.
       - name: Unit tests
         working-directory: frontend
-        run: npm test
+        run: npm test -- --coverage --coverageThreshold='{}'
+
+      - name: Upload Sonar inputs (frontend)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-frontend
+          path: frontend/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Install Playwright chromium (atlas E2E)
         working-directory: frontend
@@ -139,6 +163,28 @@ jobs:
       #       frontend/test-results/**/*.png
       #     if-no-files-found: ignore
       #     retention-days: 7
+
+  # Dev delivery tool (D113) — the app-deploy receipt and lookup transports. This is
+  # the gate that keeps consumers of the tagged shapes honest: `receipt` refuses to
+  # emit a document that fails the JSON Schema or the cross-field rules, and both
+  # transports' exit codes are part of the transport contract. The contracts schemas
+  # are vendored, so this needs no contracts checkout, only the pinned binding.
+  dev-delivery-tool-ci:
+    name: Dev Delivery Tool CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # A venv, not system pip: the runner's python is externally managed (PEP 668).
+      - name: Install the pinned contracts binding
+        run: |
+          python3 -m venv tools/dev-delivery/.venv-ci
+          tools/dev-delivery/.venv-ci/bin/pip install -r tools/dev-delivery/requirements.txt
+
+      - name: Unit tests (tagged receipt, running-app identity, lookup transport)
+        run: tools/dev-delivery/.venv-ci/bin/python -m unittest discover -s tools/dev-delivery -p "test_*.py" -v
 
   # Auth hardening wave 1 characterization evidence. Keep these exact-file
   # runners separate from the full suites above so their reports prove that
@@ -223,6 +269,128 @@ jobs:
             frontend/test-results/session-handoff.xml
           if-no-files-found: error
           retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # SonarQube quality gate (D112) — required check on PRs into dev.
+  # Runs on ci-runner's self-hosted runner: only it can reach the host-native
+  # SonarQube server. Scans the PR merge ref (actions/checkout's default for
+  # pull_request) into the single Community Edition project; the gate's
+  # new-code conditions decide, and sonar.qualitygate.wait fails the job.
+  # Fork safety (D112): fork heads never reach the self-hosted runner — they are
+  # routed to ubuntu-latest and fail, so a fork PR cannot pass by skipping.
+  # ─────────────────────────────────────────────────────────────────────────────
+  sonar-gate:
+    name: sonar-gate
+    needs: [backend-ci, frontend-ci]
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","platform"]') || 'ubuntu-latest' }}
+    # Community Edition keeps one analysis history per project — serialize scans.
+    concurrency:
+      group: sonar-gate
+      cancel-in-progress: false
+    env:
+      SONAR_HOST_URL: http://host.docker.internal:9000
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    steps:
+      - name: Refuse fork heads
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::sonar-gate does not run for fork PRs (D112 fork-safety rule)."
+          exit 1
+
+      - name: Require SONAR_TOKEN
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::Repository secret SONAR_TOKEN is not set."
+            exit 1
+          fi
+
+      - name: Checkout (PR merge ref)
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      # The ci-runner image ships no Maven (GitHub-hosted runners do). Install a
+      # pinned, checksum-verified Apache Maven into the runner's persistent tool
+      # cache; later runs reuse it.
+      - name: Set up Maven
+        env:
+          MAVEN_VERSION: 3.9.9
+        run: |
+          MAVEN_HOME="${RUNNER_TOOL_CACHE}/maven/${MAVEN_VERSION}"
+          if [ ! -x "${MAVEN_HOME}/bin/mvn" ]; then
+            BASE="https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries"
+            TARBALL="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+            curl -fsSLo "/tmp/${TARBALL}" "${BASE}/${TARBALL}"
+            echo "$(curl -fsSL "${BASE}/${TARBALL}.sha512")  /tmp/${TARBALL}" | sha512sum -c -
+            mkdir -p "${MAVEN_HOME}"
+            tar -xzf "/tmp/${TARBALL}" -C "${MAVEN_HOME}" --strip-components=1
+            rm -f "/tmp/${TARBALL}"
+          fi
+          echo "${MAVEN_HOME}/bin" >> "$GITHUB_PATH"
+
+      # The Maven scanner resolves the project's dependencies, contracts included.
+      - name: Read pinned contracts version
+        id: sonar-contracts
+        run: |
+          VERSION=$(grep -A1 '<artifactId>contracts</artifactId>' backend/pom.xml | grep -oP '(?<=<version>)[^<]+')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout contracts at pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: elmoul/contracts
+          ref: v${{ steps.sonar-contracts.outputs.version }}
+          token: ${{ secrets.CONTRACTS_READ_TOKEN }}
+          path: contracts-src
+
+      - name: Install contracts bindings into local Maven repo
+        working-directory: contracts-src/gen/java
+        run: mvn install -DskipTests --batch-mode --no-transfer-progress
+
+      - name: Download Sonar inputs (backend)
+        uses: actions/download-artifact@v8
+        with:
+          name: sonar-backend
+          path: backend/target
+
+      - name: Download Sonar inputs (frontend)
+        id: frontend-inputs
+        uses: actions/download-artifact@v8
+        with:
+          name: sonar-frontend
+          path: frontend/coverage
+
+      - name: Scan backend + wait for quality gate
+        working-directory: backend
+        run: >-
+          mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          --batch-mode --no-transfer-progress
+          -Dsonar.host.url="$SONAR_HOST_URL"
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=600
+
+      - name: Set up Node 20
+        if: ${{ !cancelled() && steps.frontend-inputs.outcome == 'success' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      # Runs even when the backend gate failed, so one run reports both verdicts.
+      - name: Scan frontend + wait for quality gate
+        if: ${{ !cancelled() && steps.frontend-inputs.outcome == 'success' }}
+        working-directory: frontend
+        run: >-
+          npx --yes @sonar/scan
+          -Dsonar.host.url="$SONAR_HOST_URL"
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=600
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI

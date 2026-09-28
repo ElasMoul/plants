@@ -15,3 +15,13 @@ deploy/vps/plantpal-deploy.pub
 # SonarQube scanner cache
 .scannerwork/
 .idea/*
+# Dev-delivery state (receipts, generated dev-only secrets, build archives, logs)
+# and the tool's venv — see docs/dev-delivery.md.
+/.dev-delivery/
+tools/dev-delivery/.venv/
+tools/dev-delivery/.venv-ci/
+tools/dev-delivery/__pycache__/
+.brain/*
+.claude/*
+.Codex/*
+PROGRESS.md

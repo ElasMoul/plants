@@ -1,0 +1,103 @@
+{
+  "producer": "app-deploy",
+  "operationId": "pla-dev-20260927103855-e3bcd1f889de",
+  "correlation": {
+    "deliveryId": null,
+    "operationKey": "plantpal-d113-verify-20260927"
+  },
+  "repository": "plantpal",
+  "branch": "dev",
+  "revision": "e3bcd1f889de3e06caa191e1e3428373c873e2f6",
+  "outcome": "passed",
+  "exitCode": 0,
+  "observedAt": "2026-09-27T10:40:00Z",
+  "nativeRef": "plantpal:deployments/pla-dev-20260927103855-e3bcd1f889de",
+  "artifactRef": "sha256:b3cc14520a9082efeb76511c96a1c52a706d6883e21ea8b119e67beff939672e",
+  "environment": {
+    "name": "dev",
+    "appIdentity": "plantpal",
+    "deploymentId": "pla-dev-20260927103855-e3bcd1f889de",
+    "deployedRevision": "e3bcd1f889de3e06caa191e1e3428373c873e2f6",
+    "url": "http://127.0.0.1:8184/"
+  },
+  "checks": [
+    {
+      "name": "ci:Backend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Frontend CI",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "ci:Detect secrets",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "quality:sonar-gate",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:app",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:revision",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:deployment",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "identity:environment",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "smoke:frontend-index",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "smoke:backend-health",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "smoke:api-auth-guard",
+      "criterionId": null,
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "criterion:AC3-info",
+      "criterionId": "AC3-info",
+      "outcome": "passed",
+      "exitCode": null
+    },
+    {
+      "name": "route:planotell",
+      "criterionId": null,
+      "outcome": "unavailable",
+      "exitCode": null
+    }
+  ]
+}

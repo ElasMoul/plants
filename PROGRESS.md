@@ -517,3 +517,267 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-25_1950_archive-this-demande-and-tell-factory-it
+
+## Session 28 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0317_fulfill-demand-launcher-20260926-plantpa.md`
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0326_raise-local-forge-sonar-gate-demand.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand launcher-20260926-plantpal-frontend-atlas-port-8182 (capability: plantpal's frontend-atlas stops publishing 0.0.0.0:8182 -- it squats tutor's allocated port and breaks loopback-only publishing (D040), from: launcher, target: plantpal). Acceptance criteria: - frontend-atlas in plantpal... -- status: done.
+- Next step: Open PR bugfix/PP-110-atlas-loopback-port -> dev; launcher confirms tutor on 8182
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: needed: registry should record plantpal-frontend-atlas at 8183 (+8445)
+- Session: 2026-09-27_0317_fulfill-demand-launcher-20260926-plantpa
+
+## Session 29 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0557_fulfill-demand-contracts-20260927-plantp.md`
+- State: Raise local-forge sonar-gate demand -- status: partial.
+- Next step: Owner decides: GitHub ruleset + self-hosted runner for sonar-gate, or keep the forge demand
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand drafted, held pending owner re-decision
+- Session: 2026-09-27_0326_raise-local-forge-sonar-gate-demand
+
+## Session 29 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise sonar-gate demands (D109 ruling + ci-runner plants runner) -- status: done.
+- Next step: Owner rules D109 clause 5 in vault; ci-runner registers plants runner; then add sonar-gate job to ci.yml
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand raised: plantpal-20260927-d109-sonar-gate-enforcement
+- Session: 2026-09-27_0336_raise-sonar-gate-demands-d109-ruling-ci
+
+## Session 30 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0409_close-loop-on-sonar-gate-demands-d112-pl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Close loop on sonar-gate demands (D112 + plants runner) -- status: done.
+- Next step: Build sonar-gate job in ci.yml (runs-on self-hosted,platform; merge-ref scan; qualitygate.wait), then owner adds sonar-gate to dev ruleset
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0409_close-loop-on-sonar-gate-demands-d112-pl
+
+## Session 31 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0413_build-sonar-gate-ci-job-d112-raise-layer.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Build sonar-gate CI job (D112) + raise layer-2 CI stage-view demands -- status: done.
+- Next step: Owner adds SONAR_TOKEN repo secret, sets fork approval to all outside contributors, re-runs sonar-gate on the PR; after a green run adds sonar-gate to the dev ruleset
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0413_build-sonar-gate-ci-job-d112-raise-layer
+
+## Session 32 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fix sonar-gate: install Maven on self-hosted runner -- status: done.
+- Next step: Owner adds sonar-gate to the dev ruleset required checks and sets fork approval to all outside contributors
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_0429_fix-sonar-gate-install-maven-on-self-hos
+
+## Session 33 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand contracts-20260927-plantpal-repin-ci-run-steps (capability: Close the consuming leg of plantpal-20260927-contracts-ci-run-steps — optional jobId + steps[] on ci.run shipped in contracts v0.30.0, from: contracts, target: plantpal). Before working: check current state first -- the capab... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-27_0557_fulfill-demand-contracts-20260927-plantp.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-27_0557_fulfill-demand-contracts-20260927-plantp
+- State: Fulfill demand factory-20260927-dev-delivery (capability: Provide Planotell dev-only delivery and observed candidate identity, from: factory, target: plantpal). Acceptance criteria: - Document and implement task-branch to dev integration with required CI/security/quality checks including D112 sonar-... -- status: failed (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-27_1035_fulfill-demand-factory-20260927-dev-deli
+
+## Session 34 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_1135_fulfill-demand-factory-20260927-dev-deli.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260927-dev-delivery (capability: Provide Planotell dev-only delivery and observed candidate identity, from: factory, target: plantpal). Acceptance criteria: - Document and implement task-branch to dev integration with required CI/security/quality checks including D112 sonar-... -- status: done.
+- Next step: Owner: rule the plantpal coordination-publication path (and the optional paths-ignore on deploy.yml), approve the pending vault report, then Factory/runtime wire planotell.platform.localhost -> 127.0.0.1:8184
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: no vault write; demand plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path is pending-approval (port recorded, coordination ruling blocked at the owner)
+- Session: 2026-09-27_1135_fulfill-demand-factory-20260927-dev-deli
+
+## Session 35 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0030_fulfill-demand-contracts-20260928-plantp.md`
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2259_close-satisfied-demand-loops-ci-run-step.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity (capability: Close the consuming leg of plantpal-20260927-contracts-app-deploy-receipt-and-identity — the app-deploy receipt, running-app identity and lookup transport shipped in contracts v0.36.0, from: contracts, targ... -- status: done.
+- Next step: Owner review of branch feature/PP-115-contracts-v036-app-deploy-repin, then PR into dev. Nothing was pushed and main was never touched (a push to main deploys production). Optional follow-ups named in the report: add the new Dev Delivery Tool CI job to the dev ruleset's required checks (owner-managed repo setting), and decide whether deploy/rollback/reconcile should also hard-gate on schema validation rather than only receipt.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none -- no vault write this session; the two demands raised target factory and runtime, not the vault. The coordination-publication ruling (docs/dev-delivery.md prerequisite 3) is unchanged: still blocked at the owner.
+- Session: 2026-09-28_0030_fulfill-demand-contracts-20260928-plantp
+- State: Close satisfied demand loops (ci-run steps x3, planotell/D114) + deploy paths-ignore -- status: done.
+- Next step: Watch this PR's sonar-gate on /ci for the live stage bar; contracts-app-deploy-receipt-and-identity still open
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_2259_close-satisfied-demand-loops-ci-run-step
+
+## Session 36 (2026-09-27)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2309_raise-dashboard-demand-skipped-cancelled.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Raise dashboard demand: skipped/cancelled ci.run shown as FAILED -- status: done.
+- Next step: PR #191 sonar-gate verdict, then owner merges; dashboard skipped-status demand open
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none needed
+- Session: 2026-09-27_2309_raise-dashboard-demand-skipped-cancelled
+
+## Session 37 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0106_fulfill-demand-contracts-20260928-plantp.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity (capability: Close the consuming leg of plantpal-20260927-contracts-app-deploy-receipt-and-identity — the app-deploy receipt, running-app identity and lookup transport shipped in contracts v0.36.0, from: contracts, targ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0106_fulfill-demand-contracts-20260928-plantp.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0106_fulfill-demand-contracts-20260928-plantp
+
+## Session 38 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0114_fulfill-demand-contracts-20260928-plantp.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity (capability: Close the consuming leg of plantpal-20260927-contracts-app-deploy-receipt-and-identity — the app-deploy receipt, running-app identity and lookup transport shipped in contracts v0.36.0, from: contracts, targ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0114_fulfill-demand-contracts-20260928-plantp.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0114_fulfill-demand-contracts-20260928-plantp
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Verify prior session's v0.36.0 repin fulfillment and record the D114 coordination-push finding -- status: done.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful
+
+## Session 39 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0335_fulfill-demand-factory-20260928-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260928-plantpal-reachable-receipt-transport: record the ruling and raise the contracts demand for an app-deploy lookup route -- status: done.
+- Next step: contracts publishes the route (or rules path/host/auth producer-owned) -> implement it in the dev-delivery stack on the existing published port serving the tagged documents verbatim -> raise a demand to factory with the route, the contracts tag and live hit/miss/unauthorized evidence
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0335_fulfill-demand-factory-20260928-plantpal
+
+## Session 40 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0431_fulfill-demand-factory-20260928-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand factory-20260928-plantpal-reachable-receipt-transport (capability: Offer the app-deploy receipt lookup over a transport Factory can actually reach, so Factory can read rollback identity from delivery.deployment-receipt, from: factory, target: plantpal). Acceptance criteria: - Publish ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0431_fulfill-demand-factory-20260928-plantpal.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0431_fulfill-demand-factory-20260928-plantpal
+
+## Session 41 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: fulfill contracts-20260928-plantpal-implement-app-deploy-lookup-route -- status: done.
+- Next step: PR chore/PP-118 into dev; owner hands lookup token to Factory config
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand plantpal-20260928-platform-vault-lookup-port-8185 raised (register 8185 in PLATFORM_STATE §3)
+- Session: 2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl
+
+## Session 42 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0536_close-the-loop-on-demand-plantpal-202609.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Close the loop on demand plantpal-20260928-runtime-consume-deployment-identity. It was approved at 2026-09-28T02:57:17.081976Z -- the only thing left is this repo's own archive bookkeeping, which nobody has done yet. 1. GET http://localhost:8082/satisfied/plantpal -- find plantpal-20260928-runtime-c... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0536_close-the-loop-on-demand-plantpal-202609.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0536_close-the-loop-on-demand-plantpal-202609
+
+## Session 43 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0602_close-the-loop-on-demand-plantpal-202609.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Close the loop on demand plantpal-20260928-platform-vault-lookup-port-8185. It was approved at 2026-09-28T04:40:07.689603Z -- the only thing left is this repo's own archive bookkeeping, which nobody has done yet. 1. GET http://localhost:8082/satisfied/plantpal -- find plantpal-20260928-platform-vaul... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0602_close-the-loop-on-demand-plantpal-202609.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0602_close-the-loop-on-demand-plantpal-202609
+
+## Session 44 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0640_close-the-loop-on-demand-plantpal-202609.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Close the loop on demand plantpal-20260928-factory-bind-app-deploy-lookup-route. It was approved at 2026-09-28T05:01:43.221986Z -- the only thing left is this repo's own archive bookkeeping, which nobody has done yet. 1. GET http://localhost:8082/satisfied/plantpal -- find plantpal-20260928-factory-... -- status: done.
+- Next step: Owner merges PR #200 into dev (checks were still IN_PROGRESS, mergeStateStatus BLOCKED at session end). Worktree deliberately left on chore/PP-121-... so the on-disk demands/ state matches the verified board reading; switch back to dev after the merge.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0640_close-the-loop-on-demand-plantpal-202609

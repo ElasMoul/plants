@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform/contracts/app/deployment-identity",
+  "title": "AppDeploymentIdentity",
+  "description": "What a RUNNING app reports about itself: which app it is, which revision it was built from and which deployment started it. It is read through the URL under test, so it shows which revision that URL actually serves. `runtime` and Factory read it to verify a deployment, and the app-deploy producer embeds it in `delivery.deployment-receipt` as `observed`. Every nullable field means NOT REPORTED: an app that does not know a value emits `null` and never fills in a default or a configured value. A consumer must treat `null` as unverified; it never matches an expected value. The app chooses the route that serves it. plantpal serves it at `GET /actuator/info` under the key `deployment` (see `docs/task-delivery.md` §App-deploy). Separate from `app/identity.json`, which is the tenant/app attribution claim sent with AI calls.",
+  "type": "object",
+  "required": ["appIdentity", "revision", "deploymentId", "environment"],
+  "additionalProperties": false,
+  "properties": {
+    "appIdentity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,79}$",
+      "description": "Functional name the running app reports for itself (D002), e.g. `plantpal`. Always present: an app that cannot name itself does not serve this document."
+    },
+    "revision": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Full commit SHA the running build was made from, baked in at build time (e.g. plantpal's `APP_REVISION`). `null` when the build carries none. A short SHA, a branch name or a tag is not a revision and is not emitted here."
+    },
+    "deploymentId": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Id of the deployment that started this process, as given by the deploying tool. It equals `delivery.deployment-receipt.deploymentId`. `null` when the process was started outside a tracked deployment, e.g. a developer's local run."
+    },
+    "environment": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z][a-z0-9-]{0,39}$",
+      "description": "Environment name the process was started in, e.g. `dev`. `null` when not reported. This is not restricted to `dev`: the shape describes any running instance, and D113 restricts only delivery (`delivery.deployment-receipt.environment.name`)."
+    }
+  }
+}

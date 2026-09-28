@@ -21,7 +21,7 @@ Built by a duo as a real-world, daily-use application — architected from day o
 | Push notifications | Web Push VAPID |
 | Build | Maven |
 | Tests | JUnit 5 · Mockito · AssertJ · Testcontainers |
-| CI/CD | GitHub Actions — `ci.yml`, `secret-scan.yml` (gitleaks), `nightly-evals.yml`; `deploy.yml` present but disabled in the GitHub UI pending owner |
+| CI/CD | GitHub Actions — `ci.yml`, `secret-scan.yml` (gitleaks); `deploy.yml` present but disabled in the GitHub UI pending owner |
 | Local infra | Docker · docker-compose (PostgreSQL + Redis + Kafka + Zookeeper) |
 | Deploy | Railway (backend) · Vercel (frontend) |
 
@@ -62,7 +62,7 @@ plantpal/
 ├── backend/Dockerfile
 ├── frontend/                                    # Angular PWA
 ├── docker-compose.yml                           # Local dev: Postgres + Redis + Kafka + Zookeeper
-├── .github/workflows/                           # ci, secret-scan, nightly-evals, deploy (disabled)
+├── .github/workflows/                           # ci, secret-scan, deploy (disabled)
 ├── .claude/                                     # Agent memory (see below)
 ├── HEXAGON.md · DEPLOYMENT.md · CHANGELOG.md    # Platform self-describing files
 └── README.md

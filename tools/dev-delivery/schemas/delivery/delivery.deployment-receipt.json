@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform/contracts/delivery/delivery.deployment-receipt",
+  "title": "DeliveryDeploymentReceipt",
+  "description": "The app-deploy producer's durable record of one dev deployment (D113): which merged revision was deployed, which images ran, what the running app reported, which checks passed, and which earlier deployment it can be rolled back to. It is the native record behind `delivery.producer-result` for producer `app-deploy`, re-fetched through `nativeRef`. It is written when the deployment is reserved (`result: pending`) and settled in place. A settled receipt is never rewritten to a different result, except that `reconcile` may settle a `pending` one. It is never acceptance. See `docs/task-delivery.md` §App-deploy for the lookup transport and the mapping to `delivery.producer-result`.",
+  "type": "object",
+  "required": ["deploymentId", "kind", "repository", "branch", "mergedRevision", "imageDigests", "digestKind", "result", "exitCode", "startedAt", "finishedAt", "observedAt", "environment", "observed", "checks", "correlation", "rollback", "rollbackOf", "restores", "nativeRef"],
+  "additionalProperties": false,
+  "properties": {
+    "deploymentId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The producer's stable deployment id. It is `delivery.producer-result.operationId` and the id the running app reports as `observed.deploymentId`."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["deploy", "rollback"],
+      "description": "`deploy`: a merged revision built and started. `rollback`: an earlier deployment's retained images started again without a rebuild. Either way it is a new deployment with its own id, observation and checks."
+    },
+    "repository": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,79}$", "description": "Functional repo name (D002), e.g. `plantpal`." },
+    "branch": { "type": "string", "minLength": 1, "description": "Branch whose first-parent line the revision was taken from, e.g. `dev`." },
+    "mergedRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Full SHA of the merged revision this deployment was built from (for `kind: rollback`, the revision of the restored deployment). It is known when the deployment is reserved, so it is never `null`. That the running app actually serves it is shown by `observed.revision`, not by this field."
+    },
+    "imageDigests": { "$ref": "#/$defs/imageDigests" },
+    "digestKind": {
+      "type": "string",
+      "enum": ["local-image-id", "registry-manifest"],
+      "description": "What the digests are. `local-image-id`: the local container engine's image id (sha256 of the image config). It identifies the image only on the deploying host and was never pushed. `registry-manifest`: a pushed manifest digest. A rollback verifies digests of this same kind."
+    },
+    "result": {
+      "type": "string",
+      "enum": ["passed", "failed", "unknown", "unavailable", "pending"],
+      "description": "Same meanings as `delivery.producer-result.outcome`. `passed` only when the stack came up (exit 0) and every gating check passed. Any gating `unknown` makes the result `unknown`, never `passed`."
+    },
+    "exitCode": { "type": ["integer", "null"], "description": "Exit status of the deploy command (e.g. `compose up --wait`). `null` when not reported, e.g. on a timeout. It is never defaulted to 0." },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": ["string", "null"], "format": "date-time", "description": "`null` only while `pending`." },
+    "observedAt": { "type": ["string", "null"], "format": "date-time", "description": "When `observed` and the post-deploy checks were taken. `null` only while `pending`." },
+    "environment": {
+      "title": "DeliveryDeploymentEnvironment",
+      "type": "object",
+      "required": ["name", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "const": "dev", "description": "D113 authorizes dev only; production is outside this contract." },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL the identity observation and smoke checks were run against. A configured hostname (e.g. `http://planotell.platform.localhost`) appears here only if the identity observed through that hostname matched this deployment. Otherwise this is the URL that was actually observed, e.g. loopback."
+        }
+      }
+    },
+    "observed": {
+      "oneOf": [{ "$ref": "../app/deployment-identity.json" }, { "type": "null" }],
+      "description": "What the running app reported through `environment.url`, copied as-is. `null` when the identity endpoint could not be read at all (not reachable, no identity document). A reported value that differs from `mergedRevision` or `deploymentId` is kept as reported and recorded as a `failed` identity check. It is never corrected."
+    },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "delivery.producer-result.json#/$defs/check" },
+      "description": "Every check in the order run: pre-deploy gates (e.g. `ci:*`, `quality:*`), identity checks (`identity:*`), smoke checks (`smoke:*`), criterion checks (`criterion:<id>`, with `criterionId`) and non-gating route checks (`route:*`). This array becomes `delivery.producer-result.checks` unchanged."
+    },
+    "correlation": {
+      "$ref": "delivery.producer-result.json#/$defs/correlation",
+      "description": "Factory's delivery id and operation key, as passed to the deploy command. `null` members when not given."
+    },
+    "rollback": {
+      "oneOf": [{ "$ref": "#/$defs/rollbackIdentity" }, { "type": "null" }],
+      "description": "The rollback identity: the most recent `passed` deployment before this one, i.e. what a rollback from here would restore. `null` when no earlier deployment passed. It is recorded when the deployment is reserved and never recomputed later."
+    },
+    "rollbackOf": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "For `kind: rollback`: the deployment that was current when the rollback ran, i.e. the one rolled back. `null` for `kind: deploy`."
+    },
+    "restores": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "For `kind: rollback`: the deployment whose images were restarted. `null` for `kind: deploy`."
+    },
+    "nativeRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,79}:deployments/[^\\s/]+$",
+      "description": "`<repository>:deployments/<deploymentId>`, e.g. `plantpal:deployments/pla-dev-20260927120000-0123456789ab`. Identical to `delivery.producer-result.nativeRef` for this deployment."
+    }
+  },
+  "$defs": {
+    "imageDigests": {
+      "title": "DeliveryImageDigests",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]{0,39}$" },
+      "additionalProperties": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+      "description": "Component name → image digest (`sha256:<64 hex>`), one entry per deployed component (plantpal: `backend`, `frontend`). A value is `null` while pending, or when the image was never built or could not be inspected."
+    },
+    "rollbackIdentity": {
+      "title": "DeliveryRollbackIdentity",
+      "description": "The earlier deployment a rollback restores: its id, its `mergedRevision` and its digests. A rollback refuses to start an image whose current digest differs from `imageDigests`.",
+      "type": "object",
+      "required": ["deploymentId", "revision", "imageDigests"],
+      "additionalProperties": false,
+      "properties": {
+        "deploymentId": { "type": "string", "minLength": 1, "description": "The earlier deployment a rollback restores." },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "That deployment's `mergedRevision`." },
+        "imageDigests": { "$ref": "#/$defs/imageDigests" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "result": { "const": "pending" } }, "required": ["result"] },
+      "else": {
+        "properties": {
+          "finishedAt": { "type": "string" },
+          "observedAt": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "result": { "const": "passed" } }, "required": ["result"] },
+      "then": {
+        "properties": {
+          "exitCode": { "const": 0 },
+          "observed": { "$ref": "../app/deployment-identity.json" },
+          "imageDigests": { "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "rollback" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "rollbackOf": { "type": "string" },
+          "restores": { "type": "string" }
+        }
+      },
+      "else": {
+        "properties": {
+          "rollbackOf": { "type": "null" },
+          "restores": { "type": "null" }
+        }
+      }
+    }
+  ]
+}
