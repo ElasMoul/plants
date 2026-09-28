@@ -697,3 +697,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful
+
+## Session 39 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0335_fulfill-demand-factory-20260928-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260928-plantpal-reachable-receipt-transport: record the ruling and raise the contracts demand for an app-deploy lookup route -- status: done.
+- Next step: contracts publishes the route (or rules path/host/auth producer-owned) -> implement it in the dev-delivery stack on the existing published port serving the tagged documents verbatim -> raise a demand to factory with the route, the contracts tag and live hit/miss/unauthorized evidence
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0335_fulfill-demand-factory-20260928-plantpal
