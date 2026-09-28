@@ -1,11 +1,18 @@
 """Unit tests for dev_delivery.py — pure logic only (no docker, git or network).
 
 Run: python -m unittest discover -s tools/dev-delivery -p "test_*.py"
-Needs the contracts v0.31.0 Python binding (see tools/dev-delivery/requirements.txt).
+Needs the contracts v0.36.0 Python binding and jsonschema (see
+tools/dev-delivery/requirements.txt).
 """
 
 import base64
+import contextlib
+import io
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
 import dev_delivery as dd
 
@@ -150,6 +157,336 @@ class ReceiptIds(unittest.TestCase):
     def test_rejects_path_traversal(self):
         with self.assertRaises(dd.DeliveryError):
             dd.receipt_path(dd.Path("."), "../../etc/passwd")
+
+
+# ── contracts v0.36.0: tagged receipt + running-app identity ──────────────────
+# The GOOD_*/BAD_* documents below are copied verbatim from contracts @ v0.36.0
+# tests/validate_delivery.py. Keeping them here means a shape drift surfaces as a
+# failure in this repo rather than at a consumer that already bound to the tag.
+
+REV_MERGED = "2" * 40
+REV_TASK = "1" * 40
+DEPLOY_ID = "pla-dev-20260927120000-222222222222"
+DEPLOY_PREV = "pla-dev-20260926090000-111111111111"
+DEPLOY_OLDER = "pla-dev-20260925080000-333333333333"
+DIGEST_BE = "sha256:" + "e" * 64
+DIGEST_FE = "sha256:" + "f" * 64
+DELIVERY = "3c9c9b2a-2c8b-4a8b-9b3d-2f7e5b6c1a10"
+
+GOOD_IDENTITY = {"appIdentity": "plantpal", "revision": REV_MERGED, "deploymentId": DEPLOY_ID, "environment": "dev"}
+# A developer's local run: nothing reported but the name. Valid, and verifies nothing.
+GOOD_IDENTITY_UNREPORTED = {"appIdentity": "plantpal", "revision": None, "deploymentId": None, "environment": None}
+BAD_IDENTITY_SHORT_SHA = {**GOOD_IDENTITY, "revision": "2222222"}
+BAD_IDENTITY_NO_APP = {**GOOD_IDENTITY, "appIdentity": None}
+BAD_IDENTITY_OMITS_REVISION = {k: v for k, v in GOOD_IDENTITY.items() if k != "revision"}  # absent != null
+BAD_IDENTITY_EXTRA = {**GOOD_IDENTITY, "buildTime": "2026-09-27T10:00:00Z"}
+
+GOOD_RECEIPT_PASSED = {
+    "deploymentId": DEPLOY_ID,
+    "kind": "deploy",
+    "repository": "plantpal",
+    "branch": "dev",
+    "mergedRevision": REV_MERGED,
+    "imageDigests": {"backend": DIGEST_BE, "frontend": DIGEST_FE},
+    "digestKind": "local-image-id",
+    "result": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-09-27T12:00:00Z",
+    "finishedAt": "2026-09-27T12:04:00Z",
+    "observedAt": "2026-09-27T12:03:30Z",
+    "environment": {"name": "dev", "url": "http://planotell.platform.localhost"},
+    "observed": GOOD_IDENTITY,
+    "checks": [
+        {"name": "ci:Backend CI", "criterionId": None, "outcome": "passed", "exitCode": None},
+        {"name": "identity:revision", "criterionId": None, "outcome": "passed", "exitCode": None},
+        {"name": "smoke:backend-health", "criterionId": None, "outcome": "passed", "exitCode": None},
+        {"name": "criterion:AC-1", "criterionId": "AC-1", "outcome": "passed", "exitCode": None},
+    ],
+    "correlation": {"deliveryId": DELIVERY, "operationKey": f"{DELIVERY}:deploy:1"},
+    "rollback": {"deploymentId": DEPLOY_PREV, "revision": REV_TASK,
+                 "imageDigests": {"backend": "sha256:" + "0" * 64, "frontend": "sha256:" + "9" * 64}},
+    "rollbackOf": None,
+    "restores": None,
+    "nativeRef": f"plantpal:deployments/{DEPLOY_ID}",
+}
+
+# Reserved, not yet settled: first deployment ever, so no rollback identity exists.
+GOOD_RECEIPT_PENDING_FIRST = {
+    **GOOD_RECEIPT_PASSED,
+    "imageDigests": {"backend": None, "frontend": None},
+    "result": "pending",
+    "exitCode": None,
+    "finishedAt": None,
+    "observedAt": None,
+    "environment": {"name": "dev", "url": "http://127.0.0.1:8184"},
+    "observed": None,
+    "checks": [],
+    "correlation": {"deliveryId": None, "operationKey": None},
+    "rollback": None,
+}
+
+GOOD_RECEIPT_ROLLBACK = {
+    **GOOD_RECEIPT_PASSED,
+    "deploymentId": "pla-dev-20260927130000-111111111111",
+    "kind": "rollback",
+    "mergedRevision": REV_TASK,
+    "imageDigests": GOOD_RECEIPT_PASSED["rollback"]["imageDigests"],
+    "observed": {**GOOD_IDENTITY, "revision": REV_TASK, "deploymentId": "pla-dev-20260927130000-111111111111"},
+    "rollback": {"deploymentId": DEPLOY_ID, "revision": REV_MERGED, "imageDigests": GOOD_RECEIPT_PASSED["imageDigests"]},
+    "rollbackOf": DEPLOY_ID,
+    "restores": DEPLOY_PREV,
+    "nativeRef": "plantpal:deployments/pla-dev-20260927130000-111111111111",
+}
+
+BAD_RECEIPT_PROD = {**GOOD_RECEIPT_PASSED, "environment": {"name": "prod", "url": "https://planotell.example"}}
+BAD_RECEIPT_PASSED_NOT_OBSERVED = {**GOOD_RECEIPT_PASSED, "observed": None}
+BAD_RECEIPT_PASSED_DIGEST_MISSING = {**GOOD_RECEIPT_PASSED, "imageDigests": {"backend": DIGEST_BE, "frontend": None}}
+BAD_RECEIPT_NO_COMPONENTS = {**GOOD_RECEIPT_PASSED, "imageDigests": {}}
+BAD_RECEIPT_TAG_AS_DIGEST = {**GOOD_RECEIPT_PASSED, "imageDigests": {"backend": "plantpal-backend:latest", "frontend": DIGEST_FE}}
+BAD_RECEIPT_NATIVE_FIELDS = {**GOOD_RECEIPT_PASSED, "schema": "plantpal.dev-deployment-receipt/1"}  # closed shape
+
+# Semantically wrong but schema-valid: exactly what the ported rules exist to catch.
+PASSED_SERVING_PREVIOUS_REVISION = {**GOOD_RECEIPT_PASSED, "observed": {**GOOD_IDENTITY, "revision": REV_TASK}}
+PASSED_SERVING_ANOTHER_DEPLOYMENT = {**GOOD_RECEIPT_PASSED, "observed": {**GOOD_IDENTITY, "deploymentId": DEPLOY_PREV}}
+PASSED_WITH_UNREPORTED_REVISION = {**GOOD_RECEIPT_PASSED, "observed": {**GOOD_IDENTITY, "revision": None}}
+ROLLBACK_IDENTITY_NAMES_ITSELF = {
+    **GOOD_RECEIPT_PASSED,
+    "rollback": {**GOOD_RECEIPT_PASSED["rollback"], "deploymentId": DEPLOY_ID},
+}
+NATIVEREF_NAMES_ANOTHER_DEPLOYMENT = {**GOOD_RECEIPT_PASSED, "nativeRef": f"plantpal:deployments/{DEPLOY_PREV}"}
+
+
+def native(**overrides):
+    """A native receipt as settle() leaves it, for mapping through to the tagged shape."""
+    r = receipt(
+        result="passed", exitCode=0,
+        imageDigests={"backend": DIGEST_BE, "frontend": DIGEST_FE},
+        observed={"appIdentity": "plantpal", "revision": SHA, "deploymentId": DEP, "environment": "dev"},
+        observedAt="2026-09-27T12:03:30+00:00", finishedAt="2026-09-27T12:04:00+00:00",
+        testUrl="http://planotell.platform.localhost",
+        checks=[passed("identity:revision")],
+        rollback={"deploymentId": DEPLOY_PREV, "revision": OTHER,
+                  "imageDigests": {"backend": "sha256:" + "0" * 64, "frontend": "sha256:" + "9" * 64}},
+    )
+    r.update(overrides)
+    return r
+
+
+class TaggedReceipt(unittest.TestCase):
+    def test_passed_receipt_maps_and_validates(self):
+        tagged = dd.to_tagged_receipt(native())
+        self.assertEqual([], dd.validate_tagged_receipt(tagged))
+        self.assertEqual(tagged["mergedRevision"], SHA)          # deployed revision
+        self.assertEqual(tagged["observed"]["revision"], SHA)     # served revision
+        self.assertEqual(tagged["nativeRef"], f"plantpal:deployments/{DEP}")
+        self.assertEqual(tagged["environment"], {"name": "dev", "url": "http://planotell.platform.localhost"})
+
+    def test_digest_kind_is_the_tagged_enum_not_the_native_prose(self):
+        tagged = dd.to_tagged_receipt(native())
+        self.assertEqual(tagged["digestKind"], "local-image-id")
+
+    def test_native_only_fields_do_not_leak_into_the_closed_shape(self):
+        tagged = dd.to_tagged_receipt(native())
+        for native_only in ("schema", "revisionRole", "composeProject", "port", "preDeployChecks", "log"):
+            self.assertNotIn(native_only, tagged)
+        self.assertEqual(set(tagged["checks"][0]), {"name", "criterionId", "outcome", "exitCode"})
+
+    def test_deploy_receipt_carries_explicit_null_back_links(self):
+        tagged = dd.to_tagged_receipt(native())
+        self.assertIsNone(tagged["rollbackOf"])
+        self.assertIsNone(tagged["restores"])
+        self.assertIsNotNone(tagged["rollback"])  # the earlier deployment a rollback would restore
+
+    def test_pending_first_deployment_is_valid_and_has_no_rollback_identity(self):
+        tagged = dd.to_tagged_receipt(native(result="pending", exitCode=None, finishedAt=None, observedAt=None,
+                                            observed=None, imageDigests={"backend": None, "frontend": None},
+                                            checks=[], rollback=None))
+        self.assertEqual([], dd.validate_tagged_receipt(tagged))
+        self.assertIsNone(tagged["rollback"])
+
+    def test_rollback_receipt_keeps_its_links(self):
+        # rollbackOf = the deployment that was current (rolled back); restores = whose images restarted.
+        tagged = dd.to_tagged_receipt(native(kind="rollback", rollbackOf=DEPLOY_PREV, restores=DEPLOY_OLDER))
+        self.assertEqual([], dd.validate_tagged_receipt(tagged))
+        self.assertEqual(tagged["rollbackOf"], DEPLOY_PREV)
+        self.assertEqual(tagged["restores"], DEPLOY_OLDER)
+
+    def test_a_rollback_receipt_naming_itself_is_refused(self):
+        tagged = dd.to_tagged_receipt(native(kind="rollback", rollbackOf=DEP, restores=DEPLOY_OLDER))
+        self.assertTrue(any("never the one it restores" in p for p in dd.validate_tagged_receipt(tagged)))
+
+    def test_a_passed_receipt_serving_another_revision_is_refused(self):
+        tagged = dd.to_tagged_receipt(native(observed={"appIdentity": "plantpal", "revision": OTHER,
+                                                       "deploymentId": DEP, "environment": "dev"}))
+        self.assertTrue(dd.validate_tagged_receipt(tagged))
+
+    def test_a_leaked_native_field_is_refused(self):
+        tagged = dd.to_tagged_receipt(native())
+        tagged["schema"] = "plantpal.dev-deployment-receipt/1"
+        self.assertTrue(any("schema" in p for p in dd.validate_tagged_receipt(tagged)))
+
+
+class DeploymentSemantics(unittest.TestCase):
+    def test_contracts_good_receipts_have_no_semantic_problems(self):
+        for fixture in (GOOD_RECEIPT_PASSED, GOOD_RECEIPT_PENDING_FIRST, GOOD_RECEIPT_ROLLBACK):
+            self.assertEqual([], dd.check_deployment_semantics(fixture))
+
+    def test_a_passed_receipt_that_serves_another_revision_is_caught(self):
+        problems = dd.check_deployment_semantics(PASSED_SERVING_PREVIOUS_REVISION)
+        self.assertTrue(any("mergedRevision" in p for p in problems))
+
+    def test_a_passed_receipt_that_serves_another_deployment_is_caught(self):
+        problems = dd.check_deployment_semantics(PASSED_SERVING_ANOTHER_DEPLOYMENT)
+        self.assertTrue(any("deploymentId" in p for p in problems))
+
+    def test_a_passed_receipt_with_unreported_revision_is_caught(self):
+        self.assertTrue(dd.check_deployment_semantics(PASSED_WITH_UNREPORTED_REVISION))
+
+    def test_rollback_identity_naming_itself_is_caught(self):
+        problems = dd.check_deployment_semantics(ROLLBACK_IDENTITY_NAMES_ITSELF)
+        self.assertTrue(any("EARLIER" in p for p in problems))
+
+    def test_native_ref_naming_another_deployment_is_caught(self):
+        problems = dd.check_deployment_semantics(NATIVEREF_NAMES_ANOTHER_DEPLOYMENT)
+        self.assertTrue(any("nativeRef" in p for p in problems))
+
+    def test_the_schema_alone_would_not_catch_a_wrong_revision(self):
+        """Why the port exists: the mismatch is schema-valid, so only these rules see it."""
+        self.assertEqual([], dd.schema_problems(PASSED_SERVING_PREVIOUS_REVISION))
+        self.assertTrue(dd.check_deployment_semantics(PASSED_SERVING_PREVIOUS_REVISION))
+
+
+class ContractsFixturesRoundTrip(unittest.TestCase):
+    def test_contracts_good_receipts_validate(self):
+        for name, fixture in (("passed", GOOD_RECEIPT_PASSED), ("pending-first", GOOD_RECEIPT_PENDING_FIRST),
+                              ("rollback", GOOD_RECEIPT_ROLLBACK)):
+            with self.subTest(name):
+                self.assertEqual([], dd.validate_tagged_receipt(fixture))
+
+    def test_contracts_bad_receipts_are_rejected(self):
+        for name, fixture in (("prod-environment", BAD_RECEIPT_PROD),
+                              ("passed-not-observed", BAD_RECEIPT_PASSED_NOT_OBSERVED),
+                              ("passed-digest-missing", BAD_RECEIPT_PASSED_DIGEST_MISSING),
+                              ("no-components", BAD_RECEIPT_NO_COMPONENTS),
+                              ("tag-as-digest", BAD_RECEIPT_TAG_AS_DIGEST),
+                              ("native-fields", BAD_RECEIPT_NATIVE_FIELDS)):
+            with self.subTest(name):
+                self.assertTrue(dd.validate_tagged_receipt(fixture))
+
+    def test_good_identities_round_trip_through_the_binding(self):
+        from platform_contracts.app.deployment_identity import AppDeploymentIdentity
+        for name, fixture in (("reported", GOOD_IDENTITY), ("unreported", GOOD_IDENTITY_UNREPORTED)):
+            with self.subTest(name):
+                self.assertEqual(fixture, AppDeploymentIdentity.model_validate(fixture).model_dump(mode="json"))
+
+    def test_unreported_identity_keeps_nulls_it_does_not_default_them(self):
+        from platform_contracts.app.deployment_identity import AppDeploymentIdentity
+        round_tripped = AppDeploymentIdentity.model_validate(GOOD_IDENTITY_UNREPORTED).model_dump(mode="json")
+        self.assertIsNone(round_tripped["revision"])
+        self.assertIsNone(round_tripped["deploymentId"])
+        self.assertIsNone(round_tripped["environment"])
+        self.assertEqual("plantpal", round_tripped["appIdentity"])
+
+    def test_bad_identities_are_rejected(self):
+        from pydantic import ValidationError
+        from platform_contracts.app.deployment_identity import AppDeploymentIdentity
+        for name, fixture in (("short-sha", BAD_IDENTITY_SHORT_SHA), ("no-app", BAD_IDENTITY_NO_APP),
+                              ("omits-revision", BAD_IDENTITY_OMITS_REVISION), ("extra-field", BAD_IDENTITY_EXTRA)):
+            with self.subTest(name):
+                with self.assertRaises(ValidationError):
+                    AppDeploymentIdentity.model_validate(fixture)
+
+
+class ActuatorIdentity(unittest.TestCase):
+    """The /actuator/info `deployment` block IS app/deployment-identity: round-trip it as served."""
+
+    def test_the_deployment_block_round_trips_as_served(self):
+        from platform_contracts.app.deployment_identity import AppDeploymentIdentity
+        served = {"deployment": {"appIdentity": "plantpal", "revision": REV_MERGED,
+                                 "deploymentId": DEPLOY_ID, "environment": "dev"}}
+        block = dd.observe_identity_block(json.dumps(served))
+        self.assertEqual(GOOD_IDENTITY, AppDeploymentIdentity.model_validate(block).model_dump(mode="json"))
+
+    def test_an_unkeyed_local_run_round_trips_with_nulls_not_defaults(self):
+        from platform_contracts.app.deployment_identity import AppDeploymentIdentity
+        served = {"deployment": {"appIdentity": "plantpal", "revision": None,
+                                 "deploymentId": None, "environment": None}}
+        block = dd.observe_identity_block(json.dumps(served))
+        self.assertEqual(GOOD_IDENTITY_UNREPORTED, AppDeploymentIdentity.model_validate(block).model_dump(mode="json"))
+
+    def test_unreported_fields_are_unknown_and_never_match(self):
+        """null means not reported, so those checks never match — but the name is still verified."""
+        outcomes = {c["name"]: c["outcome"] for c in dd.identity_checks(dict(GOOD_IDENTITY_UNREPORTED), REV_MERGED, DEPLOY_ID)}
+        self.assertEqual("passed", outcomes["identity:app"])  # the one field an identity always carries
+        for name in ("identity:revision", "identity:deployment", "identity:environment"):
+            self.assertEqual("unknown", outcomes[name])
+
+    def test_a_missing_deployment_block_is_not_an_identity(self):
+        self.assertIsNone(dd.observe_identity_block('{"app": {"name": "plantpal"}}'))
+        self.assertIsNone(dd.observe_identity_block("not json"))
+
+
+class LookupTransport(unittest.TestCase):
+    """Both transports: exit 0 + exactly one JSON document, or exit 4 + the miss line on stderr."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        patcher = mock.patch.object(dd, "repo_root", return_value=root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.state = dd.state_dir(root)
+
+    def _run(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = dd.main(list(argv))
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_miss_is_exit_4_with_nothing_on_stdout(self):
+        for command in ("lookup", "receipt"):
+            with self.subTest(command):
+                code, out, err = self._run(command, "pla-dev-20260101000000-ffffffffffff")
+                self.assertEqual(4, code)
+                self.assertEqual("", out)
+                self.assertEqual("deployment_not_found: pla-dev-20260101000000-ffffffffffff", err.strip())
+
+    def test_lookup_prints_one_producer_result_document(self):
+        dd.save_receipt(self.state, native())
+        code, out, err = self._run("lookup", DEP)
+        self.assertEqual(0, code)
+        self.assertEqual("", err)
+        document = json.loads(out)  # exactly one document, or this raises
+        self.assertEqual("app-deploy", document["producer"])
+        self.assertEqual(DEP, document["operationId"])
+        self.assertEqual(f"plantpal:deployments/{DEP}", document["nativeRef"])
+        self.assertEqual(SHA, document["revision"])
+
+    def test_receipt_prints_the_tagged_receipt_document(self):
+        dd.save_receipt(self.state, native())
+        code, out, err = self._run("receipt", DEP)
+        self.assertEqual(0, code)
+        self.assertEqual("", err)
+        document = json.loads(out)
+        self.assertEqual(SHA, document["mergedRevision"])
+        self.assertEqual("local-image-id", document["digestKind"])
+        self.assertEqual(DEPLOY_PREV, document["rollback"]["deploymentId"])
+
+    def test_both_transports_agree_on_the_environment_url(self):
+        dd.save_receipt(self.state, native())
+        _, receipt_out, _ = self._run("receipt", DEP)
+        _, lookup_out, _ = self._run("lookup", DEP)
+        self.assertEqual(json.loads(lookup_out)["environment"]["url"],
+                         json.loads(receipt_out)["environment"]["url"])
+
+    def test_receipt_refuses_a_receipt_that_breaks_the_contract(self):
+        dd.save_receipt(self.state, native(observed={"appIdentity": "plantpal", "revision": OTHER,
+                                                     "deploymentId": DEP, "environment": "dev"}))
+        code, out, err = self._run("receipt", DEP)
+        self.assertEqual(2, code)
+        self.assertEqual("", out)  # never a near-miss document
+        self.assertIn("mergedRevision", err)
 
 
 if __name__ == "__main__":

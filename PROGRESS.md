@@ -613,11 +613,17 @@ below is a **generated projection** of it, produced mechanically by
 
 ## Session 35 (2026-09-27)
 
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0030_fulfill-demand-contracts-20260928-plantp.md`
 Full narrative, decisions, and context trail: `.brain/sessions/2026-09-27_2259_close-satisfied-demand-loops-ci-run-step.md`
 (the session file is the source of truth in this D052-piloted repo -- the block
 below is a **generated projection** of it, produced mechanically by
 `brain session close`, not a second hand-written account).
 
+- State: Fulfill demand contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity (capability: Close the consuming leg of plantpal-20260927-contracts-app-deploy-receipt-and-identity — the app-deploy receipt, running-app identity and lookup transport shipped in contracts v0.36.0, from: contracts, targ... -- status: done.
+- Next step: Owner review of branch feature/PP-115-contracts-v036-app-deploy-repin, then PR into dev. Nothing was pushed and main was never touched (a push to main deploys production). Optional follow-ups named in the report: add the new Dev Delivery Tool CI job to the dev ruleset's required checks (owner-managed repo setting), and decide whether deploy/rollback/reconcile should also hard-gate on schema validation rather than only receipt.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none -- no vault write this session; the two demands raised target factory and runtime, not the vault. The coordination-publication ruling (docs/dev-delivery.md prerequisite 3) is unchanged: still blocked at the owner.
+- Session: 2026-09-28_0030_fulfill-demand-contracts-20260928-plantp
 - State: Close satisfied demand loops (ci-run steps x3, planotell/D114) + deploy paths-ignore -- status: done.
 - Next step: Watch this PR's sonar-gate on /ci for the live stage bar; contracts-app-deploy-receipt-and-identity still open
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
@@ -636,3 +642,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none needed
 - Session: 2026-09-27_2309_raise-dashboard-demand-skipped-cancelled
+
+## Session 37 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Verify prior session's v0.36.0 repin fulfillment and record the D114 coordination-push finding -- status: done.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful

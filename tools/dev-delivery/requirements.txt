@@ -1,6 +1,13 @@
-# Contracts v0.31.0 Python binding (delivery.producer-result). Install into a venv:
+# Contracts v0.36.0 Python binding (delivery.producer-result, delivery.deployment-receipt,
+# app.deployment-identity). Install into a venv:
 #   python -m venv tools/dev-delivery/.venv
 #   tools/dev-delivery/.venv/Scripts/pip install -r tools/dev-delivery/requirements.txt
 # Offline alternative with a local tag worktree:
-#   pip install ../contracts-worktrees/v0.31.0/gen/python
-platform-contracts @ git+https://github.com/elmoul/contracts.git@v0.31.0#subdirectory=gen/python
+#   pip install ../contracts-worktrees/v0.36.0/gen/python
+platform-contracts @ git+https://github.com/elmoul/contracts.git@v0.36.0#subdirectory=gen/python
+
+# `receipt` validates what it emits against the JSON Schema itself, not only the
+# generated binding: the binding is generated from the schema and does not implement
+# its `if`/`then` conditionals (contracts docs/task-delivery.md §Binding caveat).
+# The schemas are vendored in ./schemas, so this needs no contracts checkout.
+jsonschema>=4.20
