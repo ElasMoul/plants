@@ -642,3 +642,16 @@ below is a **generated projection** of it, produced mechanically by
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none needed
 - Session: 2026-09-27_2309_raise-dashboard-demand-skipped-cancelled
+
+## Session 37 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Verify prior session's v0.36.0 repin fulfillment and record the D114 coordination-push finding -- status: done.
+- Next step: See the session file's `## Log` for open follow-ups.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0019_verify-prior-session-s-v0-36-0-repin-ful
