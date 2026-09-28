@@ -11,7 +11,7 @@ acceptance-criteria:
   - "The lookup transport for app-deploy nativeRef plantpal:deployments/<id> is named (CLI JSON on stdout, file, or HTTP route) so Factory knows how to re-fetch it"
   - "Python binding for the new shapes at a tagged release; a Java binding only if contracts judges one needed (plantpal's producer is Python, see below)"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — app-deploy receipt, lookup and running-app identity shapes (D113)
