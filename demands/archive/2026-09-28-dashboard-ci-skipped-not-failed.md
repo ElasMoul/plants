@@ -10,7 +10,7 @@ acceptance-criteria:
   - "Spec coverage for each conclusion value in the CiRunPayload enum"
   - "Live check: a plantpal push run's `sonar-gate` (skipped by design on push events) renders as skipped on /ci"
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Demand — skipped/cancelled CI jobs shown as FAILED on `/ci`
