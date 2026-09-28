@@ -8,7 +8,7 @@ acceptance-criteria:
   - "PLATFORM_STATE §3 lists 8185: plantpal dev-delivery app-deploy lookup (dev_delivery.py serve), loopback-only per D040, host process, bearer-authenticated, read-only."
   - "If 8185 is already allocated elsewhere, the vault names a free port and plantpal moves its default."
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Register port 8185: plantpal app-deploy lookup route
