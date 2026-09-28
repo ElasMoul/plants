@@ -9,7 +9,7 @@ acceptance-criteria:
   - "runtime reads the identity THROUGH the URL under test and treats a null field as not reported — never as matching an expected value and never filled with a default."
   - "runtime states that route:planotell in plantpal's receipt is recorded but non-gating, so a passing identity through the hostname is plantpal's evidence and does not by itself constitute runtime's verification."
 needs-owner: false
-status: open
+status: archived
 ---
 
 # Consume the tagged running-app identity (contracts v0.36.0)
