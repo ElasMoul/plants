@@ -725,3 +725,16 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-28_0431_fulfill-demand-factory-20260928-plantpal
+
+## Session 41 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: fulfill contracts-20260928-plantpal-implement-app-deploy-lookup-route -- status: done.
+- Next step: PR chore/PP-118 into dev; owner hands lookup token to Factory config
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: demand plantpal-20260928-platform-vault-lookup-port-8185 raised (register 8185 in PLATFORM_STATE §3)
+- Session: 2026-09-28_0358_fulfill-contracts-20260928-plantpal-impl
