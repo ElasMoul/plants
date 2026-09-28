@@ -156,6 +156,39 @@ and exactly one JSON document on stdout. On a miss: exit `4`, stderr exactly
 operation key. Any other non-zero exit, or stdout that does not parse, is
 `unavailable` too. There is no HTTP route.
 
+**Ruling — the CLI is the only sanctioned transport (2026-09-28).** Factory
+cannot use it: its outbound surface is read-only HTTP GETs to named platform
+service ports (`spec-factory.md` §4), it may not write to or import from a sibling
+repo (§3), and it has no execution host — even deployed it runs in a container on
+the internal dashboard network, not on the deploying host where the checkout and
+`.dev-delivery/receipts/` live. Demand
+`factory-20260928-plantpal-reachable-receipt-transport` therefore asks plantpal for
+a lookup Factory can call, or for this ruling if plantpal holds there is only one
+sanctioned transport.
+
+plantpal does not hand-roll the alternative. An HTTP route Factory binds to is a
+cross-repo interface, and `contracts` v0.36.0 §App-deploy states the order
+explicitly — "plantpal must offer a new transport and **contracts must publish
+it**" — which is also this repo's standing rule that all cross-repo interfaces
+come from `contracts`. So: the CLI above remains the **only sanctioned transport**
+until `contracts` publishes a route, and plantpal has raised
+`plantpal-20260928-contracts-app-deploy-lookup-route` asking it to, proposing
+`GET /delivery/v1/app-deploy/deployments/{id}/receipt` (and `/producer-result`) on
+this stack's existing published port, so no process runs inside the checkout to
+answer a call.
+
+Consequences while that is open, stated so the gap is visible rather than silent:
+
+- Factory's consuming leg **stalls**. `plantpal-20260928-factory-consume-app-deploy-receipt`
+  stays **blocked** on its fetch criteria, and a receipt's rollback identity is
+  read by nobody.
+- Factory must **not** bind to the native `plantpal.dev-deployment-receipt/1`
+  document as a substitute, and must not treat a lookup it cannot perform as
+  grounds to redeploy under the same operation key.
+- Nothing in this section changes for the CLI's existing consumers: both commands
+  keep emitting exactly what they emit today, and `contracts`' §App-deploy miss
+  contract (exit `4` → `unavailable`, never `failed`) is unchanged.
+
 **What `receipt` validates before it emits.** Three checks, because each catches
 what the others miss:
 
@@ -214,7 +247,7 @@ be recorded as `failed`.
 | 2 | Tagged receipt / identity / lookup shapes (incl. rollback identity) | `contracts` | **done** — shipped in contracts **v0.36.0**; plantpal's consuming leg repinned to it (`delivery.deployment-receipt` from `receipt <id>`, `app/deployment-identity` is the `/actuator/info` block). Consumers: **bind to v0.36.0** |
 | 3 | Record port 8184 and rule how plantpal publishes coordination commits (a push to `main` deploys) | `platform-vault` (owner) | port 8184 **recorded** in the D040 register (vault commit `6e06b0b`, 2026-09-27) and plantpal's default stands; the coordination-publication ruling came back **blocked at the owner** (no existing rule covers it), so the practice in §1 stands until ruled |
 | 4 | Managed hosting of the candidate, and `planotell.platform.localhost` → `127.0.0.1:8184` (launcher name proxy on port 80; today launcher maps `planotell` to `:8444`, the long-lived local stack) | `runtime`, which raises its own `launcher`/`gateway` demands | Factory demand `factory-20260927-dev-delivery-routing` (after this one) |
-| 5 | Factory calling `dev_delivery.py` (execution host, repo lock) | `factory` / `agent-runner` | not built |
+| 5 | Factory re-fetching the receipt (execution host, repo lock, or a reachable transport) | `contracts` → then plantpal; `factory` consumes | **re-ruled 2026-09-28.** Factory can never call the CLI (no execution host, read-only HTTP surface — see §3's ruling), so `contracts` is asked to publish an app-deploy lookup route (`plantpal-20260928-contracts-app-deploy-lookup-route`); plantpal implements it on that publication. Until then Factory's fetch leg stalls visibly and it must not bind to the native document |
 
 ### Committing a receipt trips the secret scanner
 
