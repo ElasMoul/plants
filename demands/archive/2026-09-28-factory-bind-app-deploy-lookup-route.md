@@ -10,7 +10,7 @@ acceptance-criteria:
   - "Factory never binds to plantpal's native plantpal.dev-deployment-receipt/1 document."
   - "If Factory cannot reach 127.0.0.1:8185 from where it runs (e.g. container network), it says so and raises the routing need to runtime, not to plantpal."
 needs-owner: false
-status: open
+status: archived
 ---
 
 # The app-deploy lookup route is live. Bind to it.
