@@ -651,3 +651,18 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-28_0106_fulfill-demand-contracts-20260928-plantp
+
+## Session 38 (2026-09-28)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-28_0114_fulfill-demand-contracts-20260928-plantp.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand contracts-20260928-plantpal-repin-app-deploy-receipt-and-identity (capability: Close the consuming leg of plantpal-20260927-contracts-app-deploy-receipt-and-identity — the app-deploy receipt, running-app identity and lookup transport shipped in contracts v0.36.0, from: contracts, targ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-09-28_0114_fulfill-demand-contracts-20260928-plantp.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-28_0114_fulfill-demand-contracts-20260928-plantp
