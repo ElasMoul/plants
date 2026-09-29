@@ -125,6 +125,13 @@
             <version>20240325.1</version>
         </dependency>
 
+        <!-- ── EXIF reader – photo date taken (PLA-92) ─────────────────────── -->
+        <dependency>
+            <groupId>com.drewnoakes</groupId>
+            <artifactId>metadata-extractor</artifactId>
+            <version>2.19.0</version>
+        </dependency>
+
         <!-- ── Kafka – async identification pipeline ──────────────────────── -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

@@ -118,4 +118,5 @@
     <include file="db/changelog/migrations/038_account_language.sql"/>
     <include file="db/changelog/migrations/039_section_versions.sql"/>
     <include file="db/changelog/migrations/040_scan_content_language.sql"/>
+    <include file="db/changelog/migrations/041_identification_date_taken.sql"/>
 </databaseChangeLog>

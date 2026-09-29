@@ -47,6 +47,7 @@ import com.plantpal.identification.mapper.IdentificationMapper;
 import com.plantpal.identification.repository.IdentificationRepository;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.identification.util.ActionPlanValidator;
+import com.plantpal.identification.util.ExifDateTakenReader;
 import com.plantpal.identification.util.LenientJsonParser;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.entity.Plant;
@@ -253,6 +254,14 @@ public class IdentificationServiceImpl implements IdentificationService {
     this.plantNetGatewayClient = plantNetGatewayClient;
   }
 
+  private static Instant readDateTaken(MultipartFile image) {
+    try {
+      return ExifDateTakenReader.read(image.getBytes()).orElseGet(Instant::now);
+    } catch (java.io.IOException e) {
+      return Instant.now();
+    }
+  }
+
   @Override
   @AiUsage(userArgument = 3, scan = true)
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
@@ -264,6 +273,9 @@ public class IdentificationServiceImpl implements IdentificationService {
       String userContext) {
 
     validateImages(images);
+
+    // EXIF is read from the original bytes before storage; the first image is the scan photo.
+    Instant dateTaken = readDateTaken(images.get(0));
 
     // Step 1: Save photos, collect URLs
     List<String> photoUrls = new ArrayList<>();
@@ -287,6 +299,7 @@ public class IdentificationServiceImpl implements IdentificationService {
             .plantId(plantId)
             .speciesId(speciesId)
             .photoUrl(photoUrls.get(0))
+            .dateTaken(dateTaken)
             .userContext(trimmedContext)
             .status(IdentificationStatus.PENDING)
             .identificationStatus(IdentificationStageStatus.PENDING)
