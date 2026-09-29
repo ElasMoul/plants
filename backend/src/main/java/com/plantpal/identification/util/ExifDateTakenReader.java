@@ -1,15 +1,18 @@
 package com.plantpal.identification.util;
 
 import com.drew.imaging.ImageMetadataReader;
+import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
 /** Reads the capture time from an image's EXIF data; never throws. */
@@ -45,7 +48,7 @@ public final class ExifDateTakenReader {
         result = parse(ifd0.getString(ExifIFD0Directory.TAG_DATETIME), null);
       }
       return result;
-    } catch (Exception e) {
+    } catch (ImageProcessingException | IOException | RuntimeException e) {
       return Optional.empty();
     }
   }
@@ -61,7 +64,7 @@ public final class ExifDateTakenReader {
         zone = parseOffset(offset.trim());
       }
       return Optional.of(local.toInstant(zone));
-    } catch (Exception e) {
+    } catch (DateTimeParseException e) {
       return Optional.empty();
     }
   }
