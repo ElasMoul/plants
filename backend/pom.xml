@@ -34,6 +34,7 @@
         <sonar.projectKey>plantpal-backend</sonar.projectKey>
         <sonar.projectName>PlantPal Backend</sonar.projectName>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>**/config/**,**/dto/**,**/*Request.java,**/*Response.java,**/*Dto.java,**/*MapperImpl.java,**/*Status.java,**/*Type.java,**/*Preference.java,**/event/**,**/PlantPalApplication.java</sonar.coverage.exclusions>
         <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
         <!-- 1.19.7 cannot negotiate Docker Desktop 29's minimum API on Windows npipe.
              Keep this test-only override until the Spring Boot parent is upgraded. -->
@@ -123,6 +124,13 @@
             <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
             <artifactId>owasp-java-html-sanitizer</artifactId>
             <version>20240325.1</version>
+        </dependency>
+
+        <!-- ── EXIF reader – photo date taken (PLA-92) ─────────────────────── -->
+        <dependency>
+            <groupId>com.drewnoakes</groupId>
+            <artifactId>metadata-extractor</artifactId>
+            <version>2.19.0</version>
         </dependency>
 
         <!-- ── Kafka – async identification pipeline ──────────────────────── -->

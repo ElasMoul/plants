@@ -41,6 +41,7 @@ public class IdentificationResponse {
 
   private String photoUrl;
   private Instant createdAt;
+  private Instant dateTaken;
   private CarePlanDto carePlan;
   private List<AnnotationRegionDto> annotationRegions;
   private Integer sourceImageWidth;
