@@ -80,6 +80,7 @@ public final class ExifDateTakenReader {
     try {
       return ZoneOffset.of(offset);
     } catch (DateTimeException e) {
+      log.debug("Unparseable EXIF offset value: {}", offset, e);
       return ZoneOffset.UTC;
     }
   }
