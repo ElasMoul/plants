@@ -7,6 +7,10 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- PLA-92: each scan (`identifications`) now stores a non-null `date_taken` (migration 041),
+  read from the photo's EXIF (DateTimeOriginal, then Digitized, then IFD0 DateTime; UTC unless an
+  offset tag exists) with upload time as fallback; existing rows are backfilled from `created_at`.
+  Exposed as `dateTaken` on `IdentificationResponse`. Adds `metadata-extractor`.
 - Planotell dev-only delivery (D113, demand `factory-20260927-dev-delivery`):
   `tools/dev-delivery/dev_delivery.py` deploys a revision merged into `origin/dev`
   (after its `Backend CI`/`Frontend CI`/`Detect secrets` and PR `sonar-gate` checks
