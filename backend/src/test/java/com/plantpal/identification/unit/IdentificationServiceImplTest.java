@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -811,7 +812,7 @@ class IdentificationServiceImplTest {
     @Test
     @DisplayName("submitIdentification uses upload time when the image bytes are unreadable")
     void shouldDefaultDateTakenWhenBytesUnreadable() throws Exception {
-      MultipartFile broken = org.mockito.Mockito.mock(MultipartFile.class);
+      MultipartFile broken = mock(MultipartFile.class);
       when(broken.getContentType()).thenReturn("image/jpeg");
       when(broken.getBytes()).thenThrow(new java.io.IOException("boom"));
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");

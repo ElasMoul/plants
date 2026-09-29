@@ -70,7 +70,7 @@ class IdentificationDateTakenIT extends AbstractIntegrationTest {
               "SELECT created_at, date_taken FROM identifications WHERE user_id = ?", user.getId());
       assertThat(rows).hasSize(3);
       assertThat(rows)
-          .allSatisfy(r -> assertThat(r.get("date_taken")).isEqualTo(r.get("created_at")));
+          .allSatisfy(r -> assertThat(r).containsEntry("date_taken", r.get("created_at")));
     } finally {
       jdbc.update("DELETE FROM identifications WHERE user_id = ?", user.getId());
       jdbc.execute("ALTER TABLE identifications ALTER COLUMN date_taken SET NOT NULL");

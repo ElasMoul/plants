@@ -3,6 +3,7 @@ package com.plantpal.identification.util;
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifDirectoryBase;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import java.io.ByteArrayInputStream;
@@ -14,9 +15,13 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Reads the capture time from an image's EXIF data; never throws. */
 public final class ExifDateTakenReader {
+
+  private static final Logger log = LoggerFactory.getLogger(ExifDateTakenReader.class);
 
   private static final DateTimeFormatter EXIF_FORMAT =
       DateTimeFormatter.ofPattern("uuuu:MM:dd HH:mm:ss");
@@ -35,20 +40,21 @@ public final class ExifDateTakenReader {
       if (sub != null) {
         result =
             parse(
-                sub.getString(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL),
-                sub.getString(ExifSubIFDDirectory.TAG_TIME_ZONE_ORIGINAL));
+                sub.getString(ExifDirectoryBase.TAG_DATETIME_ORIGINAL),
+                sub.getString(ExifDirectoryBase.TAG_TIME_ZONE_ORIGINAL));
         if (result.isEmpty()) {
           result =
               parse(
-                  sub.getString(ExifSubIFDDirectory.TAG_DATETIME_DIGITIZED),
-                  sub.getString(ExifSubIFDDirectory.TAG_TIME_ZONE_DIGITIZED));
+                  sub.getString(ExifDirectoryBase.TAG_DATETIME_DIGITIZED),
+                  sub.getString(ExifDirectoryBase.TAG_TIME_ZONE_DIGITIZED));
         }
       }
       if (result.isEmpty() && ifd0 != null) {
-        result = parse(ifd0.getString(ExifIFD0Directory.TAG_DATETIME), null);
+        result = parse(ifd0.getString(ExifDirectoryBase.TAG_DATETIME), null);
       }
       return result;
     } catch (ImageProcessingException | IOException | RuntimeException e) {
+      log.debug("Unable to read EXIF date taken", e);
       return Optional.empty();
     }
   }
@@ -65,6 +71,7 @@ public final class ExifDateTakenReader {
       }
       return Optional.of(local.toInstant(zone));
     } catch (DateTimeParseException e) {
+      log.debug("Unparseable EXIF date value: {}", value, e);
       return Optional.empty();
     }
   }
