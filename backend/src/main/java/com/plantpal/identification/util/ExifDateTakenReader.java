@@ -5,6 +5,8 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import java.io.ByteArrayInputStream;
+import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -18,7 +20,7 @@ public final class ExifDateTakenReader {
 
   private ExifDateTakenReader() {}
 
-  public static Optional<java.time.Instant> read(byte[] imageBytes) {
+  public static Optional<Instant> read(byte[] imageBytes) {
     if (imageBytes == null || imageBytes.length == 0) {
       return Optional.empty();
     }
@@ -26,7 +28,7 @@ public final class ExifDateTakenReader {
       Metadata metadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(imageBytes));
       ExifSubIFDDirectory sub = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
       ExifIFD0Directory ifd0 = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
-      Optional<java.time.Instant> result = Optional.empty();
+      Optional<Instant> result = Optional.empty();
       if (sub != null) {
         result =
             parse(
@@ -43,12 +45,12 @@ public final class ExifDateTakenReader {
         result = parse(ifd0.getString(ExifIFD0Directory.TAG_DATETIME), null);
       }
       return result;
-    } catch (Exception | LinkageError e) {
+    } catch (Exception e) {
       return Optional.empty();
     }
   }
 
-  private static Optional<java.time.Instant> parse(String value, String offset) {
+  private static Optional<Instant> parse(String value, String offset) {
     if (value == null) {
       return Optional.empty();
     }
@@ -56,15 +58,19 @@ public final class ExifDateTakenReader {
       LocalDateTime local = LocalDateTime.parse(value.trim(), EXIF_FORMAT);
       ZoneOffset zone = ZoneOffset.UTC;
       if (offset != null && !offset.isBlank()) {
-        try {
-          zone = ZoneOffset.of(offset.trim());
-        } catch (Exception ignored) {
-          // malformed offset: keep UTC
-        }
+        zone = parseOffset(offset.trim());
       }
       return Optional.of(local.toInstant(zone));
     } catch (Exception e) {
       return Optional.empty();
+    }
+  }
+
+  private static ZoneOffset parseOffset(String offset) {
+    try {
+      return ZoneOffset.of(offset);
+    } catch (DateTimeException e) {
+      return ZoneOffset.UTC;
     }
   }
 }

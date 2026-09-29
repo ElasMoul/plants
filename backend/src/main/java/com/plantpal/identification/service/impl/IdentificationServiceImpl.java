@@ -80,6 +80,7 @@ import io.platform.contracts.aigateway.AiRequest;
 import io.platform.contracts.aigateway.AiRequestMediaInner;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -257,7 +258,8 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static Instant readDateTaken(MultipartFile image) {
     try {
       return ExifDateTakenReader.read(image.getBytes()).orElseGet(Instant::now);
-    } catch (java.io.IOException e) {
+    } catch (IOException e) {
+      log.warn("Could not read upload bytes for EXIF, using upload time: {}", e.getMessage());
       return Instant.now();
     }
   }

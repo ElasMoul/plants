@@ -809,6 +809,30 @@ class IdentificationServiceImplTest {
     }
 
     @Test
+    @DisplayName("submitIdentification uses upload time when the image bytes are unreadable")
+    void shouldDefaultDateTakenWhenBytesUnreadable() throws Exception {
+      MultipartFile broken = org.mockito.Mockito.mock(MultipartFile.class);
+      when(broken.getContentType()).thenReturn("image/jpeg");
+      when(broken.getBytes()).thenThrow(new java.io.IOException("boom"));
+      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
+      when(identificationRepository.save(any()))
+          .thenReturn(
+              Identification.builder()
+                  .id(1L)
+                  .userId(USER_ID)
+                  .status(IdentificationStatus.PENDING)
+                  .build());
+
+      identificationService
+          .submitIdentification(List.of(broken), null, null, USER_ID, null, null)
+          .get();
+
+      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
+      verify(identificationRepository).save(captor.capture());
+      assertThat(captor.getValue().getDateTaken()).isNotNull();
+    }
+
+    @Test
     @DisplayName("submitIdentification trims blank userContext to null before storing")
     void shouldTrimBlankUserContextToNull() throws Exception {
       List<MultipartFile> images = List.of(validImage());
