@@ -7,6 +7,14 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Review environments (demand `factory-20260930-plantpal-review-environment-and-swagger`):
+  `dev_delivery.py review start|status|stop` runs an unmerged PR head (all four required checks
+  green on it) in its own compose project `plantpal-review`, volumes, generated config and
+  loopback port `8186`, one at a time, and reports the contracts v0.38.0 tagged receipt
+  (`environment.name: review`, `revisionRole: task`, observed `/actuator/info` identity).
+  Swagger (`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`) is proxied in the dev-delivery
+  and local nginx configs; `application-prod.yml` disables springdoc. Tool repinned to
+  contracts v0.38.0. See `docs/dev-delivery.md` sections 6-7.
 - PLA-92: each scan (`identifications`) now stores a non-null `date_taken` (migration 041),
   read from the photo's EXIF (DateTimeOriginal, then Digitized, then IFD0 DateTime; UTC unless an
   offset tag exists) with upload time as fallback; existing rows are backfilled from `created_at`.
