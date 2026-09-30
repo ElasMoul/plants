@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 // Explains a failed SonarQube quality gate in the CI log, using only the read API.
 // Usage: node scripts/sonar-explain-failure.mjs <projectKey>:<dir> ...   (env: SONAR_HOST_URL, SONAR_TOKEN,
-// CHANGED_FILES = file listing the PR's changed paths, one per line, repo-relative)
-// The analysis token cannot use the tree endpoints, so uncovered files come from per-file measures of the changed files.
+// CANDIDATE_FILES = file listing repo-relative source paths, one per line (git ls-files))
+// The analysis token cannot use the tree endpoints, so uncovered files come from per-file measures.
 // Never prints the token; always exits 0 so it cannot change the gate's verdict.
 const host = (process.env.SONAR_HOST_URL || '').replace(/\/$/, '');
 const token = process.env.SONAR_TOKEN || '';
@@ -15,8 +15,8 @@ async function api(path, params) {
   return res.json();
 }
 
-const changed = process.env.CHANGED_FILES
-  ? readFileSync(process.env.CHANGED_FILES, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean)
+const candidates = process.env.CANDIDATE_FILES
+  ? readFileSync(process.env.CANDIDATE_FILES, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean)
   : [];
 const RELATION = { GT: '>', LT: '<' };
 const periodValue = (m) => m.period?.value ?? m.periods?.[0]?.value ?? m.value;
@@ -50,7 +50,7 @@ async function explain(key, dir) {
 
   console.log('Files with uncovered new lines:');
   const prefix = `${dir}/`;
-  const files = changed.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length));
+  const files = candidates.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length));
   for (const path of files) {
     let res;
     try {
