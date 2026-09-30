@@ -35,8 +35,9 @@ production, and D113 does not authorize it.
    SonarQube API with the job's `SONAR_TOKEN`, never printed) lists each failed
    condition (`new_coverage 74.7 < 80`), every open new-code issue
    (`severity rule file:line message`) and each file with uncovered new lines.
-   `gh run view <run-id> --log-failed` is enough to know what to fix. The step
-   never changes the gate's verdict. `sonar.coverage.exclusions` (backend
+   `gh run view <run-id> --log-failed` is enough to know what to fix (the step
+   runs only after the job has already failed and ends with exit 1 so it shows in
+   that view). It never changes the gate's verdict, and does not run on a pass. `sonar.coverage.exclusions` (backend
    `pom.xml`, `frontend/sonar-project.properties`) mirror the JaCoCo / Jest
    excludes; `Frontend CI` fails if they drift
    (`scripts/check-sonar-coverage-exclusions.mjs`).
