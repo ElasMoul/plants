@@ -399,7 +399,10 @@ jobs:
       - name: Explain quality gate failure
         if: ${{ failure() }}
         continue-on-error: true
-        run: node scripts/sonar-explain-failure.mjs plantpal-backend plantpal-frontend
+        run: |
+          git fetch --depth=1 origin "$GITHUB_BASE_REF"
+          git diff --name-only FETCH_HEAD HEAD > "$RUNNER_TEMP/changed-files.txt" || : > "$RUNNER_TEMP/changed-files.txt"
+          CHANGED_FILES="$RUNNER_TEMP/changed-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI
