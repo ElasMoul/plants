@@ -400,9 +400,8 @@ jobs:
         if: ${{ failure() }}
         continue-on-error: true
         run: |
-          git fetch --depth=1 origin "$GITHUB_BASE_REF"
-          git diff --name-only FETCH_HEAD HEAD > "$RUNNER_TEMP/changed-files.txt" || : > "$RUNNER_TEMP/changed-files.txt"
-          CHANGED_FILES="$RUNNER_TEMP/changed-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend
+          git ls-files backend/src/main frontend/src frontend/projects > "$RUNNER_TEMP/candidate-files.txt"
+          CANDIDATE_FILES="$RUNNER_TEMP/candidate-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI
