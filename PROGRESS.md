@@ -856,3 +856,16 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-09-30_1647_fulfill-demand-factory-20260929-plantpal
+
+## Session 50 (2026-09-30)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-09-30_1749_fulfill-demand-factory-20260929-plantpal.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+`brain session close`, not a second hand-written account).
+
+- State: Fulfill demand factory-20260929-plantpal-sonar-gate-prints-failure-reasons (capability: When sonar-gate fails, the CI job log states why: the failed quality-gate conditions, the new-code issues and the files with uncovered new lines, from: factory, target: plantpal). Acceptance criteria: - When the ... -- status: done.
+- Next step: owner merges PR #208 into dev
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-09-30_1749_fulfill-demand-factory-20260929-plantpal
