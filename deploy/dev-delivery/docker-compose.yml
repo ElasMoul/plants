@@ -5,12 +5,15 @@
 # ${...} variables below. Not a production path: production is deploy/vps/ via
 # deploy.yml on main, and nothing here reads its secrets.
 #
+# The same file also runs the review environment (`dev_delivery.py review`): the tool
+# passes `-p plantpal-review`, IMAGE_PREFIX, APP_ENVIRONMENT=review and its own port.
+#
 # Isolation from the long-lived local stack (repo-root docker-compose.yml):
 #   - own compose project name -> own network and own named volumes;
 #   - Postgres and Redis publish NO host ports (reachable only inside the stack);
 #   - no Kafka: APP_IDENTIFICATION_TRANSPORT=in-process, as in production;
 #   - one published port, loopback-only (D040): the http frontend, which proxies
-#     /api/, /photos/ and /actuator/{health,info} to this stack's own backend.
+#     /api/, /photos/, Swagger and /actuator/{health,info} to this stack's own backend.
 name: plantpal-devdelivery
 
 services:
@@ -42,7 +45,7 @@ services:
       retries: 20
 
   backend:
-    image: plantpal-devdelivery-backend:${APP_REVISION:?set by dev_delivery.py}
+    image: ${IMAGE_PREFIX:-plantpal-devdelivery}-backend:${APP_REVISION:?set by dev_delivery.py}
     build:
       context: ../../backend
       additional_contexts:
@@ -62,7 +65,7 @@ services:
       APP_IDENTIFICATION_TRANSPORT: in-process
       KAFKA_BOOTSTRAP_SERVERS: localhost:9092   # bound eagerly, never dialed (in-process)
       APP_DEPLOYMENT_ID: ${APP_DEPLOYMENT_ID:?set by dev_delivery.py}
-      APP_ENVIRONMENT: dev
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-dev}
     volumes:
       - photos_data:/tmp/plantpal/photos
     depends_on:
@@ -78,7 +81,7 @@ services:
       start_period: 60s
 
   frontend:
-    image: plantpal-devdelivery-frontend:${APP_REVISION}
+    image: ${IMAGE_PREFIX:-plantpal-devdelivery}-frontend:${APP_REVISION}
     build:
       context: ../../frontend
       dockerfile: ../deploy/dev-delivery/frontend.Dockerfile

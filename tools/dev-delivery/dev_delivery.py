@@ -42,6 +42,13 @@ Usage (from the repo root):
   python tools/dev-delivery/dev_delivery.py rollback [--to <deploymentId>]
   python tools/dev-delivery/dev_delivery.py down
   python tools/dev-delivery/dev_delivery.py serve [--port 8185]
+  python tools/dev-delivery/dev_delivery.py review start (--pr N | --branch B) [--revision SHA]
+        [--idempotency-key K] [--delivery-id UUID] [--port 8186]
+  python tools/dev-delivery/dev_delivery.py review status [--idempotency-key K]
+  python tools/dev-delivery/dev_delivery.py review stop [--idempotency-key K]
+
+``review`` runs an UNMERGED PR head in its own compose project, volumes, config and port
+(contracts v0.38.0 §Review environments). One at a time; it never merges or pushes anything.
 """
 
 from __future__ import annotations
@@ -70,9 +77,15 @@ APP_IDENTITY = "plantpal"
 COMPOSE_PROJECT = "plantpal-devdelivery"
 COMPOSE_FILE = Path("deploy/dev-delivery/docker-compose.yml")
 DEFAULT_PORT = 8184
+REVIEW_COMPOSE_PROJECT = "plantpal-review"   # its own project: network, volumes, containers
+REVIEW_PORT = 8186                           # next free 81xx after 8185 (PLATFORM_STATE); registration requested from platform-vault
+IMAGE_PREFIX = {"dev": "plantpal-devdelivery", "review": "plantpal-review"}
+REVIEW_KEY_RE = re.compile(r"^[^\s/]{1,200}$")      # launcher review port: idempotencyKey
+BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
+NEVER_REVIEWED = ("main", BRANCH)            # main deploys production; dev has its own deploy path
 PLANOTELL_URL = "http://planotell.platform.localhost"
 RECEIPT_SCHEMA = "plantpal.dev-deployment-receipt/1"  # the on-disk native record
-CONTRACTS_TAG = "v0.36.0"                             # the tagged shapes both lookup transports emit
+CONTRACTS_TAG = "v0.38.0"                             # the tagged shapes both lookup transports emit
 TAGGED_DIGEST_KIND = "local-image-id"                 # plantpal's digests are local engine image ids
 # Vendored verbatim from the tag above; see schemas/README.md. Used only to validate.
 SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
@@ -181,8 +194,13 @@ def all_receipts(state: Path) -> list[dict]:
     return sorted(receipts, key=lambda r: r["startedAt"])
 
 
+def dev_receipts(state: Path) -> list[dict]:
+    """Dev deployments only: a review environment is never a rollback target or a dev operation key."""
+    return [r for r in all_receipts(state) if r["environment"] == "dev"]
+
+
 def last_passed(state: Path, exclude: str | None = None) -> dict | None:
-    passed = [r for r in all_receipts(state) if r["result"] == "passed" and r["deploymentId"] != exclude]
+    passed = [r for r in dev_receipts(state) if r["result"] == "passed" and r["deploymentId"] != exclude]
     return passed[-1] if passed else None
 
 
@@ -205,7 +223,7 @@ def to_tagged_receipt(receipt: dict) -> dict:
     ``preDeployChecks`` (already the head of ``checks``). The native per-check
     ``detail``/``prHead`` are dropped for the same reason: ``check`` is closed too.
     """
-    return {
+    tagged = {
         "deploymentId": receipt["deploymentId"],
         "kind": receipt["kind"],
         "repository": receipt["repository"],
@@ -231,6 +249,13 @@ def to_tagged_receipt(receipt: dict) -> dict:
         "restores": receipt.get("restores"),
         "nativeRef": f"{REPOSITORY}:deployments/{receipt['deploymentId']}",
     }
+    if receipt["environment"] == "review":
+        # contracts v0.38.0 §Review environments: mergedRevision holds the PR head, and the
+        # role says so. A dev receipt must NOT carry any of these, so they are review-only.
+        tagged["revisionRole"] = "task"
+        tagged["review"] = receipt["review"]
+        tagged["environment"]["apiDocsUrl"] = receipt.get("apiDocsUrl")
+    return tagged
 
 
 def producer_result_from_tagged(tagged: dict) -> dict:
@@ -294,6 +319,15 @@ def check_deployment_semantics(tagged: dict) -> list[str]:
         out.append("rollback identity must name an EARLIER deployment")
     if tagged["kind"] == "rollback" and tagged["deploymentId"] in (tagged.get("restores"), tagged.get("rollbackOf")):
         out.append("a rollback is a new deployment, never the one it restores or replaces")
+    if tagged["environment"]["name"] == "review":
+        if tagged.get("revisionRole") != "task":
+            out.append("a review receipt must have revisionRole task")
+        if tagged.get("review") is None:
+            out.append("a review receipt must carry the review block")
+        if tagged["kind"] != "deploy" or tagged.get("rollback") is not None:
+            out.append("a review receipt is kind deploy with rollback null")
+    elif "review" in tagged or "revisionRole" in tagged or "apiDocsUrl" in tagged["environment"]:
+        out.append("a dev receipt must not carry review, revisionRole or apiDocsUrl")
     if tagged["result"] == "passed":
         observed = tagged.get("observed") or {}
         if observed.get("revision") != tagged["mergedRevision"]:
@@ -510,9 +544,13 @@ def validate_dev_env(env: dict[str, str]) -> None:
         raise DeliveryError(f"refused: dev env carries keys outside the dev allowlist {unknown}")
 
 
-def ensure_dev_config(state: Path) -> tuple[Path, str]:
-    """Create (once) the stack's own dev-only secrets; never copied from backend/.env or deploy/vps/."""
-    env_file = state / "dev.env"
+def ensure_dev_config(state: Path, name: str = "dev") -> tuple[Path, str]:
+    """Create (once) the stack's own dev-only secrets; never copied from backend/.env or deploy/vps/.
+
+    ``name`` picks the environment's own files (``dev.env``/``db-password`` or
+    ``review.env``/``review-db-password``), so a review never shares a secret with the dev stack.
+    """
+    env_file = state / f"{name}.env"
     if not env_file.exists():
         pub, priv = vapid_keypair()
         env_file.write_text(
@@ -523,7 +561,7 @@ def ensure_dev_config(state: Path) -> tuple[Path, str]:
             f"GITHUB_TOKEN={UNSET}\nPLANTNET_API_KEY={UNSET}\nANTHROPIC_API_KEY=\n",
             encoding="utf-8")
     validate_dev_env(parse_env(env_file.read_text(encoding="utf-8")))
-    db_file = state / "db-password"
+    db_file = state / ("db-password" if name == "dev" else f"{name}-db-password")
     if not db_file.exists():
         db_file.write_text(secrets.token_hex(24), encoding="utf-8")
     return env_file, db_file.read_text(encoding="utf-8").strip()
@@ -556,7 +594,8 @@ def archive_tree(root: Path, state: Path, sha: str) -> Path:
     return tree
 
 
-def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_password: str, port: int) -> dict:
+def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_password: str, port: int,
+                environment: str = "dev") -> dict:
     env = dict(os.environ)
     env.update({
         "APP_REVISION": sha,
@@ -565,12 +604,14 @@ def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_pas
         "DEV_DELIVERY_ENV_FILE": str(env_file.resolve()),
         "DEV_DB_PASSWORD": db_password,
         "DEV_DELIVERY_PORT": str(port),
+        "APP_ENVIRONMENT": environment,
+        "IMAGE_PREFIX": IMAGE_PREFIX[environment],
     })
     return env
 
 
-def compose(tree: Path, env: dict, args: list[str], log: Path, timeout: int):
-    cmd = ["docker", "compose", "-p", COMPOSE_PROJECT, "-f", str(tree / COMPOSE_FILE), *args]
+def compose(tree: Path, env: dict, args: list[str], log: Path, timeout: int, project: str = COMPOSE_PROJECT):
+    cmd = ["docker", "compose", "-p", project, "-f", str(tree / COMPOSE_FILE), *args]
     return run(cmd, env=env, log=log, timeout=timeout)
 
 
@@ -622,7 +663,7 @@ def compare(observed_value, expected) -> str:
     return "passed" if observed_value == expected else "failed"
 
 
-def identity_checks(observed: dict | None, sha: str, deployment_id: str) -> list[dict]:
+def identity_checks(observed: dict | None, sha: str, deployment_id: str, environment: str = "dev") -> list[dict]:
     if observed is None:
         return [{"name": n, "criterionId": None, "outcome": "unknown", "exitCode": None}
                 for n in ("identity:app", "identity:revision", "identity:deployment", "identity:environment")]
@@ -630,7 +671,7 @@ def identity_checks(observed: dict | None, sha: str, deployment_id: str) -> list
         {"name": "identity:app", "criterionId": None, "outcome": compare(observed["appIdentity"], APP_IDENTITY), "exitCode": None},
         {"name": "identity:revision", "criterionId": None, "outcome": compare(observed["revision"], sha), "exitCode": None},
         {"name": "identity:deployment", "criterionId": None, "outcome": compare(observed["deploymentId"], deployment_id), "exitCode": None},
-        {"name": "identity:environment", "criterionId": None, "outcome": compare(observed["environment"], "dev"), "exitCode": None},
+        {"name": "identity:environment", "criterionId": None, "outcome": compare(observed["environment"], environment), "exitCode": None},
     ]
 
 
@@ -656,12 +697,16 @@ def parse_criterion(spec: str) -> dict:
     return {"criterionId": cid, "method": method, "path": path, "status": int(status), "contains": contains}
 
 
-def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict]) -> tuple[dict | None, list[dict]]:
+def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict],
+               environment: str = "dev") -> tuple[dict | None, list[dict]]:
     observed = observe_identity(base_url)
-    checks = identity_checks(observed, sha, deployment_id)
+    checks = identity_checks(observed, sha, deployment_id, environment)
     checks.append(smoke(base_url, "smoke:frontend-index", "GET", "/", 200, "<app-root"))
     checks.append(smoke(base_url, "smoke:backend-health", "GET", "/actuator/health", 200, '"UP"'))
     checks.append(smoke(base_url, "smoke:api-auth-guard", "GET", "/api/v1/plants", 401))
+    if environment == "review":
+        checks.append(smoke(base_url, "smoke:swagger-ui", "GET", "/swagger-ui.html", 200, "swagger-ui"))
+        checks.append(smoke(base_url, "smoke:api-docs", "GET", "/v3/api-docs", 200, '"openapi"'))
     for c in criteria:
         checks.append(smoke(base_url, f"criterion:{c['criterionId']}", c["method"], c["path"],
                             c["status"], c["contains"], c["criterionId"]))
@@ -695,14 +740,14 @@ def overall(deploy_exit: int | None, checks: list[dict]) -> str:
 # ── commands ──────────────────────────────────────────────────────────────────
 
 def find_by_operation_key(state: Path, key: str) -> dict | None:
-    for r in all_receipts(state):
+    for r in dev_receipts(state):
         if r["correlation"].get("operationKey") == key:
             return r
     return None
 
 
-def new_deployment_id(sha: str) -> str:
-    return f"pla-dev-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M%S')}-{sha[:12]}"
+def new_deployment_id(sha: str, prefix: str = "pla-dev") -> str:
+    return f"{prefix}-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M%S')}-{sha[:12]}"
 
 
 def settle(root: Path, state: Path, receipt: dict, tree: Path, env: dict, build: bool,
@@ -710,29 +755,38 @@ def settle(root: Path, state: Path, receipt: dict, tree: Path, env: dict, build:
     """Bring the stack up for `receipt` and record everything observed."""
     log = state / "logs" / f"{receipt['deploymentId']}.log"
     sha = receipt["revision"]
+    environment = receipt["environment"]
+    project = receipt["composeProject"]
     exit_code = None
     try:
         if build:
-            built = compose(tree, env, ["build"], log, timeout=1800)
+            built = compose(tree, env, ["build"], log, timeout=1800, project=project)
             if built.returncode != 0:
                 exit_code = built.returncode
         if exit_code is None:
-            up = compose(tree, env, ["up", "-d", "--no-build", "--wait", "--wait-timeout", "600"], log, timeout=720)
+            up = compose(tree, env, ["up", "-d", "--no-build", "--wait", "--wait-timeout", "600"], log,
+                         timeout=720, project=project)
             exit_code = up.returncode
     except subprocess.TimeoutExpired:
         exit_code = None  # timed out: result is unknown, not failed-with-a-made-up-code
     receipt["exitCode"] = exit_code
     receipt["imageDigests"] = {
-        "backend": image_digest(f"plantpal-devdelivery-backend:{sha}"),
-        "frontend": image_digest(f"plantpal-devdelivery-frontend:{sha}"),
+        "backend": image_digest(f"{IMAGE_PREFIX[environment]}-backend:{sha}"),
+        "frontend": image_digest(f"{IMAGE_PREFIX[environment]}-frontend:{sha}"),
     }
     base_url = f"http://127.0.0.1:{receipt['port']}"
-    observed, checks = run_checks(base_url, sha, receipt["deploymentId"], criteria)
-    checks.append(planotell_check(sha, receipt["deploymentId"]))
+    observed, checks = run_checks(base_url, sha, receipt["deploymentId"], criteria, environment)
     receipt["observed"] = observed
-    receipt["checks"] = receipt["preDeployChecks"] + checks
     receipt["observedAt"] = now_utc()
-    receipt["testUrl"] = PLANOTELL_URL if checks[-1]["outcome"] == "passed" else base_url
+    if environment == "review":
+        # The review URL is the loopback one; no hostname is configured, so none is reported.
+        docs = [c for c in checks if c["name"] in ("smoke:swagger-ui", "smoke:api-docs")]
+        receipt["apiDocsUrl"] = f"{base_url}/swagger-ui.html" if all(c["outcome"] == "passed" for c in docs) else None
+        receipt["testUrl"] = base_url
+    else:
+        checks.append(planotell_check(sha, receipt["deploymentId"]))
+        receipt["testUrl"] = PLANOTELL_URL if checks[-1]["outcome"] == "passed" else base_url
+    receipt["checks"] = receipt["preDeployChecks"] + checks
     receipt["result"] = overall(exit_code, receipt["checks"])
     receipt["finishedAt"] = now_utc()
     receipt["log"] = str(log.relative_to(root))
@@ -792,7 +846,7 @@ def cmd_rollback(args) -> int:
     if args.to:
         target = load_receipt(state, args.to)
     else:
-        current = all_receipts(state)
+        current = dev_receipts(state)
         if not current or not current[-1].get("rollback"):
             raise DeliveryError("no rollback identity recorded on the latest deployment")
         target = load_receipt(state, current[-1]["rollback"]["deploymentId"])
@@ -803,7 +857,7 @@ def cmd_rollback(args) -> int:
     env_file, db_password = ensure_dev_config(state)
     tree = archive_tree(root, state, sha)
     deployment_id = new_deployment_id(sha)
-    latest = all_receipts(state)[-1]
+    latest = dev_receipts(state)[-1]
     receipt = base_receipt(sha, deployment_id, args.port, {"deliveryId": None, "operationKey": None},
                            "rollback", target["preDeployChecks"], rollback_identity(latest if latest["result"] == "passed" else None))
     receipt["rollbackOf"] = latest["deploymentId"]
@@ -822,7 +876,7 @@ def cmd_reconcile(args) -> int:
     receipt = load_receipt(state, args.deployment_id)
     if receipt["result"] == "pending":
         base_url = f"http://127.0.0.1:{receipt['port']}"
-        observed, checks = run_checks(base_url, receipt["revision"], receipt["deploymentId"], [])
+        observed, checks = run_checks(base_url, receipt["revision"], receipt["deploymentId"], [], receipt["environment"])
         receipt["observed"] = observed
         receipt["checks"] = receipt["preDeployChecks"] + checks
         receipt["observedAt"] = now_utc()
@@ -991,6 +1045,193 @@ def cmd_down(_args) -> int:
     return proc.returncode
 
 
+# ── review environment (contracts v0.38.0 §Review environments) ──────────────
+# Runs an UNMERGED PR head in its own compose project, volumes, config and port. It never
+# touches the dev stack, never merges or pushes anything, and never reaches production.
+# One review at a time (owner ruling): starting another tears the previous one down.
+
+REVIEW_CHECKS = PUSH_CHECKS + (PR_CHECK,)   # all four must be green on the PR head itself
+
+
+def review_state_path(state: Path) -> Path:
+    return state / "review-current.json"
+
+
+def load_review_state(state: Path) -> dict | None:
+    path = review_state_path(state)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def save_review_state(state: Path, current: dict) -> None:
+    current["updatedAt"] = now_utc()
+    path = review_state_path(state)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None) -> dict:
+    """The PR (or branch) head to review: {sha, branch, pullRequest}. Refuses anything but an open same-repo PR into dev."""
+    if (pr is None) == (branch is None):
+        raise DeliveryError("give exactly one of --pr or --branch")
+    pull_request = None
+    if pr is not None:
+        proc = run(["gh", "api", f"repos/{GITHUB_REPO}/pulls/{int(pr)}", "--jq",
+                    "{sha: .head.sha, ref: .head.ref, base: .base.ref, state: .state, "
+                    "repo: .head.repo.full_name, url: .html_url}"], timeout=60)
+        if proc.returncode != 0:
+            raise DeliveryError(f"could not read PR #{pr}: {proc.stderr.strip()}")
+        info = json.loads(proc.stdout)
+        if info["state"] != "open":
+            raise DeliveryError(f"refused: PR #{pr} is {info['state']}; only an unmerged open PR is reviewed here")
+        if info["base"] != BRANCH:
+            raise DeliveryError(f"refused: PR #{pr} targets {info['base']}, not {BRANCH}")
+        if info["repo"] != GITHUB_REPO:
+            raise DeliveryError(f"refused: PR #{pr} comes from a fork ({info['repo']}); its code is not built here")
+        branch, sha = info["ref"], info["sha"]
+        pull_request = {"number": int(pr), "url": info["url"]}
+    else:
+        if not BRANCH_RE.match(branch) or ".." in branch:
+            raise DeliveryError(f"not a branch name: {branch!r}")
+        proc = run(["gh", "api", f"repos/{GITHUB_REPO}/branches/{branch}", "--jq", ".commit.sha"], timeout=60)
+        if proc.returncode != 0:
+            raise DeliveryError(f"could not read branch {branch}: {proc.stderr.strip()}")
+        sha = proc.stdout.strip()
+    if branch in NEVER_REVIEWED:
+        raise DeliveryError(f"refused: {branch} is not reviewed here ({'production' if branch == 'main' else 'use deploy'})")
+    if not SHA_RE.match(sha):
+        raise DeliveryError(f"could not resolve a full revision: {sha!r}")
+    if expected and expected != sha:
+        raise DeliveryError(f"refused: expected revision {expected} but the head is now {sha}")
+    return {"sha": sha, "branch": branch, "pullRequest": pull_request}
+
+
+def review_gate(sha: str) -> list[dict]:
+    """The PR head's own required checks. A pending, skipped or missing check is not a pass."""
+    return [{"name": (f"quality:{n}" if n == PR_CHECK else f"ci:{n}"), "criterionId": None,
+             "outcome": github_check(sha, n), "exitCode": None} for n in REVIEW_CHECKS]
+
+
+def fetch_revision(root: Path, sha: str) -> None:
+    run(["git", "fetch", "--quiet", "origin", sha], check=True, cwd=root, timeout=300)
+    run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], check=True, cwd=root)
+
+
+def overlay_delivery_files(root: Path, tree: Path) -> None:
+    """Run the compose/nginx files of THIS tool's checkout against the PR tree.
+
+    The review must not depend on whether the PR was branched before these files learned
+    about review environments and Swagger; only the delivery wiring is replaced, never app code.
+    """
+    source = Path(__file__).resolve().parents[2] / "deploy" / "dev-delivery"
+    target = tree / "deploy" / "dev-delivery"
+    target.mkdir(parents=True, exist_ok=True)
+    for f in source.iterdir():
+        if f.is_file():
+            shutil.copyfile(f, target / f.name)
+
+
+def review_teardown(state: Path, current: dict | None) -> None:
+    """Stop the review project and remove its volumes (a review's data is disposable)."""
+    proc = run(["docker", "compose", "-p", REVIEW_COMPOSE_PROJECT, "down", "-v", "--remove-orphans"], timeout=300)
+    if proc.returncode != 0:
+        raise DeliveryError(f"could not stop {REVIEW_COMPOSE_PROJECT}: {proc.stderr.strip()}", 5)
+    if current is not None and current["status"] != "stopped":
+        current["status"] = "stopped"
+        save_review_state(state, current)
+
+
+def review_status_value(current: dict, receipt: dict | None) -> str:
+    if current["status"] == "stopped":
+        return "stopped"
+    if receipt is None or receipt["result"] == "pending":
+        return "starting"
+    return "ready" if receipt["result"] == "passed" else "failed"
+
+
+def review_environment_document(state: Path, current: dict) -> dict:
+    """The launcher ``ReviewEnvironment`` (review-environment.openapi.yaml): what ``status`` and ``stop`` print."""
+    receipt_path_ = receipt_path(state, current["deploymentId"])
+    native = json.loads(receipt_path_.read_text(encoding="utf-8")) if receipt_path_.exists() else None
+    return {
+        "idempotencyKey": current["idempotencyKey"], "repository": REPOSITORY, "branch": current["branch"],
+        "pullRequest": current["pullRequest"], "expectedRevision": current["revision"],
+        "status": review_status_value(current, native),
+        "receipt": tagged_receipt_document(state, current["deploymentId"]) if native else None,
+        "error": None, "startedAt": current["startedAt"], "updatedAt": current["updatedAt"],
+    }
+
+
+def review_current_for(state: Path, key: str | None) -> dict:
+    current = load_review_state(state)
+    if current is None or (key is not None and current["idempotencyKey"] != key):
+        raise DeliveryError(f"review_environment_not_found: {key or '(none)'}", exit_code=4, bare=True)
+    return current
+
+
+def cmd_review_start(args) -> int:
+    root = repo_root()
+    state = state_dir(root)
+    if args.idempotency_key and not REVIEW_KEY_RE.match(args.idempotency_key):
+        raise DeliveryError(f"not an idempotency key: {args.idempotency_key!r}")
+    if args.port in (DEFAULT_PORT, LOOKUP_PORT):
+        raise DeliveryError(f"refused: port {args.port} belongs to the dev stack / lookup route")
+    target = resolve_review_target(root, args.pr, args.branch, args.revision)
+    sha = target["sha"]
+    key = args.idempotency_key or f"review-{sha[:12]}"
+    current = load_review_state(state)
+    if current and current["idempotencyKey"] == key and (
+            current["revision"] != sha or current["branch"] != target["branch"]
+            or current["pullRequest"] != target["pullRequest"]):
+        raise DeliveryError(f"idempotency_key_conflict: {key} already names {current['deploymentId']} "
+                            f"at {current['revision']}", 3)
+    if current and current["status"] != "stopped" and current["revision"] == sha:
+        observed = observe_identity(f"http://127.0.0.1:{current['port']}")
+        if observed and observed["revision"] == sha and observed["deploymentId"] == current["deploymentId"]:
+            print(json.dumps(tagged_receipt_document(state, current["deploymentId"]), indent=2))
+            return 0 if load_receipt(state, current["deploymentId"])["result"] == "passed" else 1
+    pre_checks = review_gate(sha)
+    blocking = [c for c in pre_checks if c["outcome"] != "passed"]
+    if blocking:
+        names = ", ".join(f"{c['name']}={c['outcome']}" for c in blocking)
+        raise DeliveryError(f"refused: required checks for {sha} have not all passed ({names})")
+    env_file, db_password = ensure_dev_config(state, "review")
+    fetch_revision(root, sha)
+    tree = archive_tree(root, state, sha)
+    overlay_delivery_files(root, tree)
+    review_teardown(state, current)  # one at a time: the previous review (any revision) goes first
+    deployment_id = new_deployment_id(sha, "pla-rev")
+    receipt = base_receipt(sha, deployment_id, args.port, {"deliveryId": args.delivery_id, "operationKey": key},
+                           "deploy", pre_checks, None)
+    receipt.update({"branch": target["branch"], "environment": "review", "composeProject": REVIEW_COMPOSE_PROJECT,
+                    "revisionRole": "task", "apiDocsUrl": None,
+                    "review": {"pullRequest": target["pullRequest"]["number"] if target["pullRequest"] else None,
+                               "pullRequestUrl": target["pullRequest"]["url"] if target["pullRequest"] else None}})
+    save_receipt(state, receipt)
+    started = now_utc()
+    current = {"idempotencyKey": key, "deploymentId": deployment_id, "revision": sha, "branch": target["branch"],
+               "pullRequest": target["pullRequest"], "port": args.port, "status": "active", "startedAt": started}
+    save_review_state(state, current)
+    env = compose_env(tree, sha, deployment_id, env_file, db_password, args.port, "review")
+    receipt = settle(root, state, receipt, tree, env, build=True, criteria=[])
+    print(json.dumps(tagged_receipt_document(state, deployment_id), indent=2))
+    return 0 if receipt["result"] == "passed" else 1
+
+
+def cmd_review_status(args) -> int:
+    state = state_dir(repo_root())
+    print(json.dumps(review_environment_document(state, review_current_for(state, args.idempotency_key)), indent=2))
+    return 0
+
+
+def cmd_review_stop(args) -> int:
+    state = state_dir(repo_root())
+    current = review_current_for(state, args.idempotency_key)
+    review_teardown(state, current)
+    print(json.dumps(review_environment_document(state, current), indent=2))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1014,6 +1255,20 @@ def main(argv=None) -> int:
     p.add_argument("--port", type=int, default=DEFAULT_PORT)
     p.set_defaults(func=cmd_observe)
     sub.add_parser("down").set_defaults(func=cmd_down)
+    review = sub.add_parser("review", help="run an unmerged PR head in an isolated review environment")
+    review_sub = review.add_subparsers(dest="review_command", required=True)
+    p = review_sub.add_parser("start")
+    p.add_argument("--pr", type=int)
+    p.add_argument("--branch")
+    p.add_argument("--revision", help="expected PR head; refused if the head has moved")
+    p.add_argument("--idempotency-key")
+    p.add_argument("--delivery-id")
+    p.add_argument("--port", type=int, default=REVIEW_PORT)
+    p.set_defaults(func=cmd_review_start)
+    for name, func in (("status", cmd_review_status), ("stop", cmd_review_stop)):
+        p = review_sub.add_parser(name)
+        p.add_argument("--idempotency-key")
+        p.set_defaults(func=func)
     p = sub.add_parser("serve")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=LOOKUP_PORT)
