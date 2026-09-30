@@ -29,6 +29,17 @@ production, and D113 does not authorize it.
 
 4. If `sonar-gate` fails, the PR author fixes it on the source branch and
    pushes, and the check re-runs. There is no bypass (D112 clause 3).
+
+   The failed job's log says why: an *Explain quality gate failure* step
+   (`scripts/sonar-explain-failure.mjs`, runs only on failure, read-only
+   SonarQube API with the job's `SONAR_TOKEN`, never printed) lists each failed
+   condition (`new_coverage 74.7 < 80`), every open new-code issue
+   (`severity rule file:line message`) and each file with uncovered new lines.
+   `gh run view <run-id> --log-failed` is enough to know what to fix. The step
+   never changes the gate's verdict. `sonar.coverage.exclusions` (backend
+   `pom.xml`, `frontend/sonar-project.properties`) mirror the JaCoCo / Jest
+   excludes; `Frontend CI` fails if they drift
+   (`scripts/check-sonar-coverage-exclusions.mjs`).
 5. Merge through GitHub only. The ruleset refuses a merge whose required checks
    are not green.
 
