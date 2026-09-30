@@ -396,12 +396,14 @@ jobs:
           -Dsonar.qualitygate.timeout=600
 
       # Explains a failure only (read API, existing token); the verdict above is unchanged.
+      # Runs only once the job has already failed, and exits 1 so its output lands in
+      # `gh run view --log-failed` (a passing step is omitted from that view).
       - name: Explain quality gate failure
         if: ${{ failure() }}
-        continue-on-error: true
         run: |
           git ls-files backend/src/main frontend/src frontend/projects > "$RUNNER_TEMP/candidate-files.txt"
-          CANDIDATE_FILES="$RUNNER_TEMP/candidate-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend
+          CANDIDATE_FILES="$RUNNER_TEMP/candidate-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend || true
+          exit 1
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI
