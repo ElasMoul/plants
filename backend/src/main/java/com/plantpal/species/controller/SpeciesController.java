@@ -1,7 +1,6 @@
 package com.plantpal.species.controller;
 
 import com.plantpal.shared.dto.ApiResponse;
-import com.plantpal.species.dto.SpeciesPhotosResponse;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
 import com.plantpal.species.service.SpeciesService;
@@ -71,20 +70,6 @@ public class SpeciesController {
     Long userId = getCurrentUserId();
     Page<SpeciesSummaryDto> species = speciesService.getUserSpecies(userId, pageable);
     return ResponseEntity.ok(ApiResponse.success(species));
-  }
-
-  @Operation(summary = "List the current user's own plant photos of a species, grouped by plant")
-  @io.swagger.v3.oas.annotations.responses.ApiResponse(
-      responseCode = "200",
-      description = "Photos grouped by plant, each group ordered by date taken ascending")
-  @io.swagger.v3.oas.annotations.responses.ApiResponse(
-      responseCode = "401",
-      description = "Unauthorized")
-  @GetMapping("/{id}/photos")
-  public ResponseEntity<ApiResponse<SpeciesPhotosResponse>> getSpeciesPhotos(
-      @Parameter(description = "Species ID") @PathVariable Long id) {
-    return ResponseEntity.ok(
-        ApiResponse.success(speciesService.getUserSpeciesPhotos(getCurrentUserId(), id)));
   }
 
   @Operation(summary = "Re-fire async prose description generation (T9.B)")

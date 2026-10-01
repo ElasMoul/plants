@@ -11,12 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
-import com.plantpal.identification.repository.PlantPhotoRow;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
-import com.plantpal.species.dto.SpeciesPhotosResponse;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
 import com.plantpal.species.entity.Species;
@@ -27,7 +25,6 @@ import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.impl.SpeciesServiceImpl;
 import com.plantpal.user.entity.AiModelPreference;
 import java.lang.reflect.Method;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -474,42 +471,6 @@ class SpeciesServiceTest {
       assertThat(evict).isNotNull();
       assertThat(evict.value()).containsExactly("species");
       assertThat(evict.key()).isEqualTo("#speciesId");
-    }
-  }
-
-  @Nested
-  @DisplayName("getUserSpeciesPhotos()")
-  class GetUserSpeciesPhotos {
-
-    @Test
-    @DisplayName("groups rows by plant and keeps the query's chronological order")
-    void groupsByPlantKeepingOrder() {
-      Instant t1 = Instant.parse("2024-01-01T00:00:00Z");
-      Instant t2 = Instant.parse("2024-02-01T00:00:00Z");
-      when(identificationRepository.findSpeciesPhotoRows(1L, 5L))
-          .thenReturn(
-              List.of(
-                  new PlantPhotoRow(10L, "A", 100L, "/photos/a1.jpg", t1),
-                  new PlantPhotoRow(10L, "A", 101L, "/photos/a2.jpg", t2),
-                  new PlantPhotoRow(11L, "B", 102L, "/photos/b1.jpg", t1)));
-
-      SpeciesPhotosResponse result = speciesService.getUserSpeciesPhotos(1L, 5L);
-
-      assertThat(result.getSpeciesId()).isEqualTo(5L);
-      assertThat(result.getPlants()).hasSize(2);
-      assertThat(result.getPlants().get(0).getPlantId()).isEqualTo(10L);
-      assertThat(result.getPlants().get(0).getPhotos())
-          .extracting("identificationId")
-          .containsExactly(100L, 101L);
-      assertThat(result.getPlants().get(1).getNickname()).isEqualTo("B");
-    }
-
-    @Test
-    @DisplayName("returns an empty plants list when the caller has no photos")
-    void emptyWhenNoRows() {
-      when(identificationRepository.findSpeciesPhotoRows(1L, 5L)).thenReturn(List.of());
-
-      assertThat(speciesService.getUserSpeciesPhotos(1L, 5L).getPlants()).isEmpty();
     }
   }
 }

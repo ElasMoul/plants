@@ -1,7 +1,7 @@
 """Unit tests for dev_delivery.py — pure logic only (no docker, git or network).
 
 Run: python -m unittest discover -s tools/dev-delivery -p "test_*.py"
-Needs the contracts v0.38.0 Python binding and jsonschema (see
+Needs the contracts v0.36.0 Python binding and jsonschema (see
 tools/dev-delivery/requirements.txt).
 """
 
@@ -10,10 +10,7 @@ import contextlib
 import io
 import json
 import tempfile
-import threading
 import unittest
-import urllib.error
-import urllib.request
 from pathlib import Path
 from unittest import mock
 
@@ -568,48 +565,6 @@ class HttpLookupRoute(unittest.TestCase):
                              self._get(f"/delivery/v1/app-deploys/{self.MISS}")):
             self.assertEqual({"code", "message", "retryable"}, set(body["error"]))
 
-    def _serve(self):
-        server = dd.lookup_server(self.state, self.TOKEN, "127.0.0.1", 0)
-        self.addCleanup(server.server_close)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        self.addCleanup(thread.join, 5)
-        self.addCleanup(server.shutdown)
-        return server.server_address[1]
-
-    def _http_get(self, port, headers=None):
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/delivery/v1/app-deploys/{self.MISS}",
-                                     headers=headers or {})
-        try:
-            with urllib.request.urlopen(req, timeout=10) as r:
-                return r.status, json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    def test_broken_stderr_does_not_break_the_response(self):
-        class BrokenStderr:
-            def write(self, _s):
-                raise BrokenPipeError("stderr pipe is gone")
-
-            def flush(self):
-                raise BrokenPipeError("stderr pipe is gone")
-
-        port = self._serve()
-        with mock.patch.object(dd.sys, "stderr", BrokenStderr()):
-            status, body = self._http_get(port)
-        self.assertEqual(403, status)
-        self.assertEqual("caller_not_authorized", body["error"]["code"])
-
-    def test_healthy_stderr_logs_without_token_or_body(self):
-        port = self._serve()
-        buf = io.StringIO()
-        with mock.patch.object(dd.sys, "stderr", buf):
-            self._http_get(port, {"Authorization": "Bearer secret-value"})
-        out = buf.getvalue()
-        self.assertIn("lookup GET /delivery/v1/app-deploys/", out)
-        self.assertIn("-> 403", out)
-        self.assertNotIn("secret-value", out)
-
     def test_token_is_generated_once_and_env_overrides(self):
         first = dd.lookup_token(self.state)
         self.assertEqual(first, dd.lookup_token(self.state))
@@ -620,209 +575,6 @@ class HttpLookupRoute(unittest.TestCase):
     def test_serve_refuses_a_non_loopback_host(self):
         with self.assertRaises(dd.DeliveryError):
             dd.cmd_serve(mock.Mock(host="0.0.0.0", port=0))
-
-
-class ReviewEnvironment(unittest.TestCase):
-    """contracts v0.38.0 §Review environments: an unmerged PR head, role task, its own project and port."""
-
-    REV_ID = "pla-rev-20260930120000-0123456789ab"
-    PR = {"number": 77, "url": "https://github.com/ElasMoul/plants/pull/77"}
-
-    def review_native(self, **overrides):
-        r = dd.base_receipt(SHA, self.REV_ID, dd.REVIEW_PORT, {"deliveryId": None, "operationKey": "review-0123456789ab"},
-                            "deploy", [], None)
-        r.update(
-            branch="feature/PLA-7-thing", environment="review", composeProject=dd.REVIEW_COMPOSE_PROJECT,
-            revisionRole="task", review={"pullRequest": 77, "pullRequestUrl": self.PR["url"]},
-            apiDocsUrl=f"http://127.0.0.1:{dd.REVIEW_PORT}/swagger-ui.html",
-            result="passed", exitCode=0, imageDigests={"backend": DIGEST_BE, "frontend": DIGEST_FE},
-            observed={"appIdentity": "plantpal", "revision": SHA, "deploymentId": self.REV_ID, "environment": "review"},
-            observedAt="2026-09-30T12:03:30+00:00", finishedAt="2026-09-30T12:04:00+00:00",
-            testUrl=f"http://127.0.0.1:{dd.REVIEW_PORT}", checks=[passed("identity:revision")])
-        r.update(overrides)
-        return r
-
-    def test_review_receipt_is_task_role_with_review_block_and_docs_url(self):
-        tagged = dd.to_tagged_receipt(self.review_native())
-        self.assertEqual([], dd.validate_tagged_receipt(tagged))
-        self.assertEqual(tagged["revisionRole"], "task")
-        self.assertEqual(tagged["mergedRevision"], SHA)  # the PR head, not a merged revision
-        self.assertEqual(tagged["environment"]["name"], "review")
-        self.assertTrue(tagged["environment"]["apiDocsUrl"].endswith("/swagger-ui.html"))
-        self.assertEqual(tagged["review"], {"pullRequest": 77, "pullRequestUrl": self.PR["url"]})
-        self.assertIsNone(tagged["rollback"])
-
-    def test_dev_receipt_is_unchanged_by_review_support(self):
-        tagged = dd.to_tagged_receipt(native())
-        for review_only in ("revisionRole", "review"):
-            self.assertNotIn(review_only, tagged)
-        self.assertNotIn("apiDocsUrl", tagged["environment"])
-
-    def test_branch_only_review_keeps_nulls_not_defaults(self):
-        tagged = dd.to_tagged_receipt(self.review_native(review={"pullRequest": None, "pullRequestUrl": None}))
-        self.assertEqual([], dd.validate_tagged_receipt(tagged))
-        self.assertEqual(tagged["review"], {"pullRequest": None, "pullRequestUrl": None})
-
-    def test_review_serving_another_revision_is_refused_not_passed(self):
-        observed = {"appIdentity": "plantpal", "revision": OTHER, "deploymentId": self.REV_ID, "environment": "review"}
-        problems = dd.validate_tagged_receipt(dd.to_tagged_receipt(self.review_native(observed=observed)))
-        self.assertTrue(any("mergedRevision" in x for x in problems), problems)
-
-    def test_review_reporting_the_dev_environment_is_refused(self):
-        observed = {"appIdentity": "plantpal", "revision": SHA, "deploymentId": self.REV_ID, "environment": "dev"}
-        problems = dd.validate_tagged_receipt(dd.to_tagged_receipt(self.review_native(observed=observed)))
-        self.assertTrue(any("environment" in x for x in problems), problems)
-
-    def test_a_dev_receipt_carrying_review_fields_is_caught(self):
-        tagged = dd.to_tagged_receipt(native())
-        tagged["revisionRole"] = "task"
-        self.assertTrue(any("dev receipt" in x for x in dd.check_deployment_semantics(tagged)))
-
-    def test_identity_checks_compare_against_the_review_environment(self):
-        observed = {"appIdentity": "plantpal", "revision": SHA, "deploymentId": self.REV_ID, "environment": "review"}
-        self.assertTrue(all(c["outcome"] == "passed" for c in dd.identity_checks(observed, SHA, self.REV_ID, "review")))
-        self.assertIn("failed", {c["outcome"] for c in dd.identity_checks(observed, SHA, self.REV_ID, "dev")})
-
-    def test_review_checks_include_swagger(self):
-        with mock.patch.object(dd, "observe_identity", return_value=None), \
-                mock.patch.object(dd, "smoke", side_effect=lambda *a, **k: {"name": a[1], "outcome": "passed"}):
-            _, checks = dd.run_checks("http://x", SHA, self.REV_ID, [], "review")
-            _, dev_checks = dd.run_checks("http://x", SHA, self.REV_ID, [], "dev")
-        self.assertIn("smoke:swagger-ui", {c["name"] for c in checks})
-        self.assertIn("smoke:api-docs", {c["name"] for c in checks})
-        self.assertNotIn("smoke:swagger-ui", {c["name"] for c in dev_checks})
-
-    def test_review_never_shares_a_port_project_or_secret_with_dev(self):
-        self.assertNotIn(dd.REVIEW_PORT, (dd.DEFAULT_PORT, dd.LOOKUP_PORT))
-        self.assertNotEqual(dd.REVIEW_COMPOSE_PROJECT, dd.COMPOSE_PROJECT)
-        self.assertNotEqual(dd.IMAGE_PREFIX["review"], dd.IMAGE_PREFIX["dev"])
-        with tempfile.TemporaryDirectory() as tmp:
-            state = Path(tmp)
-            dev_env, dev_pw = dd.ensure_dev_config(state, "dev")
-            rev_env, rev_pw = dd.ensure_dev_config(state, "review")
-            self.assertNotEqual(dev_env, rev_env)
-            self.assertNotEqual(dev_pw, rev_pw)
-            self.assertNotEqual(dd.parse_env(dev_env.read_text())["JWT_SECRET"],
-                                dd.parse_env(rev_env.read_text())["JWT_SECRET"])
-
-    def test_review_receipts_are_never_dev_rollback_targets(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            state = dd.state_dir(Path(tmp))
-            dd.save_receipt(state, self.review_native())
-            self.assertIsNone(dd.last_passed(state))
-            self.assertEqual(dd.dev_receipts(state), [])
-
-    def test_compose_env_sets_environment_and_image_prefix(self):
-        with mock.patch.object(dd, "contracts_m2", return_value=Path("/m2")):
-            env = dd.compose_env(Path("."), SHA, self.REV_ID, Path("e.env"), "pw", dd.REVIEW_PORT, "review")
-        self.assertEqual((env["APP_ENVIRONMENT"], env["IMAGE_PREFIX"], env["DEV_DELIVERY_PORT"]),
-                         ("review", "plantpal-review", str(dd.REVIEW_PORT)))
-
-
-class ReviewCommands(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
-        patcher = mock.patch.object(dd, "repo_root", return_value=self.root)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        self.state = dd.state_dir(self.root)
-        self.helper = ReviewEnvironment()
-
-    def _run(self, *argv):
-        out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = dd.main(list(argv))
-        return code, out.getvalue(), err.getvalue()
-
-    def _seed(self, **receipt_overrides):
-        rec = self.helper.review_native(**receipt_overrides)
-        dd.save_receipt(self.state, rec)
-        dd.save_review_state(self.state, {
-            "idempotencyKey": "k1", "deploymentId": rec["deploymentId"], "revision": SHA, "branch": rec["branch"],
-            "pullRequest": ReviewEnvironment.PR, "port": dd.REVIEW_PORT, "status": "active",
-            "startedAt": "2026-09-30T12:00:00+00:00"})
-        return rec
-
-    def test_status_of_a_passed_review_is_ready_with_the_tagged_receipt(self):
-        self._seed()
-        code, out, _ = self._run("review", "status", "--idempotency-key", "k1")
-        doc = json.loads(out)
-        self.assertEqual(code, 0)
-        self.assertEqual((doc["status"], doc["expectedRevision"], doc["error"]), ("ready", SHA, None))
-        self.assertEqual(doc["receipt"]["environment"]["name"], "review")
-        self.assertEqual(doc["receipt"]["observed"]["revision"], SHA)
-
-    def test_a_revision_mismatch_is_failed_never_ready(self):
-        self._seed(result="failed", observed={"appIdentity": "plantpal", "revision": OTHER,
-                                              "deploymentId": ReviewEnvironment.REV_ID, "environment": "review"})
-        self.assertEqual(json.loads(self._run("review", "status")[1])["status"], "failed")
-
-    def test_unknown_key_is_a_miss_exit_4(self):
-        self._seed()
-        code, out, err = self._run("review", "status", "--idempotency-key", "other")
-        self.assertEqual((code, out, err.strip()), (4, "", "review_environment_not_found: other"))
-
-    def test_stop_tears_down_and_is_idempotent(self):
-        self._seed()
-        calls = []
-        ok = mock.Mock(returncode=0, stdout="", stderr="")
-        with mock.patch.object(dd, "run", side_effect=lambda cmd, **k: calls.append(cmd) or ok):
-            first = json.loads(self._run("review", "stop", "--idempotency-key", "k1")[1])
-            second = json.loads(self._run("review", "stop", "--idempotency-key", "k1")[1])
-        self.assertEqual((first["status"], second["status"]), ("stopped", "stopped"))
-        self.assertEqual(first["receipt"]["result"], "passed")  # the receipt is kept, never rewritten
-        self.assertTrue(all(c[:4] == ["docker", "compose", "-p", dd.REVIEW_COMPOSE_PROJECT] for c in calls))
-        self.assertTrue(all("-v" in c for c in calls))
-
-    def test_start_for_the_running_revision_is_idempotent(self):
-        rec = self._seed()
-        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
-        with mock.patch.object(dd, "resolve_review_target", return_value=target), \
-                mock.patch.object(dd, "observe_identity", return_value=rec["observed"]), \
-                mock.patch.object(dd, "review_gate") as gate, mock.patch.object(dd, "review_teardown") as down:
-            code, out, _ = self._run("review", "start", "--pr", "77", "--idempotency-key", "k1")
-        self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out)["deploymentId"], rec["deploymentId"])
-        gate.assert_not_called()
-        down.assert_not_called()
-
-    def test_same_key_with_another_revision_is_a_conflict(self):
-        self._seed()
-        target = {"sha": OTHER, "branch": "feature/PLA-7-thing", "pullRequest": ReviewEnvironment.PR}
-        with mock.patch.object(dd, "resolve_review_target", return_value=target):
-            code, _, err = self._run("review", "start", "--pr", "77", "--idempotency-key", "k1")
-        self.assertEqual(code, 3)
-        self.assertIn("idempotency_key_conflict", err)
-
-    def test_start_refuses_unless_every_check_passed_and_leaves_the_running_review_alone(self):
-        self._seed()
-        target = {"sha": OTHER, "branch": "feature/PLA-8", "pullRequest": None}
-        gate = [{"name": "quality:sonar-gate", "outcome": "unknown"}]
-        with mock.patch.object(dd, "resolve_review_target", return_value=target), \
-                mock.patch.object(dd, "review_gate", return_value=gate), \
-                mock.patch.object(dd, "review_teardown") as down:
-            code, _, err = self._run("review", "start", "--branch", "feature/PLA-8")
-        self.assertEqual(code, 2)
-        self.assertIn("refused", err)
-        down.assert_not_called()
-
-    def test_start_refuses_the_dev_and_lookup_ports(self):
-        for port in (dd.DEFAULT_PORT, dd.LOOKUP_PORT):
-            self.assertEqual(self._run("review", "start", "--pr", "1", "--port", str(port))[0], 2)
-
-    def test_target_needs_exactly_one_of_pr_or_branch(self):
-        with self.assertRaises(dd.DeliveryError):
-            dd.resolve_review_target(self.root, None, None, None)
-        with self.assertRaises(dd.DeliveryError):
-            dd.resolve_review_target(self.root, 1, "x", None)
-
-    def test_main_and_dev_branches_are_never_reviewed(self):
-        for branch in ("main", "dev"):
-            with mock.patch.object(dd, "run", return_value=mock.Mock(returncode=0, stdout=SHA + "\n", stderr="")):
-                with self.assertRaises(dd.DeliveryError):
-                    dd.resolve_review_target(self.root, None, branch, None)
 
 
 if __name__ == "__main__":
