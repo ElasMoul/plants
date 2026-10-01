@@ -1074,7 +1074,8 @@ def save_review_state(state: Path, current: dict) -> None:
     os.replace(tmp, path)
 
 
-def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None) -> dict:
+def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None,
+                          expected_branch: str | None = None) -> dict:
     """The PR (or branch) head to review: {sha, branch, pullRequest}. Refuses anything but an open same-repo PR into dev."""
     if (pr is None) == (branch is None):
         raise DeliveryError("give exactly one of --pr or --branch")
@@ -1092,6 +1093,8 @@ def resolve_review_target(root: Path, pr: int | None, branch: str | None, expect
             raise DeliveryError(f"refused: PR #{pr} targets {info['base']}, not {BRANCH}")
         if info["repo"] != GITHUB_REPO:
             raise DeliveryError(f"refused: PR #{pr} comes from a fork ({info['repo']}); its code is not built here")
+        if expected_branch and expected_branch != info["ref"]:
+            raise DeliveryError(f"refused: PR #{pr} head branch is {info['ref']}, not the expected {expected_branch}")
         branch, sha = info["ref"], info["sha"]
         pull_request = {"number": int(pr), "url": info["url"]}
     else:
@@ -1189,8 +1192,15 @@ def cmd_review_start(args) -> int:
     state = state_dir(root)
     args.idempotency_key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
     args.revision = env_param(args.revision, "REVIEW_EXPECTED_REVISION")
-    args.branch = env_param(args.branch, "REVIEW_BRANCH")
-    pr_number = env_param(args.pr, "REVIEW_PR_NUMBER")
+    flag_branch = args.branch
+    # The launcher sends both; a PR number identifies the target and the branch is only checked against it.
+    pr_number = args.pr if args.pr is not None else (None if flag_branch is not None else env_param(None, "REVIEW_PR_NUMBER"))
+    env_branch = env_param(None, "REVIEW_BRANCH")
+    expected_branch = None
+    if pr_number is not None and flag_branch is None:
+        args.branch, expected_branch = None, env_branch
+    else:
+        args.branch = flag_branch if flag_branch is not None else env_branch
     try:
         args.pr = int(pr_number) if pr_number is not None else None
     except ValueError:
@@ -1199,7 +1209,8 @@ def cmd_review_start(args) -> int:
         raise DeliveryError(f"not an idempotency key: {args.idempotency_key!r}")
     if args.port in (DEFAULT_PORT, LOOKUP_PORT):
         raise DeliveryError(f"refused: port {args.port} belongs to the dev stack / lookup route")
-    target = resolve_review_target(root, args.pr, args.branch, args.revision)
+    extra = {"expected_branch": expected_branch} if expected_branch else {}
+    target = resolve_review_target(root, args.pr, args.branch, args.revision, **extra)
     sha = target["sha"]
     key = args.idempotency_key or f"review-{sha[:12]}"
     current = load_review_state(state)

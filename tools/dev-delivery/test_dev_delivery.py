@@ -910,6 +910,40 @@ class ReviewCommands(unittest.TestCase):
         with self.assertRaises(dd.DeliveryError):
             dd.resolve_review_target(self.root, 1, "x", None)
 
+    def _pr_info(self, ref="feature/PLA-7-thing"):
+        info = {"sha": SHA, "ref": ref, "base": dd.BRANCH, "state": "open", "repo": dd.GITHUB_REPO, "url": "u"}
+        return mock.Mock(returncode=0, stdout=json.dumps(info), stderr="")
+
+    def test_env_with_pr_and_branch_starts_the_same_target_as_pr_alone(self):
+        rec = self._seed()
+        env = {"REVIEW_PR_NUMBER": "77", "REVIEW_BRANCH": rec["branch"], "REVIEW_IDEMPOTENCY_KEY": "k1"}
+        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
+        with mock.patch.dict("os.environ", env), \
+                mock.patch.object(dd, "resolve_review_target", return_value=target) as resolve, \
+                mock.patch.object(dd, "observe_identity", return_value=rec["observed"]):
+            code, _, _ = self._run("review", "start")
+        self.assertEqual(code, 0)
+        resolve.assert_called_once_with(self.root, 77, None, None, expected_branch=rec["branch"])
+
+    def test_pr_resolution_accepts_the_expected_branch_and_refuses_a_mismatch(self):
+        with mock.patch.object(dd, "run", return_value=self._pr_info()):
+            self.assertEqual(dd.resolve_review_target(self.root, 77, None, None, "feature/PLA-7-thing")["sha"], SHA)
+            with self.assertRaisesRegex(dd.DeliveryError, "head branch is feature/PLA-7-thing, not the expected other"):
+                dd.resolve_review_target(self.root, 77, None, None, "other")
+
+    def test_env_branch_mismatch_is_refused_from_the_command(self):
+        with mock.patch.dict("os.environ", {"REVIEW_PR_NUMBER": "77", "REVIEW_BRANCH": "other"}), \
+                mock.patch.object(dd, "run", return_value=self._pr_info()):
+            code, _, err = self._run("review", "start")
+        self.assertEqual(code, 2)
+        self.assertIn("not the expected other", err)
+
+    def test_both_flags_on_the_command_line_stay_refused(self):
+        with mock.patch.dict("os.environ", {}, clear=False):
+            code, _, err = self._run("review", "start", "--pr", "77", "--branch", "feature/x")
+        self.assertEqual(code, 2)
+        self.assertIn("exactly one of --pr or --branch", err)
+
     def test_main_and_dev_branches_are_never_reviewed(self):
         for branch in ("main", "dev"):
             with mock.patch.object(dd, "run", return_value=mock.Mock(returncode=0, stdout=SHA + "\n", stderr="")):

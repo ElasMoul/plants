@@ -7,6 +7,8 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- dev-delivery `review start` accepts the launcher's environment with both `REVIEW_PR_NUMBER` and `REVIEW_BRANCH`
+  set: the PR is resolved by number and the branch is verified against its head (mismatch refused).
 - Species detail page (classic frontend): third "Gallery" tab (PLA-94) showing the user's photos of the species
   oldest-first by date taken, with an empty state. Consumes the PLA-93 endpoint; fr/ar strings added.
 - dev-delivery launcher interface (demand `factory-20261001-launcher-review-command-interface`): `review start|status|stop`
