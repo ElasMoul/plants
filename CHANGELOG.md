@@ -7,6 +7,9 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- `GET /api/v1/species/{id}/photos` (PLA-93): the caller's own non-archived plants' photos of a species,
+  grouped by plant, each group ordered by `date_taken` ascending (tiebreak identification id). Unowned or
+  unknown species return 200 with an empty list. No schema change.
 - Review environments (demand `factory-20260930-plantpal-review-environment-and-swagger`):
   `dev_delivery.py review start|status|stop` runs an unmerged PR head (all four required checks
   green on it) in its own compose project `plantpal-review`, volumes, generated config and

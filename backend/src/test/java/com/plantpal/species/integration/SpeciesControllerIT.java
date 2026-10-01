@@ -104,6 +104,108 @@ class SpeciesControllerIT extends AbstractIntegrationTest {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  @Test
+  @DisplayName("GET /{id}/photos should reject unauthenticated requests")
+  void photosRequireAuth() {
+    Species species = seedSpecies("Pilea peperomioides");
+
+    ResponseEntity<Map> response =
+        restTemplate.getForEntity(url("/api/v1/species/" + species.getId() + "/photos"), Map.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  @Test
+  @DisplayName("GET /{id}/photos returns only the caller's photos, grouped and ordered")
+  @SuppressWarnings("unchecked")
+  void photosScopedGroupedAndOrdered() {
+    Species species = seedSpecies("Calathea orbifolia");
+    Species other = seedSpecies("Aloe vera");
+    String tokenB = (String) registerAndLogin(uniqueEmail(), "password123").get("token");
+    long plantA1 = seedPlant(tokenA, species.getId());
+    long plantA2 = seedPlant(tokenA, species.getId());
+    long plantAOther = seedPlant(tokenA, other.getId());
+    long plantAArchived = seedPlant(tokenA, species.getId());
+    jdbcTemplate.update("UPDATE plants SET status='ARCHIVED' WHERE id=?", plantAArchived);
+    long plantB = seedPlant(tokenB, species.getId());
+    long userA = ownerOf(plantA1);
+    long userB = ownerOf(plantB);
+
+    long late =
+        seedPhoto(userA, plantA1, "/p/late.jpg", "2024-03-01T00:00:00Z", "2020-01-01T00:00:00Z");
+    long early =
+        seedPhoto(userA, plantA1, "/p/early.jpg", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z");
+    long tieFirst =
+        seedPhoto(userA, plantA1, "/p/tie1.jpg", "2024-02-01T00:00:00Z", "2024-02-01T00:00:00Z");
+    long tieSecond =
+        seedPhoto(userA, plantA1, "/p/tie2.jpg", "2024-02-01T00:00:00Z", "2024-02-01T00:00:00Z");
+    long a2 =
+        seedPhoto(userA, plantA2, "/p/a2.jpg", "2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z");
+    seedPhoto(userA, plantAOther, "/p/other.jpg", "2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z");
+    seedPhoto(userA, plantAArchived, "/p/arch.jpg", "2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z");
+    long b1 = seedPhoto(userB, plantB, "/p/b.jpg", "2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z");
+
+    List<Map<String, Object>> plants = photoGroups(species.getId(), tokenA);
+
+    assertThat(plants).hasSize(2);
+    assertThat(((Number) plants.get(0).get("plantId")).longValue()).isEqualTo(plantA1);
+    assertThat(plants.get(0).get("nickname")).isNotNull();
+    List<Map<String, Object>> photos = (List<Map<String, Object>>) plants.get(0).get("photos");
+    assertThat(photos.stream().map(p -> ((Number) p.get("identificationId")).longValue()))
+        .containsExactly(early, tieFirst, tieSecond, late);
+    assertThat(photos.get(0)).containsKeys("photoUrl", "dateTaken");
+    List<Map<String, Object>> photosA2 = (List<Map<String, Object>>) plants.get(1).get("photos");
+    assertThat(photosA2).hasSize(1);
+    assertThat(((Number) photosA2.get(0).get("identificationId")).longValue()).isEqualTo(a2);
+
+    List<Map<String, Object>> plantsB = photoGroups(species.getId(), tokenB);
+    assertThat(plantsB).hasSize(1);
+    List<Map<String, Object>> photosB = (List<Map<String, Object>>) plantsB.get(0).get("photos");
+    assertThat(photosB).hasSize(1);
+    assertThat(((Number) photosB.get(0).get("identificationId")).longValue()).isEqualTo(b1);
+  }
+
+  @Test
+  @DisplayName("GET /{id}/photos returns 200 with an empty list for an unowned or unknown species")
+  void photosEmptyWhenNoneOwned() {
+    ResponseEntity<Map> response = getWithToken("/api/v1/species/999999/photos", tokenA);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(photoGroups(999999L, tokenA)).isEmpty();
+  }
+
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> photoGroups(Long speciesId, String token) {
+    Map<String, Object> data =
+        (Map<String, Object>)
+            getWithToken("/api/v1/species/" + speciesId + "/photos", token).getBody().get("data");
+    return (List<Map<String, Object>>) data.get("plants");
+  }
+
+  private long ownerOf(long plantId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT user_id FROM plants WHERE id=?", Long.class, plantId);
+  }
+
+  private long seedPlant(String token, Long speciesId) {
+    createPlantOfSpecies(token, speciesId);
+    return jdbcTemplate.queryForObject("SELECT MAX(id) FROM plants", Long.class);
+  }
+
+  private long seedPhoto(long userId, long plantId, String url, String taken, String created) {
+    return jdbcTemplate.queryForObject(
+        "INSERT INTO identifications(user_id,plant_id,status,photo_url,date_taken,created_at) "
+            + "VALUES (?,?,'COMPLETED',?,?::timestamptz,?::timestamptz) RETURNING id",
+        Long.class,
+        userId,
+        plantId,
+        url,
+        taken,
+        created);
+  }
+
   private Species seedSpecies(String scientificName) {
     return speciesRepository.save(
         Species.builder().scientificName(scientificName).status(SpeciesStatus.ACTIVE).build());
