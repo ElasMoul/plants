@@ -1,13 +1,13 @@
 # Vendored contracts JSON Schemas (validation only)
 
-Verbatim copies of three schemas from `contracts` tag **v0.38.0**, kept here so
+Verbatim copies of three schemas from `contracts` tag **v0.36.0**, kept here so
 `dev_delivery.py` can validate what it emits **offline**, in CI, and on a host
 that has no `contracts` checkout. They are a validation oracle, not types: no
 plantpal code imports anything from this directory, and nothing here is
 hand-edited. The pydantic binding remains the only thing that shapes a document
 (`platform_contracts`, pinned in `../requirements.txt`).
 
-| File | Copied from (`contracts` @ `v0.38.0`) |
+| File | Copied from (`contracts` @ `v0.36.0`) |
 |---|---|
 | `delivery/delivery.deployment-receipt.json` | `schemas/delivery/delivery.deployment-receipt.json` |
 | `delivery/delivery.producer-result.json` | `schemas/delivery/delivery.producer-result.json` |

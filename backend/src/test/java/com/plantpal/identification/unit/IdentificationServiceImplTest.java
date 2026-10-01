@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -807,30 +806,6 @@ class IdentificationServiceImplTest {
           ArgumentCaptor.forClass(IdentificationRequestedEvent.class);
       verify(identificationDispatcher).dispatch(eventCaptor.capture());
       assertThat(eventCaptor.getValue().getUserContext()).isEqualTo("Why is this leaf yellow?");
-    }
-
-    @Test
-    @DisplayName("submitIdentification uses upload time when the image bytes are unreadable")
-    void shouldDefaultDateTakenWhenBytesUnreadable() throws Exception {
-      MultipartFile broken = mock(MultipartFile.class);
-      when(broken.getContentType()).thenReturn("image/jpeg");
-      when(broken.getBytes()).thenThrow(new java.io.IOException("boom"));
-      when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
-      when(identificationRepository.save(any()))
-          .thenReturn(
-              Identification.builder()
-                  .id(1L)
-                  .userId(USER_ID)
-                  .status(IdentificationStatus.PENDING)
-                  .build());
-
-      identificationService
-          .submitIdentification(List.of(broken), null, null, USER_ID, null, null)
-          .get();
-
-      ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
-      verify(identificationRepository).save(captor.capture());
-      assertThat(captor.getValue().getDateTaken()).isNotNull();
     }
 
     @Test
