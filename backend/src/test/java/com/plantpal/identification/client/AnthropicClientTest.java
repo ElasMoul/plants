@@ -31,7 +31,7 @@ class AnthropicClientTest {
   void setUp() throws IOException {
     server = new MockWebServer();
     server.start();
-    client = new AnthropicClient(baseUrl(), "test-key", MODEL);
+    client = new AnthropicClient(baseUrl(), "test-key", MODEL, false);
   }
 
   @AfterEach
@@ -129,7 +129,7 @@ class AnthropicClientTest {
     @Test
     @DisplayName("an un-keyed client is unavailable and fails before any network call")
     void unkeyed() {
-      AnthropicClient unkeyed = new AnthropicClient(baseUrl(), " ", MODEL);
+      AnthropicClient unkeyed = new AnthropicClient(baseUrl(), " ", MODEL, false);
 
       assertThat(unkeyed.isAvailable()).isFalse();
       assertThat(client.isAvailable()).isTrue();
@@ -138,6 +138,12 @@ class AnthropicClientTest {
           .isInstanceOf(PlantPalException.class)
           .hasMessageContaining("not configured");
       assertThat(server.getRequestCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("an un-keyed client is available when the gateway is enabled")
+    void unkeyedButGatewayEnabled() {
+      assertThat(new AnthropicClient(baseUrl(), "", MODEL, true).isAvailable()).isTrue();
     }
 
     @Test
