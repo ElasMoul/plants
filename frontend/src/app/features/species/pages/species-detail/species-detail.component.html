@@ -156,6 +156,34 @@
         </div>
       </mat-tab>
 
+      <!-- Gallery tab -->
+      <mat-tab [label]="'Gallery' | t">
+        <div class="tab-content gallery-content">
+
+          <div *ngIf="photosLoading" class="plants-loading">
+            <mat-spinner diameter="36"></mat-spinner>
+          </div>
+
+          <ng-container *ngIf="!photosLoading">
+            <div *ngIf="photos.length === 0" class="empty-plants-state gallery-empty">
+              <mat-icon class="empty-icon">photo_library</mat-icon>
+              <p class="empty-sub">{{ 'No photos of this species yet.' | t }}</p>
+            </div>
+
+            <div *ngIf="photos.length > 0" class="gallery-grid">
+              <img
+                *ngFor="let photo of photos"
+                class="gallery-tile"
+                [src]="photo.photoUrl"
+                [alt]="species.scientificName"
+                loading="lazy"
+              />
+            </div>
+          </ng-container>
+
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
 
   </ng-container>

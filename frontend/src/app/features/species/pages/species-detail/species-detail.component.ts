@@ -7,7 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, interval } from 'rxjs';
 import { filter, map, switchMap, take, takeUntil, takeWhile, timeout } from 'rxjs/operators';
 import { SpeciesService } from '../../services/species.service';
-import { SpeciesResponse } from '../../models/species.model';
+import { SpeciesPhotoDto, SpeciesResponse } from '../../models/species.model';
 import { PlantService } from '../../../plant/services/plant.service';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { IdentificationService } from '../../../identification/services/identification.service';
@@ -29,6 +29,8 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];
   loading = true;
   plantsLoading = true;
+  photos: SpeciesPhotoDto[] = [];
+  photosLoading = true;
   retrying = false;
 
   readonly placeholderImage = PLACEHOLDER_IMAGE;
@@ -75,6 +77,23 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
         error: () => {
           this.plants = [];
           this.plantsLoading = false;
+        },
+      });
+
+    this.speciesService.getSpeciesPhotos(this.speciesId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          // Oldest first, matching the backend's per-plant ordering (i.dateTaken ASC, i.id ASC).
+          this.photos = (res.data?.plants ?? [])
+            .flatMap(plant => plant.photos ?? [])
+            .sort((a, b) =>
+              Date.parse(a.dateTaken) - Date.parse(b.dateTaken) || a.identificationId - b.identificationId);
+          this.photosLoading = false;
+        },
+        error: () => {
+          this.photos = [];
+          this.photosLoading = false;
         },
       });
   }
