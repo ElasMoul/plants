@@ -568,6 +568,48 @@ class HttpLookupRoute(unittest.TestCase):
                              self._get(f"/delivery/v1/app-deploys/{self.MISS}")):
             self.assertEqual({"code", "message", "retryable"}, set(body["error"]))
 
+    def _serve(self):
+        server = dd.lookup_server(self.state, self.TOKEN, "127.0.0.1", 0)
+        self.addCleanup(server.server_close)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(server.shutdown)
+        return server.server_address[1]
+
+    def _http_get(self, port, headers=None):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/delivery/v1/app-deploys/{self.MISS}",
+                                     headers=headers or {})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def test_broken_stderr_does_not_break_the_response(self):
+        class BrokenStderr:
+            def write(self, _s):
+                raise BrokenPipeError("stderr pipe is gone")
+
+            def flush(self):
+                raise BrokenPipeError("stderr pipe is gone")
+
+        port = self._serve()
+        with mock.patch.object(dd.sys, "stderr", BrokenStderr()):
+            status, body = self._http_get(port)
+        self.assertEqual(403, status)
+        self.assertEqual("caller_not_authorized", body["error"]["code"])
+
+    def test_healthy_stderr_logs_without_token_or_body(self):
+        port = self._serve()
+        buf = io.StringIO()
+        with mock.patch.object(dd.sys, "stderr", buf):
+            self._http_get(port, {"Authorization": "Bearer secret-value"})
+        out = buf.getvalue()
+        self.assertIn("lookup GET /delivery/v1/app-deploys/", out)
+        self.assertIn("-> 403", out)
+        self.assertNotIn("secret-value", out)
+
     def test_token_is_generated_once_and_env_overrides(self):
         first = dd.lookup_token(self.state)
         self.assertEqual(first, dd.lookup_token(self.state))

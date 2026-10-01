@@ -1004,8 +1004,8 @@ def lookup_server(state: Path, token: str, host: str, port: int):
         def log_message(self, fmt, *args):  # no bearer tokens or bodies in logs
             try:
                 sys.stderr.write(f"lookup {self.command} {self.path.split('?', 1)[0]} -> {args[1] if len(args) > 1 else '?'}\n")
-            except OSError:
-                pass  # a broken/closed stderr pipe must never take down a request
+            except OSError:  # broken/closed stderr must never fail the response
+                pass
 
     return ThreadingHTTPServer((host, port), Handler)
 
