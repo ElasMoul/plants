@@ -1,5 +1,6 @@
 package com.plantpal.species.service;
 
+import com.plantpal.species.dto.SpeciesPhotosResponse;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
 import com.plantpal.species.entity.Species;
@@ -41,4 +42,7 @@ public interface SpeciesService {
 
   /** T9.B: re-fire async prose enrichment; flips descriptionStatus back to PENDING. */
   SpeciesResponse regenerateDescription(Long speciesId, Long userId);
+
+  /** The caller's own non-archived plants of this species with photos, oldest first per plant. */
+  SpeciesPhotosResponse getUserSpeciesPhotos(Long userId, Long speciesId);
 }
