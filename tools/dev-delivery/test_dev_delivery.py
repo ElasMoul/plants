@@ -10,7 +10,10 @@ import contextlib
 import io
 import json
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest import mock
 
@@ -575,6 +578,50 @@ class HttpLookupRoute(unittest.TestCase):
     def test_serve_refuses_a_non_loopback_host(self):
         with self.assertRaises(dd.DeliveryError):
             dd.cmd_serve(mock.Mock(host="0.0.0.0", port=0))
+
+
+class LookupServerLogging(unittest.TestCase):
+    TOKEN = "t" * 40
+
+    def _serve(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        server = dd.lookup_server(dd.state_dir(Path(tmp.name)), self.TOKEN, "127.0.0.1", 0)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_address[1]}/delivery/v1/app-deploys/abc"
+
+    def _status_and_body(self, url, headers=None):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers or {}), timeout=10) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def test_broken_stderr_does_not_break_the_response(self):
+        class BrokenStderr:
+            def write(self, _):
+                raise BrokenPipeError("stderr pipe closed")
+
+            def flush(self):
+                raise BrokenPipeError("stderr pipe closed")
+
+        url = self._serve()
+        with mock.patch.object(dd.sys, "stderr", BrokenStderr()):
+            status, body = self._status_and_body(url)
+        self.assertEqual(403, status)
+        self.assertEqual("caller_not_authorized", body["error"]["code"])
+
+    def test_healthy_stderr_logs_one_line_without_token_or_body(self):
+        url = self._serve()
+        buf = io.StringIO()
+        with mock.patch.object(dd.sys, "stderr", buf):
+            self._status_and_body(url, {"Authorization": f"Bearer {self.TOKEN}"})
+        self.assertIn("lookup GET /delivery/v1/app-deploys/abc -> ", buf.getvalue())
+        self.assertNotIn(self.TOKEN, buf.getvalue())
 
 
 class ReviewEnvironment(unittest.TestCase):
