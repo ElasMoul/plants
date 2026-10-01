@@ -811,6 +811,7 @@ def base_receipt(sha: str, deployment_id: str, port: int, correlation: dict, kin
 
 def cmd_deploy(args) -> int:
     root = repo_root()
+    args.revision = env_param(args.revision, "COMMAND_PARAM_COMMIT")
     state = state_dir(root)
     criteria = [parse_criterion(c) for c in args.criterion]
     if args.operation_key:
@@ -1165,9 +1166,20 @@ def review_environment_document(state: Path, current: dict) -> dict:
     }
 
 
+def env_param(flag_value, name: str):
+    """An explicit flag wins; otherwise the launcher's environment parameter (empty counts as absent)."""
+    if flag_value is not None:
+        return flag_value
+    return os.environ.get(name, "").strip() or None
+
+
+def key_names_review(current: dict, key: str) -> bool:
+    return key == current["idempotencyKey"] or key in current.get("aliasKeys", [])
+
+
 def review_current_for(state: Path, key: str | None) -> dict:
     current = load_review_state(state)
-    if current is None or (key is not None and current["idempotencyKey"] != key):
+    if current is None or (key is not None and not key_names_review(current, key)):
         raise DeliveryError(f"review_environment_not_found: {key or '(none)'}", exit_code=4, bare=True)
     return current
 
@@ -1175,6 +1187,14 @@ def review_current_for(state: Path, key: str | None) -> dict:
 def cmd_review_start(args) -> int:
     root = repo_root()
     state = state_dir(root)
+    args.idempotency_key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
+    args.revision = env_param(args.revision, "REVIEW_EXPECTED_REVISION")
+    args.branch = env_param(args.branch, "REVIEW_BRANCH")
+    pr_number = env_param(args.pr, "REVIEW_PR_NUMBER")
+    try:
+        args.pr = int(pr_number) if pr_number is not None else None
+    except ValueError:
+        raise DeliveryError(f"not a pull request number: {pr_number!r}")
     if args.idempotency_key and not REVIEW_KEY_RE.match(args.idempotency_key):
         raise DeliveryError(f"not an idempotency key: {args.idempotency_key!r}")
     if args.port in (DEFAULT_PORT, LOOKUP_PORT):
@@ -1183,7 +1203,7 @@ def cmd_review_start(args) -> int:
     sha = target["sha"]
     key = args.idempotency_key or f"review-{sha[:12]}"
     current = load_review_state(state)
-    if current and current["idempotencyKey"] == key and (
+    if current and key_names_review(current, key) and (
             current["revision"] != sha or current["branch"] != target["branch"]
             or current["pullRequest"] != target["pullRequest"]):
         raise DeliveryError(f"idempotency_key_conflict: {key} already names {current['deploymentId']} "
@@ -1191,6 +1211,9 @@ def cmd_review_start(args) -> int:
     if current and current["status"] != "stopped" and current["revision"] == sha:
         observed = observe_identity(f"http://127.0.0.1:{current['port']}")
         if observed and observed["revision"] == sha and observed["deploymentId"] == current["deploymentId"]:
+            if not key_names_review(current, key):
+                current.setdefault("aliasKeys", []).append(key)  # a later `stop` under this key finds the running environment
+                save_review_state(state, current)
             print(json.dumps(tagged_receipt_document(state, current["deploymentId"]), indent=2))
             return 0 if load_receipt(state, current["deploymentId"])["result"] == "passed" else 1
     pre_checks = review_gate(sha)
@@ -1223,13 +1246,14 @@ def cmd_review_start(args) -> int:
 
 def cmd_review_status(args) -> int:
     state = state_dir(repo_root())
-    print(json.dumps(review_environment_document(state, review_current_for(state, args.idempotency_key)), indent=2))
+    key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
+    print(json.dumps(review_environment_document(state, review_current_for(state, key)), indent=2))
     return 0
 
 
 def cmd_review_stop(args) -> int:
     state = state_dir(repo_root())
-    current = review_current_for(state, args.idempotency_key)
+    current = review_current_for(state, env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY"))
     review_teardown(state, current)
     print(json.dumps(review_environment_document(state, current), indent=2))
     return 0
