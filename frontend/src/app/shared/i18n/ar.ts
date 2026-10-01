@@ -292,6 +292,8 @@ export const AR: Readonly<Record<string, string>> = {
   "How to care for it": "كيفية العناية به",
   "You don't have a plant of this species yet.": "ليس لديك نبات من هذا النوع بعد.",
   "Add plant of this species": "أضف نباتًا من هذا النوع",
+  "Gallery": "المعرض",
+  "No photos of this species yet.": "لا توجد صور لهذا النوع بعد.",
   "You have {0} species under your care.": "لديك {0} من الأنواع تحت رعايتك.",
   "All": "الكل",
   "With Issues": "بها مشكلات",

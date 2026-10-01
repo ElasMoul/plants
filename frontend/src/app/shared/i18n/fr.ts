@@ -292,6 +292,8 @@ export const FR: Readonly<Record<string, string>> = {
   "How to care for it": "Comment en prendre soin",
   "You don't have a plant of this species yet.": "Vous n’avez pas encore de plante de cette espèce.",
   "Add plant of this species": "Ajouter une plante de cette espèce",
+  "Gallery": "Galerie",
+  "No photos of this species yet.": "Aucune photo de cette espèce pour le moment.",
   "You have {0} species under your care.": "Vous prenez soin de {0} espèces.",
   "All": "Toutes",
   "With Issues": "Avec des problèmes",

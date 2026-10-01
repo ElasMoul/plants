@@ -38,3 +38,20 @@ export interface SpeciesResponse {
   powoId?: string | null;
   iucnCategory?: string | null;
 }
+
+export interface SpeciesPhotoDto {
+  identificationId: number;
+  photoUrl: string;
+  dateTaken: string;
+}
+
+export interface PlantPhotosDto {
+  plantId: number;
+  nickname: string;
+  photos: SpeciesPhotoDto[];
+}
+
+export interface SpeciesPhotosResponse {
+  speciesId: number;
+  plants: PlantPhotosDto[];
+}

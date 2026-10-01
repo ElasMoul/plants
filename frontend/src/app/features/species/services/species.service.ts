@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '@plantpal/shared-core';
-import { SpeciesResponse, SpeciesSummaryDto } from '../models/species.model';
+import { SpeciesPhotosResponse, SpeciesResponse, SpeciesSummaryDto } from '../models/species.model';
 
 @Injectable()
 export class SpeciesService {
@@ -25,5 +25,9 @@ export class SpeciesService {
       `${this.baseUrl}/${id}/regenerate-description`,
       {},
     );
+  }
+
+  getSpeciesPhotos(id: number): Observable<ApiResponse<SpeciesPhotosResponse>> {
+    return this.http.get<ApiResponse<SpeciesPhotosResponse>>(`${this.baseUrl}/${id}/photos`);
   }
 }
