@@ -79,6 +79,14 @@ COMPOSE_FILE = Path("deploy/dev-delivery/docker-compose.yml")
 DEFAULT_PORT = 8184
 REVIEW_COMPOSE_PROJECT = "plantpal-review"   # its own project: network, volumes, containers
 REVIEW_PORT = 8186                           # next free 81xx after 8185 (PLATFORM_STATE); registration requested from platform-vault
+REVIEW_PROFILES = "dev,platform"             # `platform` routes AI through ai-gateway (D022); the dev stack stays standalone
+REVIEW_GATEWAY_URL_ENV = "REVIEW_AI_GATEWAY_URL"   # as the backend container sees it
+REVIEW_GATEWAY_DEFAULT = "http://host.docker.internal:8085"
+# Fixed on purpose: the review environment is loopback-only, throwaway, and its volumes go with every teardown.
+REVIEW_ACCOUNT = {"email": "review@plantpal.test", "password": "review-password-1",
+                  "firstName": "Review", "lastName": "Tester"}
+REVIEW_PLANT = {"nickname": "Review Monty", "location": "Review windowsill",
+                "notes": "Baseline plant seeded by dev_delivery.py review"}
 IMAGE_PREFIX = {"dev": "plantpal-devdelivery", "review": "plantpal-review"}
 REVIEW_KEY_RE = re.compile(r"^[^\s/]{1,200}$")      # launcher review port: idempotencyKey
 BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
@@ -555,7 +563,7 @@ def ensure_dev_config(state: Path, name: str = "dev") -> tuple[Path, str]:
         pub, priv = vapid_keypair()
         env_file.write_text(
             "# plantpal dev-delivery env — generated, dev-only, never production values.\n"
-            "# Optional: replace the AI keys with DEV-scoped keys to make AI features testable.\n"
+            "# Dev stack: optional DEV-scoped AI keys. Review stack: AI goes through ai-gateway, no keys needed.\n"
             f"JWT_SECRET={base64.b64encode(secrets.token_bytes(64)).decode()}\n"
             f"VAPID_PUBLIC_KEY={pub}\nVAPID_PRIVATE_KEY={priv}\n"
             f"GITHUB_TOKEN={UNSET}\nPLANTNET_API_KEY={UNSET}\nANTHROPIC_API_KEY=\n",
@@ -607,6 +615,9 @@ def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_pas
         "APP_ENVIRONMENT": environment,
         "IMAGE_PREFIX": IMAGE_PREFIX[environment],
     })
+    if environment == "review":
+        env["APP_SPRING_PROFILES"] = REVIEW_PROFILES
+        env.setdefault(REVIEW_GATEWAY_URL_ENV, REVIEW_GATEWAY_DEFAULT)
     return env
 
 
@@ -633,6 +644,81 @@ def http(method: str, url: str, timeout: float = 10.0) -> tuple[int | None, str]
         return e.code, e.read(200_000).decode("utf-8", "replace")
     except (urllib.error.URLError, OSError, ValueError):
         return None, ""
+
+
+def http_json(method: str, url: str, body: dict | None = None, token: str | None = None,
+              timeout: float = 15.0) -> tuple[int | None, dict | None]:
+    """(status, parsed JSON object or None); status None when the URL could not be reached."""
+    headers = {"Content-Type": "application/json"} if body is not None else {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status, raw = resp.status, resp.read(200_000)
+    except urllib.error.HTTPError as e:
+        status, raw = e.code, e.read(200_000)
+    except (urllib.error.URLError, OSError, ValueError):
+        return None, None
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return status, None
+    return status, parsed if isinstance(parsed, dict) else None
+
+
+def _check(name: str, outcome: str, detail: str) -> dict:
+    return {"name": name, "criterionId": None, "outcome": outcome, "exitCode": None, "detail": detail}
+
+
+def review_baseline_checks(base_url: str) -> list[dict]:
+    """Seed the review's test account and baseline plant through the app's own API, then observe that
+    Claude is selectable, identification is reachable and ai-gateway answers. Idempotent."""
+    api = f"{base_url}/api/v1"
+    status, doc = http_json("POST", f"{api}/auth/register", REVIEW_ACCOUNT)
+    if status not in (200, 201):  # already registered (or the app is down): fall through to login
+        status, doc = http_json("POST", f"{api}/auth/login",
+                                {k: REVIEW_ACCOUNT[k] for k in ("email", "password")})
+    token = ((doc or {}).get("data") or {}).get("token") if status in (200, 201) else None
+    email = REVIEW_ACCOUNT["email"]
+    if not token:
+        outcome = "unavailable" if status is None else "failed"
+        return [_check("seed:test-account", outcome, f"could not register or log in {email} (HTTP {status})")]
+    checks = [_check("seed:test-account", "passed", f"{email} / {REVIEW_ACCOUNT['password']} can log in")]
+
+    status, doc = http_json("GET", f"{api}/plants", token=token)
+    listed = (((doc or {}).get("data") or {}).get("content")) or []
+    if status == 200 and not any(p.get("nickname") == REVIEW_PLANT["nickname"] for p in listed):
+        status, doc = http_json("POST", f"{api}/plants", REVIEW_PLANT, token)
+        ok = status in (200, 201)
+    else:
+        ok = status == 200
+    checks.append(_check("seed:baseline-plant", "passed" if ok else "failed",
+                         f"plant {REVIEW_PLANT['nickname']!r} for {email} (HTTP {status})"))
+
+    status, _ = http_json("GET", f"{api}/identifications", token=token)
+    checks.append(_check("smoke:identification-endpoint",
+                         "passed" if status == 200 else ("unavailable" if status is None else "failed"),
+                         f"GET /api/v1/identifications as the test account -> {status} (expected 200)"))
+
+    status, doc = http_json("GET", f"{api}/users/me/preferences", token=token)
+    prefs = (doc or {}).get("data") or {}
+    claude = (prefs.get("visionModelPreference") == "ANTHROPIC_CLAUDE"
+              and (prefs.get("visionModelAvailability") or {}).get("ANTHROPIC_CLAUDE") is True
+              and (prefs.get("reasoningModelAvailability") or {}).get("ANTHROPIC_CLAUDE") is True)
+    checks.append(_check("smoke:claude-enabled",
+                         "passed" if claude else ("unavailable" if status is None else "failed"),
+                         f"test account prefers Claude and it is selectable (HTTP {status}, "
+                         f"vision={prefs.get('visionModelPreference')})"))
+
+    gateway = os.environ.get(REVIEW_GATEWAY_URL_ENV, REVIEW_GATEWAY_DEFAULT).replace("host.docker.internal", "127.0.0.1")
+    status, _ = http("GET", f"{gateway}/", timeout=5.0)
+    detail = (f"answered HTTP {status}" if status is not None
+              else "is not reachable; start it, AI calls will fail")
+    checks.append(_check("smoke:ai-gateway", "passed" if status is not None else "unavailable",
+                         f"ai-gateway at {gateway} {detail}"))
+    return checks
 
 
 def observe_identity_block(body: str) -> dict | None:
@@ -707,6 +793,7 @@ def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict]
     if environment == "review":
         checks.append(smoke(base_url, "smoke:swagger-ui", "GET", "/swagger-ui.html", 200, "swagger-ui"))
         checks.append(smoke(base_url, "smoke:api-docs", "GET", "/v3/api-docs", 200, '"openapi"'))
+        checks.extend(review_baseline_checks(base_url))
     for c in criteria:
         checks.append(smoke(base_url, f"criterion:{c['criterionId']}", c["method"], c["path"],
                             c["status"], c["contains"], c["criterionId"]))
@@ -1074,7 +1161,8 @@ def save_review_state(state: Path, current: dict) -> None:
     os.replace(tmp, path)
 
 
-def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None) -> dict:
+def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None,
+                          expected_branch: str | None = None) -> dict:
     """The PR (or branch) head to review: {sha, branch, pullRequest}. Refuses anything but an open same-repo PR into dev."""
     if (pr is None) == (branch is None):
         raise DeliveryError("give exactly one of --pr or --branch")
@@ -1092,6 +1180,8 @@ def resolve_review_target(root: Path, pr: int | None, branch: str | None, expect
             raise DeliveryError(f"refused: PR #{pr} targets {info['base']}, not {BRANCH}")
         if info["repo"] != GITHUB_REPO:
             raise DeliveryError(f"refused: PR #{pr} comes from a fork ({info['repo']}); its code is not built here")
+        if expected_branch and expected_branch != info["ref"]:
+            raise DeliveryError(f"refused: PR #{pr} head branch is {info['ref']}, not the expected {expected_branch}")
         branch, sha = info["ref"], info["sha"]
         pull_request = {"number": int(pr), "url": info["url"]}
     else:
@@ -1189,8 +1279,15 @@ def cmd_review_start(args) -> int:
     state = state_dir(root)
     args.idempotency_key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
     args.revision = env_param(args.revision, "REVIEW_EXPECTED_REVISION")
-    args.branch = env_param(args.branch, "REVIEW_BRANCH")
-    pr_number = env_param(args.pr, "REVIEW_PR_NUMBER")
+    flag_branch = args.branch
+    # The launcher sends both; a PR number identifies the target and the branch is only checked against it.
+    pr_number = args.pr if args.pr is not None else (None if flag_branch is not None else env_param(None, "REVIEW_PR_NUMBER"))
+    env_branch = env_param(None, "REVIEW_BRANCH")
+    expected_branch = None
+    if pr_number is not None and flag_branch is None:
+        args.branch, expected_branch = None, env_branch
+    else:
+        args.branch = flag_branch if flag_branch is not None else env_branch
     try:
         args.pr = int(pr_number) if pr_number is not None else None
     except ValueError:
@@ -1199,7 +1296,8 @@ def cmd_review_start(args) -> int:
         raise DeliveryError(f"not an idempotency key: {args.idempotency_key!r}")
     if args.port in (DEFAULT_PORT, LOOKUP_PORT):
         raise DeliveryError(f"refused: port {args.port} belongs to the dev stack / lookup route")
-    target = resolve_review_target(root, args.pr, args.branch, args.revision)
+    extra = {"expected_branch": expected_branch} if expected_branch else {}
+    target = resolve_review_target(root, args.pr, args.branch, args.revision, **extra)
     sha = target["sha"]
     key = args.idempotency_key or f"review-{sha[:12]}"
     current = load_review_state(state)

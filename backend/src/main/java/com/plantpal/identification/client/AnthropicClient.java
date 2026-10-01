@@ -48,6 +48,7 @@ public class AnthropicClient {
   private final RestClient restClient;
   private final String apiKey;
   private final String defaultModel;
+  private final boolean gatewayEnabled;
 
   // anthropic.models.cheap / .max are configured (application-*.yml) but not yet wired to a
   // routing choice — ReasoningModelPreference/VisionModelPreference only expose one Claude tier
@@ -55,8 +56,10 @@ public class AnthropicClient {
   public AnthropicClient(
       @Value("${anthropic.base-url:https://api.anthropic.com}") String baseUrl,
       @Value("${anthropic.api.key:}") String apiKey,
-      @Value("${anthropic.models.default:claude-sonnet-4-6}") String defaultModel) {
+      @Value("${anthropic.models.default:claude-sonnet-4-6}") String defaultModel,
+      @Value("${platform.gateway.enabled:false}") boolean gatewayEnabled) {
     this.apiKey = apiKey;
+    this.gatewayEnabled = gatewayEnabled;
     this.defaultModel = defaultModel;
     RequestConfig requestConfig =
         RequestConfig.custom()
@@ -76,9 +79,12 @@ public class AnthropicClient {
             .build();
   }
 
-  /** True once an API key is configured — used to gate this option as selectable/unselectable. */
+  /**
+   * True once an API key is configured, or when the gateway is on (it holds the provider key, so
+   * this app never does) — used to gate this option as selectable/unselectable.
+   */
   public boolean isAvailable() {
-    return apiKey != null && !apiKey.isBlank();
+    return gatewayEnabled || (apiKey != null && !apiKey.isBlank());
   }
 
   /**

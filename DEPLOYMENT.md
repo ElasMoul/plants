@@ -286,6 +286,11 @@ printed to stdout as indented JSON. Launcher entries are therefore just argv
 - `review-apps.json` stop: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "review", "stop"]`
 - `command-allowlist.json` deploy: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "deploy"]`
 
+The launcher sends both `REVIEW_PR_NUMBER` and `REVIEW_BRANCH`: `review start` resolves the PR
+by number and treats `REVIEW_BRANCH` as an expectation, refusing (exit 2) if the PR's head
+branch differs. `--pr` and `--branch` together on the command line stay refused; a `--branch`
+flag ignores an environment PR number.
+
 A start that reuses the environment already running for the same revision records the new
 idempotency key as an alias, so `review stop` under the newer key stops the running
 environment instead of exiting 4 (`review_environment_not_found`).

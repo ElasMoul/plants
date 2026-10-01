@@ -729,12 +729,70 @@ class ReviewEnvironment(unittest.TestCase):
 
     def test_review_checks_include_swagger(self):
         with mock.patch.object(dd, "observe_identity", return_value=None), \
+                mock.patch.object(dd, "review_baseline_checks", return_value=[]), \
                 mock.patch.object(dd, "smoke", side_effect=lambda *a, **k: {"name": a[1], "outcome": "passed"}):
             _, checks = dd.run_checks("http://x", SHA, self.REV_ID, [], "review")
             _, dev_checks = dd.run_checks("http://x", SHA, self.REV_ID, [], "dev")
         self.assertIn("smoke:swagger-ui", {c["name"] for c in checks})
         self.assertIn("smoke:api-docs", {c["name"] for c in checks})
         self.assertNotIn("smoke:swagger-ui", {c["name"] for c in dev_checks})
+
+    def _baseline(self, api, http=(200, "")):
+        with mock.patch.object(dd, "http_json", side_effect=api), mock.patch.object(dd, "http", return_value=http):
+            return {c["name"]: c for c in dd.review_baseline_checks("http://x")}
+
+    @staticmethod
+    def _healthy_api(method, url, body=None, token=None, timeout=15.0):
+        data = {"data": {"token": "t"}} if "/auth/" in url else {"data": {"content": []}}
+        if url.endswith("/preferences"):
+            avail = {"ANTHROPIC_CLAUDE": True}
+            data = {"data": {"visionModelPreference": "ANTHROPIC_CLAUDE", "visionModelAvailability": avail,
+                             "reasoningModelAvailability": avail}}
+        return (201 if method == "POST" else 200), data
+
+    def test_review_baseline_seeds_account_and_plant_and_observes_ai(self):
+        checks = self._baseline(self._healthy_api)
+        self.assertEqual({c["outcome"] for c in checks.values()}, {"passed"})
+        self.assertEqual(set(checks), {"seed:test-account", "seed:baseline-plant", "smoke:identification-endpoint",
+                                       "smoke:claude-enabled", "smoke:ai-gateway"})
+
+    def test_review_baseline_logs_in_when_the_account_exists_and_does_not_duplicate_the_plant(self):
+        calls = []
+
+        def api(method, url, body=None, token=None, timeout=15.0):
+            calls.append((method, url))
+            if url.endswith("/auth/register"):
+                return 400, {"message": "exists"}
+            if url.endswith("/plants") and method == "GET":
+                return 200, {"data": {"content": [{"nickname": dd.REVIEW_PLANT["nickname"]}]}}
+            return self._healthy_api(method, url, body, token, timeout)
+        checks = self._baseline(api)
+        self.assertEqual(checks["seed:test-account"]["outcome"], "passed")
+        self.assertNotIn(("POST", "http://x/api/v1/plants"), calls)
+
+    def test_review_baseline_reports_claude_unselectable_and_gateway_down(self):
+        def api(method, url, body=None, token=None, timeout=15.0):
+            status, data = self._healthy_api(method, url, body, token, timeout)
+            if url.endswith("/preferences"):
+                data["data"]["visionModelAvailability"] = {"ANTHROPIC_CLAUDE": False}
+            return status, data
+        checks = self._baseline(api, http=(None, ""))
+        self.assertEqual(checks["smoke:claude-enabled"]["outcome"], "failed")
+        self.assertEqual(checks["smoke:ai-gateway"]["outcome"], "unavailable")
+
+    def test_review_baseline_stops_at_the_login_when_the_app_is_down(self):
+        checks = self._baseline(lambda *a, **k: (None, None))
+        self.assertEqual(list(checks), ["seed:test-account"])
+        self.assertEqual(checks["seed:test-account"]["outcome"], "unavailable")
+
+    def test_review_runs_through_the_gateway_dev_does_not(self):
+        with mock.patch.object(dd, "contracts_m2", return_value=Path("/m2")), \
+                mock.patch.dict(dd.os.environ, {}, clear=False):
+            dd.os.environ.pop("APP_SPRING_PROFILES", None)
+            rev = dd.compose_env(Path("."), SHA, self.REV_ID, Path("e.env"), "pw", dd.REVIEW_PORT, "review")
+            dev = dd.compose_env(Path("."), SHA, "pla-dev-x", Path("e.env"), "pw", dd.DEFAULT_PORT, "dev")
+        self.assertEqual(rev["APP_SPRING_PROFILES"], "dev,platform")
+        self.assertNotIn("APP_SPRING_PROFILES", dev)
 
     def test_review_never_shares_a_port_project_or_secret_with_dev(self):
         self.assertNotIn(dd.REVIEW_PORT, (dd.DEFAULT_PORT, dd.LOOKUP_PORT))
@@ -909,6 +967,40 @@ class ReviewCommands(unittest.TestCase):
             dd.resolve_review_target(self.root, None, None, None)
         with self.assertRaises(dd.DeliveryError):
             dd.resolve_review_target(self.root, 1, "x", None)
+
+    def _pr_info(self, ref="feature/PLA-7-thing"):
+        info = {"sha": SHA, "ref": ref, "base": dd.BRANCH, "state": "open", "repo": dd.GITHUB_REPO, "url": "u"}
+        return mock.Mock(returncode=0, stdout=json.dumps(info), stderr="")
+
+    def test_env_with_pr_and_branch_starts_the_same_target_as_pr_alone(self):
+        rec = self._seed()
+        env = {"REVIEW_PR_NUMBER": "77", "REVIEW_BRANCH": rec["branch"], "REVIEW_IDEMPOTENCY_KEY": "k1"}
+        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
+        with mock.patch.dict("os.environ", env), \
+                mock.patch.object(dd, "resolve_review_target", return_value=target) as resolve, \
+                mock.patch.object(dd, "observe_identity", return_value=rec["observed"]):
+            code, _, _ = self._run("review", "start")
+        self.assertEqual(code, 0)
+        resolve.assert_called_once_with(self.root, 77, None, None, expected_branch=rec["branch"])
+
+    def test_pr_resolution_accepts_the_expected_branch_and_refuses_a_mismatch(self):
+        with mock.patch.object(dd, "run", return_value=self._pr_info()):
+            self.assertEqual(dd.resolve_review_target(self.root, 77, None, None, "feature/PLA-7-thing")["sha"], SHA)
+            with self.assertRaisesRegex(dd.DeliveryError, "head branch is feature/PLA-7-thing, not the expected other"):
+                dd.resolve_review_target(self.root, 77, None, None, "other")
+
+    def test_env_branch_mismatch_is_refused_from_the_command(self):
+        with mock.patch.dict("os.environ", {"REVIEW_PR_NUMBER": "77", "REVIEW_BRANCH": "other"}), \
+                mock.patch.object(dd, "run", return_value=self._pr_info()):
+            code, _, err = self._run("review", "start")
+        self.assertEqual(code, 2)
+        self.assertIn("not the expected other", err)
+
+    def test_both_flags_on_the_command_line_stay_refused(self):
+        with mock.patch.dict("os.environ", {}, clear=False):
+            code, _, err = self._run("review", "start", "--pr", "77", "--branch", "feature/x")
+        self.assertEqual(code, 2)
+        self.assertIn("exactly one of --pr or --branch", err)
 
     def test_main_and_dev_branches_are_never_reviewed(self):
         for branch in ("main", "dev"):

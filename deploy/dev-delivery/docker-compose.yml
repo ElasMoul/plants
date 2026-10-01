@@ -56,7 +56,10 @@ services:
     env_file:
       - ${DEV_DELIVERY_ENV_FILE:?set by dev_delivery.py}
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${APP_SPRING_PROFILES:-dev}
+      # Read only when the `platform` profile is active (review): AI goes through ai-gateway.
+      PLATFORM_GATEWAY_URL: ${REVIEW_AI_GATEWAY_URL:-http://host.docker.internal:8085}
+      PLATFORM_STATEFEED_ENABLED: "false"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plantpal_devdelivery
       DB_USERNAME: plantpal
       DB_PASSWORD: ${DEV_DB_PASSWORD}
@@ -66,6 +69,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: localhost:9092   # bound eagerly, never dialed (in-process)
       APP_DEPLOYMENT_ID: ${APP_DEPLOYMENT_ID:?set by dev_delivery.py}
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-dev}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - photos_data:/tmp/plantpal/photos
     depends_on:

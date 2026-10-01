@@ -349,6 +349,29 @@ unchanged. A key that names no review is exit `4` with stderr
 `review_environment_not_found: <key>` and nothing on stdout (a miss, never
 `failed`). These are the commands `launcher` calls.
 
+### Ready to test (seed, Claude, ai-gateway, identification)
+
+A passed review receipt means the environment is usable, not only up. `review start`
+seeds and then observes, through the app's own API, so each is a recorded check:
+
+| Check | Meaning |
+|---|---|
+| `seed:test-account` | `review@plantpal.test` / `review-password-1` registers (or logs in if it already exists) |
+| `seed:baseline-plant` | that account owns one plant, "Review Monty" (never duplicated) |
+| `smoke:identification-endpoint` | `GET /api/v1/identifications` as the test account answers 200 |
+| `smoke:claude-enabled` | the account prefers Claude (the default) and Claude is selectable for vision and reasoning |
+| `smoke:ai-gateway` | `ai-gateway` answers on the host (default `127.0.0.1:8085`) |
+
+The review backend runs with Spring profiles `dev,platform`, so every AI call (including
+Claude identification) goes through `ai-gateway` at `REVIEW_AI_GATEWAY_URL` (default
+`http://host.docker.internal:8085`, set it in the environment `review start` runs in); no
+provider key is generated or needed in the review env. With the gateway on, Claude counts
+as available without an Anthropic key (`AnthropicClient.isAvailable()`). state-feed
+emission is off in review. The dev stack is unchanged (profile `dev`, direct clients).
+If `ai-gateway` is not running, `smoke:ai-gateway` is `unavailable` and the receipt result is
+`unknown`, not `passed`: the environment is up but AI is not testable. Whether `ai-gateway`
+itself has Claude enabled is its own configuration and is not observed here.
+
 ## 7. Swagger (dev and review only)
 
 | URL | Served by |
