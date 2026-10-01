@@ -1018,3 +1018,18 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-10-01_1454_fulfill-demand-launcher-20261001-lookup
+
+## Session 61 (2026-10-01)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-10-01_1632_fulfill-demand-factory-20261001-launcher.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Fulfill demand factory-20261001-launcher-review-command-interface (capability: launcher and plantpal agree on how a review (and deploy) command receives its parameters and hands back its receipt, so no owner-written glue is needed between them, from: factory, target: plantpal). Acceptance criteria: ... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-10-01_1632_fulfill-demand-factory-20261001-launcher.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-10-01_1632_fulfill-demand-factory-20261001-launcher

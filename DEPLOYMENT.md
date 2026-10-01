@@ -273,6 +273,23 @@ deployment identity (`deployment.revision` etc., `null` when not stamped — pro
 does not stamp it today). Exposed endpoints: `health,info,metrics`
 (`application.yml`).
 
+## Launcher command entries (plain argv, no inline code)
+
+`tools/dev-delivery/dev_delivery.py` reads launcher's parameters from the environment
+when the matching flag is absent (an explicit flag wins): `review start` / `review stop`
+read `REVIEW_EXPECTED_REVISION`, `REVIEW_IDEMPOTENCY_KEY`, `REVIEW_PR_NUMBER`,
+`REVIEW_BRANCH`; `deploy` reads `COMMAND_PARAM_COMMIT` as the revision. The receipt is
+printed to stdout as indented JSON. Launcher entries are therefore just argv
+(`<venv python>` = the interpreter with `tools/dev-delivery/requirements.txt` installed):
+
+- `review-apps.json` start: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "review", "start"]`
+- `review-apps.json` stop: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "review", "stop"]`
+- `command-allowlist.json` deploy: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "deploy"]`
+
+A start that reuses the environment already running for the same revision records the new
+idempotency key as an alias, so `review stop` under the newer key stops the running
+environment instead of exiting 4 (`review_environment_not_found`).
+
 ## Security posture
 
 - JWT-authenticated REST API — PlantPal's own auth, entirely unaffected by the

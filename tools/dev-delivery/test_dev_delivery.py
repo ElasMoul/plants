@@ -832,6 +832,54 @@ class ReviewCommands(unittest.TestCase):
         gate.assert_not_called()
         down.assert_not_called()
 
+    def test_start_reads_launcher_parameters_from_the_environment(self):
+        rec = self._seed()
+        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
+        env = {"REVIEW_EXPECTED_REVISION": SHA, "REVIEW_IDEMPOTENCY_KEY": "k1",
+               "REVIEW_PR_NUMBER": "77", "REVIEW_BRANCH": ""}
+        with mock.patch.dict("os.environ", env),                 mock.patch.object(dd, "resolve_review_target", return_value=target) as resolve,                 mock.patch.object(dd, "observe_identity", return_value=rec["observed"]):
+            code, _, _ = self._run("review", "start")
+        self.assertEqual(code, 0)
+        resolve.assert_called_once_with(self.root, 77, None, SHA)
+
+    def test_an_explicit_flag_beats_the_environment(self):
+        rec = self._seed()
+        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
+        with mock.patch.dict("os.environ", {"REVIEW_PR_NUMBER": "5", "REVIEW_EXPECTED_REVISION": OTHER}),                 mock.patch.object(dd, "resolve_review_target", return_value=target) as resolve,                 mock.patch.object(dd, "observe_identity", return_value=rec["observed"]):
+            self._run("review", "start", "--pr", "77", "--revision", SHA, "--idempotency-key", "k1")
+        resolve.assert_called_once_with(self.root, 77, None, SHA)
+
+    def test_stop_reads_the_key_from_the_environment(self):
+        self._seed()
+        ok = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.dict("os.environ", {"REVIEW_IDEMPOTENCY_KEY": "k1"}),                 mock.patch.object(dd, "run", return_value=ok):
+            code, out, _ = self._run("review", "stop")
+        self.assertEqual((code, json.loads(out)["status"]), (0, "stopped"))
+        with mock.patch.dict("os.environ", {"REVIEW_IDEMPOTENCY_KEY": "nope"}):
+            self.assertEqual(self._run("review", "stop")[0], 4)
+
+    def test_stop_under_the_newer_key_stops_the_environment_a_reused_start_returned(self):
+        rec = self._seed()
+        target = {"sha": SHA, "branch": rec["branch"], "pullRequest": ReviewEnvironment.PR}
+        with mock.patch.object(dd, "resolve_review_target", return_value=target),                 mock.patch.object(dd, "observe_identity", return_value=rec["observed"]):
+            self.assertEqual(self._run("review", "start", "--pr", "77", "--idempotency-key", "k2")[0], 0)
+        ok = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(dd, "run", return_value=ok) as run:
+            code, out, _ = self._run("review", "stop", "--idempotency-key", "k2")
+        self.assertEqual((code, json.loads(out)["status"]), (0, "stopped"))
+        run.assert_called()
+
+    def test_deploy_reads_the_revision_from_command_param_commit(self):
+        seen = {}
+        def fake_resolve(root, revision):
+            seen["revision"] = revision
+            raise dd.DeliveryError("stop here")
+        with mock.patch.dict("os.environ", {"COMMAND_PARAM_COMMIT": SHA}),                 mock.patch.object(dd, "resolve_merged_revision", side_effect=fake_resolve):
+            self._run("deploy")
+            self.assertEqual(seen["revision"], SHA)
+            self._run("deploy", "--revision", OTHER)
+            self.assertEqual(seen["revision"], OTHER)
+
     def test_same_key_with_another_revision_is_a_conflict(self):
         self._seed()
         target = {"sha": OTHER, "branch": "feature/PLA-7-thing", "pullRequest": ReviewEnvironment.PR}

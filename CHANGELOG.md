@@ -7,6 +7,9 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- dev-delivery launcher interface (demand `factory-20261001-launcher-review-command-interface`): `review start|status|stop`
+  and `deploy` take launcher's parameters from `REVIEW_*` / `COMMAND_PARAM_COMMIT` when the flag is absent;
+  `review stop` under a later idempotency key now stops the environment a reused start returned.
 - `GET /api/v1/species/{id}/photos` (PLA-93): the caller's own non-archived plants' photos of a species,
   grouped by plant, each group ordered by `date_taken` ascending (tiebreak identification id). Unowned or
   unknown species return 200 with an empty list. No schema change.
