@@ -3,7 +3,7 @@
 How a task reaches a **dev** candidate of plantpal, and how Factory observes it.
 Planotell is the product name. `plantpal` is the repository and YouTrack project
 `PLA` is the tracker. Governing documents: D112, D113,
-`factory/docs/YOUTRACK_DELIVERY.md`, and contracts `v0.36.0`
+`factory/docs/YOUTRACK_DELIVERY.md`, and contracts `v0.38.0`
 `docs/task-delivery.md` (§Producers, row `app-deploy`; §App-deploy).
 
 **Production is out of scope.** Any push to `main` deploys production
@@ -29,6 +29,18 @@ production, and D113 does not authorize it.
 
 4. If `sonar-gate` fails, the PR author fixes it on the source branch and
    pushes, and the check re-runs. There is no bypass (D112 clause 3).
+
+   The failed job's log says why: an *Explain quality gate failure* step
+   (`scripts/sonar-explain-failure.mjs`, runs only on failure, read-only
+   SonarQube API with the job's `SONAR_TOKEN`, never printed) lists each failed
+   condition (`new_coverage 74.7 < 80`), every open new-code issue
+   (`severity rule file:line message`) and each file with uncovered new lines.
+   `gh run view <run-id> --log-failed` is enough to know what to fix (the step
+   runs only after the job has already failed and ends with exit 1 so it shows in
+   that view). It never changes the gate's verdict, and does not run on a pass. `sonar.coverage.exclusions` (backend
+   `pom.xml`, `frontend/sonar-project.properties`) mirror the JaCoCo / Jest
+   excludes; `Frontend CI` fails if they drift
+   (`scripts/check-sonar-coverage-exclusions.mjs`).
 5. Merge through GitHub only. The ruleset refuses a merge whose required checks
    are not green.
 
@@ -71,7 +83,7 @@ a different revision is refused with `operation_key_conflict` (exit 3).
   `redis_data`, `photos_data`) are separate from the long-lived local stack.
 - Postgres and Redis publish **no** host ports. Kafka is not used
   (`APP_IDENTIFICATION_TRANSPORT=in-process`, as in production).
-- One published port: `127.0.0.1:8184` → nginx, plain http. Allocation is
+- One published port: `127.0.0.1:8184` → nginx, plain http. It proxies `/api/`, `/photos/`, `/actuator/{health,info}` and Swagger (§7). Allocation is
   requested in `plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path`.
 - Config is `.dev-delivery/dev.env`, generated on first run: a fresh
   `JWT_SECRET`, a fresh VAPID pair and a fresh database password. It is never
@@ -131,8 +143,8 @@ The **native** receipt is the on-disk record, at
 docker image ids, no registry), `result`, `exitCode`, `observed`, `checks`,
 `correlation`, `rollback`, and the log path.
 
-Both transports emit the **tagged** contracts shapes, pinned at **v0.36.0**
-(`tools/dev-delivery/requirements.txt`). The native file is the record; the
+Both transports emit the **tagged** contracts shapes, pinned at **v0.38.0**
+(`tools/dev-delivery/requirements.txt`; v0.38.0 adds the review-only fields of §6 and leaves dev receipts unchanged). The native file is the record; the
 tagged document is what consumers bind to. Native-only fields (`schema`,
 `revisionRole`, `composeProject`, `port`, `preDeployChecks`, `log`, and the
 per-check `detail`/`prHead`) stay in the file and are dropped from the tagged
@@ -266,3 +278,93 @@ Fingerprints are bound to the commit that introduced them, so a squash-merge
 that rewrites it needs fresh entries. Prefer reading a receipt with
 `dev_delivery.py lookup <id>` over committing it; `.dev-delivery/` is gitignored
 for that reason.
+
+## 6. Review environment (an unmerged PR, contracts v0.38.0)
+
+`dev_delivery.py review` runs a PR's **unmerged head** so the owner can look at it
+before merge. Nothing in it merges, pushes, opens a PR or touches `main`, the dev
+stack or production. Reference: `contracts` `docs/task-delivery.md` §Review
+environments; the launcher API it backs is `schemas/launcher/review-environment.openapi.yaml`.
+
+```bash
+dev_delivery.py review start (--pr <n> | --branch <name>) [--revision <sha>]     [--idempotency-key <key>] [--delivery-id <uuid>] [--port 8186]
+dev_delivery.py review status [--idempotency-key <key>]
+dev_delivery.py review stop   [--idempotency-key <key>]
+```
+
+**`start`** resolves the head and refuses unless: the PR is open, same-repo and
+targets `dev` (a branch is never `main` or `dev`); `--revision`, when given, still
+equals the head (a moved head is refused, not followed); and **`Backend CI`,
+`Frontend CI`, `Detect secrets` and `sonar-gate` are all `success` on that head**
+(pending, skipped or missing is not a pass; a branch with no PR has no `sonar-gate`
+and is refused). It then builds a clean `git archive` of the head, overlays this
+checkout's `deploy/dev-delivery/` files so a PR branched before this change still
+gets the review wiring (app code is never replaced), and brings up compose project
+**`plantpal-review`**.
+
+| | Dev (`deploy`) | Review (`review start`) |
+|---|---|---|
+| Compose project / volumes | `plantpal-devdelivery` | `plantpal-review` (own network and volumes; `stop` removes them) |
+| Config and secrets | `.dev-delivery/dev.env`, `db-password` | `.dev-delivery/review.env`, `review-db-password`, all freshly generated, none shared |
+| Images | `plantpal-devdelivery-*:<sha>` | `plantpal-review-*:<sha>` |
+| Published port | `127.0.0.1:8184` | `127.0.0.1:8186` (`--port`; the dev and lookup ports are refused). Recorded as the next free 81xx; registration is requested from `platform-vault` |
+| App reports | `environment: dev` | `environment: review` |
+| Rollback, `rollback` receipt | yes | no: `kind: deploy`, `rollback: null`. A review is stopped, not rolled back |
+
+Review receipts are stored beside the dev ones (`plantpal.dev-deployment-receipt/1`,
+`environment: review`) but are **never** a dev rollback target or a dev
+`--operation-key`.
+
+**Receipt.** `start` prints the tagged `delivery.deployment-receipt` (v0.38.0),
+validated before it is emitted: `environment.name: review`, `revisionRole: task`,
+`mergedRevision` = the PR head, `branch` = the PR head branch, a `review` block
+(`pullRequest` and `pullRequestUrl`, `null` for a branch-only review, never
+defaulted), `environment.url` = the loopback frontend URL, `environment.apiDocsUrl`
+= `/swagger-ui.html` only when the Swagger checks passed, and `observed` = the
+running app's own `/actuator/info` identity at the PR revision. Checks are the dev
+ones with `identity:environment` expecting `review`, plus `smoke:swagger-ui` and
+`smoke:api-docs`. A review URL serving another revision is `failed` with `observed`
+kept as reported; an unreported identity is `unknown`; neither is ever `passed`.
+Exit `0` only when `passed`.
+
+**One at a time, idempotent.** The latest review is recorded in
+`.dev-delivery/review-current.json`.
+- Starting a review whose head is **already running** (the live `/actuator/info`
+  reports that revision and deployment) returns the existing receipt without
+  rebuilding or running the gate again.
+- Starting any other review **stops the previous one first** (`docker compose -p
+  plantpal-review down -v`), but only after the new head has passed the gate, so a
+  refused start leaves the running review alone.
+- The same `--idempotency-key` with a different revision, branch or PR is refused:
+  `idempotency_key_conflict`, exit `3`. Without a key it defaults to
+  `review-<sha12>`.
+
+**`status` and `stop`** print the launcher's `ReviewEnvironment` document
+(`idempotencyKey`, `expectedRevision`, `status`, tagged `receipt`, `error`,
+timestamps). `status` is `starting` (receipt `pending`), `ready` (`passed`),
+`failed` (anything else, including a revision mismatch, never `ready`) or
+`stopped`; it reports the last recorded observation, not a fresh probe. `stop` is
+idempotent, removes the review's containers and volumes, and keeps the receipt
+unchanged. A key that names no review is exit `4` with stderr
+`review_environment_not_found: <key>` and nothing on stdout (a miss, never
+`failed`). These are the commands `launcher` calls.
+
+## 7. Swagger (dev and review only)
+
+| URL | Served by |
+|---|---|
+| `/swagger-ui.html`, `/swagger-ui/**` | the backend's springdoc UI |
+| `/v3/api-docs` | the OpenAPI document |
+
+The dev-delivery nginx (`deploy/dev-delivery/nginx.dev-delivery.conf`, used by both
+the dev candidate and every review environment) and the local stack's
+`frontend/nginx.conf` proxy all three to the backend, so they no longer fall through
+to the Angular index. They are at `http://127.0.0.1:8184/swagger-ui.html` (dev) and
+`http://127.0.0.1:8186/swagger-ui.html` (review; also the receipt's `apiDocsUrl`).
+
+**Production does not expose them.** `application-prod.yml` sets
+`springdoc.swagger-ui.enabled` and `springdoc.api-docs.enabled` to `false` (the
+backend's security config still permits the paths, so they answer 404 rather than
+serving a UI; `ApiDocsExposureTest` pins this). Production fronts the backend with
+Caddy, which forwards every path, so the backend switch is the control. The
+`staging` profile is unchanged.

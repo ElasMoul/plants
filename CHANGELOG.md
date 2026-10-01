@@ -7,6 +7,21 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- `GET /api/v1/species/{id}/photos` (PLA-93): the caller's own non-archived plants' photos of a species,
+  grouped by plant, each group ordered by `date_taken` ascending (tiebreak identification id). Unowned or
+  unknown species return 200 with an empty list. No schema change.
+- Review environments (demand `factory-20260930-plantpal-review-environment-and-swagger`):
+  `dev_delivery.py review start|status|stop` runs an unmerged PR head (all four required checks
+  green on it) in its own compose project `plantpal-review`, volumes, generated config and
+  loopback port `8186`, one at a time, and reports the contracts v0.38.0 tagged receipt
+  (`environment.name: review`, `revisionRole: task`, observed `/actuator/info` identity).
+  Swagger (`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`) is proxied in the dev-delivery
+  and local nginx configs; `application-prod.yml` disables springdoc. Tool repinned to
+  contracts v0.38.0. See `docs/dev-delivery.md` sections 6-7.
+- PLA-92: each scan (`identifications`) now stores a non-null `date_taken` (migration 041),
+  read from the photo's EXIF (DateTimeOriginal, then Digitized, then IFD0 DateTime; UTC unless an
+  offset tag exists) with upload time as fallback; existing rows are backfilled from `created_at`.
+  Exposed as `dateTaken` on `IdentificationResponse`. Adds `metadata-extractor`.
 - Planotell dev-only delivery (D113, demand `factory-20260927-dev-delivery`):
   `tools/dev-delivery/dev_delivery.py` deploys a revision merged into `origin/dev`
   (after its `Backend CI`/`Frontend CI`/`Detect secrets` and PR `sonar-gate` checks

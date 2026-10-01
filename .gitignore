@@ -21,7 +21,6 @@ deploy/vps/plantpal-deploy.pub
 tools/dev-delivery/.venv/
 tools/dev-delivery/.venv-ci/
 tools/dev-delivery/__pycache__/
-.brain/*
 .claude/*
 .Codex/*
 PROGRESS.md
