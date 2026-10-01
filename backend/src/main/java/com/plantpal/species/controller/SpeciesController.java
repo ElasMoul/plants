@@ -74,14 +74,12 @@ public class SpeciesController {
   }
 
   @Operation(summary = "List the current user's own plant photos of a species, grouped by plant")
-  @ApiResponses({
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-        responseCode = "200",
-        description = "Photos grouped by plant, each group ordered by date taken ascending"),
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-        responseCode = "401",
-        description = "Unauthorized")
-  })
+  @io.swagger.v3.oas.annotations.responses.ApiResponse(
+      responseCode = "200",
+      description = "Photos grouped by plant, each group ordered by date taken ascending")
+  @io.swagger.v3.oas.annotations.responses.ApiResponse(
+      responseCode = "401",
+      description = "Unauthorized")
   @GetMapping("/{id}/photos")
   public ResponseEntity<ApiResponse<SpeciesPhotosResponse>> getSpeciesPhotos(
       @Parameter(description = "Species ID") @PathVariable Long id) {
