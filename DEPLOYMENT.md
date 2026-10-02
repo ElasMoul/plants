@@ -273,6 +273,15 @@ deployment identity (`deployment.revision` etc., `null` when not stamped — pro
 does not stamp it today). Exposed endpoints: `health,info,metrics`
 (`application.yml`).
 
+## App descriptor (`app.yaml`)
+
+`app.yaml` at the repo root (`app.descriptor/1`, validated against contracts v0.43.0
+`schemas/app/descriptor.json`) states Planotell's delivery facts for the registry, Factory
+and the launcher. The layout is **in-repo** now (`code.layout: in-repo`, `appRoot: "."`);
+it will become **wrapped** when the hexagon moves to the elmoul org (owner ruling
+2026-10-02), with the code staying in `ElasMoul/plants`. The hand-kept launcher entries
+(`review-apps.json`, `command-allowlist.json`) still win over what is derived from it.
+
 ## Launcher command entries (plain argv, no inline code)
 
 `tools/dev-delivery/dev_delivery.py` reads launcher's parameters from the environment
