@@ -1061,3 +1061,18 @@ worker agent itself).
 - Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
 - Vault-sync: none
 - Session: 2026-10-02_1013_factory-delivery-4fb1e092-9dd9-4038-933c
+
+## Session 64 (2026-10-02)
+
+Full narrative, decisions, and context trail: `.brain/sessions/2026-10-02_1014_factory-delivery-4fb1e092-9dd9-4038-933c.md`
+(the session file is the source of truth in this D052-piloted repo -- the block
+below is a **generated projection** of it, produced mechanically by
+agent-runner's dispatch supervisor from an auto-drafted, unconfirmed close --
+not a second hand-written account, and not yet reviewed by a human or the
+worker agent itself).
+
+- State: Factory delivery 4fb1e092-9dd9-4038-933c-c1bd227ab4cb for PLA-95 in plantpal. Routed demand: factory-20261002-pla-95-2e4cb4a185f7. The owner approved this plan for implementation and required checks, ending in an unmerged pull request into dev. You do not merge and you do not deploy: Factory reviews... -- status: done (close: auto-drafted, unconfirmed).
+- Next step: Review this session's auto-drafted close (`.brain/sessions/2026-10-02_1014_factory-delivery-4fb1e092-9dd9-4038-933c.md`) and confirm or correct it.
+- Standing: TODO -- no repo convention recorded yet (seeded 2026-07-23 by brain-toolkit bin/adopt v0.4.0)
+- Vault-sync: none
+- Session: 2026-10-02_1014_factory-delivery-4fb1e092-9dd9-4038-933c
