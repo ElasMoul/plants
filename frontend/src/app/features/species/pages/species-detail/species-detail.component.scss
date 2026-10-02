@@ -300,3 +300,63 @@
   border-radius: var(--radius-chip);
   background: var(--color-surface-variant, rgba(0, 0, 0, 0.06));
 }
+
+.gallery-plant-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gallery-chip {
+  border: 1px solid var(--color-outline, rgba(0, 0, 0, 0.2));
+  background: transparent;
+  color: inherit;
+  border-radius: 16px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font: inherit;
+
+  &.active {
+    background: var(--color-primary, #2e7d32);
+    border-color: var(--color-primary, #2e7d32);
+    color: var(--color-on-primary, #fff);
+  }
+}
+
+.gallery-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  margin-bottom: 12px;
+}
+
+.gallery-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-left: 2px solid var(--color-outline, rgba(0, 0, 0, 0.2));
+}
+
+.timeline-item {
+  margin-bottom: 16px;
+}
+
+.timeline-date {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+.timeline-photo {
+  width: 100%;
+  max-width: 360px;
+  border-radius: var(--radius-chip);
+  display: block;
+}

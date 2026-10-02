@@ -7,6 +7,8 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Species Gallery tab (PLA-95): pick one of your plants to see only its photos as an oldest-to-newest dated timeline, with a
+  'Back to all plants' control that restores the full gallery without refetching. Frontend only.
 - Review environment starts ready to test (demand `factory-20261001-plantpal-review-environment-testable`): `review start`
   seeds a test account (`review@plantpal.test`) and a baseline plant, runs the backend on `dev,platform` so AI goes
   through ai-gateway, and records seed / identification / Claude / ai-gateway checks in the receipt. `AnthropicClient`
