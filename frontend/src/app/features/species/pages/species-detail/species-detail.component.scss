@@ -302,6 +302,9 @@
 }
 
 .gallery-plant-picker {
+  border: 0;
+  padding: 0;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -359,4 +362,13 @@
   max-width: 360px;
   border-radius: var(--radius-chip);
   display: block;
+}
+
+.gallery-plant-picker .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
