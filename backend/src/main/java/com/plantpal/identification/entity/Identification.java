@@ -8,7 +8,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -41,6 +43,9 @@ public class Identification extends AuditableEntity {
 
   @Column(name = "photo_url")
   private String photoUrl;
+
+  @Column(name = "date_taken", nullable = false)
+  private Instant dateTaken;
 
   @Column(name = "raw_response", columnDefinition = "TEXT")
   private String rawResponse;
@@ -139,4 +144,11 @@ public class Identification extends AuditableEntity {
   /** Phase 10 T10.A — optional free-text the user typed/spoke before scanning (migration 030). */
   @Column(name = "user_context", columnDefinition = "TEXT")
   private String userContext;
+
+  @PrePersist
+  void defaultDateTaken() {
+    if (dateTaken == null) {
+      dateTaken = Instant.now();
+    }
+  }
 }
