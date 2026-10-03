@@ -30,6 +30,7 @@ export class AppComponent implements OnInit {
   showNotificationBanner = false;
   isAdministrator = false;
   get isAdminPage(): boolean { return this.router.url.startsWith('/admin'); }
+  get isLandingPage(): boolean { return /^\/($|[?#])/.test(this.router.url); }
 
   constructor(
     public authService: AuthService,

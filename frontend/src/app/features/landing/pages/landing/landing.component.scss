@@ -341,6 +341,16 @@
   flex-wrap: wrap;
   gap: 8px;
 
+  .footer-beta {
+    display: inline-block;
+
+    ::ng-deep .beta-notice {
+      margin: 0;
+      padding: 0;
+      font-size: inherit;
+    }
+  }
+
   .brand {
     display: inline-flex;
     align-items: center;
