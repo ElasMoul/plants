@@ -10,6 +10,7 @@ export const FR: Readonly<Record<string, string>> = {
 
   "Could not save language. Please try again.": "Impossible d’enregistrer la langue. Réessayez.",
   "Planotell": "Planotell",
+  "This app is still in beta": "Cette application est encore en version bêta",
   "Your plants are telling you something.": "Vos plantes ont quelque chose à vous dire.",
   "Administration": "Administration",
   "AI Model Settings": "Paramètres de l’IA",

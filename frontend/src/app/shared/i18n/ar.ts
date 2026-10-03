@@ -1,4 +1,5 @@
 export const AR: Readonly<Record<string, string>> = {
+  "This app is still in beta": "هذا التطبيق لا يزال في مرحلة تجريبية (بيتا)",
   "Saved versions": "النسخ المحفوظة",
   "Translate to {0}": "ترجمة إلى {0}",
   "Could not load section languages.": "تعذر تحميل لغات هذا القسم.",
