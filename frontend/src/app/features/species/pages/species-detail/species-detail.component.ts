@@ -7,7 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, interval } from 'rxjs';
 import { filter, map, switchMap, take, takeUntil, takeWhile, timeout } from 'rxjs/operators';
 import { SpeciesService } from '../../services/species.service';
-import { SpeciesResponse } from '../../models/species.model';
+import { PlantPhotosDto, SpeciesPhotoDto, SpeciesResponse } from '../../models/species.model';
 import { PlantService } from '../../../plant/services/plant.service';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { IdentificationService } from '../../../identification/services/identification.service';
@@ -29,6 +29,10 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
   plants: PlantResponse[] = [];
   loading = true;
   plantsLoading = true;
+  photos: SpeciesPhotoDto[] = [];
+  photosLoading = true;
+  photoPlants: PlantPhotosDto[] = [];
+  selectedPlantId: number | null = null;
   retrying = false;
 
   readonly placeholderImage = PLACEHOLDER_IMAGE;
@@ -77,6 +81,39 @@ export class SpeciesDetailComponent implements OnInit, OnDestroy {
           this.plantsLoading = false;
         },
       });
+
+    this.speciesService.getSpeciesPhotos(this.speciesId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          // Oldest first, matching the backend's per-plant ordering (i.dateTaken ASC, i.id ASC).
+          this.photoPlants = (res.data?.plants ?? []).map(plant => ({
+            ...plant,
+            photos: [...(plant.photos ?? [])].sort(SpeciesDetailComponent.byDateTaken),
+          }));
+          this.photos = this.photoPlants
+            .flatMap(plant => plant.photos)
+            .sort(SpeciesDetailComponent.byDateTaken);
+          this.photosLoading = false;
+        },
+        error: () => {
+          this.photos = [];
+          this.photoPlants = [];
+          this.photosLoading = false;
+        },
+      });
+  }
+
+  get selectedPlant(): PlantPhotosDto | null {
+    return this.photoPlants.find(p => p.plantId === this.selectedPlantId) ?? null;
+  }
+
+  selectPhotoPlant(plantId: number | null): void {
+    this.selectedPlantId = plantId;
+  }
+
+  private static byDateTaken(a: SpeciesPhotoDto, b: SpeciesPhotoDto): number {
+    return Date.parse(a.dateTaken) - Date.parse(b.dateTaken) || a.identificationId - b.identificationId;
   }
 
   ngOnDestroy(): void {

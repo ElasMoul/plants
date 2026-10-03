@@ -70,6 +70,20 @@ APP_IDENTITY = "plantpal"
 COMPOSE_PROJECT = "plantpal-devdelivery"
 COMPOSE_FILE = Path("deploy/dev-delivery/docker-compose.yml")
 DEFAULT_PORT = 8184
+REVIEW_COMPOSE_PROJECT = "plantpal-review"   # its own project: network, volumes, containers
+REVIEW_PORT = 8186                           # next free 81xx after 8185 (PLATFORM_STATE); registration requested from platform-vault
+REVIEW_PROFILES = "dev,platform"             # `platform` routes AI through ai-gateway (D022); the dev stack stays standalone
+REVIEW_GATEWAY_URL_ENV = "REVIEW_AI_GATEWAY_URL"   # as the backend container sees it
+REVIEW_GATEWAY_DEFAULT = "http://host.docker.internal:8085"
+# Fixed on purpose: the review environment is loopback-only, throwaway, and its volumes go with every teardown.
+REVIEW_ACCOUNT = {"email": "review@plantpal.test", "password": "review-password-1",
+                  "firstName": "Review", "lastName": "Tester"}
+REVIEW_PLANT = {"nickname": "Review Monty", "location": "Review windowsill",
+                "notes": "Baseline plant seeded by dev_delivery.py review"}
+IMAGE_PREFIX = {"dev": "plantpal-devdelivery", "review": "plantpal-review"}
+REVIEW_KEY_RE = re.compile(r"^[^\s/]{1,200}$")      # launcher review port: idempotencyKey
+BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
+NEVER_REVIEWED = ("main", BRANCH)            # main deploys production; dev has its own deploy path
 PLANOTELL_URL = "http://planotell.platform.localhost"
 RECEIPT_SCHEMA = "plantpal.dev-deployment-receipt/1"  # the on-disk native record
 CONTRACTS_TAG = "v0.36.0"                             # the tagged shapes both lookup transports emit
@@ -517,7 +531,7 @@ def ensure_dev_config(state: Path) -> tuple[Path, str]:
         pub, priv = vapid_keypair()
         env_file.write_text(
             "# plantpal dev-delivery env — generated, dev-only, never production values.\n"
-            "# Optional: replace the AI keys with DEV-scoped keys to make AI features testable.\n"
+            "# Dev stack: optional DEV-scoped AI keys. Review stack: AI goes through ai-gateway, no keys needed.\n"
             f"JWT_SECRET={base64.b64encode(secrets.token_bytes(64)).decode()}\n"
             f"VAPID_PUBLIC_KEY={pub}\nVAPID_PRIVATE_KEY={priv}\n"
             f"GITHUB_TOKEN={UNSET}\nPLANTNET_API_KEY={UNSET}\nANTHROPIC_API_KEY=\n",
@@ -566,6 +580,9 @@ def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_pas
         "DEV_DB_PASSWORD": db_password,
         "DEV_DELIVERY_PORT": str(port),
     })
+    if environment == "review":
+        env["APP_SPRING_PROFILES"] = REVIEW_PROFILES
+        env.setdefault(REVIEW_GATEWAY_URL_ENV, REVIEW_GATEWAY_DEFAULT)
     return env
 
 
@@ -592,6 +609,81 @@ def http(method: str, url: str, timeout: float = 10.0) -> tuple[int | None, str]
         return e.code, e.read(200_000).decode("utf-8", "replace")
     except (urllib.error.URLError, OSError, ValueError):
         return None, ""
+
+
+def http_json(method: str, url: str, body: dict | None = None, token: str | None = None,
+              timeout: float = 15.0) -> tuple[int | None, dict | None]:
+    """(status, parsed JSON object or None); status None when the URL could not be reached."""
+    headers = {"Content-Type": "application/json"} if body is not None else {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status, raw = resp.status, resp.read(200_000)
+    except urllib.error.HTTPError as e:
+        status, raw = e.code, e.read(200_000)
+    except (urllib.error.URLError, OSError, ValueError):
+        return None, None
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return status, None
+    return status, parsed if isinstance(parsed, dict) else None
+
+
+def _check(name: str, outcome: str, detail: str) -> dict:
+    return {"name": name, "criterionId": None, "outcome": outcome, "exitCode": None, "detail": detail}
+
+
+def review_baseline_checks(base_url: str) -> list[dict]:
+    """Seed the review's test account and baseline plant through the app's own API, then observe that
+    Claude is selectable, identification is reachable and ai-gateway answers. Idempotent."""
+    api = f"{base_url}/api/v1"
+    status, doc = http_json("POST", f"{api}/auth/register", REVIEW_ACCOUNT)
+    if status not in (200, 201):  # already registered (or the app is down): fall through to login
+        status, doc = http_json("POST", f"{api}/auth/login",
+                                {k: REVIEW_ACCOUNT[k] for k in ("email", "password")})
+    token = ((doc or {}).get("data") or {}).get("token") if status in (200, 201) else None
+    email = REVIEW_ACCOUNT["email"]
+    if not token:
+        outcome = "unavailable" if status is None else "failed"
+        return [_check("seed:test-account", outcome, f"could not register or log in {email} (HTTP {status})")]
+    checks = [_check("seed:test-account", "passed", f"{email} / {REVIEW_ACCOUNT['password']} can log in")]
+
+    status, doc = http_json("GET", f"{api}/plants", token=token)
+    listed = (((doc or {}).get("data") or {}).get("content")) or []
+    if status == 200 and not any(p.get("nickname") == REVIEW_PLANT["nickname"] for p in listed):
+        status, doc = http_json("POST", f"{api}/plants", REVIEW_PLANT, token)
+        ok = status in (200, 201)
+    else:
+        ok = status == 200
+    checks.append(_check("seed:baseline-plant", "passed" if ok else "failed",
+                         f"plant {REVIEW_PLANT['nickname']!r} for {email} (HTTP {status})"))
+
+    status, _ = http_json("GET", f"{api}/identifications", token=token)
+    checks.append(_check("smoke:identification-endpoint",
+                         "passed" if status == 200 else ("unavailable" if status is None else "failed"),
+                         f"GET /api/v1/identifications as the test account -> {status} (expected 200)"))
+
+    status, doc = http_json("GET", f"{api}/users/me/preferences", token=token)
+    prefs = (doc or {}).get("data") or {}
+    claude = (prefs.get("visionModelPreference") == "ANTHROPIC_CLAUDE"
+              and (prefs.get("visionModelAvailability") or {}).get("ANTHROPIC_CLAUDE") is True
+              and (prefs.get("reasoningModelAvailability") or {}).get("ANTHROPIC_CLAUDE") is True)
+    checks.append(_check("smoke:claude-enabled",
+                         "passed" if claude else ("unavailable" if status is None else "failed"),
+                         f"test account prefers Claude and it is selectable (HTTP {status}, "
+                         f"vision={prefs.get('visionModelPreference')})"))
+
+    gateway = os.environ.get(REVIEW_GATEWAY_URL_ENV, REVIEW_GATEWAY_DEFAULT).replace("host.docker.internal", "127.0.0.1")
+    status, _ = http("GET", f"{gateway}/", timeout=5.0)
+    detail = (f"answered HTTP {status}" if status is not None
+              else "is not reachable; start it, AI calls will fail")
+    checks.append(_check("smoke:ai-gateway", "passed" if status is not None else "unavailable",
+                         f"ai-gateway at {gateway} {detail}"))
+    return checks
 
 
 def observe_identity_block(body: str) -> dict | None:
@@ -662,6 +754,10 @@ def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict]
     checks.append(smoke(base_url, "smoke:frontend-index", "GET", "/", 200, "<app-root"))
     checks.append(smoke(base_url, "smoke:backend-health", "GET", "/actuator/health", 200, '"UP"'))
     checks.append(smoke(base_url, "smoke:api-auth-guard", "GET", "/api/v1/plants", 401))
+    if environment == "review":
+        checks.append(smoke(base_url, "smoke:swagger-ui", "GET", "/swagger-ui.html", 200, "swagger-ui"))
+        checks.append(smoke(base_url, "smoke:api-docs", "GET", "/v3/api-docs", 200, '"openapi"'))
+        checks.extend(review_baseline_checks(base_url))
     for c in criteria:
         checks.append(smoke(base_url, f"criterion:{c['criterionId']}", c["method"], c["path"],
                             c["status"], c["contains"], c["criterionId"]))
@@ -757,6 +853,7 @@ def base_receipt(sha: str, deployment_id: str, port: int, correlation: dict, kin
 
 def cmd_deploy(args) -> int:
     root = repo_root()
+    args.revision = env_param(args.revision, "COMMAND_PARAM_COMMIT")
     state = state_dir(root)
     criteria = [parse_criterion(c) for c in args.criterion]
     if args.operation_key:
@@ -989,6 +1086,227 @@ def cmd_down(_args) -> int:
     proc = run(["docker", "compose", "-p", COMPOSE_PROJECT, "down"], timeout=300)
     print(proc.stdout + proc.stderr)
     return proc.returncode
+
+
+# ── review environment (contracts v0.38.0 §Review environments) ──────────────
+# Runs an UNMERGED PR head in its own compose project, volumes, config and port. It never
+# touches the dev stack, never merges or pushes anything, and never reaches production.
+# One review at a time (owner ruling): starting another tears the previous one down.
+
+REVIEW_CHECKS = PUSH_CHECKS + (PR_CHECK,)   # all four must be green on the PR head itself
+
+
+def review_state_path(state: Path) -> Path:
+    return state / "review-current.json"
+
+
+def load_review_state(state: Path) -> dict | None:
+    path = review_state_path(state)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def save_review_state(state: Path, current: dict) -> None:
+    current["updatedAt"] = now_utc()
+    path = review_state_path(state)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def resolve_review_target(root: Path, pr: int | None, branch: str | None, expected: str | None,
+                          expected_branch: str | None = None) -> dict:
+    """The PR (or branch) head to review: {sha, branch, pullRequest}. Refuses anything but an open same-repo PR into dev."""
+    if (pr is None) == (branch is None):
+        raise DeliveryError("give exactly one of --pr or --branch")
+    pull_request = None
+    if pr is not None:
+        proc = run(["gh", "api", f"repos/{GITHUB_REPO}/pulls/{int(pr)}", "--jq",
+                    "{sha: .head.sha, ref: .head.ref, base: .base.ref, state: .state, "
+                    "repo: .head.repo.full_name, url: .html_url}"], timeout=60)
+        if proc.returncode != 0:
+            raise DeliveryError(f"could not read PR #{pr}: {proc.stderr.strip()}")
+        info = json.loads(proc.stdout)
+        if info["state"] != "open":
+            raise DeliveryError(f"refused: PR #{pr} is {info['state']}; only an unmerged open PR is reviewed here")
+        if info["base"] != BRANCH:
+            raise DeliveryError(f"refused: PR #{pr} targets {info['base']}, not {BRANCH}")
+        if info["repo"] != GITHUB_REPO:
+            raise DeliveryError(f"refused: PR #{pr} comes from a fork ({info['repo']}); its code is not built here")
+        if expected_branch and expected_branch != info["ref"]:
+            raise DeliveryError(f"refused: PR #{pr} head branch is {info['ref']}, not the expected {expected_branch}")
+        branch, sha = info["ref"], info["sha"]
+        pull_request = {"number": int(pr), "url": info["url"]}
+    else:
+        if not BRANCH_RE.match(branch) or ".." in branch:
+            raise DeliveryError(f"not a branch name: {branch!r}")
+        proc = run(["gh", "api", f"repos/{GITHUB_REPO}/branches/{branch}", "--jq", ".commit.sha"], timeout=60)
+        if proc.returncode != 0:
+            raise DeliveryError(f"could not read branch {branch}: {proc.stderr.strip()}")
+        sha = proc.stdout.strip()
+    if branch in NEVER_REVIEWED:
+        raise DeliveryError(f"refused: {branch} is not reviewed here ({'production' if branch == 'main' else 'use deploy'})")
+    if not SHA_RE.match(sha):
+        raise DeliveryError(f"could not resolve a full revision: {sha!r}")
+    if expected and expected != sha:
+        raise DeliveryError(f"refused: expected revision {expected} but the head is now {sha}")
+    return {"sha": sha, "branch": branch, "pullRequest": pull_request}
+
+
+def review_gate(sha: str) -> list[dict]:
+    """The PR head's own required checks. A pending, skipped or missing check is not a pass."""
+    return [{"name": (f"quality:{n}" if n == PR_CHECK else f"ci:{n}"), "criterionId": None,
+             "outcome": github_check(sha, n), "exitCode": None} for n in REVIEW_CHECKS]
+
+
+def fetch_revision(root: Path, sha: str) -> None:
+    run(["git", "fetch", "--quiet", "origin", sha], check=True, cwd=root, timeout=300)
+    run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], check=True, cwd=root)
+
+
+def overlay_delivery_files(root: Path, tree: Path) -> None:
+    """Run the compose/nginx files of THIS tool's checkout against the PR tree.
+
+    The review must not depend on whether the PR was branched before these files learned
+    about review environments and Swagger; only the delivery wiring is replaced, never app code.
+    """
+    source = Path(__file__).resolve().parents[2] / "deploy" / "dev-delivery"
+    target = tree / "deploy" / "dev-delivery"
+    target.mkdir(parents=True, exist_ok=True)
+    for f in source.iterdir():
+        if f.is_file():
+            shutil.copyfile(f, target / f.name)
+
+
+def review_teardown(state: Path, current: dict | None) -> None:
+    """Stop the review project and remove its volumes (a review's data is disposable)."""
+    proc = run(["docker", "compose", "-p", REVIEW_COMPOSE_PROJECT, "down", "-v", "--remove-orphans"], timeout=300)
+    if proc.returncode != 0:
+        raise DeliveryError(f"could not stop {REVIEW_COMPOSE_PROJECT}: {proc.stderr.strip()}", 5)
+    if current is not None and current["status"] != "stopped":
+        current["status"] = "stopped"
+        save_review_state(state, current)
+
+
+def review_status_value(current: dict, receipt: dict | None) -> str:
+    if current["status"] == "stopped":
+        return "stopped"
+    if receipt is None or receipt["result"] == "pending":
+        return "starting"
+    return "ready" if receipt["result"] == "passed" else "failed"
+
+
+def review_environment_document(state: Path, current: dict) -> dict:
+    """The launcher ``ReviewEnvironment`` (review-environment.openapi.yaml): what ``status`` and ``stop`` print."""
+    receipt_path_ = receipt_path(state, current["deploymentId"])
+    native = json.loads(receipt_path_.read_text(encoding="utf-8")) if receipt_path_.exists() else None
+    return {
+        "idempotencyKey": current["idempotencyKey"], "repository": REPOSITORY, "branch": current["branch"],
+        "pullRequest": current["pullRequest"], "expectedRevision": current["revision"],
+        "status": review_status_value(current, native),
+        "receipt": tagged_receipt_document(state, current["deploymentId"]) if native else None,
+        "error": None, "startedAt": current["startedAt"], "updatedAt": current["updatedAt"],
+    }
+
+
+def env_param(flag_value, name: str):
+    """An explicit flag wins; otherwise the launcher's environment parameter (empty counts as absent)."""
+    if flag_value is not None:
+        return flag_value
+    return os.environ.get(name, "").strip() or None
+
+
+def key_names_review(current: dict, key: str) -> bool:
+    return key == current["idempotencyKey"] or key in current.get("aliasKeys", [])
+
+
+def review_current_for(state: Path, key: str | None) -> dict:
+    current = load_review_state(state)
+    if current is None or (key is not None and not key_names_review(current, key)):
+        raise DeliveryError(f"review_environment_not_found: {key or '(none)'}", exit_code=4, bare=True)
+    return current
+
+
+def cmd_review_start(args) -> int:
+    root = repo_root()
+    state = state_dir(root)
+    args.idempotency_key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
+    args.revision = env_param(args.revision, "REVIEW_EXPECTED_REVISION")
+    flag_branch = args.branch
+    # The launcher sends both; a PR number identifies the target and the branch is only checked against it.
+    pr_number = args.pr if args.pr is not None else (None if flag_branch is not None else env_param(None, "REVIEW_PR_NUMBER"))
+    env_branch = env_param(None, "REVIEW_BRANCH")
+    expected_branch = None
+    if pr_number is not None and flag_branch is None:
+        args.branch, expected_branch = None, env_branch
+    else:
+        args.branch = flag_branch if flag_branch is not None else env_branch
+    try:
+        args.pr = int(pr_number) if pr_number is not None else None
+    except ValueError:
+        raise DeliveryError(f"not a pull request number: {pr_number!r}")
+    if args.idempotency_key and not REVIEW_KEY_RE.match(args.idempotency_key):
+        raise DeliveryError(f"not an idempotency key: {args.idempotency_key!r}")
+    if args.port in (DEFAULT_PORT, LOOKUP_PORT):
+        raise DeliveryError(f"refused: port {args.port} belongs to the dev stack / lookup route")
+    extra = {"expected_branch": expected_branch} if expected_branch else {}
+    target = resolve_review_target(root, args.pr, args.branch, args.revision, **extra)
+    sha = target["sha"]
+    key = args.idempotency_key or f"review-{sha[:12]}"
+    current = load_review_state(state)
+    if current and key_names_review(current, key) and (
+            current["revision"] != sha or current["branch"] != target["branch"]
+            or current["pullRequest"] != target["pullRequest"]):
+        raise DeliveryError(f"idempotency_key_conflict: {key} already names {current['deploymentId']} "
+                            f"at {current['revision']}", 3)
+    if current and current["status"] != "stopped" and current["revision"] == sha:
+        observed = observe_identity(f"http://127.0.0.1:{current['port']}")
+        if observed and observed["revision"] == sha and observed["deploymentId"] == current["deploymentId"]:
+            if not key_names_review(current, key):
+                current.setdefault("aliasKeys", []).append(key)  # a later `stop` under this key finds the running environment
+                save_review_state(state, current)
+            print(json.dumps(tagged_receipt_document(state, current["deploymentId"]), indent=2))
+            return 0 if load_receipt(state, current["deploymentId"])["result"] == "passed" else 1
+    pre_checks = review_gate(sha)
+    blocking = [c for c in pre_checks if c["outcome"] != "passed"]
+    if blocking:
+        names = ", ".join(f"{c['name']}={c['outcome']}" for c in blocking)
+        raise DeliveryError(f"refused: required checks for {sha} have not all passed ({names})")
+    env_file, db_password = ensure_dev_config(state, "review")
+    fetch_revision(root, sha)
+    tree = archive_tree(root, state, sha)
+    overlay_delivery_files(root, tree)
+    review_teardown(state, current)  # one at a time: the previous review (any revision) goes first
+    deployment_id = new_deployment_id(sha, "pla-rev")
+    receipt = base_receipt(sha, deployment_id, args.port, {"deliveryId": args.delivery_id, "operationKey": key},
+                           "deploy", pre_checks, None)
+    receipt.update({"branch": target["branch"], "environment": "review", "composeProject": REVIEW_COMPOSE_PROJECT,
+                    "revisionRole": "task", "apiDocsUrl": None,
+                    "review": {"pullRequest": target["pullRequest"]["number"] if target["pullRequest"] else None,
+                               "pullRequestUrl": target["pullRequest"]["url"] if target["pullRequest"] else None}})
+    save_receipt(state, receipt)
+    started = now_utc()
+    current = {"idempotencyKey": key, "deploymentId": deployment_id, "revision": sha, "branch": target["branch"],
+               "pullRequest": target["pullRequest"], "port": args.port, "status": "active", "startedAt": started}
+    save_review_state(state, current)
+    env = compose_env(tree, sha, deployment_id, env_file, db_password, args.port, "review")
+    receipt = settle(root, state, receipt, tree, env, build=True, criteria=[])
+    print(json.dumps(tagged_receipt_document(state, deployment_id), indent=2))
+    return 0 if receipt["result"] == "passed" else 1
+
+
+def cmd_review_status(args) -> int:
+    state = state_dir(repo_root())
+    key = env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY")
+    print(json.dumps(review_environment_document(state, review_current_for(state, key)), indent=2))
+    return 0
+
+
+def cmd_review_stop(args) -> int:
+    state = state_dir(repo_root())
+    current = review_current_for(state, env_param(args.idempotency_key, "REVIEW_IDEMPOTENCY_KEY"))
+    review_teardown(state, current)
+    print(json.dumps(review_environment_document(state, current), indent=2))
+    return 0
 
 
 def main(argv=None) -> int:

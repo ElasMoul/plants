@@ -266,3 +266,116 @@ Fingerprints are bound to the commit that introduced them, so a squash-merge
 that rewrites it needs fresh entries. Prefer reading a receipt with
 `dev_delivery.py lookup <id>` over committing it; `.dev-delivery/` is gitignored
 for that reason.
+
+## 6. Review environment (an unmerged PR, contracts v0.38.0)
+
+`dev_delivery.py review` runs a PR's **unmerged head** so the owner can look at it
+before merge. Nothing in it merges, pushes, opens a PR or touches `main`, the dev
+stack or production. Reference: `contracts` `docs/task-delivery.md` §Review
+environments; the launcher API it backs is `schemas/launcher/review-environment.openapi.yaml`.
+
+```bash
+dev_delivery.py review start (--pr <n> | --branch <name>) [--revision <sha>]     [--idempotency-key <key>] [--delivery-id <uuid>] [--port 8186]
+dev_delivery.py review status [--idempotency-key <key>]
+dev_delivery.py review stop   [--idempotency-key <key>]
+```
+
+**`start`** resolves the head and refuses unless: the PR is open, same-repo and
+targets `dev` (a branch is never `main` or `dev`); `--revision`, when given, still
+equals the head (a moved head is refused, not followed); and **`Backend CI`,
+`Frontend CI`, `Detect secrets` and `sonar-gate` are all `success` on that head**
+(pending, skipped or missing is not a pass; a branch with no PR has no `sonar-gate`
+and is refused). It then builds a clean `git archive` of the head, overlays this
+checkout's `deploy/dev-delivery/` files so a PR branched before this change still
+gets the review wiring (app code is never replaced), and brings up compose project
+**`plantpal-review`**.
+
+| | Dev (`deploy`) | Review (`review start`) |
+|---|---|---|
+| Compose project / volumes | `plantpal-devdelivery` | `plantpal-review` (own network and volumes; `stop` removes them) |
+| Config and secrets | `.dev-delivery/dev.env`, `db-password` | `.dev-delivery/review.env`, `review-db-password`, all freshly generated, none shared |
+| Images | `plantpal-devdelivery-*:<sha>` | `plantpal-review-*:<sha>` |
+| Published port | `127.0.0.1:8184` | `127.0.0.1:8186` (`--port`; the dev and lookup ports are refused). Recorded as the next free 81xx; registration is requested from `platform-vault` |
+| App reports | `environment: dev` | `environment: review` |
+| Rollback, `rollback` receipt | yes | no: `kind: deploy`, `rollback: null`. A review is stopped, not rolled back |
+
+Review receipts are stored beside the dev ones (`plantpal.dev-deployment-receipt/1`,
+`environment: review`) but are **never** a dev rollback target or a dev
+`--operation-key`.
+
+**Receipt.** `start` prints the tagged `delivery.deployment-receipt` (v0.38.0),
+validated before it is emitted: `environment.name: review`, `revisionRole: task`,
+`mergedRevision` = the PR head, `branch` = the PR head branch, a `review` block
+(`pullRequest` and `pullRequestUrl`, `null` for a branch-only review, never
+defaulted), `environment.url` = the loopback frontend URL, `environment.apiDocsUrl`
+= `/swagger-ui.html` only when the Swagger checks passed, and `observed` = the
+running app's own `/actuator/info` identity at the PR revision. Checks are the dev
+ones with `identity:environment` expecting `review`, plus `smoke:swagger-ui` and
+`smoke:api-docs`. A review URL serving another revision is `failed` with `observed`
+kept as reported; an unreported identity is `unknown`; neither is ever `passed`.
+Exit `0` only when `passed`.
+
+**One at a time, idempotent.** The latest review is recorded in
+`.dev-delivery/review-current.json`.
+- Starting a review whose head is **already running** (the live `/actuator/info`
+  reports that revision and deployment) returns the existing receipt without
+  rebuilding or running the gate again.
+- Starting any other review **stops the previous one first** (`docker compose -p
+  plantpal-review down -v`), but only after the new head has passed the gate, so a
+  refused start leaves the running review alone.
+- The same `--idempotency-key` with a different revision, branch or PR is refused:
+  `idempotency_key_conflict`, exit `3`. Without a key it defaults to
+  `review-<sha12>`.
+
+**`status` and `stop`** print the launcher's `ReviewEnvironment` document
+(`idempotencyKey`, `expectedRevision`, `status`, tagged `receipt`, `error`,
+timestamps). `status` is `starting` (receipt `pending`), `ready` (`passed`),
+`failed` (anything else, including a revision mismatch, never `ready`) or
+`stopped`; it reports the last recorded observation, not a fresh probe. `stop` is
+idempotent, removes the review's containers and volumes, and keeps the receipt
+unchanged. A key that names no review is exit `4` with stderr
+`review_environment_not_found: <key>` and nothing on stdout (a miss, never
+`failed`). These are the commands `launcher` calls.
+
+### Ready to test (seed, Claude, ai-gateway, identification)
+
+A passed review receipt means the environment is usable, not only up. `review start`
+seeds and then observes, through the app's own API, so each is a recorded check:
+
+| Check | Meaning |
+|---|---|
+| `seed:test-account` | `review@plantpal.test` / `review-password-1` registers (or logs in if it already exists) |
+| `seed:baseline-plant` | that account owns one plant, "Review Monty" (never duplicated) |
+| `smoke:identification-endpoint` | `GET /api/v1/identifications` as the test account answers 200 |
+| `smoke:claude-enabled` | the account prefers Claude (the default) and Claude is selectable for vision and reasoning |
+| `smoke:ai-gateway` | `ai-gateway` answers on the host (default `127.0.0.1:8085`) |
+
+The review backend runs with Spring profiles `dev,platform`, so every AI call (including
+Claude identification) goes through `ai-gateway` at `REVIEW_AI_GATEWAY_URL` (default
+`http://host.docker.internal:8085`, set it in the environment `review start` runs in); no
+provider key is generated or needed in the review env. With the gateway on, Claude counts
+as available without an Anthropic key (`AnthropicClient.isAvailable()`). state-feed
+emission is off in review. The dev stack is unchanged (profile `dev`, direct clients).
+If `ai-gateway` is not running, `smoke:ai-gateway` is `unavailable` and the receipt result is
+`unknown`, not `passed`: the environment is up but AI is not testable. Whether `ai-gateway`
+itself has Claude enabled is its own configuration and is not observed here.
+
+## 7. Swagger (dev and review only)
+
+| URL | Served by |
+|---|---|
+| `/swagger-ui.html`, `/swagger-ui/**` | the backend's springdoc UI |
+| `/v3/api-docs` | the OpenAPI document |
+
+The dev-delivery nginx (`deploy/dev-delivery/nginx.dev-delivery.conf`, used by both
+the dev candidate and every review environment) and the local stack's
+`frontend/nginx.conf` proxy all three to the backend, so they no longer fall through
+to the Angular index. They are at `http://127.0.0.1:8184/swagger-ui.html` (dev) and
+`http://127.0.0.1:8186/swagger-ui.html` (review; also the receipt's `apiDocsUrl`).
+
+**Production does not expose them.** `application-prod.yml` sets
+`springdoc.swagger-ui.enabled` and `springdoc.api-docs.enabled` to `false` (the
+backend's security config still permits the paths, so they answer 404 rather than
+serving a UI; `ApiDocsExposureTest` pins this). Production fronts the backend with
+Caddy, which forwards every path, so the backend switch is the control. The
+`staging` profile is unchanged.

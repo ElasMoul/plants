@@ -273,6 +273,37 @@ deployment identity (`deployment.revision` etc., `null` when not stamped — pro
 does not stamp it today). Exposed endpoints: `health,info,metrics`
 (`application.yml`).
 
+## App descriptor (`app.yaml`)
+
+`app.yaml` at the repo root (`app.descriptor/1`, validated against contracts v0.43.0
+`schemas/app/descriptor.json`) states Planotell's delivery facts for the registry, Factory
+and the launcher. The layout is **in-repo** now (`code.layout: in-repo`, `appRoot: "."`);
+it will become **wrapped** when the hexagon moves to the elmoul org (owner ruling
+2026-10-02), with the code staying in `ElasMoul/plants`. The hand-kept launcher entries
+(`review-apps.json`, `command-allowlist.json`) still win over what is derived from it.
+
+## Launcher command entries (plain argv, no inline code)
+
+`tools/dev-delivery/dev_delivery.py` reads launcher's parameters from the environment
+when the matching flag is absent (an explicit flag wins): `review start` / `review stop`
+read `REVIEW_EXPECTED_REVISION`, `REVIEW_IDEMPOTENCY_KEY`, `REVIEW_PR_NUMBER`,
+`REVIEW_BRANCH`; `deploy` reads `COMMAND_PARAM_COMMIT` as the revision. The receipt is
+printed to stdout as indented JSON. Launcher entries are therefore just argv
+(`<venv python>` = the interpreter with `tools/dev-delivery/requirements.txt` installed):
+
+- `review-apps.json` start: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "review", "start"]`
+- `review-apps.json` stop: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "review", "stop"]`
+- `command-allowlist.json` deploy: `["<venv python>", "tools/dev-delivery/dev_delivery.py", "deploy"]`
+
+The launcher sends both `REVIEW_PR_NUMBER` and `REVIEW_BRANCH`: `review start` resolves the PR
+by number and treats `REVIEW_BRANCH` as an expectation, refusing (exit 2) if the PR's head
+branch differs. `--pr` and `--branch` together on the command line stay refused; a `--branch`
+flag ignores an environment PR number.
+
+A start that reuses the environment already running for the same revision records the new
+idempotency key as an alias, so `review stop` under the newer key stops the running
+environment instead of exiting 4 (`review_environment_not_found`).
+
 ## Security posture
 
 - JWT-authenticated REST API — PlantPal's own auth, entirely unaffected by the

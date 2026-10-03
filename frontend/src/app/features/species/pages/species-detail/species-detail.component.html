@@ -156,6 +156,60 @@
         </div>
       </mat-tab>
 
+      <!-- Gallery tab -->
+      <mat-tab [label]="'Gallery' | t">
+        <div class="tab-content gallery-content">
+
+          <div *ngIf="photosLoading" class="plants-loading">
+            <mat-spinner diameter="36"></mat-spinner>
+          </div>
+
+          <ng-container *ngIf="!photosLoading">
+            <div *ngIf="photos.length === 0" class="empty-plants-state gallery-empty">
+              <mat-icon class="empty-icon">photo_library</mat-icon>
+              <p class="empty-sub">{{ 'No photos of this species yet.' | t }}</p>
+            </div>
+
+            <fieldset *ngIf="photos.length > 0 || selectedPlant" class="gallery-plant-picker">
+              <legend class="sr-only">{{ 'Plants' | t }}</legend>
+              <button type="button" class="gallery-chip" [class.active]="selectedPlantId === null"
+                      (click)="selectPhotoPlant(null)">{{ 'All plants' | t }}</button>
+              <button type="button" class="gallery-chip" *ngFor="let p of photoPlants"
+                      [class.active]="selectedPlantId === p.plantId"
+                      (click)="selectPhotoPlant(p.plantId)">{{ p.nickname }}</button>
+            </fieldset>
+
+            <ng-container *ngIf="!selectedPlant">
+              <div *ngIf="photos.length > 0" class="gallery-grid">
+                <img
+                  *ngFor="let photo of photos"
+                  class="gallery-tile"
+                  [src]="photo.photoUrl"
+                  [alt]="species.scientificName"
+                  loading="lazy"
+                />
+              </div>
+            </ng-container>
+
+            <ng-container *ngIf="selectedPlant as plant">
+              <button type="button" class="gallery-back" (click)="selectPhotoPlant(null)">
+                <mat-icon>arrow_back</mat-icon> {{ 'Back to all plants' | t }}
+              </button>
+              <div *ngIf="plant.photos.length === 0" class="empty-plants-state gallery-empty">
+                <p class="empty-sub">{{ 'No photos of this plant yet.' | t }}</p>
+              </div>
+              <ol *ngIf="plant.photos.length > 0" class="gallery-timeline">
+                <li *ngFor="let photo of plant.photos" class="timeline-item">
+                  <time class="timeline-date">{{ photo.dateTaken | date:'mediumDate' }}</time>
+                  <img class="timeline-photo" [src]="photo.photoUrl" [alt]="plant.nickname" loading="lazy" />
+                </li>
+              </ol>
+            </ng-container>
+          </ng-container>
+
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
 
   </ng-container>

@@ -1,4 +1,5 @@
 export const AR: Readonly<Record<string, string>> = {
+  "This app is still in beta": "هذا التطبيق لا يزال في مرحلة تجريبية (بيتا)",
   "Saved versions": "النسخ المحفوظة",
   "Translate to {0}": "ترجمة إلى {0}",
   "Could not load section languages.": "تعذر تحميل لغات هذا القسم.",
@@ -292,6 +293,11 @@ export const AR: Readonly<Record<string, string>> = {
   "How to care for it": "كيفية العناية به",
   "You don't have a plant of this species yet.": "ليس لديك نبات من هذا النوع بعد.",
   "Add plant of this species": "أضف نباتًا من هذا النوع",
+  "Gallery": "المعرض",
+  "All plants": "كل النباتات",
+  "Back to all plants": "العودة إلى كل النباتات",
+  "No photos of this plant yet.": "لا توجد صور لهذا النبات بعد.",
+  "No photos of this species yet.": "لا توجد صور لهذا النوع بعد.",
   "You have {0} species under your care.": "لديك {0} من الأنواع تحت رعايتك.",
   "All": "الكل",
   "With Issues": "بها مشكلات",

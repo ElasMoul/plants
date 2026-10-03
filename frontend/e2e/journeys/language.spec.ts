@@ -221,3 +221,20 @@ test('new Arabic content waits for its Arabic version without showing English or
   await expect(page.locator('.info-block .section-translate-button')).toHaveCount(0);
   expect(posts).toBe(0);
 });
+
+test('shows the beta notice once on login and register in EN, FR and AR', async ({ page }) => {
+  const expected = {
+    en: 'This app is still in beta',
+    fr: 'Cette application est encore en version bêta',
+    ar: 'هذا التطبيق لا يزال في مرحلة تجريبية (بيتا)',
+  };
+  for (const [lang, text] of Object.entries(expected)) {
+    for (const path of ['/login', '/register']) {
+      await page.goto(path);
+      await page.evaluate(l => localStorage.setItem('plantpal.language', l), lang);
+      await page.reload();
+      await expect(page.getByTestId('beta-notice')).toHaveCount(1);
+      await expect(page.getByTestId('beta-notice')).toHaveText(text);
+    }
+  }
+});

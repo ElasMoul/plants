@@ -7,6 +7,34 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Species Gallery tab (PLA-95): pick one of your plants to see only its photos as an oldest-to-newest dated timeline, with a
+  'Back to all plants' control that restores the full gallery without refetching. Frontend only.
+- Review environment starts ready to test (demand `factory-20261001-plantpal-review-environment-testable`): `review start`
+  seeds a test account (`review@plantpal.test`) and a baseline plant, runs the backend on `dev,platform` so AI goes
+  through ai-gateway, and records seed / identification / Claude / ai-gateway checks in the receipt. `AnthropicClient`
+  reports available when the gateway is enabled (no Anthropic key held in the app).
+- dev-delivery `review start` accepts the launcher's environment with both `REVIEW_PR_NUMBER` and `REVIEW_BRANCH`
+  set: the PR is resolved by number and the branch is verified against its head (mismatch refused).
+- Species detail page (classic frontend): third "Gallery" tab (PLA-94) showing the user's photos of the species
+  oldest-first by date taken, with an empty state. Consumes the PLA-93 endpoint; fr/ar strings added.
+- dev-delivery launcher interface (demand `factory-20261001-launcher-review-command-interface`): `review start|status|stop`
+  and `deploy` take launcher's parameters from `REVIEW_*` / `COMMAND_PARAM_COMMIT` when the flag is absent;
+  `review stop` under a later idempotency key now stops the environment a reused start returned.
+- `GET /api/v1/species/{id}/photos` (PLA-93): the caller's own non-archived plants' photos of a species,
+  grouped by plant, each group ordered by `date_taken` ascending (tiebreak identification id). Unowned or
+  unknown species return 200 with an empty list. No schema change.
+- Review environments (demand `factory-20260930-plantpal-review-environment-and-swagger`):
+  `dev_delivery.py review start|status|stop` runs an unmerged PR head (all four required checks
+  green on it) in its own compose project `plantpal-review`, volumes, generated config and
+  loopback port `8186`, one at a time, and reports the contracts v0.38.0 tagged receipt
+  (`environment.name: review`, `revisionRole: task`, observed `/actuator/info` identity).
+  Swagger (`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`) is proxied in the dev-delivery
+  and local nginx configs; `application-prod.yml` disables springdoc. Tool repinned to
+  contracts v0.38.0. See `docs/dev-delivery.md` sections 6-7.
+- PLA-92: each scan (`identifications`) now stores a non-null `date_taken` (migration 041),
+  read from the photo's EXIF (DateTimeOriginal, then Digitized, then IFD0 DateTime; UTC unless an
+  offset tag exists) with upload time as fallback; existing rows are backfilled from `created_at`.
+  Exposed as `dateTaken` on `IdentificationResponse`. Adds `metadata-extractor`.
 - Planotell dev-only delivery (D113, demand `factory-20260927-dev-delivery`):
   `tools/dev-delivery/dev_delivery.py` deploys a revision merged into `origin/dev`
   (after its `Backend CI`/`Frontend CI`/`Detect secrets` and PR `sonar-gate` checks
