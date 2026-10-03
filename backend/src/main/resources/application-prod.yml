@@ -123,12 +123,3 @@ app:
 
   plantnet:
     api-key: ${PLANTNET_API_KEY}
-
-# ── API docs ─────────────────────────────────────────────────────────────────
-# Swagger UI and /v3/api-docs are for dev and review environments only; Caddy
-# proxies every path to the backend, so production must not serve them.
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false

@@ -3,7 +3,7 @@
 How a task reaches a **dev** candidate of plantpal, and how Factory observes it.
 Planotell is the product name. `plantpal` is the repository and YouTrack project
 `PLA` is the tracker. Governing documents: D112, D113,
-`factory/docs/YOUTRACK_DELIVERY.md`, and contracts `v0.38.0`
+`factory/docs/YOUTRACK_DELIVERY.md`, and contracts `v0.36.0`
 `docs/task-delivery.md` (§Producers, row `app-deploy`; §App-deploy).
 
 **Production is out of scope.** Any push to `main` deploys production
@@ -29,18 +29,6 @@ production, and D113 does not authorize it.
 
 4. If `sonar-gate` fails, the PR author fixes it on the source branch and
    pushes, and the check re-runs. There is no bypass (D112 clause 3).
-
-   The failed job's log says why: an *Explain quality gate failure* step
-   (`scripts/sonar-explain-failure.mjs`, runs only on failure, read-only
-   SonarQube API with the job's `SONAR_TOKEN`, never printed) lists each failed
-   condition (`new_coverage 74.7 < 80`), every open new-code issue
-   (`severity rule file:line message`) and each file with uncovered new lines.
-   `gh run view <run-id> --log-failed` is enough to know what to fix (the step
-   runs only after the job has already failed and ends with exit 1 so it shows in
-   that view). It never changes the gate's verdict, and does not run on a pass. `sonar.coverage.exclusions` (backend
-   `pom.xml`, `frontend/sonar-project.properties`) mirror the JaCoCo / Jest
-   excludes; `Frontend CI` fails if they drift
-   (`scripts/check-sonar-coverage-exclusions.mjs`).
 5. Merge through GitHub only. The ruleset refuses a merge whose required checks
    are not green.
 
@@ -83,7 +71,7 @@ a different revision is refused with `operation_key_conflict` (exit 3).
   `redis_data`, `photos_data`) are separate from the long-lived local stack.
 - Postgres and Redis publish **no** host ports. Kafka is not used
   (`APP_IDENTIFICATION_TRANSPORT=in-process`, as in production).
-- One published port: `127.0.0.1:8184` → nginx, plain http. It proxies `/api/`, `/photos/`, `/actuator/{health,info}` and Swagger (§7). Allocation is
+- One published port: `127.0.0.1:8184` → nginx, plain http. Allocation is
   requested in `plantpal-20260927-platform-vault-planotell-dev-port-and-coordination-path`.
 - Config is `.dev-delivery/dev.env`, generated on first run: a fresh
   `JWT_SECRET`, a fresh VAPID pair and a fresh database password. It is never
@@ -143,8 +131,8 @@ The **native** receipt is the on-disk record, at
 docker image ids, no registry), `result`, `exitCode`, `observed`, `checks`,
 `correlation`, `rollback`, and the log path.
 
-Both transports emit the **tagged** contracts shapes, pinned at **v0.38.0**
-(`tools/dev-delivery/requirements.txt`; v0.38.0 adds the review-only fields of §6 and leaves dev receipts unchanged). The native file is the record; the
+Both transports emit the **tagged** contracts shapes, pinned at **v0.36.0**
+(`tools/dev-delivery/requirements.txt`). The native file is the record; the
 tagged document is what consumers bind to. Native-only fields (`schema`,
 `revisionRole`, `composeProject`, `port`, `preDeployChecks`, `log`, and the
 per-check `detail`/`prHead`) stay in the file and are dropped from the tagged

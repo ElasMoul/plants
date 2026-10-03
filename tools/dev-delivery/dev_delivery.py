@@ -42,13 +42,6 @@ Usage (from the repo root):
   python tools/dev-delivery/dev_delivery.py rollback [--to <deploymentId>]
   python tools/dev-delivery/dev_delivery.py down
   python tools/dev-delivery/dev_delivery.py serve [--port 8185]
-  python tools/dev-delivery/dev_delivery.py review start (--pr N | --branch B) [--revision SHA]
-        [--idempotency-key K] [--delivery-id UUID] [--port 8186]
-  python tools/dev-delivery/dev_delivery.py review status [--idempotency-key K]
-  python tools/dev-delivery/dev_delivery.py review stop [--idempotency-key K]
-
-``review`` runs an UNMERGED PR head in its own compose project, volumes, config and port
-(contracts v0.38.0 §Review environments). One at a time; it never merges or pushes anything.
 """
 
 from __future__ import annotations
@@ -93,7 +86,7 @@ BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
 NEVER_REVIEWED = ("main", BRANCH)            # main deploys production; dev has its own deploy path
 PLANOTELL_URL = "http://planotell.platform.localhost"
 RECEIPT_SCHEMA = "plantpal.dev-deployment-receipt/1"  # the on-disk native record
-CONTRACTS_TAG = "v0.38.0"                             # the tagged shapes both lookup transports emit
+CONTRACTS_TAG = "v0.36.0"                             # the tagged shapes both lookup transports emit
 TAGGED_DIGEST_KIND = "local-image-id"                 # plantpal's digests are local engine image ids
 # Vendored verbatim from the tag above; see schemas/README.md. Used only to validate.
 SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
@@ -202,13 +195,8 @@ def all_receipts(state: Path) -> list[dict]:
     return sorted(receipts, key=lambda r: r["startedAt"])
 
 
-def dev_receipts(state: Path) -> list[dict]:
-    """Dev deployments only: a review environment is never a rollback target or a dev operation key."""
-    return [r for r in all_receipts(state) if r["environment"] == "dev"]
-
-
 def last_passed(state: Path, exclude: str | None = None) -> dict | None:
-    passed = [r for r in dev_receipts(state) if r["result"] == "passed" and r["deploymentId"] != exclude]
+    passed = [r for r in all_receipts(state) if r["result"] == "passed" and r["deploymentId"] != exclude]
     return passed[-1] if passed else None
 
 
@@ -231,7 +219,7 @@ def to_tagged_receipt(receipt: dict) -> dict:
     ``preDeployChecks`` (already the head of ``checks``). The native per-check
     ``detail``/``prHead`` are dropped for the same reason: ``check`` is closed too.
     """
-    tagged = {
+    return {
         "deploymentId": receipt["deploymentId"],
         "kind": receipt["kind"],
         "repository": receipt["repository"],
@@ -257,13 +245,6 @@ def to_tagged_receipt(receipt: dict) -> dict:
         "restores": receipt.get("restores"),
         "nativeRef": f"{REPOSITORY}:deployments/{receipt['deploymentId']}",
     }
-    if receipt["environment"] == "review":
-        # contracts v0.38.0 §Review environments: mergedRevision holds the PR head, and the
-        # role says so. A dev receipt must NOT carry any of these, so they are review-only.
-        tagged["revisionRole"] = "task"
-        tagged["review"] = receipt["review"]
-        tagged["environment"]["apiDocsUrl"] = receipt.get("apiDocsUrl")
-    return tagged
 
 
 def producer_result_from_tagged(tagged: dict) -> dict:
@@ -327,15 +308,6 @@ def check_deployment_semantics(tagged: dict) -> list[str]:
         out.append("rollback identity must name an EARLIER deployment")
     if tagged["kind"] == "rollback" and tagged["deploymentId"] in (tagged.get("restores"), tagged.get("rollbackOf")):
         out.append("a rollback is a new deployment, never the one it restores or replaces")
-    if tagged["environment"]["name"] == "review":
-        if tagged.get("revisionRole") != "task":
-            out.append("a review receipt must have revisionRole task")
-        if tagged.get("review") is None:
-            out.append("a review receipt must carry the review block")
-        if tagged["kind"] != "deploy" or tagged.get("rollback") is not None:
-            out.append("a review receipt is kind deploy with rollback null")
-    elif "review" in tagged or "revisionRole" in tagged or "apiDocsUrl" in tagged["environment"]:
-        out.append("a dev receipt must not carry review, revisionRole or apiDocsUrl")
     if tagged["result"] == "passed":
         observed = tagged.get("observed") or {}
         if observed.get("revision") != tagged["mergedRevision"]:
@@ -552,13 +524,9 @@ def validate_dev_env(env: dict[str, str]) -> None:
         raise DeliveryError(f"refused: dev env carries keys outside the dev allowlist {unknown}")
 
 
-def ensure_dev_config(state: Path, name: str = "dev") -> tuple[Path, str]:
-    """Create (once) the stack's own dev-only secrets; never copied from backend/.env or deploy/vps/.
-
-    ``name`` picks the environment's own files (``dev.env``/``db-password`` or
-    ``review.env``/``review-db-password``), so a review never shares a secret with the dev stack.
-    """
-    env_file = state / f"{name}.env"
+def ensure_dev_config(state: Path) -> tuple[Path, str]:
+    """Create (once) the stack's own dev-only secrets; never copied from backend/.env or deploy/vps/."""
+    env_file = state / "dev.env"
     if not env_file.exists():
         pub, priv = vapid_keypair()
         env_file.write_text(
@@ -569,7 +537,7 @@ def ensure_dev_config(state: Path, name: str = "dev") -> tuple[Path, str]:
             f"GITHUB_TOKEN={UNSET}\nPLANTNET_API_KEY={UNSET}\nANTHROPIC_API_KEY=\n",
             encoding="utf-8")
     validate_dev_env(parse_env(env_file.read_text(encoding="utf-8")))
-    db_file = state / ("db-password" if name == "dev" else f"{name}-db-password")
+    db_file = state / "db-password"
     if not db_file.exists():
         db_file.write_text(secrets.token_hex(24), encoding="utf-8")
     return env_file, db_file.read_text(encoding="utf-8").strip()
@@ -602,8 +570,7 @@ def archive_tree(root: Path, state: Path, sha: str) -> Path:
     return tree
 
 
-def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_password: str, port: int,
-                environment: str = "dev") -> dict:
+def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_password: str, port: int) -> dict:
     env = dict(os.environ)
     env.update({
         "APP_REVISION": sha,
@@ -612,8 +579,6 @@ def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_pas
         "DEV_DELIVERY_ENV_FILE": str(env_file.resolve()),
         "DEV_DB_PASSWORD": db_password,
         "DEV_DELIVERY_PORT": str(port),
-        "APP_ENVIRONMENT": environment,
-        "IMAGE_PREFIX": IMAGE_PREFIX[environment],
     })
     if environment == "review":
         env["APP_SPRING_PROFILES"] = REVIEW_PROFILES
@@ -621,8 +586,8 @@ def compose_env(tree: Path, sha: str, deployment_id: str, env_file: Path, db_pas
     return env
 
 
-def compose(tree: Path, env: dict, args: list[str], log: Path, timeout: int, project: str = COMPOSE_PROJECT):
-    cmd = ["docker", "compose", "-p", project, "-f", str(tree / COMPOSE_FILE), *args]
+def compose(tree: Path, env: dict, args: list[str], log: Path, timeout: int):
+    cmd = ["docker", "compose", "-p", COMPOSE_PROJECT, "-f", str(tree / COMPOSE_FILE), *args]
     return run(cmd, env=env, log=log, timeout=timeout)
 
 
@@ -749,7 +714,7 @@ def compare(observed_value, expected) -> str:
     return "passed" if observed_value == expected else "failed"
 
 
-def identity_checks(observed: dict | None, sha: str, deployment_id: str, environment: str = "dev") -> list[dict]:
+def identity_checks(observed: dict | None, sha: str, deployment_id: str) -> list[dict]:
     if observed is None:
         return [{"name": n, "criterionId": None, "outcome": "unknown", "exitCode": None}
                 for n in ("identity:app", "identity:revision", "identity:deployment", "identity:environment")]
@@ -757,7 +722,7 @@ def identity_checks(observed: dict | None, sha: str, deployment_id: str, environ
         {"name": "identity:app", "criterionId": None, "outcome": compare(observed["appIdentity"], APP_IDENTITY), "exitCode": None},
         {"name": "identity:revision", "criterionId": None, "outcome": compare(observed["revision"], sha), "exitCode": None},
         {"name": "identity:deployment", "criterionId": None, "outcome": compare(observed["deploymentId"], deployment_id), "exitCode": None},
-        {"name": "identity:environment", "criterionId": None, "outcome": compare(observed["environment"], environment), "exitCode": None},
+        {"name": "identity:environment", "criterionId": None, "outcome": compare(observed["environment"], "dev"), "exitCode": None},
     ]
 
 
@@ -783,10 +748,9 @@ def parse_criterion(spec: str) -> dict:
     return {"criterionId": cid, "method": method, "path": path, "status": int(status), "contains": contains}
 
 
-def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict],
-               environment: str = "dev") -> tuple[dict | None, list[dict]]:
+def run_checks(base_url: str, sha: str, deployment_id: str, criteria: list[dict]) -> tuple[dict | None, list[dict]]:
     observed = observe_identity(base_url)
-    checks = identity_checks(observed, sha, deployment_id, environment)
+    checks = identity_checks(observed, sha, deployment_id)
     checks.append(smoke(base_url, "smoke:frontend-index", "GET", "/", 200, "<app-root"))
     checks.append(smoke(base_url, "smoke:backend-health", "GET", "/actuator/health", 200, '"UP"'))
     checks.append(smoke(base_url, "smoke:api-auth-guard", "GET", "/api/v1/plants", 401))
@@ -827,14 +791,14 @@ def overall(deploy_exit: int | None, checks: list[dict]) -> str:
 # ── commands ──────────────────────────────────────────────────────────────────
 
 def find_by_operation_key(state: Path, key: str) -> dict | None:
-    for r in dev_receipts(state):
+    for r in all_receipts(state):
         if r["correlation"].get("operationKey") == key:
             return r
     return None
 
 
-def new_deployment_id(sha: str, prefix: str = "pla-dev") -> str:
-    return f"{prefix}-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M%S')}-{sha[:12]}"
+def new_deployment_id(sha: str) -> str:
+    return f"pla-dev-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M%S')}-{sha[:12]}"
 
 
 def settle(root: Path, state: Path, receipt: dict, tree: Path, env: dict, build: bool,
@@ -842,38 +806,29 @@ def settle(root: Path, state: Path, receipt: dict, tree: Path, env: dict, build:
     """Bring the stack up for `receipt` and record everything observed."""
     log = state / "logs" / f"{receipt['deploymentId']}.log"
     sha = receipt["revision"]
-    environment = receipt["environment"]
-    project = receipt["composeProject"]
     exit_code = None
     try:
         if build:
-            built = compose(tree, env, ["build"], log, timeout=1800, project=project)
+            built = compose(tree, env, ["build"], log, timeout=1800)
             if built.returncode != 0:
                 exit_code = built.returncode
         if exit_code is None:
-            up = compose(tree, env, ["up", "-d", "--no-build", "--wait", "--wait-timeout", "600"], log,
-                         timeout=720, project=project)
+            up = compose(tree, env, ["up", "-d", "--no-build", "--wait", "--wait-timeout", "600"], log, timeout=720)
             exit_code = up.returncode
     except subprocess.TimeoutExpired:
         exit_code = None  # timed out: result is unknown, not failed-with-a-made-up-code
     receipt["exitCode"] = exit_code
     receipt["imageDigests"] = {
-        "backend": image_digest(f"{IMAGE_PREFIX[environment]}-backend:{sha}"),
-        "frontend": image_digest(f"{IMAGE_PREFIX[environment]}-frontend:{sha}"),
+        "backend": image_digest(f"plantpal-devdelivery-backend:{sha}"),
+        "frontend": image_digest(f"plantpal-devdelivery-frontend:{sha}"),
     }
     base_url = f"http://127.0.0.1:{receipt['port']}"
-    observed, checks = run_checks(base_url, sha, receipt["deploymentId"], criteria, environment)
+    observed, checks = run_checks(base_url, sha, receipt["deploymentId"], criteria)
+    checks.append(planotell_check(sha, receipt["deploymentId"]))
     receipt["observed"] = observed
-    receipt["observedAt"] = now_utc()
-    if environment == "review":
-        # The review URL is the loopback one; no hostname is configured, so none is reported.
-        docs = [c for c in checks if c["name"] in ("smoke:swagger-ui", "smoke:api-docs")]
-        receipt["apiDocsUrl"] = f"{base_url}/swagger-ui.html" if all(c["outcome"] == "passed" for c in docs) else None
-        receipt["testUrl"] = base_url
-    else:
-        checks.append(planotell_check(sha, receipt["deploymentId"]))
-        receipt["testUrl"] = PLANOTELL_URL if checks[-1]["outcome"] == "passed" else base_url
     receipt["checks"] = receipt["preDeployChecks"] + checks
+    receipt["observedAt"] = now_utc()
+    receipt["testUrl"] = PLANOTELL_URL if checks[-1]["outcome"] == "passed" else base_url
     receipt["result"] = overall(exit_code, receipt["checks"])
     receipt["finishedAt"] = now_utc()
     receipt["log"] = str(log.relative_to(root))
@@ -934,7 +889,7 @@ def cmd_rollback(args) -> int:
     if args.to:
         target = load_receipt(state, args.to)
     else:
-        current = dev_receipts(state)
+        current = all_receipts(state)
         if not current or not current[-1].get("rollback"):
             raise DeliveryError("no rollback identity recorded on the latest deployment")
         target = load_receipt(state, current[-1]["rollback"]["deploymentId"])
@@ -945,7 +900,7 @@ def cmd_rollback(args) -> int:
     env_file, db_password = ensure_dev_config(state)
     tree = archive_tree(root, state, sha)
     deployment_id = new_deployment_id(sha)
-    latest = dev_receipts(state)[-1]
+    latest = all_receipts(state)[-1]
     receipt = base_receipt(sha, deployment_id, args.port, {"deliveryId": None, "operationKey": None},
                            "rollback", target["preDeployChecks"], rollback_identity(latest if latest["result"] == "passed" else None))
     receipt["rollbackOf"] = latest["deploymentId"]
@@ -964,7 +919,7 @@ def cmd_reconcile(args) -> int:
     receipt = load_receipt(state, args.deployment_id)
     if receipt["result"] == "pending":
         base_url = f"http://127.0.0.1:{receipt['port']}"
-        observed, checks = run_checks(base_url, receipt["revision"], receipt["deploymentId"], [], receipt["environment"])
+        observed, checks = run_checks(base_url, receipt["revision"], receipt["deploymentId"], [])
         receipt["observed"] = observed
         receipt["checks"] = receipt["preDeployChecks"] + checks
         receipt["observedAt"] = now_utc()
@@ -1090,10 +1045,7 @@ def lookup_server(state: Path, token: str, host: str, port: int):
             self.wfile.write(raw)
 
         def log_message(self, fmt, *args):  # no bearer tokens or bodies in logs
-            try:
-                sys.stderr.write(f"lookup {self.command} {self.path.split('?', 1)[0]} -> {args[1] if len(args) > 1 else '?'}\n")
-            except OSError:  # broken/closed stderr must never fail the response
-                pass
+            sys.stderr.write(f"lookup {self.command} {self.path.split('?', 1)[0]} -> {args[1] if len(args) > 1 else '?'}\n")
 
     return ThreadingHTTPServer((host, port), Handler)
 
@@ -1380,20 +1332,6 @@ def main(argv=None) -> int:
     p.add_argument("--port", type=int, default=DEFAULT_PORT)
     p.set_defaults(func=cmd_observe)
     sub.add_parser("down").set_defaults(func=cmd_down)
-    review = sub.add_parser("review", help="run an unmerged PR head in an isolated review environment")
-    review_sub = review.add_subparsers(dest="review_command", required=True)
-    p = review_sub.add_parser("start")
-    p.add_argument("--pr", type=int)
-    p.add_argument("--branch")
-    p.add_argument("--revision", help="expected PR head; refused if the head has moved")
-    p.add_argument("--idempotency-key")
-    p.add_argument("--delivery-id")
-    p.add_argument("--port", type=int, default=REVIEW_PORT)
-    p.set_defaults(func=cmd_review_start)
-    for name, func in (("status", cmd_review_status), ("stop", cmd_review_stop)):
-        p = review_sub.add_parser(name)
-        p.add_argument("--idempotency-key")
-        p.set_defaults(func=func)
     p = sub.add_parser("serve")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=LOOKUP_PORT)

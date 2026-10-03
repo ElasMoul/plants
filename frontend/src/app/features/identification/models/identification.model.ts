@@ -139,7 +139,6 @@ export interface IdentificationResponse {
   carePlan: CarePlanDto | null;
   annotationRegions: AnnotationRegion[] | null;
   createdAt: string;
-  dateTaken?: string;
   aiModelUsed?: string | null;
   // Split out from aiModelUsed (T7.1/T7.2) — which model handled the vision pass (species +
   // health + initial care plan) vs. any later reasoning-model work on this identification.

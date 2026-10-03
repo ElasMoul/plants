@@ -4,15 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.plantpal.identification.dto.CareCardDto;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
-import com.plantpal.identification.repository.PlantPhotoRow;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.entity.GenerationStatus;
 import com.plantpal.shared.exception.ResourceNotFoundException;
-import com.plantpal.species.dto.PlantPhotosDto;
-import com.plantpal.species.dto.SpeciesPhotoDto;
-import com.plantpal.species.dto.SpeciesPhotosResponse;
 import com.plantpal.species.dto.SpeciesResponse;
 import com.plantpal.species.dto.SpeciesSummaryDto;
 import com.plantpal.species.entity.Species;
@@ -23,9 +19,7 @@ import com.plantpal.species.service.SpeciesEnrichmentService;
 import com.plantpal.species.service.SpeciesService;
 import com.plantpal.user.entity.AiModelPreference;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,34 +67,6 @@ public class SpeciesServiceImpl implements SpeciesService {
     this.identificationRepository = identificationRepository;
     this.objectMapper = objectMapper;
     this.users = users;
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public SpeciesPhotosResponse getUserSpeciesPhotos(Long userId, Long speciesId) {
-    Map<Long, PlantPhotosDto> byPlant = new LinkedHashMap<>();
-    for (PlantPhotoRow row : identificationRepository.findSpeciesPhotoRows(userId, speciesId)) {
-      byPlant
-          .computeIfAbsent(
-              row.plantId(),
-              id ->
-                  PlantPhotosDto.builder()
-                      .plantId(id)
-                      .nickname(row.nickname())
-                      .photos(new ArrayList<>())
-                      .build())
-          .getPhotos()
-          .add(
-              SpeciesPhotoDto.builder()
-                  .identificationId(row.identificationId())
-                  .photoUrl(row.photoUrl())
-                  .dateTaken(row.dateTaken())
-                  .build());
-    }
-    return SpeciesPhotosResponse.builder()
-        .speciesId(speciesId)
-        .plants(new ArrayList<>(byPlant.values()))
-        .build();
   }
 
   @Override

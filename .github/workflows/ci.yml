@@ -109,9 +109,6 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
-      - name: Check Sonar coverage exclusions mirror the coverage tools
-        run: node scripts/check-sonar-coverage-exclusions.mjs
-
       # --coverage feeds sonar-gate; the 15% threshold stays in `npm run test:coverage`.
       - name: Unit tests
         working-directory: frontend
@@ -394,16 +391,6 @@ jobs:
           -Dsonar.host.url="$SONAR_HOST_URL"
           -Dsonar.qualitygate.wait=true
           -Dsonar.qualitygate.timeout=600
-
-      # Explains a failure only (read API, existing token); the verdict above is unchanged.
-      # Runs only once the job has already failed, and exits 1 so its output lands in
-      # `gh run view --log-failed` (a passing step is omitted from that view).
-      - name: Explain quality gate failure
-        if: ${{ failure() }}
-        run: |
-          git ls-files backend/src/main frontend/src frontend/projects > "$RUNNER_TEMP/candidate-files.txt"
-          CANDIDATE_FILES="$RUNNER_TEMP/candidate-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend || true
-          exit 1
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI
