@@ -68,6 +68,7 @@
   </div>
 
   <router-outlet></router-outlet>
+  <app-beta-notice *ngIf="!isAdminPage && !isLandingPage"></app-beta-notice>
 </main>
 
 <!-- Bottom navigation — mobile only -->
