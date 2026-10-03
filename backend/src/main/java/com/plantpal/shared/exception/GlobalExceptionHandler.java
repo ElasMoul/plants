@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -79,6 +80,12 @@ public class GlobalExceptionHandler {
             .collect(Collectors.joining(", "));
     log.warn("Bean validation failed: {}", message);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(message));
+  }
+
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleNoResource(NoResourceFoundException ex) {
+    log.warn("No handler for {}", ex.getResourcePath());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Not found", 404));
   }
 
   @ExceptionHandler(Exception.class)
