@@ -14,8 +14,9 @@ const MAX_IMAGES = 5;
 const MAX_CONTEXT_CHARS = 500;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const SpeechRecognitionAPI: any =
-  (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+const SpeechRecognitionAPI: any = typeof window === 'undefined'
+  ? undefined
+  : (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 if (isDevMode() && SpeechRecognitionAPI && !window.isSecureContext && location.hostname !== 'localhost') {

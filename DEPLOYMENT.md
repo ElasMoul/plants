@@ -313,3 +313,16 @@ environment instead of exiting 4 (`review_environment_not_found`).
   reads.
 - No platform-issued credentials are consumed or produced by PlantPal in this
   chunk.
+
+## Host routing and preferred host (PLA-73)
+
+The production build prerenders `/en/` and `/fr/`; every other URL is either a known client route
+(served the client-only shell `index.csr.html`) or a real 404 (`404.html`). The route list lives in
+`frontend/src/app/client-routes.ts` and must match `frontend/nginx/routes.inc`, `frontend/ngsw-config.json`
+and the `vercel.json` heredoc in `.github/workflows/deploy.yml` (`client-routes.spec.ts` checks all four).
+
+- nginx images: env `PREFERRED_HOST` and `HOST_REDIRECT_FROM` (the one alias to redirect); the defaults leave
+  the redirect inert. Dev delivery sets them from `DEV_PREFERRED_HOST` / `DEV_HOST_ALIAS`.
+- Vercel: optional repository variables `PREFERRED_HOST` and `ALIAS_HOST`; the redirect is emitted only when both are set.
+- Check against a built container: `HOST_RULES_BASE_URL=http://localhost:<port> npx playwright test crawlable-routes`
+  (add `HOST_RULES_ALIAS` / `HOST_RULES_PREFERRED` for the redirect cases).

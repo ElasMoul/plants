@@ -7,6 +7,14 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Crawlable multilingual public routes (PLA-73): the classic frontend now prerenders the landing page at `/en/` and `/fr/`
+  (`@angular/ssr`, static output; the URL language wins on those routes). The host rules (shared `frontend/nginx/routes.inc`
+  for the dev-delivery and production nginx, and the generated `vercel.json`) now answer: prerendered public pages; the
+  client-only shell (`index.csr.html`) only for the known authenticated/client route prefixes; a real 404 (static
+  `404.html`) for everything else; no shell fallback for `robots.txt`/`sitemap.xml`; and a 301 from the declared alias host
+  to the preferred host (`PREFERRED_HOST` / `HOST_REDIRECT_FROM` for nginx, repo variables `PREFERRED_HOST` / `ALIAS_HOST`
+  for Vercel; inert when unset). The service worker's navigation fallback is limited to the same prefixes. Angular
+  `@angular/*` packages aligned on 20.3.34. Build output layout (`dist/plantpal/`) is unchanged.
 - Species Gallery tab (PLA-95): pick one of your plants to see only its photos as an oldest-to-newest dated timeline, with a
   'Back to all plants' control that restores the full gallery without refetching. Frontend only.
 - Review environment starts ready to test (demand `factory-20261001-plantpal-review-environment-testable`): `review start`

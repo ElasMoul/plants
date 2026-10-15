@@ -90,6 +90,10 @@ services:
       additional_contexts:
         devdelivery: .
     restart: unless-stopped
+    environment:
+      # Preferred-host redirect (PLA-73): only the declared alias is redirected.
+      PREFERRED_HOST: ${DEV_PREFERRED_HOST:-planotell.platform.localhost}
+      HOST_REDIRECT_FROM: ${DEV_HOST_ALIAS:-www.planotell.platform.localhost}
     ports:
       - "127.0.0.1:${DEV_DELIVERY_PORT:-8184}:80"
     depends_on:

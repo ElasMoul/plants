@@ -29,6 +29,9 @@ interface AuthResponse {
 // Storage keys live in session-handoff.ts — one contract for every PlantPal
 // frontend (same-origin shares directly; cross-origin via the handoff fragment).
 
+/** False while prerendering on the server, where there is no session to read. */
+const hasStorage = (): boolean => typeof localStorage !== 'undefined';
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly baseUrl: string;
@@ -53,17 +56,20 @@ export class AuthService {
   }
 
   logout(): void {
+    if (!hasStorage()) return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   }
 
   isLoggedIn(): boolean {
+    if (!hasStorage()) return false;
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return false;
     return !this.isTokenExpired(token);
   }
 
   getToken(): string | null {
+    if (!hasStorage()) return null;
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token || this.isTokenExpired(token)) {
       this.logout();
@@ -73,6 +79,7 @@ export class AuthService {
   }
 
   getCurrentUser(): User | null {
+    if (!hasStorage()) return null;
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
     try {

@@ -219,23 +219,39 @@ jobs:
       # only works if /api/* is rewritten to the VPS backend. BACKEND_PUBLIC_URL is a
       # repository *variable* (Settings → Variables), e.g. https://api.plants.moulworks.com —
       # no trailing slash. The second rewrite is the SPA fallback for client-side routes.
-      - name: Write vercel.json (API proxy + SPA fallback)
+      # PLA-73: filesystem routes win (prerendered /en/ and /fr/, assets, robots.txt, sitemap.xml);
+      # only the known client routes (CLIENT_ROUTE_PREFIXES in frontend/src/app/client-routes.ts,
+      # kept in step by client-routes.spec.ts) fall back to the client-only shell; every other path
+      # gets the static 404 page with a real 404 status. PREFERRED_HOST (+ optional ALIAS_HOST) is a
+      # repository *variable*: when PREFERRED_HOST is unset no host redirect is emitted.
+      - name: Write vercel.json (API proxy, route allowlist, host redirect, 404)
         env:
           BACKEND_PUBLIC_URL: ${{ vars.BACKEND_PUBLIC_URL }}
+          PREFERRED_HOST: ${{ vars.PREFERRED_HOST }}
+          ALIAS_HOST: ${{ vars.ALIAS_HOST }}
         run: |
           test -n "$BACKEND_PUBLIC_URL" || { echo "::error::BACKEND_PUBLIC_URL repository variable is not set"; exit 1; }
+          HOST_REDIRECT=""
+          if [ -n "$PREFERRED_HOST" ] && [ -n "$ALIAS_HOST" ]; then
+            HOST_REDIRECT='{ "src": "/(.*)", "has": [{ "type": "host", "value": "'"$ALIAS_HOST"'" }], "status": 301, "headers": { "Location": "https://'"$PREFERRED_HOST"'/$1" } },'
+          fi
           cat > frontend/dist/plantpal/vercel.json <<EOF
           {
             "version": 2,
             "builds": [{ "src": "**/*", "use": "@vercel/static" }],
             "routes": [
+              ${HOST_REDIRECT}
               { "src": "/api/(.*)", "dest": "${BACKEND_PUBLIC_URL}/api/\$1" },
               { "src": "/photos/(.*)", "dest": "${BACKEND_PUBLIC_URL}/photos/\$1" },
+              { "src": "/(en|fr)", "status": 301, "headers": { "Location": "/\$1/" } },
               { "handle": "filesystem" },
-              { "src": "/(.*)", "dest": "/index.html" }
+              { "src": "/", "dest": "/index.csr.html" },
+              { "src": "/(admin|chat|dashboard|garden|home|identify|login|plans|plants|preferences|register|reminders|treatment|treatment-plans|voice-test)(/.*)?", "dest": "/index.csr.html" },
+              { "src": "/(.*)", "status": 404, "dest": "/404.html" }
             ]
           }
           EOF
+          python3 -c "import json; json.load(open('frontend/dist/plantpal/vercel.json'))"
           cat frontend/dist/plantpal/vercel.json
 
       - name: Deploy to Vercel

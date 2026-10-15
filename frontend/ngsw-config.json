@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
-  "index": "/index.html",
+  "index": "/index.csr.html",
   "assetGroups": [
     {
       "name": "app",
@@ -8,7 +8,7 @@
       "resources": {
         "files": [
           "/favicon.ico",
-          "/index.html",
+          "/index.csr.html",
           "/manifest.webmanifest",
           "/*.css",
           "/*.js"
@@ -20,14 +20,19 @@
       "installMode": "lazy",
       "updateMode": "prefetch",
       "resources": {
-        "files": ["/assets/**", "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
+        "files": [
+          "/assets/**",
+          "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
       }
     }
   ],
   "dataGroups": [
     {
       "name": "api-freshness",
-      "urls": ["/api/**"],
+      "urls": [
+        "/api/**"
+      ],
       "cacheConfig": {
         "strategy": "freshness",
         "maxSize": 100,
@@ -35,5 +40,41 @@
         "timeout": "10s"
       }
     }
+  ],
+  "navigationUrls": [
+    "/",
+    "/admin",
+    "/chat",
+    "/dashboard",
+    "/garden",
+    "/home",
+    "/identify",
+    "/login",
+    "/plans",
+    "/plants",
+    "/preferences",
+    "/register",
+    "/reminders",
+    "/treatment",
+    "/treatment-plans",
+    "/voice-test",
+    "/admin/**",
+    "/chat/**",
+    "/dashboard/**",
+    "/garden/**",
+    "/home/**",
+    "/identify/**",
+    "/login/**",
+    "/plans/**",
+    "/plants/**",
+    "/preferences/**",
+    "/register/**",
+    "/reminders/**",
+    "/treatment/**",
+    "/treatment-plans/**",
+    "/voice-test/**",
+    "!/**/*.*",
+    "!/**/*__*",
+    "!/**/*__*/**"
   ]
 }

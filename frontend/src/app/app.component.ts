@@ -1,5 +1,6 @@
 import { translate } from './shared/i18n/language.service';
-import { Component, OnInit } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NavigationEnd, Router } from '@angular/router';
 import { EMPTY } from 'rxjs';
@@ -30,7 +31,7 @@ export class AppComponent implements OnInit {
   showNotificationBanner = false;
   isAdministrator = false;
   get isAdminPage(): boolean { return this.router.url.startsWith('/admin'); }
-  get isLandingPage(): boolean { return /^\/($|[?#])/.test(this.router.url); }
+  get isLandingPage(): boolean { return /^\/((en|fr)\/?)?($|[?#])/.test(this.router.url); }
 
   constructor(
     public authService: AuthService,
@@ -40,9 +41,12 @@ export class AppComponent implements OnInit {
     private readonly http: HttpClient,
     private router: Router,
     private readonly adminService: AdminService,
+    @Inject(PLATFORM_ID) private readonly platformId: object,
   ) {}
 
   ngOnInit(): void {
+    // Prerender (server) renders the anonymous public pages only: no storage, session or scroll.
+    if (!isPlatformBrowser(this.platformId)) return;
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
     this.sessionMonitorService.start();
     this.refreshAccess();
