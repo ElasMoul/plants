@@ -1,11 +1,12 @@
 import { translate } from '../../../../shared/i18n/language.service';
-import { Component, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AiErrorService } from '../../../../core/services/ai-error.service';
+import { OfflineScanQueueService } from '../../services/offline-scan-queue.service';
 import { IdentificationService } from '../../services/identification.service';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
 import { IdentificationListComponent } from '../../components/identification-list/identification-list.component';
@@ -18,7 +19,7 @@ import { PhotoUploadComponent } from '../../components/photo-upload/photo-upload
     styleUrls: ['./identification-page.component.scss'],
     standalone: false
 })
-export class IdentificationPageComponent implements OnDestroy {
+export class IdentificationPageComponent implements OnInit, OnDestroy {
   @ViewChild(IdentificationListComponent) listComponent?: IdentificationListComponent;
   @ViewChild(PhotoUploadComponent) photoUpload?: PhotoUploadComponent;
 
@@ -32,7 +33,20 @@ export class IdentificationPageComponent implements OnDestroy {
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
     private readonly aiErrorService: AiErrorService,
+    private readonly offlineQueue: OfflineScanQueueService,
   ) {}
+
+  ngOnInit(): void {
+    this.offlineQueue.uploaded$.pipe(takeUntil(this.destroy$)).subscribe(id => {
+      this.snackBar.open(
+        translate("Identification started — we'll update the list when it's ready."),
+        undefined,
+        { duration: 3000 },
+      );
+      this.listComponent?.trackNew(id);
+    });
+    void this.offlineQueue.start();
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -60,6 +74,10 @@ export class IdentificationPageComponent implements OnDestroy {
   }
 
   onAnalyze(payload: AnalyzeEmitPayload): void {
+    if (!navigator.onLine) {
+      void this.queueOffline(payload);
+      return;
+    }
     this.submitting = true;
 
     this.identificationService
@@ -77,6 +95,10 @@ export class IdentificationPageComponent implements OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           this.submitting = false;
+          if (err.status === 0) {
+            void this.queueOffline(payload);
+            return;
+          }
           if (err.status === 404) {
             this.snackBar.open(translate('No matching plant species found — try a clearer photo'), translate('Dismiss'), { duration: 5000 });
             return;
@@ -84,5 +106,17 @@ export class IdentificationPageComponent implements OnDestroy {
           this.aiErrorService.notify(err);
         },
       });
+  }
+
+  private async queueOffline(payload: AnalyzeEmitPayload): Promise<void> {
+    try {
+      await this.offlineQueue.enqueue(payload);
+      if (this.photoUpload) {
+        this.photoUpload.entries = [];
+      }
+      this.snackBar.open(translate('Saved on this device, waiting for connection'), undefined, { duration: 4000 });
+    } catch {
+      this.snackBar.open(translate('Could not save the photo on this device'), translate('Dismiss'), { duration: 5000 });
+    }
   }
 }

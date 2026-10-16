@@ -1,4 +1,9 @@
 export const AR: Readonly<Record<string, string>> = {
+  "Queued scans": "عمليات المسح في الانتظار",
+  "Saved on this device, waiting for connection": "تم الحفظ على هذا الجهاز، في انتظار الاتصال",
+  "Uploading…": "جارٍ الرفع…",
+  "Upload failed": "فشل الرفع",
+  "Could not save the photo on this device": "تعذّر حفظ الصورة على هذا الجهاز",
   "This app is still in beta": "هذا التطبيق لا يزال في مرحلة تجريبية (بيتا)",
   "Saved versions": "النسخ المحفوظة",
   "Translate to {0}": "ترجمة إلى {0}",
