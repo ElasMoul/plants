@@ -1,0 +1,18 @@
+<section *ngIf="items.length" class="queued-scans" [attr.aria-label]="'Queued scans' | t">
+  <h2 class="queued-title">{{ 'Queued scans' | t }}</h2>
+  <div *ngFor="let scan of items; trackBy: trackById" class="queued-item" [attr.data-status]="scan.status">
+    <img *ngIf="thumb(scan) as src" class="queued-thumb" [src]="src" alt="" />
+    <div class="queued-info">
+      <span class="queued-state" [ngSwitch]="scan.status">
+        <ng-container *ngSwitchCase="'waiting'">{{ 'Saved on this device, waiting for connection' | t }}</ng-container>
+        <ng-container *ngSwitchCase="'uploading'">{{ 'Uploading…' | t }}</ng-container>
+        <ng-container *ngSwitchCase="'failed'">{{ 'Upload failed' | t }}</ng-container>
+      </span>
+      <span *ngIf="scan.status === 'failed' && scan.lastError" class="queued-reason">{{ scan.lastError }}</span>
+    </div>
+    <ng-container *ngIf="scan.status === 'failed'">
+      <button mat-stroked-button type="button" class="queued-retry" (click)="retry(scan)">{{ 'Retry' | t }}</button>
+      <button mat-button type="button" class="queued-discard" (click)="discard(scan)">{{ 'Discard' | t }}</button>
+    </ng-container>
+  </div>
+</section>

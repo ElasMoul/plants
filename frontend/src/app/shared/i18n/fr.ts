@@ -1,4 +1,9 @@
 export const FR: Readonly<Record<string, string>> = {
+  "Queued scans": "Analyses en attente",
+  "Saved on this device, waiting for connection": "Enregistré sur cet appareil, en attente de connexion",
+  "Uploading…": "Envoi en cours…",
+  "Upload failed": "Échec de l’envoi",
+  "Could not save the photo on this device": "Impossible d’enregistrer la photo sur cet appareil",
   "Saved versions": "Versions enregistrées",
   "Translate to {0}": "Traduire en {0}",
   "Could not load section languages.": "Impossible de charger les langues de cette section.",

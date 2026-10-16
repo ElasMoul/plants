@@ -15,6 +15,9 @@ import { IdentificationDetailPageComponent } from './pages/identification-detail
 import { SpeciesConfirmStepComponent } from './components/species-confirm-step/species-confirm-step.component';
 import { PlantSelectStepComponent } from './components/plant-select-step/plant-select-step.component';
 import { IdentificationService } from './services/identification.service';
+import { QueuedScansComponent } from './components/queued-scans/queued-scans.component';
+import { OfflineScanQueueService } from './services/offline-scan-queue.service';
+import { OFFLINE_SCAN_STORE, IndexedDbScanStore } from './services/offline-scan-store';
 import { BatchScanService } from './services/batch-scan.service';
 import { PlantService } from '../plant/services/plant.service';
 import { ReminderService } from '../reminder/services/reminder.service';
@@ -23,6 +26,7 @@ import { TreatmentService } from '../plant/services/treatment.service';
 
 @NgModule({
   declarations: [
+    QueuedScansComponent,
     PhotoUploadComponent,
     PreviewCardComponent,
     IdentificationPreviewSectionComponent,
@@ -44,6 +48,8 @@ import { TreatmentService } from '../plant/services/treatment.service';
   providers: [
     IdentificationService,
     BatchScanService,
+    OfflineScanQueueService,
+    { provide: OFFLINE_SCAN_STORE, useFactory: () => new IndexedDbScanStore() },
     PlantService,
     ReminderService,
     TreatmentPlanService,
