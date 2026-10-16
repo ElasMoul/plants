@@ -9,7 +9,7 @@ import { OFFLINE_SCAN_STORE, OfflineScanStore, QueuedScan } from './offline-scan
 export const MAX_UPLOAD_ATTEMPTS = 3;
 export const BACKOFF_BASE_MS = 2000;
 /** Auth/not-found style errors will not heal by themselves: fail at once so the user can act. */
-const NON_RETRYABLE_STATUSES = [401, 403, 404];
+const NON_RETRYABLE_STATUSES = new Set([401, 403, 404]);
 
 /**
  * Keeps scans submitted without a connection on the device (IndexedDB) and
@@ -21,6 +21,7 @@ export class OfflineScanQueueService implements OnDestroy {
   private readonly itemsSubject = new BehaviorSubject<QueuedScan[]>([]);
   private readonly uploadedSubject = new Subject<number>();
   private draining = false;
+  private sequence = 0;
   private timer?: ReturnType<typeof setTimeout>;
   private started = false;
   private readonly onOnline = () => void this.drain();
@@ -66,7 +67,7 @@ export class OfflineScanQueueService implements OnDestroy {
   /** Rejects if the scan could not be persisted, so callers never claim a photo is queued when it is not. */
   async enqueue(payload: AnalyzeEmitPayload): Promise<void> {
     const scan: QueuedScan = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      id: `${Date.now()}-${this.sequence++}`,
       images: payload.images,
       organs: payload.organs,
       plantId: payload.plantId,
@@ -81,7 +82,7 @@ export class OfflineScanQueueService implements OnDestroy {
 
   async retry(id: string): Promise<void> {
     const scan = this.items.find(s => s.id === id);
-    if (!scan || scan.status !== 'failed') {
+    if (scan?.status !== 'failed') {
       return;
     }
     await this.update({ ...scan, status: 'waiting', attempts: 0, lastError: undefined, nextAttemptAt: undefined });
@@ -132,7 +133,7 @@ export class OfflineScanQueueService implements OnDestroy {
         return false;
       }
       const attempts = scan.attempts + 1;
-      const giveUp = attempts >= MAX_UPLOAD_ATTEMPTS || NON_RETRYABLE_STATUSES.includes(err.status);
+      const giveUp = attempts >= MAX_UPLOAD_ATTEMPTS || NON_RETRYABLE_STATUSES.has(err.status);
       await this.update({
         ...scan,
         attempts,

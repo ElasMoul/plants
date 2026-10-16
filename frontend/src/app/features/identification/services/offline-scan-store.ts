@@ -54,7 +54,7 @@ export class IndexedDbScanStore implements OfflineScanStore {
         const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
       });
       opening.catch(() => (this.dbPromise = undefined));
       this.dbPromise = opening;
@@ -68,8 +68,8 @@ export class IndexedDbScanStore implements OfflineScanStore {
       const tx = db.transaction(STORE_NAME, mode);
       const req = op(tx.objectStore(STORE_NAME));
       tx.oncomplete = () => resolve(req.result as T);
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
+      tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
+      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
     });
   }
 }
