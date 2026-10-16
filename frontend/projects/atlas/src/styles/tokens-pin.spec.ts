@@ -20,3 +20,5 @@ describe('Rhizome tokens pin guard', () => {
     expect(norm(vendored)).toBe(norm(source));
   });
 });
+
+export {};
