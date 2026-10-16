@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://platform/contracts/delivery/delivery.deployment-receipt",
   "title": "DeliveryDeploymentReceipt",
-  "description": "The app-deploy producer's durable record of one dev deployment (D113): which merged revision was deployed, which images ran, what the running app reported, which checks passed, and which earlier deployment it can be rolled back to. It is the native record behind `delivery.producer-result` for producer `app-deploy`, re-fetched through `nativeRef`. It is written when the deployment is reserved (`result: pending`) and settled in place. A settled receipt is never rewritten to a different result, except that `reconcile` may settle a `pending` one. It is never acceptance. See `docs/task-delivery.md` §App-deploy for the lookup transport and the mapping to `delivery.producer-result`.",
+  "description": "The app-deploy producer's durable record of one dev deployment (D113), or (v0.38.0) of one review environment running an unmerged PR revision: which merged revision was deployed, which images ran, what the running app reported, which checks passed, and which earlier deployment it can be rolled back to. It is the native record behind `delivery.producer-result` for producer `app-deploy`, re-fetched through `nativeRef`. It is written when the deployment is reserved (`result: pending`) and settled in place. A settled receipt is never rewritten to a different result, except that `reconcile` may settle a `pending` one. It is never acceptance. A review receipt (`environment.name: review`) is the same record with `revisionRole: task`, a `review` block and an optional `environment.apiDocsUrl`; a dev receipt is unchanged. See `docs/task-delivery.md` §App-deploy for the lookup transport and the mapping to `delivery.producer-result`, and §Review environments for the review shape.",
   "type": "object",
   "required": ["deploymentId", "kind", "repository", "branch", "mergedRevision", "imageDigests", "digestKind", "result", "exitCode", "startedAt", "finishedAt", "observedAt", "environment", "observed", "checks", "correlation", "rollback", "rollbackOf", "restores", "nativeRef"],
   "additionalProperties": false,
@@ -22,7 +22,23 @@
     "mergedRevision": {
       "type": "string",
       "pattern": "^[0-9a-f]{40}$",
-      "description": "Full SHA of the merged revision this deployment was built from (for `kind: rollback`, the revision of the restored deployment). It is known when the deployment is reserved, so it is never `null`. That the running app actually serves it is shown by `observed.revision`, not by this field."
+      "description": "Full SHA of the revision this deployment was built from (for `kind: rollback`, the revision of the restored deployment). For a dev deployment it is the merged revision. For a review environment (`revisionRole: task`) it is the PR head, which is NOT merged; the field keeps its v0.36.0 name so dev receipts stay valid unchanged. It is known when the deployment is reserved, so it is never `null`. That the running app actually serves it is shown by `observed.revision`, not by this field."
+    },
+    "revisionRole": {
+      "type": "string",
+      "enum": ["task", "merged"],
+      "description": "Role of `mergedRevision`, same meaning as `delivery.evidence.revisionRole`. ABSENT means `merged` (every v0.36.0 dev receipt). `task` is required for, and only for, a review environment: the PR head, never a merged SHA."
+    },
+    "review": {
+      "title": "DeliveryReviewReference",
+      "type": "object",
+      "required": ["pullRequest", "pullRequestUrl"],
+      "additionalProperties": false,
+      "description": "Present only for a review environment: which PR the environment was started for. The PR's head branch is the receipt's `branch`. `null` members mean the caller did not supply them (a branch-only review), never a default.",
+      "properties": {
+        "pullRequest": { "type": ["integer", "null"], "minimum": 1, "description": "PR number in `repository`, or `null` for a branch-only review." },
+        "pullRequestUrl": { "type": ["string", "null"], "format": "uri", "description": "Web URL of the PR, or `null`." }
+      }
     },
     "imageDigests": { "$ref": "#/$defs/imageDigests" },
     "digestKind": {
@@ -45,12 +61,13 @@
       "required": ["name", "url"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "const": "dev", "description": "D113 authorizes dev only; production is outside this contract." },
+        "name": { "type": "string", "enum": ["dev", "review"], "description": "`dev`: the integration-branch deployment (D113). `review`: an environment running an unmerged PR revision (v0.38.0). Production is outside this contract." },
         "url": {
           "type": "string",
           "format": "uri",
-          "description": "URL the identity observation and smoke checks were run against. A configured hostname (e.g. `http://planotell.platform.localhost`) appears here only if the identity observed through that hostname matched this deployment. Otherwise this is the URL that was actually observed, e.g. loopback."
-        }
+          "description": "For a review environment this is the frontend URL. URL the identity observation and smoke checks were run against. A configured hostname (e.g. `http://planotell.platform.localhost`) appears here only if the identity observed through that hostname matched this deployment. Otherwise this is the URL that was actually observed, e.g. loopback."
+        },
+        "apiDocsUrl": { "type": ["string", "null"], "format": "uri", "description": "Review environments only: the API documentation (Swagger) URL, or `null` when the environment has none. Not allowed on a dev receipt." }
       }
     },
     "observed": {
@@ -109,6 +126,21 @@
     }
   },
   "allOf": [
+    {
+      "if": { "properties": { "environment": { "properties": { "name": { "const": "review" } }, "required": ["name"] } }, "required": ["environment"] },
+      "then": {
+        "required": ["revisionRole", "review"],
+        "properties": {
+          "revisionRole": { "const": "task" },
+          "kind": { "const": "deploy" },
+          "rollback": { "type": "null" }
+        }
+      },
+      "else": {
+        "not": { "anyOf": [{ "required": ["review"] }, { "properties": { "environment": { "required": ["apiDocsUrl"] } }, "required": ["environment"] }] },
+        "properties": { "revisionRole": { "const": "merged" } }
+      }
+    },
     {
       "if": { "properties": { "result": { "const": "pending" } }, "required": ["result"] },
       "else": {

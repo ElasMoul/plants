@@ -42,7 +42,7 @@ services:
       retries: 20
 
   backend:
-    image: plantpal-devdelivery-backend:${APP_REVISION:?set by dev_delivery.py}
+    image: ${IMAGE_PREFIX:-plantpal-devdelivery}-backend:${APP_REVISION:?set by dev_delivery.py}
     build:
       context: ../../backend
       additional_contexts:
@@ -83,7 +83,7 @@ services:
       start_period: 60s
 
   frontend:
-    image: plantpal-devdelivery-frontend:${APP_REVISION}
+    image: ${IMAGE_PREFIX:-plantpal-devdelivery}-frontend:${APP_REVISION}
     build:
       context: ../../frontend
       dockerfile: ../deploy/dev-delivery/frontend.Dockerfile
