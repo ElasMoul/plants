@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, Subject, throwError } from 'rxjs';
+import { Subject, throwError } from 'rxjs';
 import { IdentificationPageComponent } from './identification-page.component';
 
 describe('IdentificationPageComponent offline queueing', () => {
