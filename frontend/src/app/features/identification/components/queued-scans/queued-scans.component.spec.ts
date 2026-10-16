@@ -55,4 +55,21 @@ describe('QueuedScansComponent', () => {
     expect(queue.retry).toHaveBeenCalledWith('a');
     expect(queue.discard).toHaveBeenCalledWith('a');
   });
+
+  it('revokes thumbnails of removed items and on destroy, and tolerates image-less scans', () => {
+    items$.next([scan({ id: 'a' }), scan({ id: 'b', images: [] })]);
+    const fixture = TestBed.createComponent(QueuedScansComponent);
+    fixture.detectChanges();
+    const cmp = fixture.componentInstance;
+    expect(cmp.thumb(cmp.items[0])).toBe('blob:thumb');
+    expect(cmp.thumb(cmp.items[1])).toBeNull();
+    expect(cmp.trackById(0, cmp.items[0])).toBe('a');
+
+    items$.next([scan({ id: 'b', images: [] })]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:thumb');
+
+    items$.next([scan({ id: 'c' })]);
+    fixture.destroy();
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2);
+  });
 });
