@@ -1,5 +1,6 @@
 import { translate } from '../../../../shared/i18n/language.service';
-import { Component, OnInit } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@plantpal/shared-core';
 
@@ -15,7 +16,9 @@ interface FeatureCard {
   description: string;
 }
 
-const HOW_IT_WORKS: HowItWorksStep[] = [
+// Built per component instance (not at module load) so the prerender of /en/ and /fr/ in one
+// process never reuses the first language's strings.
+const howItWorks = (): HowItWorksStep[] => [
   {
     icon: 'add_a_photo',
     title: translate('Snap a photo'),
@@ -34,7 +37,7 @@ const HOW_IT_WORKS: HowItWorksStep[] = [
   },
 ];
 
-const FEATURES: FeatureCard[] = [
+const features = (): FeatureCard[] => [
   {
     icon: 'yard',
     title: translate('AI species identification'),
@@ -74,17 +77,18 @@ const FEATURES: FeatureCard[] = [
     standalone: false
 })
 export class LandingComponent implements OnInit {
-  readonly howItWorks = HOW_IT_WORKS;
-  readonly features = FEATURES;
+  readonly howItWorks = howItWorks();
+  readonly features = features();
   readonly currentYear = new Date().getFullYear();
 
   constructor(
     private readonly authService: AuthService,
     private readonly router: Router,
+    @Inject(PLATFORM_ID) private readonly platformId: object,
   ) {}
 
   ngOnInit(): void {
-    if (this.authService.isLoggedIn()) {
+    if (isPlatformBrowser(this.platformId) && this.authService.isLoggedIn()) {
       this.router.navigate(['/home']);
     }
   }

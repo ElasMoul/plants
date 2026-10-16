@@ -13,7 +13,7 @@ registerLocaleData(fr);
 registerLocaleData(ar);
 import { LOCALE_ID, APP_INITIALIZER, ErrorHandler, NgModule, isDevMode } from '@angular/core';
 import { noop } from 'rxjs';
-import { BrowserModule } from '@angular/platform-browser';
+import { BrowserModule, provideClientHydration } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -64,6 +64,7 @@ import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
             deps: [Sentry.TraceService],
             multi: true,
         },
+        provideClientHydration(),
         provideHttpClient(withInterceptorsFromDi()),
         ...provideSharedCore({ apiBaseUrl: environment.apiUrl }),
     ] })

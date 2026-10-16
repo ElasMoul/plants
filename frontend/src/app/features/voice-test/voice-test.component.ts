@@ -1,8 +1,9 @@
 import { Component, NgZone, OnDestroy } from '@angular/core';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const SpeechRecognitionAPI: any =
-  (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+const SpeechRecognitionAPI: any = typeof window === 'undefined'
+  ? undefined
+  : (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface LogEntry {

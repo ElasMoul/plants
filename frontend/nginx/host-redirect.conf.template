@@ -1,0 +1,27 @@
+# http-level half of the preferred-host redirect (rendered by the nginx image's envsubst into
+# conf.d/). HOST_REDIRECT_FROM is the one declared non-preferred host alias; PREFERRED_HOST is the
+# canonical host. Any other Host (localhost, health checks, the edge's own name) is left alone.
+# X-Forwarded-Host wins when a proxy in front rewrites Host.
+map $http_x_forwarded_host $pla_forwarded_host {
+    default $http_x_forwarded_host;
+    ""      $host;
+}
+
+map $pla_forwarded_host $pla_request_host {
+    "~^(?<h>[^:]+)(:[0-9]+)?$" $h;
+    default                    $pla_forwarded_host;
+}
+
+map $pla_request_host $pla_redirect_to_preferred {
+    default                 0;
+    "${HOST_REDIRECT_FROM}" 1;
+}
+
+map $http_x_forwarded_proto $pla_redirect_scheme {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
+map $pla_request_host $pla_preferred_host {
+    default "${PREFERRED_HOST}";
+}

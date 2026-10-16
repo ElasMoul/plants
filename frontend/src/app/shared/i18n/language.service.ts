@@ -5,6 +5,7 @@ import { AR } from './ar';
 import { HttpClient } from '@angular/common/http';
 import { Optional } from '@angular/core';
 import { finalize } from 'rxjs/operators';
+import { languageFromPath } from './public-routes';
 
 export type Language = 'en' | 'fr' | 'ar';
 const STORAGE_KEY = 'plantpal.language';
@@ -19,7 +20,15 @@ export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: s
   { code: 'fr', label: 'Français', locale: 'fr-FR', direction: 'ltr' },
 ];
 
+// Prerender only: the language of the URL being rendered (there is no window/localStorage).
+let serverLanguage: Language | null = null;
+export function setServerLanguage(language: Language | null): void { serverLanguage = language; }
+
 export function readLanguage(): Language {
+  if (typeof window === 'undefined') return serverLanguage ?? 'en';
+  // On a public /en/ or /fr/ URL the URL language wins over the stored preference.
+  const fromUrl = languageFromPath(window.location.pathname);
+  if (fromUrl) return fromUrl;
   try {
     const value = localStorage.getItem(STORAGE_KEY);
     if (value === 'en' || value === 'fr' || value === 'ar') return value;
@@ -81,6 +90,11 @@ export class LanguageService {
   private apply(language: string): void {
     try { localStorage.setItem(STORAGE_KEY, language); }
     catch { this.error = translate('Could not save language. Please try again.'); return; }
+    if (languageFromPath(window.location.pathname)) {
+      // Public language URL: move to the matching prefix (or the root for languages without one).
+      window.location.assign(language === 'en' || language === 'fr' ? `/${language}/` : '/');
+      return;
+    }
     window.location.reload();
   }
 

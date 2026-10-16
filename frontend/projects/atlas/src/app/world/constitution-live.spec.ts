@@ -619,3 +619,5 @@ describe('C2 — the companion, over the assembled world', () => {
     }
   });
 });
+
+export {};

@@ -1,6 +1,11 @@
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { CanMatchFn, RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
+import { PUBLIC_LANGUAGES } from './shared/i18n/public-routes';
+
+/** Only the prerendered public languages match the ':lang' prefix; anything else falls through. */
+const publicLanguageOnly: CanMatchFn = (_route, segments) =>
+  segments.length === 1 && (PUBLIC_LANGUAGES as readonly string[]).includes(segments[0].path);
 
 const routes: Routes = [
   {
@@ -15,6 +20,15 @@ const routes: Routes = [
     path: '',
     loadChildren: () => import('./features/landing/landing.module').then(m => m.LandingModule),
     pathMatch: 'full',
+  },
+  // Public prerendered landing per language (PLA-73): /en/ and /fr/. The URL language wins on
+  // these routes (see readLanguage); `data.public` marks them for canonical/alternate metadata
+  // (PLA-7) and for the host route list (see app-routes.spec.ts).
+  {
+    path: ':lang',
+    loadChildren: () => import('./features/landing/landing.module').then(m => m.LandingModule),
+    canMatch: [publicLanguageOnly],
+    data: { public: true },
   },
   // Guarded feature routes — declared BEFORE the auth catch-all
   // so the prefix '' route below never steals them
