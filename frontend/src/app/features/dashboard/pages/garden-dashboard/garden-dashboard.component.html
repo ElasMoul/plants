@@ -24,6 +24,10 @@
         <mat-icon>add</mat-icon>
         {{ 'Add a plant' | t }}
       </button>
+      <button mat-stroked-button class="btn-pill" routerLink="/identify" data-testid="empty-identify">
+        <mat-icon>add_a_photo</mat-icon>
+        {{ 'Identify your first plant' | t }}
+      </button>
     </div>
 
     <ng-container *ngIf="dashboard.healthSummary.totalPlants > 0">

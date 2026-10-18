@@ -1,3 +1,5 @@
+<app-first-run-intro *ngIf="authService.isLoggedIn() && !isAdminPage"></app-first-run-intro>
+
 <mat-toolbar class="navbar" *ngIf="!isAdminPage">
   <a class="brand" routerLink="/">
     <img class="brand-icon" src="assets/images/planotell-mark.svg" alt="" width="34" height="34">

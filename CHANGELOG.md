@@ -8,6 +8,7 @@
 
 ### Added
 - Photo GPS removal (PLA-118): GPS coordinates are stripped from every uploaded photo before it is stored, served or sent to an AI provider (date taken is kept for JPEG); migration 042 cleans already-stored photos in place (irreversible). Audit: `docs/photo-gps-audit.md`.
+- First-run guidance (PLA-117): a skippable 3-step intro after sign-in (once per browser, localStorage), photo tips and a camera explainer on the Identify upload ("Use camera" or "Upload a photo instead"; a denied camera keeps upload available), and an identify action on the empty dashboard/garden. Funnel events go through Vercel Web Analytics `va`; the event names in `first-run.service.ts` are provisional until the PLA-78 definitions exist. Frontend-only; en/fr/ar strings.
 - Offline scan queue (PLA-121): in the classic app's Identify page, a scan submitted without a connection (or failing with a network error) is stored on the device in IndexedDB and listed as "waiting"; it uploads automatically when the browser comes back online (and on page start), with bounded retry/backoff. Failed items offer Retry and Discard. The server and quota are only touched when an item is actually uploaded. Frontend-only; en/fr/ar strings added.
 - Crawlable multilingual public routes (PLA-73): the classic frontend now prerenders the landing page at `/en/` and `/fr/`
   (`@angular/ssr`, static output; the URL language wins on those routes). The host rules (shared `frontend/nginx/routes.inc`
