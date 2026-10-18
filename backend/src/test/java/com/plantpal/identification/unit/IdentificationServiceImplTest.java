@@ -188,7 +188,10 @@ class IdentificationServiceImplTest {
 
   private MockMultipartFile validImage() {
     return new MockMultipartFile(
-        "images", "plant.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[] {1, 2, 3});
+        "images",
+        "plant.jpg",
+        MediaType.IMAGE_JPEG_VALUE,
+        com.plantpal.testdata.GpsPhotoFixtures.plainJpeg());
   }
 
   private String issuesDetectedJson() {
@@ -810,11 +813,30 @@ class IdentificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("submitIdentification uses upload time when the image bytes are unreadable")
-    void shouldDefaultDateTakenWhenBytesUnreadable() throws Exception {
+    @DisplayName("submitIdentification rejects an upload whose bytes cannot be read (fail closed)")
+    void shouldRejectWhenBytesUnreadable() throws Exception {
       MultipartFile broken = mock(MultipartFile.class);
       when(broken.getContentType()).thenReturn("image/jpeg");
       when(broken.getBytes()).thenThrow(new java.io.IOException("boom"));
+
+      assertThatThrownBy(
+              () ->
+                  identificationService.submitIdentification(
+                      List.of(broken), null, null, USER_ID, null, null))
+          .isInstanceOf(com.plantpal.shared.exception.ValidationException.class);
+
+      verify(fileStorageService, never()).savePhoto(any());
+    }
+
+    @Test
+    @DisplayName("submitIdentification stores GPS-stripped bytes and still records date taken")
+    void shouldStoreStrippedBytes() throws Exception {
+      MultipartFile gps =
+          new MockMultipartFile(
+              "images",
+              "gps.jpg",
+              MediaType.IMAGE_JPEG_VALUE,
+              com.plantpal.testdata.GpsPhotoFixtures.gpsJpeg());
       when(fileStorageService.savePhoto(any())).thenReturn("/photos/uuid.jpg");
       when(identificationRepository.save(any()))
           .thenReturn(
@@ -825,12 +847,19 @@ class IdentificationServiceImplTest {
                   .build());
 
       identificationService
-          .submitIdentification(List.of(broken), null, null, USER_ID, null, null)
+          .submitIdentification(List.of(gps), null, null, USER_ID, null, null)
           .get();
 
+      ArgumentCaptor<MultipartFile> stored = ArgumentCaptor.forClass(MultipartFile.class);
+      verify(fileStorageService).savePhoto(stored.capture());
+      assertThat(com.plantpal.testdata.GpsPhotoFixtures.hasGps(stored.getValue().getBytes()))
+          .isFalse();
+      assertThat(stored.getValue().getOriginalFilename()).isEqualTo("gps.jpg");
       ArgumentCaptor<Identification> captor = ArgumentCaptor.forClass(Identification.class);
       verify(identificationRepository).save(captor.capture());
-      assertThat(captor.getValue().getDateTaken()).isNotNull();
+      assertThat(captor.getValue().getDateTaken())
+          .isEqualTo(
+              java.time.Instant.parse(com.plantpal.testdata.GpsPhotoFixtures.DATE_TAKEN_ISO));
     }
 
     @Test

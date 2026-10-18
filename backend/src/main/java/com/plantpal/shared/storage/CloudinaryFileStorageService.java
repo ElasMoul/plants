@@ -118,6 +118,32 @@ public class CloudinaryFileStorageService implements FileStorageService {
   }
 
   @Override
+  public void overwritePhoto(String photoUrl, byte[] bytes) {
+    String filename = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
+    String uuid =
+        filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+    try {
+      cloudinary
+          .uploader()
+          .upload(
+              bytes,
+              ObjectUtils.asMap(
+                  "public_id",
+                  PHOTOS_FOLDER + "/" + uuid,
+                  "resource_type",
+                  "image",
+                  "overwrite",
+                  true,
+                  "invalidate",
+                  true));
+      byteRedisTemplate.opsForValue().set(PHOTO_KEY_PREFIX + uuid, bytes, PHOTO_TTL);
+    } catch (IOException e) {
+      log.error("Failed to overwrite photo in Cloudinary: {}", filename, e);
+      throw new PlantPalException("Failed to overwrite photo", 500);
+    }
+  }
+
+  @Override
   public void deletePhoto(String url) {
     if (url == null || !url.startsWith("/photos/")) return;
     String filename = url.substring("/photos/".length());

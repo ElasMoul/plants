@@ -49,6 +49,7 @@ import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.identification.util.ActionPlanValidator;
 import com.plantpal.identification.util.ExifDateTakenReader;
 import com.plantpal.identification.util.LenientJsonParser;
+import com.plantpal.identification.util.PhotoGpsStripper;
 import com.plantpal.plant.dto.SaveIdentificationAsPlantRequest;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
@@ -264,6 +265,25 @@ public class IdentificationServiceImpl implements IdentificationService {
     }
   }
 
+  /**
+   * The one point where upload bytes enter the backend: GPS is removed here so storage, served
+   * photos and every AI provider only ever see the stripped bytes.
+   */
+  private static MultipartFile withoutGps(MultipartFile image) {
+    try {
+      byte[] original = image.getBytes();
+      byte[] stripped = PhotoGpsStripper.strip(original);
+      if (stripped == original) {
+        return image;
+      }
+      return new ByteArrayMultipartFile(
+          stripped, image.getContentType(), image.getOriginalFilename());
+    } catch (IOException | PhotoGpsStripper.PhotoGpsStripException e) {
+      log.warn("Rejected upload whose metadata could not be cleaned: {}", e.getMessage());
+      throw new ValidationException("Image could not be processed");
+    }
+  }
+
   @Override
   @AiUsage(userArgument = 3, scan = true)
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
@@ -282,7 +302,7 @@ public class IdentificationServiceImpl implements IdentificationService {
     // Step 1: Save photos, collect URLs
     List<String> photoUrls = new ArrayList<>();
     for (MultipartFile image : images) {
-      photoUrls.add(fileStorageService.savePhoto(image));
+      photoUrls.add(fileStorageService.savePhoto(withoutGps(image)));
     }
 
     // Step 2: Persist with PENDING status (no AI call yet)
@@ -2006,10 +2026,16 @@ public class IdentificationServiceImpl implements IdentificationService {
   private static final class ByteArrayMultipartFile implements MultipartFile {
     private final byte[] bytes;
     private final String contentType;
+    private final String originalFilename;
 
     ByteArrayMultipartFile(byte[] bytes, String contentType) {
+      this(bytes, contentType, "image.jpg");
+    }
+
+    ByteArrayMultipartFile(byte[] bytes, String contentType, String originalFilename) {
       this.bytes = bytes;
       this.contentType = contentType;
+      this.originalFilename = originalFilename;
     }
 
     @Override
@@ -2019,7 +2045,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
     @Override
     public String getOriginalFilename() {
-      return "image.jpg";
+      return originalFilename;
     }
 
     @Override

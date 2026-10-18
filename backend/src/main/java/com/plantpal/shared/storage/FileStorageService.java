@@ -8,5 +8,10 @@ public interface FileStorageService {
 
   byte[] loadPhotoBytes(String photoUrl);
 
+  /**
+   * Replaces the bytes behind an existing {@code /photos/<filename>} URL, keeping the URL valid.
+   */
+  void overwritePhoto(String photoUrl, byte[] bytes);
+
   void deletePhoto(String url);
 }

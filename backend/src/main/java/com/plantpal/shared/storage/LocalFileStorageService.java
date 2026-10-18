@@ -105,6 +105,20 @@ public class LocalFileStorageService implements FileStorageService {
   }
 
   @Override
+  public void overwritePhoto(String photoUrl, byte[] bytes) {
+    String filename = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
+    String uuid =
+        filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+    try {
+      Files.write(storageRoot.resolve(filename), bytes);
+      byteRedisTemplate.opsForValue().set(PHOTO_KEY_PREFIX + uuid, bytes, PHOTO_TTL);
+    } catch (IOException e) {
+      log.error("Failed to overwrite photo: {}", filename, e);
+      throw new PlantPalException("Failed to overwrite photo", 500);
+    }
+  }
+
+  @Override
   public void deletePhoto(String url) {
     if (url == null || !url.startsWith("/photos/")) return;
     String filename = url.substring("/photos/".length());
