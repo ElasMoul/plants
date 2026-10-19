@@ -29,6 +29,27 @@ production, and D113 does not authorize it.
 
 4. If `sonar-gate` fails, the PR author fixes it on the source branch and
    pushes, and the check re-runs. There is no bypass (D112 clause 3).
+
+   The failed job says why. An *Explain quality gate failure* step
+   (`scripts/sonar-explain-failure.mjs`) runs only after a scan step failed, reads the
+   SonarQube API with the job's own `SONAR_TOKEN` (never printed) and writes the same
+   report to the job log and the job summary: a table of each failed condition (metric
+   in words, key, comparator and threshold, actual value, new code or not), the
+   new-code issues (up to 20, most severe first: rule, severity, type, `file:line`,
+   message), and, when new-code coverage failed, the 10 files with the lowest new-code
+   coverage. The last line is `SONAR-GATE-FAILED: <project>=<failed metric keys> ...`;
+   an API error is printed with the analysis dashboard URL instead. A passing gate
+   prints nothing. `gh run view <run-id> --log-failed` is enough to know what to fix
+   (the step ends with exit 1 on an already-failed job so it shows in that view).
+   Community Edition keeps no per-PR analysis, so the report reads the project's
+   new-code state; set `SONAR_PULL_REQUEST` only if the scanner is ever given
+   `sonar.pullrequest.key`. Its tests: `node --test scripts/sonar-explain-failure.test.mjs`
+   (recorded-shape answers in `scripts/sonar-fixtures/`). `scripts/check-sonar-explain-wired.mjs`
+   runs in *Dev Delivery Tool CI* and fails if the script, the step or these checks are
+   removed (a revert once dropped them silently, see CHANGELOG).
+   `sonar.coverage.exclusions` (backend `pom.xml`, `frontend/sonar-project.properties`)
+   mirror the JaCoCo / Jest excludes; `Frontend CI` fails if they drift
+   (`scripts/check-sonar-coverage-exclusions.mjs`).
 5. Merge through GitHub only. The ruleset refuses a merge whose required checks
    are not green.
 

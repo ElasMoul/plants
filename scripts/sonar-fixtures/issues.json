@@ -1,0 +1,15 @@
+{
+  "total": 2,
+  "issues": [
+    {
+      "key": "AZ1", "rule": "java:S2068", "severity": "BLOCKER", "type": "VULNERABILITY",
+      "component": "plantpal-backend:src/main/java/com/plantpal/user/AuthService.java", "line": 42,
+      "message": "Review this potentially hardcoded credential."
+    },
+    {
+      "key": "AZ2", "rule": "java:S1135", "severity": "INFO", "type": "CODE_SMELL",
+      "component": "plantpal-backend:src/main/java/com/plantpal/shared/Probe.java",
+      "message": "Complete the task associated to this TODO comment."
+    }
+  ]
+}

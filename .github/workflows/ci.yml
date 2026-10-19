@@ -109,6 +109,9 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Check Sonar coverage exclusions mirror the coverage tools
+        run: node scripts/check-sonar-coverage-exclusions.mjs
+
       # --coverage feeds sonar-gate; the 15% threshold stays in `npm run test:coverage`.
       - name: Unit tests
         working-directory: frontend
@@ -185,6 +188,19 @@ jobs:
 
       - name: Unit tests (tagged receipt, running-app identity, lookup transport)
         run: tools/dev-delivery/.venv-ci/bin/python -m unittest discover -s tools/dev-delivery -p "test_*.py" -v
+
+      # sonar-gate failure explanation: its unit tests, and a guard that fails when a revert (or an
+      # edit) drops the script or the workflow step, as PR #214 once did silently.
+      - name: Set up Node 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Unit tests (sonar-gate failure explanation)
+        run: node --test scripts/sonar-explain-failure.test.mjs
+
+      - name: Guard (sonar-gate failure explanation stays wired in)
+        run: node scripts/check-sonar-explain-wired.mjs
 
   # Auth hardening wave 1 characterization evidence. Keep these exact-file
   # runners separate from the full suites above so their reports prove that
@@ -368,6 +384,7 @@ jobs:
           path: frontend/coverage
 
       - name: Scan backend + wait for quality gate
+        id: scan-backend
         working-directory: backend
         run: >-
           mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
@@ -377,13 +394,14 @@ jobs:
           -Dsonar.qualitygate.timeout=600
 
       - name: Set up Node 20
-        if: ${{ !cancelled() && steps.frontend-inputs.outcome == 'success' }}
+        if: ${{ !cancelled() }}
         uses: actions/setup-node@v6
         with:
           node-version: '20'
 
       # Runs even when the backend gate failed, so one run reports both verdicts.
       - name: Scan frontend + wait for quality gate
+        id: scan-frontend
         if: ${{ !cancelled() && steps.frontend-inputs.outcome == 'success' }}
         working-directory: frontend
         run: >-
@@ -391,6 +409,17 @@ jobs:
           -Dsonar.host.url="$SONAR_HOST_URL"
           -Dsonar.qualitygate.wait=true
           -Dsonar.qualitygate.timeout=600
+
+      # Explains a failed gate in the log and the job summary (read API, the scanner's own
+      # SONAR_TOKEN, never echoed). Own step because the scanner ends its step on a failed gate;
+      # it runs only after a scan step failed, so a passing job is untouched. It ends with exit 1
+      # (the job has already failed) so the output is part of `gh run view --log-failed`.
+      - name: Explain quality gate failure
+        if: ${{ !cancelled() && (steps.scan-backend.outcome == 'failure' || steps.scan-frontend.outcome == 'failure') }}
+        run: |
+          git ls-files backend/src/main frontend/src frontend/projects > "$RUNNER_TEMP/tracked-files.txt"
+          CANDIDATE_FILES="$RUNNER_TEMP/tracked-files.txt"             node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend || true
+          exit 1
 
   # ─────────────────────────────────────────────────────────────────────────────
   # AI Visual Review — advisory only, never gates CI

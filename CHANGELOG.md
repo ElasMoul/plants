@@ -7,6 +7,13 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- sonar-gate says why it failed (demand `factory-20261019-plantpal-sonar-gate-report`): an *Explain quality gate failure*
+  step prints, to the job log and the job summary, each failed gate condition, the new-code issues with file and line,
+  the lowest-coverage files, and a `SONAR-GATE-FAILED:` marker line (`scripts/sonar-explain-failure.mjs`, unit tests on
+  recorded-shape answers). This restores what PR #206 shipped and the revert of PR #212 (#214, merged to main by mistake)
+  removed from `dev`; new guard `scripts/check-sonar-explain-wired.mjs` in *Dev Delivery Tool CI* fails if the script or
+  the step disappears again. The Sonar coverage-exclusions drift check is restored in *Frontend CI*, and the frontend
+  `sonar.coverage.exclusions` again mirrors Jest.
 - Offline scan queue (PLA-121): in the classic app's Identify page, a scan submitted without a connection (or failing with a network error) is stored on the device in IndexedDB and listed as "waiting"; it uploads automatically when the browser comes back online (and on page start), with bounded retry/backoff. Failed items offer Retry and Discard. The server and quota are only touched when an item is actually uploaded. Frontend-only; en/fr/ar strings added.
 - Crawlable multilingual public routes (PLA-73): the classic frontend now prerenders the landing page at `/en/` and `/fr/`
   (`@angular/ssr`, static output; the URL language wins on those routes). The host rules (shared `frontend/nginx/routes.inc`

@@ -1,0 +1,29 @@
+{
+  "baseComponent": { "key": "plantpal-backend", "qualifier": "TRK" },
+  "components": [
+    {
+      "key": "plantpal-backend:src/main/java/com/plantpal/shared/Covered.java", "qualifier": "FIL",
+      "measures": [
+        { "metric": "new_coverage", "period": { "index": 1, "value": "100.0" } },
+        { "metric": "new_uncovered_lines", "period": { "index": 1, "value": "0" } },
+        { "metric": "new_lines_to_cover", "period": { "index": 1, "value": "12" } }
+      ]
+    },
+    {
+      "key": "plantpal-backend:src/main/java/com/plantpal/shared/Probe.java", "qualifier": "FIL",
+      "measures": [
+        { "metric": "new_coverage", "period": { "index": 1, "value": "40.0" } },
+        { "metric": "new_uncovered_lines", "period": { "index": 1, "value": "6" } },
+        { "metric": "new_lines_to_cover", "period": { "index": 1, "value": "10" } }
+      ]
+    },
+    {
+      "key": "plantpal-backend:src/main/java/com/plantpal/shared/Other.java", "qualifier": "FIL",
+      "measures": [
+        { "metric": "new_coverage", "period": { "index": 1, "value": "75.0" } },
+        { "metric": "new_uncovered_lines", "period": { "index": 1, "value": "3" } },
+        { "metric": "new_lines_to_cover", "period": { "index": 1, "value": "12" } }
+      ]
+    }
+  ]
+}
