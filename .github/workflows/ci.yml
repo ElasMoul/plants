@@ -300,7 +300,14 @@ jobs:
     needs: [backend-ci, frontend-ci]
     if: github.event_name == 'pull_request' && github.base_ref == 'dev'
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","platform"]') || 'ubuntu-latest' }}
-    # Community Edition keeps one analysis history per project — serialize scans.
+    # Community Edition has no pull request analysis: every scan replaces the project's single
+    # latest analysis (plantpal-backend, plantpal-frontend). One repository-wide group makes the
+    # scans of all pull requests queue one after another, and each job explains the analysis of
+    # its own scan (report-task.txt) right after it. Cost: a gate waits for the gates ahead of it
+    # (about 7-8 min each). cancel-in-progress stays false so a running scan is never cut off;
+    # GitHub keeps only the newest *pending* job per group, so a third queued push supersedes the
+    # second (its check is cancelled and re-runs on the next push). Per-PR project keys would avoid
+    # the queue but cost a clean-up of stale projects, not worth it here.
     concurrency:
       group: sonar-gate
       cancel-in-progress: false
@@ -412,13 +419,18 @@ jobs:
 
       # Explains a failed gate in the log and the job summary (read API, the scanner's own
       # SONAR_TOKEN, never echoed). Own step because the scanner ends its step on a failed gate;
-      # it runs only after a scan step failed, so a passing job is untouched. It ends with exit 1
-      # (the job has already failed) so the output is part of `gh run view --log-failed`.
+      # it runs only after a scan step failed, so a passing job is untouched. It reads the scan
+      # this job ran (ceTaskId in each scanner's report-task.txt -> analysisId) and prints that
+      # analysis' date and revision; a revision other than the merge ref (GITHUB_SHA) or the pull
+      # request head is flagged loudly. It ends with exit 1 (the job has already failed) so the
+      # output is part of `gh run view --log-failed`.
       - name: Explain quality gate failure
         if: ${{ !cancelled() && (steps.scan-backend.outcome == 'failure' || steps.scan-frontend.outcome == 'failure') }}
+        env:
+          EXPECTED_REVISIONS: ${{ github.sha }},${{ github.event.pull_request.head.sha }}
         run: |
           git ls-files backend/src/main frontend/src frontend/projects > "$RUNNER_TEMP/tracked-files.txt"
-          CANDIDATE_FILES="$RUNNER_TEMP/tracked-files.txt"             node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend || true
+          CANDIDATE_FILES="$RUNNER_TEMP/tracked-files.txt" node scripts/sonar-explain-failure.mjs plantpal-backend:backend plantpal-frontend:frontend || true
           exit 1
 
   # ─────────────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { explainProject, makeFetchJson, renderMarkdown, renderText } from './sonar-explain-failure.mjs';
+import { explainProject, makeFetchJson, parseReportTask, readCeTaskId, renderMarkdown, renderText } from './sonar-explain-failure.mjs';
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./sonar-fixtures/${name}.json`, import.meta.url), 'utf8'));
 const HOST = 'http://sonar.test:9000';
@@ -131,6 +131,85 @@ test('a network failure message never carries the token', async () => {
   const token = 'squ_secret_value';
   const fetchImpl = async () => { throw new Error(`connect refused for ${token}`); };
   await assert.rejects(makeFetchJson({ host: HOST, token, fetchImpl })('x', {}), (e) => !e.message.includes(token) && e.message.includes('***'));
+});
+
+const HEAD = 'a'.repeat(40);
+const OTHER = 'b'.repeat(40);
+const bound = (extra = {}) => ({
+  'ce/task': fixture('ce-task'),
+  'project_analyses/search': fixture('analyses'),
+  'qualitygates/project_status': fixture('status-pr230'),
+  'issues/search': fixture('issues-pr230'),
+  ...extra,
+});
+
+test('bound to its own scan: CE task, then project_status by analysisId, then the analysis date and revision', async () => {
+  const calls = [];
+  const report = await explainProject({
+    fetchJson: stub(bound(), calls), host: HOST, key: 'plantpal-frontend', ceTaskId: 'AZce1', expectedRevisions: [HEAD],
+  });
+  const status = calls.find((c) => c.path === 'qualitygates/project_status').params;
+  assert.deepEqual(status, { analysisId: 'AZan230' }, 'the verdict is asked for by analysisId, not by project');
+  assert.equal(calls.find((c) => c.path === 'ce/task').params.id, 'AZce1');
+  assert.equal(calls.find((c) => c.path === 'issues/search').params.inNewCodePeriod, 'true');
+
+  const text = renderText([report]);
+  assert.match(text, /Analysis: AZan230, 2026-10-19T19:52:41\+0000, revision a{40}/);
+  assert.doesNotMatch(text, /WARNING/);
+  assert.match(text, /Issues\s+new_violations\s+> 0\s+3\s+yes/);
+  assert.doesNotMatch(text, /new_coverage/, 'the passing conditions stay out');
+  assert.match(text, /typescript:S6606\s+MAJOR\s+CODE_SMELL\s+src\/app\/features\/onboarding\/first-success\.component\.ts:57/);
+  assert.match(text, /typescript:S1874/);
+  assert.match(text, /typescript:S1135/);
+  assert.match(text, /SONAR-GATE-FAILED: plantpal-frontend=new_violations$/);
+  assert.match(renderMarkdown([report]), /Analysis: `AZan230, 2026-10-19T19:52:41\+0000, revision a{40}`/);
+});
+
+test('an analysis for another revision is reported loudly in the log, the summary and the marker', async () => {
+  const report = await explainProject({
+    fetchJson: stub(bound()), host: HOST, key: 'plantpal-frontend', ceTaskId: 'AZce1', expectedRevisions: [OTHER, 'c'.repeat(40)],
+  });
+  const text = renderText([report]);
+  assert.match(text, /!!! WARNING: this analysis is for aaaaaaaaaaaa, not bbbbbbbbbbbb \/ cccccccccccc !!!/);
+  assert.match(text, /SONAR-GATE-FAILED: plantpal-frontend=new_violations\(analysis-for-other-revision\)$/);
+  assert.match(renderMarkdown([report]), /> \*\*WARNING: this analysis is for aaaaaaaaaaaa, not /);
+});
+
+test('either the merge ref or the pull request head is an accepted revision; none given means no check', async () => {
+  for (const expectedRevisions of [[HEAD, OTHER], [OTHER, HEAD], []]) {
+    const report = await explainProject({ fetchJson: stub(bound()), host: HOST, key: 'k', ceTaskId: 'AZce1', expectedRevisions });
+    assert.equal(report.analysis.warning, undefined);
+  }
+});
+
+test('a passing gate of the bound analysis prints nothing', async () => {
+  const calls = [];
+  const fetchJson = stub(bound({ 'qualitygates/project_status': fixture('status-ok') }), calls);
+  const report = await explainProject({ fetchJson, host: HOST, key: 'plantpal-frontend', ceTaskId: 'AZce1', expectedRevisions: [HEAD] });
+  assert.equal(report, null);
+  assert.equal(renderText([report].filter(Boolean)), '');
+  assert.ok(!calls.some((c) => c.path === 'issues/search'));
+});
+
+test('a CE task without an analysis falls back to the latest analysis and says so', async () => {
+  const calls = [];
+  const fetchJson = stub(bound({ 'ce/task': fixture('ce-task-failed') }), calls);
+  const report = await explainProject({ fetchJson, host: HOST, key: 'plantpal-frontend', ceTaskId: 'AZce1' });
+  assert.deepEqual(calls.find((c) => c.path === 'qualitygates/project_status').params, { projectKey: 'plantpal-frontend' });
+  assert.match(renderText([report]), /note: could not bind to this job's scan.*no analysis \(status FAILED\)/);
+
+  const noFile = await explainProject({ fetchJson: stub(bound()), host: HOST, key: 'plantpal-frontend' });
+  assert.match(noFile.notes.join(), /no report-task\.txt/);
+});
+
+test('report-task.txt: parsed, and found in the Maven or npm scanner layout', () => {
+  const text = ['projectKey=plantpal-backend', 'serverUrl=http://x:9000', 'ceTaskId=AZce1', 'ceTaskUrl=http://x:9000/api/ce/task?id=AZce1', ''].join('\n');
+  assert.equal(parseReportTask(text).ceTaskId, 'AZce1');
+  assert.equal(parseReportTask(text).ceTaskUrl, 'http://x:9000/api/ce/task?id=AZce1');
+  const read = () => text;
+  assert.equal(readCeTaskId('backend', (f) => f === 'backend/target/sonar/report-task.txt', read), 'AZce1');
+  assert.equal(readCeTaskId('frontend', (f) => f === 'frontend/.scannerwork/report-task.txt', read), 'AZce1');
+  assert.equal(readCeTaskId('frontend', () => false, read), undefined);
 });
 
 test('dry run: the CLI prints the table, writes the job summary, exits 0 and never prints the token', async () => {

@@ -2,14 +2,21 @@
 // using only the read API and the credential the scanner already uses.
 //
 // Usage: node scripts/sonar-explain-failure.mjs <projectKey>[:<repo dir>] ...
+//   For each project the scanner's report-task.txt (<dir>/target/sonar/ for Maven,
+//   <dir>/.scannerwork/ for the npm scanner) names the compute-engine task of the scan this job
+//   just ran; its analysisId binds the gate verdict, so the report cannot describe another
+//   pull request's scan that replaced the project's latest analysis (Community Edition keeps one).
 // Env:   SONAR_HOST_URL, SONAR_TOKEN (never printed),
 //        SONAR_PULL_REQUEST  optional; set only when the scanner is given sonar.pullrequest.key
 //                            (Community Edition has no PR analyses: leave unset there),
 //        CANDIDATE_FILES     optional file listing repo-relative paths (git ls-files), used for
 //                            the per-file coverage fallback when component_tree is refused,
+//        EXPECTED_REVISIONS  optional comma list of commits the analysis may legitimately be for
+//                            (the merge ref GITHUB_SHA and the pull request head commit); any other
+//                            revision is reported loudly,
 //        GITHUB_STEP_SUMMARY set by Actions; the markdown report is appended to it.
 // A passing gate prints nothing. An API error is reported, never thrown: exit code is 0.
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const METRICS = {
@@ -69,6 +76,36 @@ export function dashboardUrl(host, key, pullRequest) {
   return `${host}/dashboard?id=${encodeURIComponent(key)}${pr}`;
 }
 
+/** Parses the scanner's report-task.txt (key=value lines). */
+export function parseReportTask(text) {
+  return Object.fromEntries(
+    text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
+  );
+}
+
+const shortSha = (sha) => (sha ? String(sha).slice(0, 12) : 'unknown');
+
+/** Resolves the analysis of this job's own scan: CE task -> analysisId -> date and revision. */
+async function resolveAnalysis(fetchJson, key, ceTaskId, expected) {
+  const { task } = await fetchJson('ce/task', { id: ceTaskId });
+  if (!task.analysisId) throw new Error(`compute-engine task ${ceTaskId} has no analysis (status ${task.status})`);
+  const analysis = { id: task.analysisId, date: task.executedAt ?? task.submittedAt, revision: undefined, warning: undefined };
+  try {
+    const res = await fetchJson('project_analyses/search', { project: key, ps: '100' });
+    const found = res.analyses.find((a) => a.key === task.analysisId);
+    if (found) {
+      analysis.date = found.date;
+      analysis.revision = found.revision;
+    }
+  } catch {
+    // date from the CE task stays; the revision is then unknown and not checked
+  }
+  if (analysis.revision && expected.length && !expected.includes(analysis.revision)) {
+    analysis.warning = `this analysis is for ${shortSha(analysis.revision)}, not ${expected.map(shortSha).join(' / ')}`;
+  }
+  return analysis;
+}
+
 async function lowestCoverageFiles(fetchJson, key, pr, candidates) {
   try {
     const tree = await fetchJson('measures/component_tree', {
@@ -97,17 +134,29 @@ async function lowestCoverageFiles(fetchJson, key, pr, candidates) {
 }
 
 /** Collects what a failed gate needs explained for one project; null when the gate passed. */
-export async function explainProject({ fetchJson, host, key, pullRequest, candidates = [] }) {
+export async function explainProject({ fetchJson, host, key, pullRequest, candidates = [], ceTaskId, expectedRevisions = [] }) {
   const url = dashboardUrl(host, key, pullRequest);
   const pr = pullRequest ? { pullRequest } : {};
+  const notes = [];
+  let analysis;
+  if (ceTaskId) {
+    try {
+      analysis = await resolveAnalysis(fetchJson, key, ceTaskId, expectedRevisions);
+    } catch (e) {
+      notes.push(`could not bind to this job's scan, showing the project's latest analysis: ${e.message}`);
+    }
+  } else {
+    notes.push("no report-task.txt from this job's scan, showing the project's latest analysis");
+  }
   let status;
   try {
-    status = (await fetchJson('qualitygates/project_status', { ...pr, projectKey: key })).projectStatus;
+    const target = analysis ? { analysisId: analysis.id } : { projectKey: key };
+    status = (await fetchJson('qualitygates/project_status', { ...pr, ...target })).projectStatus;
   } catch (e) {
-    return { key, url, error: e.message };
+    return { key, url, error: e.message, analysis };
   }
   if (status.status === 'OK') return null;
-  const report = { key, url, status: status.status, conditions: [], issues: [], issuesTotal: 0, files: [], notes: [] };
+  const report = { key, url, status: status.status, conditions: [], issues: [], issuesTotal: 0, files: [], notes, analysis };
   report.conditions = (status.conditions ?? []).filter((c) => c.status === 'ERROR').map(describeCondition);
   try {
     const res = await fetchJson('issues/search', {
@@ -149,8 +198,19 @@ const COND_HEAD = ['Condition', 'Metric', 'Fails when value', 'Actual', 'New cod
 const ISSUE_HEAD = ['Rule', 'Severity', 'Type', 'File:line', 'Message'];
 const FILE_HEAD = ['File', 'New-code coverage', 'Uncovered new lines', 'New lines to cover'];
 
+const analysisLines = (r) => {
+  if (!r.analysis) return [];
+  const a = r.analysis;
+  const lines = [`Analysis: ${a.id}, ${a.date ?? 'date unknown'}, revision ${a.revision ?? 'unknown'}`];
+  if (a.warning) lines.push(`!!! WARNING: ${a.warning} !!!`);
+  return lines;
+};
+
 export function markerLine(reports) {
-  const parts = reports.map((r) => (r.error ? `${r.key}=details-unavailable` : `${r.key}=${r.conditions.map((c) => c.key).join(',') || r.status}`));
+  const parts = reports.map((r) => {
+    const base = r.error ? `${r.key}=details-unavailable` : `${r.key}=${r.conditions.map((c) => c.key).join(',') || r.status}`;
+    return r.analysis?.warning ? `${base}(analysis-for-other-revision)` : base;
+  });
   return `SONAR-GATE-FAILED: ${parts.join(' ')}`;
 }
 
@@ -159,10 +219,10 @@ export function renderText(reports) {
   const out = [];
   for (const r of reports) {
     if (r.error) {
-      out.push(`\n=== [${r.key}] quality gate details unavailable ===`, `  ${r.error}`, `  Open the analysis: ${r.url}`);
+      out.push(`\n=== [${r.key}] quality gate details unavailable ===`, ...analysisLines(r), `  ${r.error}`, `  Open the analysis: ${r.url}`);
       continue;
     }
-    out.push(`\n=== [${r.key}] quality gate ${r.status} ===`, 'Failed conditions:', ...pad([COND_HEAD, ...r.conditions.map(conditionRow)]));
+    out.push(`\n=== [${r.key}] quality gate ${r.status} ===`, ...analysisLines(r), 'Failed conditions:', ...pad([COND_HEAD, ...r.conditions.map(conditionRow)]));
     out.push(`New-code issues (${r.issues.length} of ${r.issuesTotal}, most severe first):`);
     out.push(...(r.issues.length ? pad([ISSUE_HEAD, ...r.issues.map(issueRow)]) : ['  none']));
     if (r.files.length) out.push(`Lowest new-code coverage (${r.files.length} files):`, ...pad([FILE_HEAD, ...r.files.map(fileRow)]));
@@ -178,6 +238,7 @@ export function renderMarkdown(reports) {
   const out = ['## SonarQube quality gate failed', ''];
   for (const r of reports) {
     out.push(`### ${r.key}`, '');
+    for (const l of analysisLines(r)) out.push(l.startsWith('!!!') ? `> **${l.replaceAll('!!!', '').trim()}**` : `Analysis: \`${l.slice(10)}\``, '');
     if (r.error) {
       out.push(`Could not read the failure details: ${cell(r.error)}`, '', `Open the analysis: ${r.url}`, '');
       continue;
@@ -208,17 +269,25 @@ export function makeFetchJson({ host, token, fetchImpl = fetch }) {
   };
 }
 
+/** ceTaskId from the scanner's report-task.txt under <dir> (Maven or npm scanner layout). */
+export function readCeTaskId(dir, exists = existsSync, read = (f) => readFileSync(f, 'utf8')) {
+  const file = [`${dir}/target/sonar/report-task.txt`, `${dir}/.scannerwork/report-task.txt`].find((f) => exists(f));
+  return file ? parseReportTask(read(file)).ceTaskId : undefined;
+}
+
 async function main(argv, env) {
   const host = (env.SONAR_HOST_URL || '').replace(/\/$/, '');
   const fetchJson = makeFetchJson({ host, token: env.SONAR_TOKEN || '' });
   const listing = env.CANDIDATE_FILES
     ? readFileSync(env.CANDIDATE_FILES, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean)
     : [];
+  const expectedRevisions = (env.EXPECTED_REVISIONS || '').split(',').map((r) => r.trim()).filter(Boolean);
   const reports = [];
   for (const arg of argv) {
     const [key, dir] = arg.split(':');
     const candidates = dir ? listing.filter((f) => f.startsWith(`${dir}/`)).map((f) => f.slice(dir.length + 1)) : [];
-    const report = await explainProject({ fetchJson, host, key, pullRequest: env.SONAR_PULL_REQUEST, candidates });
+    const ceTaskId = dir ? readCeTaskId(dir) : undefined;
+    const report = await explainProject({ fetchJson, host, key, pullRequest: env.SONAR_PULL_REQUEST, candidates, ceTaskId, expectedRevisions });
     if (report) reports.push(report);
   }
   const text = renderText(reports);

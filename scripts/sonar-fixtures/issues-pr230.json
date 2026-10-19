@@ -1,0 +1,32 @@
+{
+  "total": 3,
+  "issues": [
+    {
+      "key": "P1",
+      "rule": "typescript:S6606",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "component": "plantpal-frontend:src/app/features/onboarding/first-success.component.ts",
+      "line": 57,
+      "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression."
+    },
+    {
+      "key": "P2",
+      "rule": "typescript:S1874",
+      "severity": "MINOR",
+      "type": "CODE_SMELL",
+      "component": "plantpal-frontend:src/app/features/onboarding/onboarding.service.ts",
+      "line": 31,
+      "message": "'toPromise' is deprecated."
+    },
+    {
+      "key": "P3",
+      "rule": "typescript:S1135",
+      "severity": "INFO",
+      "type": "CODE_SMELL",
+      "component": "plantpal-frontend:src/app/features/onboarding/onboarding.service.ts",
+      "line": 88,
+      "message": "Complete the task associated to this TODO comment."
+    }
+  ]
+}

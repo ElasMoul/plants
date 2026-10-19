@@ -19,10 +19,12 @@ const stepBlock = (job, name) => job.match(new RegExp(`^      - name: ${name}\\n
 
 const gate = jobBlock('sonar-gate');
 need(gate !== '', `${workflowPath}: job sonar-gate not found`);
+need(/^    concurrency:\s+group: sonar-gate\s+cancel-in-progress: false\s*$/m.test(gate), 'sonar-gate: the repository-wide concurrency group (group: sonar-gate, cancel-in-progress: false) is missing');
 const explain = stepBlock(gate, 'Explain quality gate failure');
 need(explain !== undefined, `${workflowPath}: sonar-gate has no step "Explain quality gate failure"`);
 if (explain !== undefined) {
   need(/node scripts\/sonar-explain-failure\.mjs/.test(explain), 'the explain step does not run scripts/sonar-explain-failure.mjs');
+  need(/EXPECTED_REVISIONS:/.test(explain), 'the explain step does not pass EXPECTED_REVISIONS (the revision check)');
   need(/^        if: .*(failure\(\)|always\(\)|outcome)/m.test(explain), 'the explain step must run on failure (if: failure() / always() / step outcome)');
   need(!/^        if: .*success\(\)/m.test(explain), 'the explain step must not be gated on success()');
 }

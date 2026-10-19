@@ -41,9 +41,24 @@ production, and D113 does not authorize it.
    an API error is printed with the analysis dashboard URL instead. A passing gate
    prints nothing. `gh run view <run-id> --log-failed` is enough to know what to fix
    (the step ends with exit 1 on an already-failed job so it shows in that view).
-   Community Edition keeps no per-PR analysis, so the report reads the project's
-   new-code state; set `SONAR_PULL_REQUEST` only if the scanner is ever given
-   `sonar.pullrequest.key`. Its tests: `node --test scripts/sonar-explain-failure.test.mjs`
+   Community Edition has no pull request analysis, so every scan replaces the project's single latest
+   analysis (`plantpal-backend`, `plantpal-frontend`). Two things keep a result from belonging to
+   another pull request. **Serialised scans:** the `sonar-gate` job sits in one repository-wide
+   concurrency group (`group: sonar-gate`, `cancel-in-progress: false`), so the gates of all pull
+   requests run one after another and each job reads its result right after its own scan. The cost
+   is queue time: a gate takes about 7-8 minutes and waits for the gates ahead of it. GitHub keeps
+   only the newest pending job per group, so with two gates already ahead, an older pending one is
+   cancelled and re-runs on the next push. This replaces per-PR project keys, whose stale projects
+   would need cleaning up. The required check is unchanged (a queued job is pending and the branch
+   protection waits for it). **Bound explanation:** the explain step reads the scanner's own
+   `report-task.txt` (`backend/target/sonar/`, `frontend/.scannerwork/`), takes its `ceTaskId`,
+   asks `api/ce/task` for the `analysisId`, and calls `api/qualitygates/project_status` with that
+   `analysisId` (new issues come from `api/issues/search` with `inNewCodePeriod`). It prints the
+   analysis id, date and revision (`api/project_analyses/search`); a revision that is neither the
+   merge ref (`GITHUB_SHA`) nor the pull request head is flagged `!!! WARNING: this analysis is
+   for <sha>, not <head> !!!` and the marker line gets `(analysis-for-other-revision)`. Without a
+   `report-task.txt` it falls back to the latest analysis and says so. Set `SONAR_PULL_REQUEST`
+   only if the scanner is ever given `sonar.pullrequest.key`. Its tests: `node --test scripts/sonar-explain-failure.test.mjs`
    (recorded-shape answers in `scripts/sonar-fixtures/`). `scripts/check-sonar-explain-wired.mjs`
    runs in *Dev Delivery Tool CI* and fails if the script, the step or these checks are
    removed (a revert once dropped them silently, see CHANGELOG).

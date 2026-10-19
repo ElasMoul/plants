@@ -7,6 +7,13 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- sonar-gate reads its own analysis (demand `factory-20261019-plantpal-sonar-serialize`): SonarQube Community has no pull
+  request analysis, so scans of parallel pull requests replaced each other's result. The job keeps its repository-wide
+  concurrency group (`sonar-gate`, `cancel-in-progress: false`; queue cost about 7-8 min per gate ahead, documented in
+  `docs/dev-delivery.md`), and the explain step now follows the scanner's `report-task.txt` (`ceTaskId` -> `api/ce/task`
+  -> `analysisId`) to `api/qualitygates/project_status`, prints the analysis date and revision, and warns loudly when the
+  revision is neither the merge ref nor the PR head. Tests on recorded-shape answers (PR #230 shape, another revision,
+  passing gate); `check-sonar-explain-wired.mjs` also guards the concurrency group.
 - sonar-gate says why it failed (demand `factory-20261019-plantpal-sonar-gate-report`): an *Explain quality gate failure*
   step prints, to the job log and the job summary, each failed gate condition, the new-code issues with file and line,
   the lowest-coverage files, and a `SONAR-GATE-FAILED:` marker line (`scripts/sonar-explain-failure.mjs`, unit tests on
