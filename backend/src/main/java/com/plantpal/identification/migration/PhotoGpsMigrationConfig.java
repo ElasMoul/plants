@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class PhotoGpsMigrationConfig {
 
+  PhotoGpsMigrationConfig() {}
+
   @Bean
   static BeanFactoryPostProcessor liquibaseAfterPhotoGpsCleaner() {
     return beanFactory -> {

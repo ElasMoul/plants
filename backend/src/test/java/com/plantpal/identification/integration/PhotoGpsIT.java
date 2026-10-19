@@ -90,7 +90,7 @@ class PhotoGpsIT extends AbstractIntegrationTest {
       assertThat(GpsPhotoFixtures.hasGps(get(path, token))).as(path + " (auth)").isFalse();
       assertThat(GpsPhotoFixtures.hasGps(get(path, null))).as(path + " (anon)").isFalse();
     }
-    assertThat(onDisk.length).isLessThanOrEqualTo(original.length);
+    assertThat(onDisk).hasSizeLessThanOrEqualTo(original.length);
   }
 
   @Test

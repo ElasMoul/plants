@@ -4,6 +4,7 @@ import com.plantpal.identification.util.PhotoGpsStripper;
 import com.plantpal.shared.storage.FileStorageService;
 import jakarta.annotation.PostConstruct;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,7 @@ public class PhotoGpsCleaner {
 
   private static final Logger log = LoggerFactory.getLogger(PhotoGpsCleaner.class);
 
-  private static volatile PhotoGpsCleaner instance;
+  private static final AtomicReference<PhotoGpsCleaner> INSTANCE = new AtomicReference<>();
 
   private final FileStorageService fileStorageService;
 
@@ -28,11 +29,11 @@ public class PhotoGpsCleaner {
 
   @PostConstruct
   void register() {
-    instance = this;
+    INSTANCE.set(this);
   }
 
   public static PhotoGpsCleaner current() {
-    return instance;
+    return INSTANCE.get();
   }
 
   /** Counts for one run. */

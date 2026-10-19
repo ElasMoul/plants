@@ -154,7 +154,7 @@ public final class PhotoGpsStripper {
     for (int i = 0; i < count; i++) {
       int entry = ifd + 2 + i * 12;
       int type = buf.getShort(entry + 2) & 0xFFFF;
-      long size = (long) TYPE_SIZES[type > 12 ? 0 : type] * (buf.getInt(entry + 4) & 0xFFFFFFFFL);
+      long size = TYPE_SIZES[type > 12 ? 0 : type] * (buf.getInt(entry + 4) & 0xFFFFFFFFL);
       if (size > 4) {
         long valueAt = tiff + (buf.getInt(entry + 8) & 0xFFFFFFFFL);
         if (valueAt + size > limit) {
