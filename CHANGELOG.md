@@ -7,6 +7,7 @@
 ## [Unreleased] (opened 2026-07-04)
 
 ### Added
+- Photo GPS removal (PLA-118): GPS coordinates are stripped from every uploaded photo before it is stored, served or sent to an AI provider (date taken is kept for JPEG); migration 042 cleans already-stored photos in place (irreversible). Audit: `docs/photo-gps-audit.md`.
 - Offline scan queue (PLA-121): in the classic app's Identify page, a scan submitted without a connection (or failing with a network error) is stored on the device in IndexedDB and listed as "waiting"; it uploads automatically when the browser comes back online (and on page start), with bounded retry/backoff. Failed items offer Retry and Discard. The server and quota are only touched when an item is actually uploaded. Frontend-only; en/fr/ar strings added.
 - Crawlable multilingual public routes (PLA-73): the classic frontend now prerenders the landing page at `/en/` and `/fr/`
   (`@angular/ssr`, static output; the URL language wins on those routes). The host rules (shared `frontend/nginx/routes.inc`

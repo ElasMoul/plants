@@ -133,6 +133,14 @@
             <version>2.19.0</version>
         </dependency>
 
+        <!-- ── Test-only: builds GPS-tagged JPEG fixtures (PLA-118) ─────────── -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-imaging</artifactId>
+            <version>1.0.0-alpha6</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ── Kafka – async identification pipeline ──────────────────────── -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

@@ -2,6 +2,7 @@ package com.plantpal.shared.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -48,6 +49,18 @@ class LocalFileStorageServiceTest {
 
   private MockMultipartFile photo(byte[] bytes) {
     return new MockMultipartFile("image", "plant.jpg", "image/jpeg", bytes);
+  }
+
+  @Test
+  @DisplayName("overwritePhoto() replaces the file under the same name and refreshes the cache")
+  void shouldOverwritePhotoInPlace() throws IOException {
+    when(byteRedisTemplate.opsForValue()).thenReturn(byteValueOps);
+    Files.write(tempDir.resolve("same-uuid.jpg"), new byte[] {1});
+
+    fileStorageService.overwritePhoto("/photos/same-uuid.jpg", new byte[] {7, 7});
+
+    assertThat(Files.readAllBytes(tempDir.resolve("same-uuid.jpg"))).containsExactly(7, 7);
+    verify(byteValueOps).set(eq("photo:same-uuid"), eq(new byte[] {7, 7}), any(Duration.class));
   }
 
   @Nested

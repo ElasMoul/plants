@@ -136,7 +136,7 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
   }
 
   private org.springframework.core.io.ByteArrayResource imagePart() {
-    byte[] bytes = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+    byte[] bytes = com.plantpal.testdata.GpsPhotoFixtures.plainJpeg();
     return new org.springframework.core.io.ByteArrayResource(bytes) {
       @Override
       public String getFilename() {

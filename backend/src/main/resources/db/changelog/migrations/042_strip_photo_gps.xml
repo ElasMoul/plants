@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PLA-118: one-time, idempotent GPS removal from already-stored photos.
+         Irreversible: rewrites photo bytes in place (URLs and date taken unchanged). -->
+    <changeSet id="042-strip-photo-gps" author="plantpal">
+        <customChange class="com.plantpal.identification.migration.StripPhotoGpsTask"/>
+    </changeSet>
+</databaseChangeLog>
