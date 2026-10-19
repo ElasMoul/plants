@@ -87,27 +87,41 @@ public final class PhotoGpsStripper {
       if (marker == 0xDA || marker == 0xD9) {
         break;
       }
-      if (marker == 0x01 || (marker >= 0xD0 && marker <= 0xD8) || marker == 0xFF) {
+      if (isStandaloneMarker(marker)) {
         out.write(copy, pos, 2);
         pos += 2;
-        continue;
+      } else {
+        int end = segmentEnd(copy, pos);
+        copySegment(copy, pos, end, marker, out);
+        pos = end;
       }
-      int length = ((copy[pos + 2] & 0xFF) << 8) | (copy[pos + 3] & 0xFF);
-      int end = pos + 2 + length;
-      if (length < 2 || end > copy.length) {
-        throw new IllegalArgumentException("Truncated JPEG segment");
-      }
-      if (marker == 0xE1 && startsWithAt(copy, pos + 4, EXIF_HEADER)) {
-        scrubTiffGps(copy, pos + 10, end);
-      }
-      boolean xmpGps = marker == 0xE1 && containsXmpGps(copy, pos + 4, end);
-      if (!xmpGps) {
-        out.write(copy, pos, end - pos);
-      }
-      pos = end;
     }
     out.write(copy, pos, copy.length - pos);
     return out.toByteArray();
+  }
+
+  private static boolean isStandaloneMarker(int marker) {
+    return marker == 0x01 || (marker >= 0xD0 && marker <= 0xD8) || marker == 0xFF;
+  }
+
+  private static int segmentEnd(byte[] copy, int pos) {
+    int length = ((copy[pos + 2] & 0xFF) << 8) | (copy[pos + 3] & 0xFF);
+    int end = pos + 2 + length;
+    if (length < 2 || end > copy.length) {
+      throw new IllegalArgumentException("Truncated JPEG segment");
+    }
+    return end;
+  }
+
+  private static void copySegment(
+      byte[] copy, int pos, int end, int marker, ByteArrayOutputStream out) {
+    boolean app1 = marker == 0xE1;
+    if (app1 && startsWithAt(copy, pos + 4, EXIF_HEADER)) {
+      scrubTiffGps(copy, pos + 10, end);
+    }
+    if (!(app1 && containsXmpGps(copy, pos + 4, end))) {
+      out.write(copy, pos, end - pos);
+    }
   }
 
   private static void scrubTiffGps(byte[] b, int tiff, int limit) {
@@ -210,23 +224,24 @@ public final class PhotoGpsStripper {
         throw new IllegalArgumentException("Truncated WebP chunk");
       }
       int end = Math.min(pos + total, bytes.length);
-      String type = new String(bytes, pos, 4, StandardCharsets.US_ASCII);
-      boolean xmpGps = "XMP ".equals(type) && containsXmpGps(bytes, pos + 8, end);
-      if ("EXIF".equals(type) || xmpGps) {
-        pos = end;
-        continue;
-      }
-      byte[] chunk = new byte[end - pos];
-      System.arraycopy(bytes, pos, chunk, 0, chunk.length);
-      if ("VP8X".equals(type) && chunk.length > 8) {
-        chunk[8] &= (byte) ~WEBP_VP8X_EXIF_FLAG;
-      }
-      out.write(chunk, 0, chunk.length);
+      copyWebpChunk(bytes, pos, end, out);
       pos = end;
     }
     byte[] result = out.toByteArray();
     ByteBuffer.wrap(result).order(ByteOrder.LITTLE_ENDIAN).putInt(4, result.length - 8);
     return result;
+  }
+
+  private static void copyWebpChunk(byte[] bytes, int pos, int end, ByteArrayOutputStream out) {
+    String type = new String(bytes, pos, 4, StandardCharsets.US_ASCII);
+    if ("EXIF".equals(type) || ("XMP ".equals(type) && containsXmpGps(bytes, pos + 8, end))) {
+      return;
+    }
+    byte[] chunk = Arrays.copyOfRange(bytes, pos, end);
+    if ("VP8X".equals(type) && chunk.length > 8) {
+      chunk[8] &= (byte) ~WEBP_VP8X_EXIF_FLAG;
+    }
+    out.write(chunk, 0, chunk.length);
   }
 
   private static boolean isWebp(byte[] b) {
