@@ -107,11 +107,29 @@ describe('first-run guidance', () => {
       expect(capture.click).toHaveBeenCalled();
     });
 
+    it('treats a throwing capture input as a refusal and keeps the upload option', async () => {
+      permission('prompt');
+      const upload = make();
+      const capture = { click: jest.fn(() => { throw new Error('blocked'); }) } as unknown as HTMLInputElement;
+      await upload.useCamera(capture);
+      expect(upload.cameraRefused).toBe(true);
+      expect(upload.showCameraExplainer).toBe(true);
+    });
+
     it('records the first scan once', () => {
       const upload = make();
       upload.onAnalyze(); upload.onAnalyze();
       expect(events().filter(e => e === FIRST_RUN_EVENTS.firstScanStarted)).toHaveLength(1);
     });
+  });
+
+  it('never throws and never nags when storage is unavailable', () => {
+    const spy = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+    expect(() => service.markSeen('intro')).not.toThrow();
+    spy.mockRestore();
+    const get = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    expect(service.isSeen('intro')).toBe(true);
+    get.mockRestore();
   });
 
   it('has non-empty FR and AR text for every new string', () => {
