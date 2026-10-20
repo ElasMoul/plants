@@ -9,6 +9,17 @@
     {{ 'Scan multiple plants' | t }}
   </mat-checkbox>
 
+  <!-- Photo tips: shown until dismissed or a first scan is started -->
+  <div class="tips-panel" *ngIf="showTips" data-testid="photo-tips">
+    <p class="tips-title">{{ 'Tips for a good photo' | t }}</p>
+    <ul>
+      <li>{{ 'Use good, natural light.' | t }}</li>
+      <li>{{ 'Keep the photo sharp and in focus.' | t }}</li>
+      <li>{{ 'Include a leaf or a flower.' | t }}</li>
+    </ul>
+    <button mat-button type="button" data-testid="tips-dismiss" (click)="dismissTips()">{{ 'Got it' | t }}</button>
+  </div>
+
   <!-- Drop zone / click to browse -->
   <div
     class="drop-zone"
@@ -31,6 +42,30 @@
     <p class="drop-hint" *ngIf="!batchMode">{{ 'Up to 5 images · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
     <p class="drop-hint" *ngIf="batchMode">{{ 'Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
   </div>
+
+  <!-- Camera: explain before the browser asks; upload always stays available -->
+  <div class="camera-section">
+    <button mat-stroked-button type="button" data-testid="camera-open" *ngIf="!showCameraExplainer" (click)="openCameraExplainer()">
+      <mat-icon>photo_camera</mat-icon> {{ 'Take a photo' | t }}
+    </button>
+    <div class="camera-explainer" *ngIf="showCameraExplainer" data-testid="camera-explainer">
+      <p *ngIf="!cameraRefused">{{ 'We use your camera only to take a photo of your plant. Your browser will ask for permission next.' | t }}</p>
+      <p *ngIf="cameraRefused" data-testid="camera-refused">{{ 'Camera access is not available. You can upload a photo instead.' | t }}</p>
+      <button mat-raised-button color="primary" type="button" data-testid="camera-use" *ngIf="!cameraRefused" (click)="useCamera(captureInput)">{{ 'Use camera' | t }}</button>
+      <button mat-stroked-button type="button" data-testid="camera-upload-instead" (click)="chooseUploadInstead(fileInput)">{{ 'Upload a photo instead' | t }}</button>
+    </div>
+  </div>
+
+  <label for="capture-input" hidden>{{ 'Use camera' | t }}</label>
+  <input
+    #captureInput
+    id="capture-input"
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    capture="environment"
+    hidden
+    (change)="onFileChange($event)"
+  />
 
   <!-- Hidden file input -->
   <input

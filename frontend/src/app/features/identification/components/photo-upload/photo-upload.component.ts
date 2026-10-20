@@ -6,6 +6,7 @@ import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PlantService } from '../../../plant/services/plant.service';
 import { PlantResponse } from '../../../plant/models/plant.model';
+import { FIRST_RUN_EVENTS, FirstRunService } from '../../../../core/services/first-run.service';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -47,6 +48,10 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
   validationErrors: string[] = [];
   batchMode = false;
 
+  showTips = false;
+  showCameraExplainer = false;
+  cameraRefused = false;
+
   contextExpanded = false;
   contextText = '';
   readonly maxContextChars = MAX_CONTEXT_CHARS;
@@ -72,9 +77,12 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
     private readonly plantService: PlantService,
     private readonly snackBar: MatSnackBar,
     private readonly ngZone: NgZone,
+    private readonly firstRun: FirstRunService,
   ) {}
 
   ngOnInit(): void {
+    this.showTips = !this.firstRun.isSeen('tips');
+    if (this.showTips) this.firstRun.track(FIRST_RUN_EVENTS.tipsViewed);
     if (this.lockedPlantId != null) {
       this.selectedPlantId = this.lockedPlantId;
       return;
@@ -157,7 +165,59 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
     this.validationErrors = [];
   }
 
+  dismissTips(): void {
+    this.showTips = false;
+    this.firstRun.markSeen('tips');
+  }
+
+  openCameraExplainer(): void {
+    this.showCameraExplainer = true;
+    this.cameraRefused = false;
+    this.firstRun.track(FIRST_RUN_EVENTS.cameraExplainerShown);
+  }
+
+  /** The browser asks for camera access only when the capture input opens, i.e. after this click. */
+  async useCamera(captureInput: HTMLInputElement): Promise<void> {
+    this.firstRun.track(FIRST_RUN_EVENTS.cameraChosen);
+    if (await this.cameraDenied()) {
+      this.refuseCamera();
+      return;
+    }
+    this.showCameraExplainer = false;
+    try {
+      captureInput.click();
+    } catch {
+      this.refuseCamera();
+    }
+  }
+
+  chooseUploadInstead(fileInput: HTMLInputElement): void {
+    this.firstRun.track(FIRST_RUN_EVENTS.uploadFallbackChosen);
+    this.showCameraExplainer = false;
+    this.cameraRefused = false;
+    fileInput.click();
+  }
+
+  private refuseCamera(): void {
+    this.showCameraExplainer = true;
+    this.cameraRefused = true;
+    this.firstRun.track(FIRST_RUN_EVENTS.cameraPermissionRefused);
+  }
+
+  private async cameraDenied(): Promise<boolean> {
+    try {
+      const status = await navigator.permissions?.query({ name: 'camera' });
+      return status?.state === 'denied';
+    } catch {
+      return false; // Permissions API unsupported for 'camera' (Safari): let the browser prompt
+    }
+  }
+
   onAnalyze(): void {
+    if (!this.firstRun.isSeen('firstScan')) {
+      this.firstRun.markSeen('firstScan');
+      this.firstRun.track(FIRST_RUN_EVENTS.firstScanStarted);
+    }
     const trimmed = this.contextText.trim();
     this.analyze.emit({
       images: this.entries.map(e => e.file),

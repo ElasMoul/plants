@@ -1,0 +1,44 @@
+.intro-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.intro-card {
+  max-width: 380px;
+  width: 100%;
+  padding: 28px 24px 16px;
+  border-radius: 16px;
+  background: #fff;
+  text-align: center;
+}
+
+.intro-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 48px;
+  color: #2e7d32;
+}
+
+.intro-step {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.intro-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+dialog.intro-card {
+  position: static;
+  border: 0;
+  margin: 0;
+  color: inherit;
+}

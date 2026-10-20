@@ -1,0 +1,14 @@
+<div class="intro-backdrop" *ngIf="visible">
+  <dialog class="intro-card" open aria-labelledby="first-run-title">
+    <mat-icon class="intro-icon">{{ steps[step].icon }}</mat-icon>
+    <h2 id="first-run-title">{{ steps[step].title | t }}</h2>
+    <p>{{ steps[step].text | t }}</p>
+    <p class="intro-step">{{ '{0} of {1}' | t : [step + 1, steps.length] }}</p>
+    <div class="intro-actions">
+      <button mat-button type="button" data-testid="intro-skip" (click)="skip()">{{ 'Skip' | t }}</button>
+      <button mat-raised-button color="primary" type="button" data-testid="intro-next" (click)="next()">
+        {{ (isLast ? 'Get started' : 'Next') | t }}
+      </button>
+    </div>
+  </dialog>
+</div>
