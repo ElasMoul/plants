@@ -206,7 +206,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
 
   private async cameraDenied(): Promise<boolean> {
     try {
-      const status = await navigator.permissions?.query({ name: 'camera' as PermissionName });
+      const status = await navigator.permissions?.query({ name: 'camera' });
       return status?.state === 'denied';
     } catch {
       return false; // Permissions API unsupported for 'camera' (Safari): let the browser prompt

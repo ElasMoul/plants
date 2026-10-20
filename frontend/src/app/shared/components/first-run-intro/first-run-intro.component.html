@@ -1,5 +1,5 @@
-<div class="intro-backdrop" *ngIf="visible" role="dialog" aria-modal="true" aria-labelledby="first-run-title">
-  <div class="intro-card">
+<div class="intro-backdrop" *ngIf="visible">
+  <dialog class="intro-card" open aria-labelledby="first-run-title">
     <mat-icon class="intro-icon">{{ steps[step].icon }}</mat-icon>
     <h2 id="first-run-title">{{ steps[step].title | t }}</h2>
     <p>{{ steps[step].text | t }}</p>
@@ -10,5 +10,5 @@
         {{ (isLast ? 'Get started' : 'Next') | t }}
       </button>
     </div>
-  </div>
+  </dialog>
 </div>

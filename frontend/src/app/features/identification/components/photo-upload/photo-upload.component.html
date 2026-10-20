@@ -56,8 +56,10 @@
     </div>
   </div>
 
+  <label for="capture-input" hidden>{{ 'Use camera' | t }}</label>
   <input
     #captureInput
+    id="capture-input"
     type="file"
     accept="image/jpeg,image/png,image/webp"
     capture="environment"
