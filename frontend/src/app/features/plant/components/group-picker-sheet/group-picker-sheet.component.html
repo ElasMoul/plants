@@ -1,0 +1,19 @@
+<div class="actions-sheet">
+  <button type="button" class="action-row" (click)="select(null)" data-testid="group-none">
+    <mat-icon>{{ data.currentGroupId === null ? 'check' : 'folder_off' }}</mat-icon>
+    <span>{{ 'No group' | t }}</span>
+  </button>
+  <button
+    *ngFor="let group of groups"
+    type="button"
+    class="action-row"
+    (click)="select(group.id)"
+    data-testid="group-option"
+  >
+    <mat-icon>{{ data.currentGroupId === group.id ? 'check' : 'folder' }}</mat-icon>
+    <span>{{ group.name }}</span>
+  </button>
+  <p *ngIf="!loading && groups.length === 0" class="hint">
+    {{ 'No groups yet. Create one for a room, bed or greenhouse.' | t }}
+  </p>
+</div>

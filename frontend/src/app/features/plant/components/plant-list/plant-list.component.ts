@@ -8,6 +8,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { PlantService } from '../../services/plant.service';
+import { PlantGroupService } from '../../services/plant-group.service';
+import { PlantGroup } from '../../models/plant-group.model';
+import { GroupManagerDialogComponent } from '../group-manager-dialog/group-manager-dialog.component';
 import { PlantResponse } from '../../models/plant.model';
 import { PageResponse } from '@plantpal/shared-core';
 import { IdentificationService } from '../../../identification/services/identification.service';
@@ -28,11 +31,15 @@ export class PlantListComponent implements OnInit, OnDestroy {
   currentPage = 0;
   pageSize = 20;
   skeletons = Array(6);
+  groups: PlantGroup[] = [];
+  /** null = all plants. */
+  selectedGroupId: number | null = null;
 
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private readonly plantService: PlantService,
+    private readonly groupService: PlantGroupService,
     private readonly identificationService: IdentificationService,
     private readonly snackBar: MatSnackBar,
     private readonly dialog: MatDialog,
@@ -41,7 +48,43 @@ export class PlantListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.loadGroups();
     this.loadPlants();
+  }
+
+  loadGroups(): void {
+    this.groupService.getGroups().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => {
+        this.groups = res.data?.content ?? [];
+        if (this.selectedGroupId !== null && !this.groups.some((g) => g.id === this.selectedGroupId)) {
+          this.onGroupFilterChange(null);
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.groups = [];
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  onGroupFilterChange(groupId: number | null): void {
+    this.selectedGroupId = groupId;
+    this.currentPage = 0;
+    this.loadPlants();
+  }
+
+  openGroupManager(): void {
+    this.dialog
+      .open(GroupManagerDialogComponent, { width: '560px', maxWidth: '95vw', autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((changed?: boolean) => {
+        if (changed) {
+          this.loadGroups();
+          this.loadPlants();
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -67,7 +110,7 @@ export class PlantListComponent implements OnInit, OnDestroy {
 
   loadPlants(): void {
     this.loading = true;
-    this.plantService.getPlants(this.currentPage, this.pageSize).subscribe({
+    this.plantService.getPlants(this.currentPage, this.pageSize, undefined, this.selectedGroupId).subscribe({
       next: (res) => {
         this.page = res.data;
         this.plants = res.data?.content ?? [];

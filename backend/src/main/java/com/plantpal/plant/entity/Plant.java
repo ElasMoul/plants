@@ -73,4 +73,7 @@ public class Plant extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "light_exposure", length = 20)
   private LightExposure lightExposure;
+
+  @Column(name = "group_id")
+  private Long groupId;
 }

@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,6 +25,7 @@ import { SharedModule } from '../../shared/shared.module';
 import { CarePlanModule } from '../identification/components/care-plan/care-plan.module';
 import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
+import { PlantGroupService } from './services/plant-group.service';
 import { TreatmentService } from './services/treatment.service';
 import { IdentificationService } from '../identification/services/identification.service';
 import { BatchScanService } from '../identification/services/batch-scan.service';
@@ -39,6 +40,8 @@ import { PlantPhotoTimelineComponent } from './components/plant-photo-timeline/p
 import { PlantActionsSheetComponent } from './components/plant-actions-sheet/plant-actions-sheet.component';
 import { PlantScanHistorySheetComponent } from './components/plant-scan-history-sheet/plant-scan-history-sheet.component';
 import { ActiveTreatmentSelectSheetComponent } from './components/active-treatment-select-sheet/active-treatment-select-sheet.component';
+import { GroupManagerDialogComponent } from './components/group-manager-dialog/group-manager-dialog.component';
+import { GroupPickerSheetComponent } from './components/group-picker-sheet/group-picker-sheet.component';
 import { ScanDetailComponent } from './components/scan-detail/scan-detail.component';
 
 @NgModule({
@@ -52,9 +55,12 @@ import { ScanDetailComponent } from './components/scan-detail/scan-detail.compon
     PlantScanHistorySheetComponent,
     ActiveTreatmentSelectSheetComponent,
     ScanDetailComponent,
+    GroupManagerDialogComponent,
+    GroupPickerSheetComponent,
   ],
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     RouterModule,
     PlantRoutingModule,
@@ -79,6 +85,6 @@ import { ScanDetailComponent } from './components/scan-detail/scan-detail.compon
     MatDialogModule,
     MatBottomSheetModule,
   ],
-  providers: [PlantService, TreatmentService, IdentificationService, BatchScanService, CareLogService, ReminderService, TreatmentPlanService],
+  providers: [PlantService, PlantGroupService, TreatmentService, IdentificationService, BatchScanService, CareLogService, ReminderService, TreatmentPlanService],
 })
 export class PlantModule {}

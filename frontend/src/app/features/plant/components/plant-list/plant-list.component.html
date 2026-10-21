@@ -10,6 +10,21 @@
     </div>
   </div>
 
+  <!-- Group filter -->
+  <div class="group-bar">
+    <mat-form-field appearance="outline" class="group-filter" subscriptSizing="dynamic">
+      <mat-label>{{ 'Group' | t }}</mat-label>
+      <mat-select [value]="selectedGroupId" (selectionChange)="onGroupFilterChange($event.value)" data-testid="group-filter">
+        <mat-option [value]="null">{{ 'All plants' | t }}</mat-option>
+        <mat-option *ngFor="let group of groups" [value]="group.id">{{ group.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-stroked-button type="button" (click)="openGroupManager()" data-testid="manage-groups-btn">
+      <mat-icon>folder</mat-icon>
+      {{ 'Manage groups' | t }}
+    </button>
+  </div>
+
   <!-- Loading skeleton -->
   <div *ngIf="loading" class="plant-grid">
     <div *ngFor="let _ of skeletons" class="skeleton-card">

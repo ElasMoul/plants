@@ -15,6 +15,7 @@ export class PlantService {
     page = 0,
     size = 20,
     speciesId?: number,
+    groupId?: number | null,
   ): Observable<ApiResponse<PageResponse<PlantResponse>>> {
     let params = new HttpParams()
       .set('page', page)
@@ -22,6 +23,9 @@ export class PlantService {
       .set('sort', 'createdAt,desc');
     if (speciesId != null) {
       params = params.set('speciesId', speciesId);
+    }
+    if (groupId != null) {
+      params = params.set('groupId', groupId);
     }
     return this.http.get<ApiResponse<PageResponse<PlantResponse>>>(this.baseUrl, { params });
   }

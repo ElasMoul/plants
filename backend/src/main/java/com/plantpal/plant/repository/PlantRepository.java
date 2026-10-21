@@ -19,6 +19,13 @@ public interface PlantRepository extends JpaRepository<Plant, Long> {
   Page<Plant> findAllByUserIdAndSpeciesIdAndStatus(
       Long userId, Long speciesId, PlantStatus status, Pageable pageable);
 
+  Page<Plant> findAllByUserIdAndGroupIdAndStatus(
+      Long userId, Long groupId, PlantStatus status, Pageable pageable);
+
+  List<Plant> findAllByUserIdAndGroupIdAndStatus(Long userId, Long groupId, PlantStatus status);
+
+  long countByUserIdAndGroupIdAndStatus(Long userId, Long groupId, PlantStatus status);
+
   Optional<Plant> findByIdAndUserIdAndStatus(Long id, Long userId, PlantStatus status);
 
   boolean existsByIdAndUserId(Long id, Long userId);
