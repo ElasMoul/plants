@@ -13,6 +13,10 @@ const EN_LABELS: Readonly<Record<string, string>> = {
   WATERING: 'Watering', LIGHT: 'Light', HUMIDITY: 'Humidity', TEMPERATURE: 'Temperature',
   FERTILIZING: 'Fertilizing', REPOTTING: 'Repotting', PRUNING: 'Pruning', PEST: 'Pest',
   SEASONAL: 'Seasonal', BEGINNER_TIP: 'Beginner tip',
+  'placement.INDOOR': 'Indoor', 'placement.OUTDOOR': 'Outdoor', 'placement.GREENHOUSE': 'Greenhouse',
+  'light.LOW': 'Low', 'light.MEDIUM': 'Medium', 'light.BRIGHT': 'Bright', 'light.DIRECT_SUN': 'Direct sun',
+  'climate.TROPICAL': 'Tropical', 'climate.ARID': 'Arid', 'climate.TEMPERATE': 'Temperate',
+  'climate.CONTINENTAL': 'Continental', 'climate.POLAR': 'Polar',
 };
 export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: string; direction: 'ltr' | 'rtl' }> = [
   { code: 'en', label: 'English', locale: 'en-US', direction: 'ltr' },

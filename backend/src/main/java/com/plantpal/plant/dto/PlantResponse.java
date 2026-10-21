@@ -1,5 +1,7 @@
 package com.plantpal.plant.dto;
 
+import com.plantpal.plant.entity.LightExposure;
+import com.plantpal.plant.entity.Placement;
 import com.plantpal.plant.entity.PlantStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,4 +50,9 @@ public class PlantResponse {
   private Long lastScanId;
 
   private Long activeTreatmentId;
+
+  /** Null for plants created before PLA-107 or never set. */
+  private Placement placement;
+
+  private LightExposure lightExposure;
 }

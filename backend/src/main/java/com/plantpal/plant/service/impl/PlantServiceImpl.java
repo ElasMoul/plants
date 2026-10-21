@@ -387,5 +387,11 @@ public class PlantServiceImpl implements PlantService {
     if (request.getAcquiredAt() != null) {
       plant.setAcquiredAt(request.getAcquiredAt());
     }
+    if (request.getPlacement() != null) {
+      plant.setPlacement(request.getPlacement());
+    }
+    if (request.getLightExposure() != null) {
+      plant.setLightExposure(request.getLightExposure());
+    }
   }
 }

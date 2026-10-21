@@ -37,4 +37,9 @@ public class UserPreferencesRequest {
   // Self-declared business/professional tier (D027, PP-086). Nullable — omit to leave existing
   // value unchanged, same convention as every other field above.
   private Boolean businessTier;
+
+  // Coarse region (PLA-107). Nullable — omit to leave unchanged. Validated server-side:
+  // country against ISO 3166-1 alpha-2, climate against ClimateZone; anything else is a 400.
+  private String regionCountry;
+  private String regionClimate;
 }

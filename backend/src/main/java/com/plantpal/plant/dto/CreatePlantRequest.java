@@ -1,5 +1,7 @@
 package com.plantpal.plant.dto;
 
+import com.plantpal.plant.entity.LightExposure;
+import com.plantpal.plant.entity.Placement;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
@@ -24,4 +26,8 @@ public class CreatePlantRequest {
 
   @Schema(example = "2024-01-15")
   private LocalDate acquiredAt;
+
+  private Placement placement;
+
+  private LightExposure lightExposure;
 }

@@ -65,4 +65,12 @@ public class Plant extends AuditableEntity {
 
   @Column(name = "active_treatment_id")
   private Long activeTreatmentId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "placement", length = 20)
+  private Placement placement;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "light_exposure", length = 20)
+  private LightExposure lightExposure;
 }

@@ -14,6 +14,7 @@ import com.plantpal.user.dto.LoginRequest;
 import com.plantpal.user.dto.RegisterRequest;
 import com.plantpal.user.dto.UserPreferencesRequest;
 import com.plantpal.user.dto.UserPreferencesResponse;
+import com.plantpal.user.entity.ClimateZone;
 import com.plantpal.user.entity.ReasoningModelPreference;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
@@ -178,6 +179,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     if (request.getBusinessTier() != null) {
       user.setBusinessTier(request.getBusinessTier());
     }
+    applyRegion(user, request);
     userRepository.save(user);
     log.info(
         "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
@@ -189,6 +191,24 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.getPlantnetLang(),
         user.isBusinessTier());
     return toPreferencesResponse(user);
+  }
+
+  private void applyRegion(User user, UserPreferencesRequest request) {
+    if (request.getRegionCountry() != null) {
+      String code = request.getRegionCountry().toUpperCase(java.util.Locale.ROOT);
+      if (!java.util.Locale.getISOCountries(java.util.Locale.IsoCountryCode.PART1_ALPHA2)
+          .contains(code)) {
+        throw new ValidationException("Unknown region country: " + request.getRegionCountry());
+      }
+      user.setRegionCountry(code);
+    }
+    if (request.getRegionClimate() != null) {
+      try {
+        user.setRegionClimate(ClimateZone.valueOf(request.getRegionClimate()));
+      } catch (IllegalArgumentException e) {
+        throw new ValidationException("Unknown region climate: " + request.getRegionClimate());
+      }
+    }
   }
 
   private UserPreferencesResponse toPreferencesResponse(User user) {
@@ -204,6 +224,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .plantnetProject(user.getPlantnetProject())
         .plantnetLang(user.getPlantnetLang())
         .businessTier(user.isBusinessTier())
+        .regionCountry(user.getRegionCountry())
+        .regionClimate(user.getRegionClimate())
         .build();
   }
 

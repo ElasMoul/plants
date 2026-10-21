@@ -47,5 +47,10 @@ describe('UserService (shared-core)', () => {
     expect(tier.request.body).toEqual({ businessTier: true });
     tier.flush({ data: { v: 3 } });
     expect(cached()).toEqual({ v: 3 });
+
+    service.updateRegionPreference('FR', 'TEMPERATE').subscribe();
+    const region = http.expectOne('/api/v1/users/me/preferences');
+    expect(region.request.body).toEqual({ regionCountry: 'FR', regionClimate: 'TEMPERATE' });
+    region.flush({ data: { v: 4 } });
   });
 });

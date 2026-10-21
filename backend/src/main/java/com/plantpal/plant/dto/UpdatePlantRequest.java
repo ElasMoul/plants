@@ -1,5 +1,7 @@
 package com.plantpal.plant.dto;
 
+import com.plantpal.plant.entity.LightExposure;
+import com.plantpal.plant.entity.Placement;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,4 +32,8 @@ public class UpdatePlantRequest {
   private String notes;
 
   private LocalDate acquiredAt;
+
+  private Placement placement;
+
+  private LightExposure lightExposure;
 }

@@ -109,6 +109,14 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "is_business_tier", nullable = false)
   private boolean businessTier = false;
 
+  // Coarse region (PLA-107): ISO 3166-1 alpha-2 country + climate zone. Never a precise location.
+  @Column(name = "region_country", length = 2)
+  private String regionCountry;
+
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Column(name = "region_climate", length = 20)
+  private ClimateZone regionClimate;
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

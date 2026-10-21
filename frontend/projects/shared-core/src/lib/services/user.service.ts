@@ -5,6 +5,7 @@ import { tap } from 'rxjs/operators';
 import { API_BASE_URL } from '../tokens';
 import { ApiResponse } from '../models/api-response.model';
 import {
+  ClimateZone,
   ReasoningModelPreference,
   UserPreferences,
   VisionModelPreference,
@@ -50,6 +51,15 @@ export class UserService {
         plantnetProject,
         plantnetLang,
       })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
+
+  updateRegionPreference(
+    regionCountry: string | undefined,
+    regionClimate: ClimateZone | undefined,
+  ): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { regionCountry, regionClimate })
       .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
   }
 

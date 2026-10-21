@@ -55,6 +55,24 @@
         </mat-form-field>
       </div>
 
+      <div class="two-col">
+        <!-- Placement -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'Placement' | t }}</mat-label>
+          <mat-select formControlName="placement" data-testid="plant-placement-select">
+            <mat-option *ngFor="let p of placements" [value]="p">{{ 'placement.' + p | t }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Light exposure -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'Light exposure' | t }}</mat-label>
+          <mat-select formControlName="lightExposure" data-testid="plant-light-select">
+            <mat-option *ngFor="let l of lightExposures" [value]="l">{{ 'light.' + l | t }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
       <!-- Notes -->
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>{{ 'Notes' | t }}</mat-label>
