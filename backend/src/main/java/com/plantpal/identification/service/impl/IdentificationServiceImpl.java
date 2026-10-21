@@ -81,6 +81,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.platform.contracts.aigateway.AiRequest;
 import io.platform.contracts.aigateway.AiRequestMediaInner;
+import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -594,7 +595,7 @@ public class IdentificationServiceImpl implements IdentificationService {
 
   @Override
   @Transactional
-  public IdentificationResponse setVerdict(Long id, SetVerdictRequest req, Long userId) {
+  public IdentificationResponse setVerdict(Long id, @Valid SetVerdictRequest req, Long userId) {
     Identification entity = findOwnedIdentification(id, userId);
     if (entity.getStatus() != IdentificationStatus.COMPLETED) {
       throw new ValidationException("Only a completed identification can be rated");

@@ -55,7 +55,9 @@ public class VerdictReviewSeeder implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    users.findByEmail(ADMIN_EMAIL).orElseGet(() -> createUser(ADMIN_EMAIL, UserRole.ADMIN));
+    if (users.findByEmail(ADMIN_EMAIL).isEmpty()) {
+      createUser(ADMIN_EMAIL, UserRole.ADMIN);
+    }
     if (users.findByEmail(OWNER_EMAIL).isPresent()) return;
     Long ownerId = createUser(OWNER_EMAIL, UserRole.USER).getId();
     seedScan(ownerId, "Monstera deliciosa", "Swiss cheese plant", CANDIDATES, null, null);

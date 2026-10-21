@@ -3271,12 +3271,10 @@ class IdentificationServiceImplTest {
       ident.setUserId(99L);
       when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
 
+      var verdictRequest =
+          request(com.plantpal.identification.entity.IdentificationVerdict.RIGHT, null);
       assertThatThrownBy(
-              () ->
-                  identificationService.setVerdict(
-                      IDENTIFICATION_ID,
-                      request(com.plantpal.identification.entity.IdentificationVerdict.RIGHT, null),
-                      USER_ID))
+              () -> identificationService.setVerdict(IDENTIFICATION_ID, verdictRequest, USER_ID))
           .isInstanceOf(ResourceNotFoundException.class);
       assertThat(ident.getVerdict()).isNull();
     }
