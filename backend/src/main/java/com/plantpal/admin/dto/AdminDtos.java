@@ -68,4 +68,6 @@ public final class AdminDtos {
   public record Overview(Map<String, Long> totals, List<Day> scans, Instant refreshedAt) {}
 
   public record Day(String date, long completed, long failed, long pending) {}
+
+  public record VerdictCounts(long right, long wrong, long unsure) {}
 }

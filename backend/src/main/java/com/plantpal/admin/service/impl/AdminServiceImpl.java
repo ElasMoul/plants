@@ -4,6 +4,7 @@ import com.plantpal.admin.dto.AdminDtos.Activity;
 import com.plantpal.admin.dto.AdminDtos.Overview;
 import com.plantpal.admin.dto.AdminDtos.UserUpdate;
 import com.plantpal.admin.dto.AdminDtos.UserView;
+import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
 import com.plantpal.admin.repository.AdminRepository;
 import com.plantpal.admin.service.AdminService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
@@ -30,6 +31,16 @@ public class AdminServiceImpl implements AdminService {
     this.usage = usage;
     this.users = users;
     this.repository = repository;
+  }
+
+  @Override
+  public VerdictCounts verdictCounts(java.time.LocalDate from, java.time.LocalDate to) {
+    if (to.isBefore(from)) {
+      throw new com.plantpal.shared.exception.ValidationException("to must not precede from");
+    }
+    return repository.verdictCounts(
+        from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+        to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
   }
 
   @Override

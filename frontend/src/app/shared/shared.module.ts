@@ -33,6 +33,7 @@ import { ReadAloudButtonComponent } from './components/read-aloud-button/read-al
 import { BetaNoticeComponent } from './components/beta-notice/beta-notice.component';
 import { AiBlockNoticeComponent } from './components/ai-block-notice/ai-block-notice.component';
 import { FirstRunIntroComponent } from './components/first-run-intro/first-run-intro.component';
+import { VerdictControlComponent } from './components/verdict-control/verdict-control.component';
 import { BusinessTierPromptComponent } from './components/business-tier-prompt/business-tier-prompt.component';
 
 const MATERIAL_MODULES = [
@@ -66,6 +67,7 @@ const MATERIAL_MODULES = [
     BetaNoticeComponent,
     BusinessTierPromptComponent,
     FirstRunIntroComponent,
+    VerdictControlComponent,
   ],
   imports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
   exports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
@@ -84,6 +86,7 @@ const MATERIAL_MODULES = [
     BetaNoticeComponent,
     BusinessTierPromptComponent,
     FirstRunIntroComponent,
+    VerdictControlComponent,
   ],
 })
 export class SharedModule {}

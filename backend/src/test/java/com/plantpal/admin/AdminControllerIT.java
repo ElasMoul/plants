@@ -301,6 +301,59 @@ class AdminControllerIT extends AbstractIntegrationTest {
     }
   }
 
+  @Test
+  void verdictCountsAreAdminOnlyAndFilteredByPeriod() {
+    jdbc.update("DELETE FROM identifications WHERE verdict IS NOT NULL");
+    seedVerdict("RIGHT", "2031-03-10T12:00:00Z");
+    seedVerdict("RIGHT", "2031-03-12T23:59:59Z");
+    seedVerdict("WRONG", "2031-03-11T00:00:00Z");
+    seedVerdict("UNSURE", "2031-04-01T00:00:00Z");
+    jdbc.update(
+        "INSERT INTO identifications(user_id,status) VALUES (?,'COMPLETED')", member.getId());
+
+    var march =
+        data(
+            call(
+                "/api/v1/admin/identification-verdicts?from=2031-03-10&to=2031-03-12",
+                HttpMethod.GET,
+                adminToken,
+                null));
+    assertThat(((Number) march.get("right")).longValue()).isEqualTo(2);
+    assertThat(((Number) march.get("wrong")).longValue()).isEqualTo(1);
+    assertThat(((Number) march.get("unsure")).longValue()).isZero();
+
+    var empty =
+        data(
+            call(
+                "/api/v1/admin/identification-verdicts?from=2030-01-01&to=2030-01-31",
+                HttpMethod.GET,
+                adminToken,
+                null));
+    assertThat(((Number) empty.get("right")).longValue()).isZero();
+    assertThat(((Number) empty.get("wrong")).longValue()).isZero();
+    assertThat(((Number) empty.get("unsure")).longValue()).isZero();
+
+    String path = "/api/v1/admin/identification-verdicts?from=2031-03-10&to=2031-03-12";
+    assertThat(call(path, HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(
+            call(
+                    "/api/v1/admin/identification-verdicts?from=2031-03-12&to=2031-03-10",
+                    HttpMethod.GET,
+                    adminToken,
+                    null)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  private void seedVerdict(String verdict, String at) {
+    jdbc.update(
+        "INSERT INTO identifications(user_id,status,verdict,verdict_at) VALUES (?,'COMPLETED',?,?::timestamptz)",
+        member.getId(),
+        verdict,
+        at);
+  }
+
   private User createUser(UserRole role) {
     return users.saveAndFlush(
         User.builder()

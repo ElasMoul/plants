@@ -166,6 +166,50 @@
               ><span class="stat-note">Plants on the road to recovery</span>
             </article>
           </div>
+          <article class="panel verdict-panel" data-testid="verdict-counts">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">{{ "Identification feedback" | t }}</p>
+                <h2>{{ "Was this right?" | t }}</h2>
+              </div>
+            </div>
+            <p>{{ "Right, wrong and not-sure answers users gave to scan results." | t }}</p>
+            <div class="verdict-range">
+              <label
+                >{{ "From" | t }}
+                <input
+                  type="date"
+                  [(ngModel)]="verdictFrom"
+                  (ngModelChange)="loadVerdicts()"
+              /></label>
+              <label
+                >{{ "To" | t }}
+                <input
+                  type="date"
+                  [(ngModel)]="verdictTo"
+                  (ngModelChange)="loadVerdicts()"
+              /></label>
+            </div>
+            @if (verdictError) {
+              <p role="alert">{{ "Could not load feedback counts." | t }}</p>
+            }
+            @if (verdicts; as counts) {
+              <div class="verdict-counts">
+                <span
+                  ><strong data-testid="verdict-right">{{ counts.right | number }}</strong>
+                  {{ "Right" | t }}</span
+                >
+                <span
+                  ><strong data-testid="verdict-wrong">{{ counts.wrong | number }}</strong>
+                  {{ "Wrong" | t }}</span
+                >
+                <span
+                  ><strong data-testid="verdict-unsure">{{ counts.unsure | number }}</strong>
+                  {{ "Not sure" | t }}</span
+                >
+              </div>
+            }
+          </article>
           <div class="overview-grid">
             <article class="panel chart-panel">
               <div class="panel-heading">

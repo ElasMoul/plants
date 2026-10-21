@@ -2,6 +2,7 @@ package com.plantpal.identification.dto;
 
 import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.entity.IdentificationVerdict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
@@ -62,4 +63,6 @@ public class IdentificationResponse {
   private String annotationModel;
   private String failureReason;
   private String userContext;
+  private IdentificationVerdict verdict;
+  private String verdictSpecies;
 }

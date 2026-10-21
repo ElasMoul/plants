@@ -645,5 +645,17 @@ export const FR: Readonly<Record<string, string>> = {
   "climate.CONTINENTAL": "Continentale",
   "climate.POLAR": "Polaire",
   "Save region": "Enregistrer la région",
-  "Only a country and a climate zone are stored, never your precise location.": "Seuls un pays et une zone climatique sont enregistrés, jamais votre position précise."
+  "Only a country and a climate zone are stored, never your precise location.": "Seuls un pays et une zone climatique sont enregistrés, jamais votre position précise.",
+  "Was this right?": "Est-ce correct ?",
+  "Right": "Correct",
+  "Wrong": "Incorrect",
+  "Not sure": "Pas sûr",
+  "What is the correct species? (optional)": "Quelle est la bonne espèce ? (facultatif)",
+  "Thanks for your feedback": "Merci pour votre retour",
+  "Could not save your answer. Please try again.": "Impossible d’enregistrer votre réponse. Réessayez.",
+  "Identification feedback": "Retours sur l’identification",
+  "Right, wrong and not-sure answers users gave to scan results.": "Réponses « correct », « incorrect » et « pas sûr » données par les utilisateurs aux résultats d’analyse.",
+  "From": "Du",
+  "To": "Au",
+  "Could not load feedback counts.": "Impossible de charger les compteurs de retours."
 };

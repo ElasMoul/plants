@@ -3,6 +3,7 @@ package com.plantpal.admin.repository;
 import com.plantpal.admin.dto.AdminDtos.Activity;
 import com.plantpal.admin.dto.AdminDtos.Day;
 import com.plantpal.admin.dto.AdminDtos.Overview;
+import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +47,23 @@ public class AdminRepository {
         "pendingScans",
         count("SELECT count(*) FROM identifications WHERE status IN ('PENDING', 'PROCESSING')"));
     return new Overview(totals, scanDays(), Instant.now());
+  }
+
+  /** Verdicts whose verdict_at is in [from, to); a scan counts once, under its latest verdict. */
+  public VerdictCounts verdictCounts(Instant from, Instant to) {
+    return jdbc.queryForObject(
+        """
+        SELECT count(*) FILTER (WHERE verdict = 'RIGHT') AS right_count,
+          count(*) FILTER (WHERE verdict = 'WRONG') AS wrong_count,
+          count(*) FILTER (WHERE verdict = 'UNSURE') AS unsure_count
+        FROM identifications
+        WHERE verdict IS NOT NULL AND verdict_at >= ? AND verdict_at < ?
+        """,
+        (rs, row) ->
+            new VerdictCounts(
+                rs.getLong("right_count"), rs.getLong("wrong_count"), rs.getLong("unsure_count")),
+        java.sql.Timestamp.from(from),
+        java.sql.Timestamp.from(to));
   }
 
   public Page<Activity> activity(Pageable page) {

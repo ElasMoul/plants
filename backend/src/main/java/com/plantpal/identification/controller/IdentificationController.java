@@ -9,6 +9,7 @@ import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.dto.PlantMatchDto;
 import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SetVerdictRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.service.IdentificationService;
 import com.plantpal.shared.dto.ApiResponse;
@@ -36,6 +37,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -154,6 +156,29 @@ public class IdentificationController {
     Long userId = getCurrentUserId();
     IdentificationResponse response = identificationService.getIdentification(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @Operation(summary = "Mark an identification result as right, wrong or not sure")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Verdict saved"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error or identification not completed"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Identification not found")
+  })
+  @PutMapping("/{id}/verdict")
+  public ResponseEntity<ApiResponse<IdentificationResponse>> setVerdict(
+      @Parameter(description = "Identification ID") @PathVariable Long id,
+      @RequestBody @Valid SetVerdictRequest req) {
+    IdentificationResponse response = identificationService.setVerdict(id, req, getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success(response, "Verdict saved"));
   }
 
   @Operation(summary = "Get all identifications for a specific plant")

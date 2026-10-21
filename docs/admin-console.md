@@ -213,3 +213,7 @@ and eight admin PostgreSQL integration tests passed after the viewer addition.
 Classic production build, admin ESLint, and nine Chromium administration journeys
 passed, including modal photo/history, mobile overflow, error retry, axe accessibility,
 Escape and focus restoration. `screenshots/admin-plant-modal.png` uses fixture data.
+
+## Identification feedback (PLA-102)
+
+The overview shows how many scans users marked right, wrong or not sure in a chosen period (`GET /api/v1/admin/identification-verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD`, inclusive UTC days, counted by the date of each scan's latest verdict). Administrators only; other roles get 403.

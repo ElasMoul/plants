@@ -145,6 +145,17 @@ public class Identification extends AuditableEntity {
   @Column(name = "user_context", columnDefinition = "TEXT")
   private String userContext;
 
+  /** PLA-102 - owner's verdict on this result (migration 044); null = no verdict yet. */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "verdict", length = 10)
+  private IdentificationVerdict verdict;
+
+  @Column(name = "verdict_species")
+  private String verdictSpecies;
+
+  @Column(name = "verdict_at")
+  private Instant verdictAt;
+
   @PrePersist
   void defaultDateTaken() {
     if (dateTaken == null) {
