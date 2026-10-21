@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -218,7 +219,7 @@ class PlantGroupServiceTest {
           service.logGroupCare(GROUP, request(GroupCareAction.WATERED), USER);
 
       ArgumentCaptor<CareLog> captor = ArgumentCaptor.forClass(CareLog.class);
-      verify(careLogRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+      verify(careLogRepository, times(2)).save(captor.capture());
       assertThat(captor.getAllValues())
           .allSatisfy(
               l -> {
@@ -267,8 +268,9 @@ class PlantGroupServiceTest {
     void foreignGroup() {
       when(groupRepository.findByIdAndUserId(GROUP, OTHER_USER)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(
-              () -> service.logGroupCare(GROUP, request(GroupCareAction.WATERED), OTHER_USER))
+      GroupCareRequest careRequest = request(GroupCareAction.WATERED);
+
+      assertThatThrownBy(() -> service.logGroupCare(GROUP, careRequest, OTHER_USER))
           .isInstanceOf(ResourceNotFoundException.class);
       verify(careLogRepository, never()).save(any());
     }

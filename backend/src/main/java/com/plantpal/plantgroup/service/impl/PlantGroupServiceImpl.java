@@ -19,6 +19,7 @@ import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.HtmlSanitizer;
+import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -128,7 +129,8 @@ public class PlantGroupServiceImpl implements PlantGroupService {
         @CacheEvict(value = PLANTS_CACHE, allEntries = true),
         @CacheEvict(value = GARDEN_CACHE, key = "#userId")
       })
-  public List<CareLogResponse> logGroupCare(Long groupId, GroupCareRequest request, Long userId) {
+  public List<CareLogResponse> logGroupCare(
+      Long groupId, @Valid GroupCareRequest request, Long userId) {
     findOwnedGroup(groupId, userId);
     CareType careType = request.getAction().careType();
     Instant performedAt = Instant.now();

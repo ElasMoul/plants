@@ -81,7 +81,7 @@ class PlantGroupIT extends AbstractIntegrationTest {
     assertThat(plantIds("/api/v1/plants", tokenA)).containsExactlyInAnyOrder(p1, p2, p3);
     assertThat(plantIds("/api/v1/plants?groupId=" + group, tokenA)).isEmpty();
     Map<?, ?> plant = data(call(HttpMethod.GET, "/api/v1/plants/" + p1, null, tokenA));
-    assertThat(plant.get("status")).isEqualTo("ACTIVE");
+    assertThat((Map<Object, Object>) plant).containsEntry("status", "ACTIVE");
     assertThat(plant.get("groupId")).isNull();
   }
 
