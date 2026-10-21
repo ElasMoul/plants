@@ -3,6 +3,7 @@ package com.plantpal.shared.seed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,12 +47,12 @@ class VerdictReviewSeederTest {
     new VerdictReviewSeeder(users, identifications, passwordEncoder).run(null);
 
     ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-    verify(users, org.mockito.Mockito.times(2)).save(userCaptor.capture());
+    verify(users, times(2)).save(userCaptor.capture());
     assertThat(userCaptor.getAllValues())
         .extracting(User::getRole)
         .containsExactly(UserRole.ADMIN, UserRole.USER);
     ArgumentCaptor<Identification> scans = ArgumentCaptor.forClass(Identification.class);
-    verify(identifications, org.mockito.Mockito.times(4)).save(scans.capture());
+    verify(identifications, times(4)).save(scans.capture());
     List<Identification> saved = scans.getAllValues();
     assertThat(saved)
         .extracting(Identification::getVerdict)

@@ -132,8 +132,9 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     @SuppressWarnings("unchecked")
     Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
-    assertThat(data).containsEntry("verdict", "WRONG");
-    assertThat(data).containsEntry("verdictSpecies", "Ficus lyrata");
+    assertThat(data)
+        .containsEntry("verdict", "WRONG")
+        .containsEntry("verdictSpecies", "Ficus lyrata");
     Identification reloaded = identificationRepository.findById(saved.getId()).orElseThrow();
     assertThat(reloaded.getVerdict().name()).isEqualTo("WRONG");
     assertThat(reloaded.getVerdictAt()).isNotNull();
