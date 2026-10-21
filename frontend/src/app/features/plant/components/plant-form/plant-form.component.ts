@@ -4,7 +4,12 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PlantService } from '../../services/plant.service';
-import { CreatePlantRequest, UpdatePlantRequest } from '../../models/plant.model';
+import {
+  CreatePlantRequest,
+  LIGHT_EXPOSURES,
+  PLACEMENTS,
+  UpdatePlantRequest,
+} from '../../models/plant.model';
 
 @Component({
     selector: 'app-plant-form',
@@ -15,6 +20,8 @@ import { CreatePlantRequest, UpdatePlantRequest } from '../../models/plant.model
 export class PlantFormComponent implements OnInit {
   form!: FormGroup;
   editId: number | null = null;
+  readonly placements = PLACEMENTS;
+  readonly lightExposures = LIGHT_EXPOSURES;
   loading = false;
   submitting = false;
 
@@ -50,6 +57,8 @@ export class PlantFormComponent implements OnInit {
       location: [''],
       notes: [''],
       acquiredAt: [null],
+      placement: [null],
+      lightExposure: [null],
     });
   }
 
@@ -77,6 +86,8 @@ export class PlantFormComponent implements OnInit {
           location: p.location ?? '',
           notes: p.notes ?? '',
           acquiredAt: p.acquiredAt ? new Date(p.acquiredAt + 'T00:00:00') : null,
+          placement: p.placement ?? null,
+          lightExposure: p.lightExposure ?? null,
         });
         this.loading = false;
       },
@@ -102,6 +113,8 @@ export class PlantFormComponent implements OnInit {
         location: raw.location || undefined,
         notes: raw.notes || undefined,
         acquiredAt,
+        placement: raw.placement || undefined,
+        lightExposure: raw.lightExposure || undefined,
       };
       this.plantService.updatePlant(this.editId ?? 0, request).subscribe({
         next: () => {
@@ -121,6 +134,8 @@ export class PlantFormComponent implements OnInit {
         location: raw.location || undefined,
         notes: raw.notes || undefined,
         acquiredAt,
+        placement: raw.placement || undefined,
+        lightExposure: raw.lightExposure || undefined,
       };
       this.plantService.createPlant(request).subscribe({
         next: (res) => {

@@ -1,3 +1,9 @@
+export type Placement = 'INDOOR' | 'OUTDOOR' | 'GREENHOUSE';
+export type LightExposure = 'LOW' | 'MEDIUM' | 'BRIGHT' | 'DIRECT_SUN';
+
+export const PLACEMENTS: readonly Placement[] = ['INDOOR', 'OUTDOOR', 'GREENHOUSE'];
+export const LIGHT_EXPOSURES: readonly LightExposure[] = ['LOW', 'MEDIUM', 'BRIGHT', 'DIRECT_SUN'];
+
 export type PlantStatus = 'ACTIVE' | 'ARCHIVED';
 
 export interface SaveIdentificationAsPlantRequest {
@@ -14,6 +20,8 @@ export interface CreatePlantRequest {
   location?: string;
   notes?: string;
   acquiredAt?: string; // YYYY-MM-DD
+  placement?: Placement;
+  lightExposure?: LightExposure;
 }
 
 export interface UpdatePlantRequest {
@@ -24,6 +32,8 @@ export interface UpdatePlantRequest {
   location?: string;
   notes?: string;
   acquiredAt?: string; // YYYY-MM-DD
+  placement?: Placement;
+  lightExposure?: LightExposure;
 }
 
 export type HealthStatus = 'HEALTHY' | 'ISSUES_DETECTED' | 'UNKNOWN';
@@ -45,4 +55,6 @@ export interface PlantResponse {
   nextWaterDays?: number | null;
   lastScanAt?: string | null;
   activeTreatmentId?: number | null;
+  placement?: Placement | null;
+  lightExposure?: LightExposure | null;
 }

@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -243,6 +244,74 @@ class UserServiceTest {
 
       // Then
       assertThat(response.getBusinessTier()).isTrue();
+    }
+  }
+
+  @Nested
+  @DisplayName("updatePreferences() region (PLA-107)")
+  class UpdateRegion {
+
+    private User stubbedUser() {
+      var user = aUser().withId(1L).build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+      lenient().when(userRepository.save(any(User.class))).thenReturn(user);
+      return user;
+    }
+
+    @Test
+    @DisplayName("should save the region and then change it")
+    void shouldSaveAndChangeRegion() {
+      var user = stubbedUser();
+
+      var first =
+          userService.updatePreferences(
+              1L,
+              UserPreferencesRequest.builder()
+                  .regionCountry("fr")
+                  .regionClimate("TEMPERATE")
+                  .build());
+      assertThat(first.getRegionCountry()).isEqualTo("FR");
+      assertThat(first.getRegionClimate())
+          .isEqualTo(com.plantpal.user.entity.ClimateZone.TEMPERATE);
+
+      var second =
+          userService.updatePreferences(
+              1L,
+              UserPreferencesRequest.builder()
+                  .regionCountry("BR")
+                  .regionClimate("TROPICAL")
+                  .build());
+      assertThat(second.getRegionCountry()).isEqualTo("BR");
+      assertThat(user.getRegionClimate()).isEqualTo(com.plantpal.user.entity.ClimateZone.TROPICAL);
+    }
+
+    @Test
+    @DisplayName("should leave the region unchanged when omitted")
+    void shouldLeaveRegionWhenOmitted() {
+      var user = stubbedUser();
+      user.setRegionCountry("ES");
+
+      userService.updatePreferences(1L, UserPreferencesRequest.builder().build());
+
+      assertThat(user.getRegionCountry()).isEqualTo("ES");
+    }
+
+    @Test
+    @DisplayName("should reject an unknown country")
+    void shouldRejectUnknownCountry() {
+      stubbedUser();
+      var request = UserPreferencesRequest.builder().regionCountry("ZZ").build();
+      assertThatThrownBy(() -> userService.updatePreferences(1L, request))
+          .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    @DisplayName("should reject an unknown climate zone")
+    void shouldRejectUnknownClimate() {
+      stubbedUser();
+      var request = UserPreferencesRequest.builder().regionClimate("SWAMP").build();
+      assertThatThrownBy(() -> userService.updatePreferences(1L, request))
+          .isInstanceOf(ValidationException.class);
     }
   }
 

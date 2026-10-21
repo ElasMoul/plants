@@ -24,6 +24,8 @@ export type ReasoningModelPreference =
   | 'ANTHROPIC_CLAUDE'
   | 'OLLAMA_LLAVA';
 
+export type ClimateZone = 'TROPICAL' | 'ARID' | 'TEMPERATE' | 'CONTINENTAL' | 'POLAR';
+
 export interface UserPreferences {
   language?: 'en' | 'fr' | 'ar';
   visionModelVisibility?: Partial<Record<VisionModelPreference, boolean>>;
@@ -44,6 +46,9 @@ export interface UserPreferences {
   // Self-declared business/professional tier (D027, PP-086). No client-side enforcement — the
   // 10+ plants upgrade prompt on the Home dashboard is purely presentational.
   businessTier?: boolean;
+  // Coarse region (PLA-107): ISO 3166-1 alpha-2 country + climate zone. Never a precise location.
+  regionCountry?: string | null;
+  regionClimate?: ClimateZone | null;
 }
 
 export interface User {

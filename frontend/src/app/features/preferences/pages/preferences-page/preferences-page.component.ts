@@ -4,7 +4,9 @@ import { Router } from '@angular/router';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { UserService } from '@plantpal/shared-core';
+import { ClimateZone, UserService } from '@plantpal/shared-core';
+import { CLIMATE_ZONES, CountryOption, countryOptions } from '../../../../shared/region/region';
+import { readLanguage } from '../../../../shared/i18n/language.service';
 import {
   PlantNetConfigService,
   PlantNetProject,
@@ -26,6 +28,13 @@ export class PreferencesPageComponent implements OnInit {
   plantnetSaving = false;
   plantnetSaved = false;
   plantnetLoadError = false;
+
+  readonly climateZones = CLIMATE_ZONES;
+  countries: CountryOption[] = countryOptions(readLanguage());
+  regionCountry: string | null = null;
+  regionClimate: ClimateZone | null = null;
+  regionSaving = false;
+  regionSaved = false;
 
   businessTier = false;
   businessTierSaving = false;
@@ -52,6 +61,8 @@ export class PreferencesPageComponent implements OnInit {
         this.selectedProject = prefs.data.plantnetProject ?? 'all';
         this.selectedLang = prefs.data.plantnetLang ?? 'en';
         this.businessTier = prefs.data.businessTier ?? false;
+        this.regionCountry = prefs.data.regionCountry ?? null;
+        this.regionClimate = prefs.data.regionClimate ?? null;
       },
       error: () => {
         this.plantnetLoadError = true;
@@ -71,6 +82,22 @@ export class PreferencesPageComponent implements OnInit {
         },
         error: () => {
           this.plantnetSaving = false;
+        },
+      });
+  }
+
+  saveRegion(): void {
+    this.regionSaving = true;
+    this.regionSaved = false;
+    this.userService
+      .updateRegionPreference(this.regionCountry ?? undefined, this.regionClimate ?? undefined)
+      .subscribe({
+        next: () => {
+          this.regionSaving = false;
+          this.regionSaved = true;
+        },
+        error: () => {
+          this.regionSaving = false;
         },
       });
   }

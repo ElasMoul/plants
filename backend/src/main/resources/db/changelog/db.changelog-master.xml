@@ -120,4 +120,5 @@
     <include file="db/changelog/migrations/040_scan_content_language.sql"/>
     <include file="db/changelog/migrations/041_identification_date_taken.sql"/>
     <include file="db/changelog/migrations/042_strip_photo_gps.xml"/>
+    <include file="db/changelog/migrations/043_placement_light_region.sql"/>
 </databaseChangeLog>

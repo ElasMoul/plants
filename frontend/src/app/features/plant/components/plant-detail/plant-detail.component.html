@@ -70,6 +70,13 @@
           <p>{{ 'This plant has reported health issues. Check the Scans section for details.' | t }}</p>
         </div>
 
+        <div class="placement-section" data-testid="plant-placement-info">
+          <p><strong>{{ 'Placement' | t }}:</strong>
+            {{ plant.placement ? ('placement.' + plant.placement | t) : ('Not set' | t) }}</p>
+          <p><strong>{{ 'Light exposure' | t }}:</strong>
+            {{ plant.lightExposure ? ('light.' + plant.lightExposure | t) : ('Not set' | t) }}</p>
+        </div>
+
         <mat-divider *ngIf="plant.notes"></mat-divider>
 
         <div class="notes-section" *ngIf="plant.notes">

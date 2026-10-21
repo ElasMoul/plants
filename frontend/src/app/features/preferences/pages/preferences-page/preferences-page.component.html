@@ -79,6 +79,28 @@
   </div>
 
   <div class="preference-section">
+    <h2>{{ 'Region' | t }}</h2>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'Country' | t }}</mat-label>
+      <mat-select [(ngModel)]="regionCountry" (ngModelChange)="regionSaved = false" data-testid="region-country-select">
+        <mat-option *ngFor="let c of countries" [value]="c.code">{{ c.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width mt-12">
+      <mat-label>{{ 'Climate zone' | t }}</mat-label>
+      <mat-select [(ngModel)]="regionClimate" (ngModelChange)="regionSaved = false" data-testid="region-climate-select">
+        <mat-option *ngFor="let z of climateZones" [value]="z">{{ 'climate.' + z | t }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-flat-button color="primary" (click)="saveRegion()" [disabled]="regionSaving" data-testid="region-save">
+      {{ regionSaving ? ('Saving…' | t) : regionSaved ? ('Saved' | t) : ('Save region' | t) }}
+    </button>
+    <p class="section-hint">
+      {{ 'Only a country and a climate zone are stored, never your precise location.' | t }}
+    </p>
+  </div>
+
+  <div class="preference-section">
     <h2>{{ 'Garden type' | t }}</h2>
     <div class="toggle-row">
       <mat-slide-toggle

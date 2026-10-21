@@ -1,6 +1,7 @@
 package com.plantpal.user.dto;
 
 import com.plantpal.user.entity.AiModelPreference;
+import com.plantpal.user.entity.ClimateZone;
 import com.plantpal.user.entity.ReasoningModelPreference;
 import com.plantpal.user.entity.VisionModelPreference;
 import java.util.Map;
@@ -38,4 +39,8 @@ public class UserPreferencesResponse {
 
   // Self-declared business/professional tier (D027, PP-086). Non-null in practice.
   private Boolean businessTier;
+
+  // Coarse region (PLA-107); null when unset.
+  private String regionCountry;
+  private ClimateZone regionClimate;
 }
