@@ -74,6 +74,12 @@ export interface AdminOverview {
   refreshedAt: string;
 }
 
+export interface AdminVerdictCounts {
+  right: number;
+  wrong: number;
+  unsure: number;
+}
+
 @Injectable({ providedIn: "root" })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -85,6 +91,12 @@ export class AdminService {
   }
   overview() {
     return this.get<AdminOverview>("overview");
+  }
+  verdictCounts(from: string, to: string) {
+    return this.get<AdminVerdictCounts>(
+      "identification-verdicts",
+      new HttpParams().set("from", from).set("to", to),
+    );
   }
   users(query: string, status: string, page: number) {
     let params = new HttpParams()

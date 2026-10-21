@@ -9,6 +9,7 @@ import com.plantpal.identification.dto.IdentificationResponse;
 import com.plantpal.identification.dto.PlantMatchDto;
 import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SetVerdictRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
 import java.util.List;
@@ -47,6 +48,8 @@ public interface IdentificationService {
   PlantMatchDto getPlantMatch(Long id, Long userId);
 
   IdentificationResponse resolvePlant(Long id, ResolvePlantRequest req, Long userId);
+
+  IdentificationResponse setVerdict(Long id, SetVerdictRequest req, Long userId);
 
   IdentificationResponse retryIdentification(Long id, Long userId);
 }

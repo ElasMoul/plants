@@ -147,6 +147,9 @@ export interface IdentificationResponse {
   reasoningModelUsed?: string | null;
   speciesId: number | null;
   userContext?: string | null;
+  plantNetCandidates?: PlantNetCandidateDto[] | null;
+  verdict?: 'RIGHT' | 'WRONG' | 'UNSURE' | null;
+  verdictSpecies?: string | null;
 }
 
 export interface AnalyzeEmitPayload {

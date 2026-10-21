@@ -6,16 +6,19 @@ import com.plantpal.admin.dto.AdminDtos.ModelView;
 import com.plantpal.admin.dto.AdminDtos.Overview;
 import com.plantpal.admin.dto.AdminDtos.UserUpdate;
 import com.plantpal.admin.dto.AdminDtos.UserView;
+import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
 import com.plantpal.admin.service.AdminService;
 import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -78,6 +81,13 @@ public class AdminController {
   @GetMapping("/activity")
   public ApiResponse<Page<Activity>> activity(Pageable pageable) {
     return ApiResponse.success(admin.activity(bounded(pageable, "createdAt")));
+  }
+
+  @GetMapping("/identification-verdicts")
+  public ApiResponse<VerdictCounts> identificationVerdicts(
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(admin.verdictCounts(from, to));
   }
 
   private Pageable bounded(Pageable page, String sort) {

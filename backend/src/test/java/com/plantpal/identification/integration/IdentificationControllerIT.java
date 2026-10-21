@@ -118,6 +118,71 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
   }
 
+  @Test
+  @DisplayName("PUT /{id}/verdict should persist the owner verdict and return it")
+  void ownerCanSetVerdict() {
+    Identification saved = seedIdentification(userIdA);
+
+    ResponseEntity<Map> response =
+        putWithToken(
+            "/api/v1/identifications/" + saved.getId() + "/verdict",
+            Map.of("verdict", "WRONG", "correctSpecies", "Ficus lyrata"),
+            tokenA);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+    assertThat(data)
+        .containsEntry("verdict", "WRONG")
+        .containsEntry("verdictSpecies", "Ficus lyrata");
+    Identification reloaded = identificationRepository.findById(saved.getId()).orElseThrow();
+    assertThat(reloaded.getVerdict().name()).isEqualTo("WRONG");
+    assertThat(reloaded.getVerdictAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("PUT /{id}/verdict should return 404 and change nothing for another user")
+  void otherUserCannotSetVerdict() {
+    Identification saved = seedIdentification(userIdA);
+    String tokenB = (String) registerAndLogin(uniqueEmail(), "password123").get("token");
+
+    ResponseEntity<Map> response =
+        putWithToken(
+            "/api/v1/identifications/" + saved.getId() + "/verdict",
+            Map.of("verdict", "RIGHT"),
+            tokenB);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(identificationRepository.findById(saved.getId()).orElseThrow().getVerdict())
+        .isNull();
+  }
+
+  @Test
+  @DisplayName("PUT /{id}/verdict without a token should return 401")
+  void verdictRequiresAuthentication() {
+    Identification saved = seedIdentification(userIdA);
+
+    ResponseEntity<Map> response =
+        restTemplate.exchange(
+            url("/api/v1/identifications/" + saved.getId() + "/verdict"),
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("verdict", "RIGHT")),
+            Map.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  @Test
+  @DisplayName("PUT /{id}/verdict should reject a missing verdict with 400")
+  void verdictIsRequired() {
+    Identification saved = seedIdentification(userIdA);
+
+    ResponseEntity<Map> response =
+        putWithToken("/api/v1/identifications/" + saved.getId() + "/verdict", Map.of(), tokenA);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private Identification seedIdentification(Long userId) {
@@ -170,6 +235,13 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
     headers.setBearerAuth(token);
     HttpEntity<Void> entity = new HttpEntity<>(headers);
     return restTemplate.exchange(url(path), HttpMethod.GET, entity, Map.class);
+  }
+
+  private ResponseEntity<Map> putWithToken(String path, Object body, String token) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+    return restTemplate.exchange(
+        url(path), HttpMethod.PUT, new HttpEntity<>(body, headers), Map.class);
   }
 
   private String url(String path) {

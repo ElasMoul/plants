@@ -645,5 +645,17 @@ export const AR: Readonly<Record<string, string>> = {
   "climate.CONTINENTAL": "قاري",
   "climate.POLAR": "قطبي",
   "Save region": "حفظ المنطقة",
-  "Only a country and a climate zone are stored, never your precise location.": "يتم حفظ الدولة والمنطقة المناخية فقط، وليس موقعك الدقيق."
+  "Only a country and a climate zone are stored, never your precise location.": "يتم حفظ الدولة والمنطقة المناخية فقط، وليس موقعك الدقيق.",
+  "Was this right?": "هل كان هذا صحيحًا؟",
+  "Right": "صحيح",
+  "Wrong": "خاطئ",
+  "Not sure": "لست متأكدًا",
+  "What is the correct species? (optional)": "ما هو النوع الصحيح؟ (اختياري)",
+  "Thanks for your feedback": "شكرًا على ملاحظاتك",
+  "Could not save your answer. Please try again.": "تعذر حفظ إجابتك. حاول مرة أخرى.",
+  "Identification feedback": "ملاحظات التعرّف",
+  "Right, wrong and not-sure answers users gave to scan results.": "إجابات «صحيح» و«خاطئ» و«لست متأكدًا» التي قدّمها المستخدمون لنتائج الفحص.",
+  "From": "من",
+  "To": "إلى",
+  "Could not load feedback counts.": "تعذر تحميل أعداد الملاحظات."
 };

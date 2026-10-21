@@ -69,6 +69,13 @@
       ></app-care-plan>
     </div>
 
+    <app-verdict-control
+      [identificationId]="scan.id"
+      [initialVerdict]="scan.verdict"
+      [initialSpecies]="scan.verdictSpecies"
+      [candidates]="scan.plantNetCandidates"
+    ></app-verdict-control>
+
     <!-- Empty care plan state -->
     <div class="no-care-section" *ngIf="!scan.carePlan?.careCards?.length">
       <mat-icon>spa</mat-icon>

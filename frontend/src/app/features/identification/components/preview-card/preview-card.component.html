@@ -48,6 +48,15 @@
 
   <mat-divider class="section-divider"></mat-divider>
 
+  <app-verdict-control
+    [identificationId]="result.id"
+    [initialVerdict]="result.verdict"
+    [initialSpecies]="result.verdictSpecies"
+    [candidates]="result.plantNetCandidates"
+  ></app-verdict-control>
+
+  <mat-divider class="section-divider"></mat-divider>
+
   <!-- Save form -->
   <form [formGroup]="form" class="save-form" (ngSubmit)="onSave()">
     <p class="section-label">{{ 'Add to your garden' | t }}</p>

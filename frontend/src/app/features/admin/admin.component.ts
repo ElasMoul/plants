@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { AdminIconComponent } from "./admin-icon.component";
+import { TranslatePipe } from "../../shared/i18n/translate.pipe";
 import { HttpErrorResponse } from "@angular/common/http";
 import {
   catchError,
@@ -23,6 +24,7 @@ import {
   AdminActivity,
   AdminModel,
   AdminOverview,
+  AdminVerdictCounts,
   AdminPage,
   AdminService,
   AdminUser,
@@ -31,7 +33,7 @@ import {
 @Component({
   selector: "app-admin",
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, AdminIconComponent],
+  imports: [CommonModule, FormsModule, RouterModule, AdminIconComponent, TranslatePipe],
   templateUrl: "./admin.component.html",
   styleUrls: [
     "./admin.component.scss",
@@ -89,6 +91,10 @@ export class AdminComponent implements OnInit {
   };
   access?: AdminAccess;
   overview?: AdminOverview;
+  verdicts?: AdminVerdictCounts;
+  verdictError = false;
+  verdictTo = new Date().toISOString().slice(0, 10);
+  verdictFrom = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
   people?: AdminPage<AdminUser>;
   events?: AdminPage<AdminActivity>;
   user?: AdminUser;
@@ -365,6 +371,17 @@ export class AdminComponent implements OnInit {
       this.overview?.scans.reduce((s, d) => s + d.completed, 0) ?? 0;
     return total ? `${Math.round((completed / total) * 100)}%` : "—";
   }
+  loadVerdicts(): void {
+    this.verdictError = false;
+    if (!this.verdictFrom || !this.verdictTo) return;
+    this.api
+      .verdictCounts(this.verdictFrom, this.verdictTo)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (counts) => (this.verdicts = counts),
+        error: () => (this.verdictError = true),
+      });
+  }
   initials(user: AdminUser): string {
     return `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`;
   }
@@ -377,6 +394,7 @@ export class AdminComponent implements OnInit {
       }).pipe(
         tap((data) => {
           this.overview = data.overview;
+          this.loadVerdicts();
           this.events = data.activity;
         }),
       );

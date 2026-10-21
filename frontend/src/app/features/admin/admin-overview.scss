@@ -399,3 +399,9 @@
   width: 13px;
   height: 13px;
 }
+
+.verdict-panel { margin-bottom: 24px; }
+.verdict-range { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0; }
+.verdict-range label { display: flex; flex-direction: column; gap: 4px; }
+.verdict-counts { display: flex; flex-wrap: wrap; gap: 32px; }
+.verdict-counts strong { display: block; font-size: 2rem; }

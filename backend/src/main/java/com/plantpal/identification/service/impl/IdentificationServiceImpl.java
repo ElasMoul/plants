@@ -32,6 +32,7 @@ import com.plantpal.identification.dto.PlantNetReferenceImageDto;
 import com.plantpal.identification.dto.PlantSummaryDto;
 import com.plantpal.identification.dto.ResolvePlantRequest;
 import com.plantpal.identification.dto.ResolveSpeciesRequest;
+import com.plantpal.identification.dto.SetVerdictRequest;
 import com.plantpal.identification.dto.SpeciesMatchDto;
 import com.plantpal.identification.dto.plantnet.PlantNetDiseaseResponse;
 import com.plantpal.identification.dto.plantnet.PlantNetReferenceImage;
@@ -40,6 +41,7 @@ import com.plantpal.identification.dto.plantnet.PlantNetResult;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
+import com.plantpal.identification.entity.IdentificationVerdict;
 import com.plantpal.identification.event.DuplicateCareCardRemovedEvent;
 import com.plantpal.identification.event.IdentificationCompletedEvent;
 import com.plantpal.identification.event.IdentificationRequestedEvent;
@@ -79,6 +81,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.platform.contracts.aigateway.AiRequest;
 import io.platform.contracts.aigateway.AiRequestMediaInner;
+import jakarta.validation.Valid;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -588,6 +591,22 @@ public class IdentificationServiceImpl implements IdentificationService {
     response.setAnnotationRegions(parseAnnotationRegions(entity.getAnnotationRegions()));
     response.setPlantNetCandidates(parsePlantNetCandidates(entity.getPlantnetCandidates()));
     return response;
+  }
+
+  @Override
+  @Transactional
+  public IdentificationResponse setVerdict(Long id, @Valid SetVerdictRequest req, Long userId) {
+    Identification entity = findOwnedIdentification(id, userId);
+    if (entity.getStatus() != IdentificationStatus.COMPLETED) {
+      throw new ValidationException("Only a completed identification can be rated");
+    }
+    String species = req.getCorrectSpecies() == null ? "" : req.getCorrectSpecies().trim();
+    boolean keepSpecies = req.getVerdict() == IdentificationVerdict.WRONG && !species.isEmpty();
+    entity.setVerdict(req.getVerdict());
+    entity.setVerdictSpecies(keepSpecies ? species : null);
+    entity.setVerdictAt(Instant.now());
+    identificationRepository.save(entity);
+    return getIdentification(id, userId);
   }
 
   @Override

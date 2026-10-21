@@ -3132,4 +3132,151 @@ class IdentificationServiceImplTest {
           .isInstanceOf(ResourceNotFoundException.class);
     }
   }
+
+  @Nested
+  @DisplayName("setVerdict() - PLA-102")
+  class SetVerdict {
+
+    private static final Long IDENTIFICATION_ID = 42L;
+
+    private Identification buildIdentification(
+        IdentificationStatus status,
+        IdentificationStageStatus identStatus,
+        IdentificationStageStatus annotStatus,
+        IdentificationStageStatus candidateStatus) {
+      return Identification.builder()
+          .id(IDENTIFICATION_ID)
+          .userId(USER_ID)
+          .photoUrl("/photos/uuid.jpg")
+          .status(status)
+          .identificationStatus(identStatus)
+          .annotationStatus(annotStatus)
+          .candidateStatus(candidateStatus)
+          .build();
+    }
+
+    private Identification completed() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.COMPLETED,
+              IdentificationStageStatus.COMPLETED,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      ident.setUserId(USER_ID);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+      when(identificationMapper.toResponse(any()))
+          .thenReturn(new com.plantpal.identification.dto.IdentificationResponse());
+      return ident;
+    }
+
+    private com.plantpal.identification.dto.SetVerdictRequest request(
+        com.plantpal.identification.entity.IdentificationVerdict verdict, String species) {
+      return new com.plantpal.identification.dto.SetVerdictRequest(verdict, species);
+    }
+
+    @Test
+    @DisplayName("stores RIGHT with a timestamp and no species")
+    void storesRight() {
+      Identification ident = completed();
+
+      identificationService.setVerdict(
+          IDENTIFICATION_ID,
+          request(com.plantpal.identification.entity.IdentificationVerdict.RIGHT, "ignored"),
+          USER_ID);
+
+      assertThat(ident.getVerdict())
+          .isEqualTo(com.plantpal.identification.entity.IdentificationVerdict.RIGHT);
+      assertThat(ident.getVerdictSpecies()).isNull();
+      assertThat(ident.getVerdictAt()).isNotNull();
+      verify(identificationRepository).save(ident);
+    }
+
+    @Test
+    @DisplayName("stores WRONG with the trimmed correct species")
+    void storesWrongWithSpecies() {
+      Identification ident = completed();
+
+      identificationService.setVerdict(
+          IDENTIFICATION_ID,
+          request(
+              com.plantpal.identification.entity.IdentificationVerdict.WRONG, "  Ficus lyrata "),
+          USER_ID);
+
+      assertThat(ident.getVerdictSpecies()).isEqualTo("Ficus lyrata");
+    }
+
+    @Test
+    @DisplayName("stores WRONG without a species when a blank one is given")
+    void storesWrongWithoutSpecies() {
+      Identification ident = completed();
+
+      identificationService.setVerdict(
+          IDENTIFICATION_ID,
+          request(com.plantpal.identification.entity.IdentificationVerdict.WRONG, "   "),
+          USER_ID);
+
+      assertThat(ident.getVerdictSpecies()).isNull();
+    }
+
+    @Test
+    @DisplayName("overwrites a previous WRONG with UNSURE and clears the species")
+    void overwriteClearsSpecies() {
+      Identification ident = completed();
+      identificationService.setVerdict(
+          IDENTIFICATION_ID,
+          request(com.plantpal.identification.entity.IdentificationVerdict.WRONG, "Ficus lyrata"),
+          USER_ID);
+
+      identificationService.setVerdict(
+          IDENTIFICATION_ID,
+          request(com.plantpal.identification.entity.IdentificationVerdict.UNSURE, "Ficus lyrata"),
+          USER_ID);
+
+      assertThat(ident.getVerdict())
+          .isEqualTo(com.plantpal.identification.entity.IdentificationVerdict.UNSURE);
+      assertThat(ident.getVerdictSpecies()).isNull();
+    }
+
+    @Test
+    @DisplayName("rejects a verdict on an identification that is not COMPLETED")
+    void rejectsNotCompleted() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.PENDING,
+              IdentificationStageStatus.PENDING,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      ident.setUserId(USER_ID);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+
+      assertThatThrownBy(
+              () ->
+                  identificationService.setVerdict(
+                      IDENTIFICATION_ID,
+                      request(com.plantpal.identification.entity.IdentificationVerdict.RIGHT, null),
+                      USER_ID))
+          .isInstanceOf(com.plantpal.shared.exception.ValidationException.class);
+      verify(identificationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("throws ResourceNotFoundException for another user's identification")
+    void rejectsNonOwner() {
+      Identification ident =
+          buildIdentification(
+              IdentificationStatus.COMPLETED,
+              IdentificationStageStatus.COMPLETED,
+              IdentificationStageStatus.SKIPPED,
+              IdentificationStageStatus.SKIPPED);
+      ident.setUserId(99L);
+      when(identificationRepository.findById(IDENTIFICATION_ID)).thenReturn(Optional.of(ident));
+
+      var verdictRequest =
+          request(com.plantpal.identification.entity.IdentificationVerdict.RIGHT, null);
+      assertThatThrownBy(
+              () -> identificationService.setVerdict(IDENTIFICATION_ID, verdictRequest, USER_ID))
+          .isInstanceOf(ResourceNotFoundException.class);
+      assertThat(ident.getVerdict()).isNull();
+    }
+  }
 }
