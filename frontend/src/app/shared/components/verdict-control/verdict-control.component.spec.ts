@@ -40,7 +40,7 @@ describe('VerdictControlComponent', () => {
     req.flush({ data: {} });
     fixture.detectChanges();
     expect(el('verdict-species')).toBeTruthy();
-    expect(fixture.nativeElement.querySelectorAll('datalist option').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('datalist option')).toHaveLength(1);
   });
 
   it('clears the species when switching away from wrong', () => {
