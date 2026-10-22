@@ -110,17 +110,32 @@
         </div>
 
         <!-- Empty state -->
-        <div *ngIf="scanHistoryLoaded && scanHistory.length === 0" class="placeholder-tab">
+        <div *ngIf="scanHistoryLoaded && timeline.length === 0" class="placeholder-tab">
           <mat-icon class="placeholder-icon">camera_enhance</mat-icon>
           <h3>{{ 'No scans yet' | t }}</h3>
           <p>{{ 'Scan this plant to see its health history here.' | t }}</p>
         </div>
 
         <!-- History list -->
-        <div class="scan-history-list" *ngIf="scanHistoryLoaded && scanHistory.length > 0">
+        <div class="scan-history-list" *ngIf="scanHistoryLoaded && timeline.length > 0">
+          <ng-container *ngFor="let item of timeline; trackBy: trackByTimelineItem">
+          <div class="journal-event-item" *ngIf="item.kind === 'event' && item.event as ev" data-testid="journal-event">
+            <mat-icon class="journal-event-icon">event_note</mat-icon>
+            <div class="scan-meta">
+              <div class="scan-date">{{ ev.eventDate | date:'mediumDate' }}</div>
+              <div class="journal-event-type">{{ journalLabels[ev.type] | t }}</div>
+              <div class="journal-event-note" *ngIf="ev.note">{{ ev.note }}</div>
+            </div>
+            <button mat-icon-button type="button" (click)="openJournalEventDialog(ev)" [attr.aria-label]="'Edit event' | t" data-testid="journal-edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" (click)="deleteJournalEvent(ev)" [attr.aria-label]="'Delete' | t" data-testid="journal-delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
           <div
             class="scan-history-item"
-            *ngFor="let scan of scanHistory; trackBy: trackByScanId"
+            *ngIf="item.kind === 'scan' && item.scan as scan"
             (click)="openScanDetail(scan)"
             role="button"
             tabindex="0"
@@ -148,7 +163,12 @@
             </div>
             <mat-icon class="scan-chevron directional-icon">chevron_right</mat-icon>
           </div>
+          </ng-container>
         </div>
+
+        <button mat-stroked-button type="button" class="add-journal-event" (click)="openJournalEventDialog()" data-testid="journal-add">
+          <mat-icon>event_note</mat-icon> {{ 'Add event' | t }}
+        </button>
 
         <!-- FAB to add new scan -->
         <button mat-fab color="primary" class="new-scan-fab" (click)="openAddScanDialog()" [attr.aria-label]="&#x27;New scan&#x27; | t">
