@@ -436,3 +436,30 @@ mat-divider {
 .treatment-progress-chip {
   cursor: pointer;
 }
+
+.add-journal-event {
+  margin: 12px 16px 0;
+}
+
+.journal-event-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.journal-event-icon {
+  flex: none;
+  width: 56px;
+  text-align: center;
+}
+
+.journal-event-type {
+  font-weight: 500;
+}
+
+.journal-event-note {
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}

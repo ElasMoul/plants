@@ -27,6 +27,7 @@ import { CareLogModule } from '../reminder/components/care-log/care-log.module';
 import { PlantService } from './services/plant.service';
 import { PlantGroupService } from './services/plant-group.service';
 import { TreatmentService } from './services/treatment.service';
+import { JournalEventService } from './services/journal-event.service';
 import { IdentificationService } from '../identification/services/identification.service';
 import { BatchScanService } from '../identification/services/batch-scan.service';
 import { CareLogService } from '../reminder/services/care-log.service';
@@ -43,6 +44,7 @@ import { ActiveTreatmentSelectSheetComponent } from './components/active-treatme
 import { GroupManagerDialogComponent } from './components/group-manager-dialog/group-manager-dialog.component';
 import { GroupPickerSheetComponent } from './components/group-picker-sheet/group-picker-sheet.component';
 import { ScanDetailComponent } from './components/scan-detail/scan-detail.component';
+import { JournalEventDialogComponent } from './components/journal-event-dialog/journal-event-dialog.component';
 
 @NgModule({
   declarations: [
@@ -57,6 +59,7 @@ import { ScanDetailComponent } from './components/scan-detail/scan-detail.compon
     ScanDetailComponent,
     GroupManagerDialogComponent,
     GroupPickerSheetComponent,
+    JournalEventDialogComponent,
   ],
   imports: [
     CommonModule,
@@ -85,6 +88,6 @@ import { ScanDetailComponent } from './components/scan-detail/scan-detail.compon
     MatDialogModule,
     MatBottomSheetModule,
   ],
-  providers: [PlantService, PlantGroupService, TreatmentService, IdentificationService, BatchScanService, CareLogService, ReminderService, TreatmentPlanService],
+  providers: [PlantService, PlantGroupService, JournalEventService, TreatmentService, IdentificationService, BatchScanService, CareLogService, ReminderService, TreatmentPlanService],
 })
 export class PlantModule {}

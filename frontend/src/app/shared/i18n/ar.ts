@@ -677,5 +677,22 @@ export const AR: Readonly<Record<string, string>> = {
   "Right, wrong and not-sure answers users gave to scan results.": "إجابات «صحيح» و«خاطئ» و«لست متأكدًا» التي قدّمها المستخدمون لنتائج الفحص.",
   "From": "من",
   "To": "إلى",
-  "Could not load feedback counts.": "تعذر تحميل أعداد الملاحظات."
+  "Could not load feedback counts.": "تعذر تحميل أعداد الملاحظات.",
+  "Flowering": "الإزهار",
+  "Fruiting": "الإثمار",
+  "Propagation": "التكاثر",
+  "Date": "التاريخ",
+  "Delete": "حذف",
+  "Add event": "إضافة حدث",
+  "Edit event": "تعديل الحدث",
+  "Event type": "نوع الحدث",
+  "Note (optional)": "ملاحظة (اختياري)",
+  "Journal event": "حدث في السجل",
+  "Delete this event?": "حذف هذا الحدث؟",
+  "Event added.": "تمت إضافة الحدث.",
+  "Event updated.": "تم تحديث الحدث.",
+  "Event deleted.": "تم حذف الحدث.",
+  "Could not save the event.": "تعذر حفظ الحدث.",
+  "Could not delete the event.": "تعذر حذف الحدث.",
+  "Could not load journal events.": "تعذر تحميل أحداث السجل."
 };
