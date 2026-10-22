@@ -8,9 +8,8 @@ import { PlantService } from '../../../plant/services/plant.service';
 import { PlantResponse } from '../../../plant/models/plant.model';
 import { FIRST_RUN_EVENTS, FirstRunService } from '../../../../core/services/first-run.service';
 import { AnalyzeEmitPayload } from '../../models/identification.model';
+import { PhotoRejection, normalizePhoto, rejectionMessage } from './photo-normalizer';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 5;
 const MAX_CONTEXT_CHARS = 500;
 
@@ -292,46 +291,42 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
     this.listening = false;
   }
 
-  private processFiles(fileList: FileList | null): void {
+  private async processFiles(fileList: FileList | null): Promise<void> {
     if (!fileList) return;
+    // Snapshot now: the input is reset right after this call, which empties the live FileList.
+    const files = Array.from(fileList);
 
     const errors: string[] = [];
-    const toAdd: File[] = [];
+    const added: ImageEntry[] = [];
 
-    Array.from(fileList).forEach(file => {
-      if (this.entries.length + toAdd.length >= MAX_IMAGES) {
+    for (const file of files) {
+      if (this.entries.length + added.length >= MAX_IMAGES) {
         errors.push(translate("\"{0}\" skipped — maximum {1} images allowed", [file.name, MAX_IMAGES]));
-        return;
+        continue;
       }
-      const err = this.validateFile(file);
-      if (err) {
-        errors.push(err);
-      } else {
-        toAdd.push(file);
+      try {
+        const normalized = await this.normalize(file);
+        added.push({ file: normalized, preview: await this.readPreview(normalized), organ: 'auto' });
+      } catch (e) {
+        errors.push(rejectionMessage(e instanceof PhotoRejection ? e.reason : 'unreadable', file.name));
       }
-    });
+    }
 
     this.validationErrors = errors;
-
-    toAdd.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const result = e.target?.result;
-        if (typeof result === 'string') {
-          this.entries = [...this.entries, { file, preview: result, organ: 'auto' }];
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    this.entries = [...this.entries, ...added].slice(0, MAX_IMAGES);
   }
 
-  private validateFile(file: File): string | null {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return translate("\"{0}\": unsupported format — JPEG, PNG, or WebP only", [file.name]);
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      return translate("\"{0}\": exceeds 10 MB limit", [file.name]);
-    }
-    return null;
+  /** Replaceable in tests; the real implementation needs a browser canvas. */
+  protected normalize(file: File): Promise<File> {
+    return normalizePhoto(file);
+  }
+
+  private readPreview(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => (typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('preview')));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
   }
 }

@@ -39,8 +39,8 @@
     </div>
     <p class="drop-primary">{{ 'Upload a photo' | t }}</p>
     <p class="drop-secondary">{{ 'Drag & drop, or' | t }} <strong>{{ 'click to browse' | t }}</strong></p>
-    <p class="drop-hint" *ngIf="!batchMode">{{ 'Up to 5 images · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
-    <p class="drop-hint" *ngIf="batchMode">{{ 'Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP · Max 10 MB each' | t }}</p>
+    <p class="drop-hint" *ngIf="!batchMode">{{ 'Up to 5 images · JPEG, PNG, WebP, HEIC · Max 10 MB each' | t }}</p>
+    <p class="drop-hint" *ngIf="batchMode">{{ 'Each photo becomes its own plant · Up to 5 · JPEG, PNG, WebP, HEIC · Max 10 MB each' | t }}</p>
   </div>
 
   <!-- Camera: explain before the browser asks; upload always stays available -->
