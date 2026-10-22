@@ -218,6 +218,21 @@ $env:SONAR_TOKEN = "<global analysis token>"   # My Account -> Security
 
 ---
 
+## End-to-end smoke test
+
+One Playwright scenario walks the core care loop: sign in, scan a fixture photo, save the plant, set a reminder and ask the chat one question. Each stage is a named `test.step`, so a failure reports which step broke. It runs in CI (`E2E Smoke` job) on every pull request.
+
+The backend must run with the `e2e` Spring profile, which swaps every AI provider and the mail sender for deterministic stubs (no real AI call, no email). The profile is opt-in and refuses to start together with `prod`, `staging` or `platform`.
+
+```bash
+docker-compose up -d postgres redis
+cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev,e2e -Dspring-boot.run.arguments=--server.port=8180
+cd frontend && ng serve --proxy-config proxy.conf.json   # http://localhost:4200
+cd frontend && npm run e2e:smoke
+```
+
+To point it at a review or dev environment, set one variable: `E2E_BASE_URL=https://<environment> npm run e2e:smoke`. The target must run the `e2e` profile; never aim it at production.
+
 ## Branch Strategy
 
 `main` is the working branch — pushed directly, protected by CI (`ci.yml` +
