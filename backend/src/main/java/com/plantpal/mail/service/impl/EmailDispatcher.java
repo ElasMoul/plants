@@ -175,7 +175,7 @@ public class EmailDispatcher {
 
   /** 1x, 2x, 4x... the base delay: attempt 1 waits one base delay before attempt 2. */
   private java.time.Duration backoff(int attempts) {
-    return properties.retryBaseDelay().multipliedBy(1L << Math.clamp(attempts - 1, 0, 10));
+    return properties.retryBaseDelay().multipliedBy(1L << Math.clamp((long) attempts - 1, 0, 10));
   }
 
   private static String truncate(String value) {
