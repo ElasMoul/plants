@@ -31,7 +31,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -49,6 +51,11 @@ public class ExportServiceImpl implements ExportService {
 
   private static final Logger log = LoggerFactory.getLogger(ExportServiceImpl.class);
 
+  private static final String COL_PHOTO_URL = "photoUrl";
+  private static final String COL_COMMON_NAME = "commonName";
+  private static final String COL_PLANT_ID = "plantId";
+  private static final String COL_NOTES = "notes";
+  private static final String COL_STATUS = "status";
   private static final int PAGE_SIZE = 200;
   private static final int MAX_TRACKED_USERS = 10_000;
   private static final String NOT_FOUND = "Export not found";
@@ -62,7 +69,7 @@ public class ExportServiceImpl implements ExportService {
   private final ExportFileStore fileStore;
   private final ObjectMapper objectMapper;
   private final Clock clock;
-  private final BoundedBucketStore buckets = new BoundedBucketStore(MAX_TRACKED_USERS);
+  private final BoundedBucketStore buckets;
 
   @Value("${app.export.rate-limit-per-hour:3}")
   private int rateLimitPerHour;
@@ -88,6 +95,7 @@ public class ExportServiceImpl implements ExportService {
     this.fileStore = fileStore;
     this.objectMapper = objectMapper;
     this.clock = clock;
+    this.buckets = new BoundedBucketStore(MAX_TRACKED_USERS);
   }
 
   @Override
@@ -102,6 +110,7 @@ public class ExportServiceImpl implements ExportService {
       return new ExportResponse(
           id, fileStore.expiresAt(file), Files.size(file), fileStore.retentionHours());
     } catch (IOException e) {
+      log.warn("Export build failed for user {}", userId, e);
       deleteQuietly(temp);
       throw new PlantPalException("Could not build the export", 500);
     } catch (RuntimeException e) {
@@ -128,38 +137,38 @@ public class ExportServiceImpl implements ExportService {
               "id",
               "nickname",
               "species",
-              "commonName",
+              COL_COMMON_NAME,
               "location",
-              "notes",
-              "status",
+              COL_NOTES,
+              COL_STATUS,
               "acquiredAt",
               "placement",
               "lightExposure",
-              "photoUrl",
+              COL_PHOTO_URL,
               "createdAt"),
           p -> plantRepository.findByUserIdOrderByIdAsc(userId, p).map(this::plantRow));
       writeDataset(
           zip,
           "care-log",
-          List.of("id", "plantId", "careType", "notes", "performedAt"),
+          List.of("id", COL_PLANT_ID, "careType", COL_NOTES, "performedAt"),
           p -> careLogRepository.findByUserIdOrderByIdAsc(userId, p).map(this::careLogRow));
       writeDataset(
           zip,
           "scan-history",
           List.of(
               "id",
-              "plantId",
+              COL_PLANT_ID,
               "dateTaken",
               "scientificName",
-              "commonName",
+              COL_COMMON_NAME,
               "confidence",
-              "status",
+              COL_STATUS,
               "healthStatus",
               "healthNotes",
               "carePlan",
               "aiModelUsed",
               "userContext",
-              "photoUrl"),
+              COL_PHOTO_URL),
           p -> identificationRepository.findByUserIdOrderByIdAsc(userId, p).map(this::scanRow));
       writePhotos(zip, userId, skippedPhotos);
       writeReadme(zip, skippedPhotos);
@@ -173,11 +182,11 @@ public class ExportServiceImpl implements ExportService {
       Function<Pageable, Page<Map<String, Object>>> pager)
       throws IOException {
     zip.putNextEntry(new ZipEntry(name + ".json"));
-    JsonGenerator json = objectMapper.getFactory().createGenerator(nonClosing(zip));
-    json.writeStartArray();
-    forEachRow(pager, row -> writeJsonRow(json, row));
-    json.writeEndArray();
-    json.flush();
+    try (JsonGenerator json = objectMapper.getFactory().createGenerator(nonClosing(zip))) {
+      json.writeStartArray();
+      forEachRow(pager, row -> writeJsonRow(json, row));
+      json.writeEndArray();
+    }
     zip.closeEntry();
 
     zip.putNextEntry(new ZipEntry(name + ".csv"));
@@ -208,10 +217,10 @@ public class ExportServiceImpl implements ExportService {
     Map<String, String> entryByUrl = new LinkedHashMap<>();
     forEachRow(
         p -> plantRepository.findByUserIdOrderByIdAsc(userId, p).map(this::plantRow),
-        row -> addPhotoRef(entryByUrl, "plant-" + row.get("id"), row.get("photoUrl")));
+        row -> addPhotoRef(entryByUrl, "plant-" + row.get("id"), row.get(COL_PHOTO_URL)));
     forEachRow(
         p -> identificationRepository.findByUserIdOrderByIdAsc(userId, p).map(this::scanRow),
-        row -> addPhotoRef(entryByUrl, "scan-" + row.get("id"), row.get("photoUrl")));
+        row -> addPhotoRef(entryByUrl, "scan-" + row.get("id"), row.get(COL_PHOTO_URL)));
 
     int written = 0;
     long totalBytes = 0;
@@ -221,7 +230,7 @@ public class ExportServiceImpl implements ExportService {
         skipped.add(entryName + " (photo limit reached)");
         continue;
       }
-      byte[] bytes = readPhoto(photo.getKey());
+      byte[] bytes = readPhoto(photo.getKey()).orElse(null);
       if (bytes == null) {
         skipped.add(entryName + " (could not be read)");
       } else if (totalBytes + bytes.length > maxPhotoBytes) {
@@ -246,15 +255,16 @@ public class ExportServiceImpl implements ExportService {
 
   private String extensionOf(String url) {
     int dot = url.lastIndexOf('.');
-    String ext = dot >= 0 ? url.substring(dot + 1).toLowerCase() : "";
+    String ext = dot >= 0 ? url.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
     return SAFE_EXTENSION.matcher(ext).matches() ? ext : "jpg";
   }
 
-  private byte[] readPhoto(String url) {
+  private Optional<byte[]> readPhoto(String url) {
     try {
-      return fileStorageService.loadPhotoBytes(url);
+      return Optional.ofNullable(fileStorageService.loadPhotoBytes(url));
     } catch (RuntimeException e) {
-      return null;
+      log.debug("Photo could not be read for export", e);
+      return Optional.empty();
     }
   }
 
@@ -283,14 +293,14 @@ public class ExportServiceImpl implements ExportService {
     row.put("id", p.getId());
     row.put("nickname", p.getNickname());
     row.put("species", p.getSpecies());
-    row.put("commonName", p.getCommonName());
+    row.put(COL_COMMON_NAME, p.getCommonName());
     row.put("location", p.getLocation());
-    row.put("notes", p.getNotes());
-    row.put("status", str(p.getStatus()));
+    row.put(COL_NOTES, p.getNotes());
+    row.put(COL_STATUS, str(p.getStatus()));
     row.put("acquiredAt", str(p.getAcquiredAt()));
     row.put("placement", str(p.getPlacement()));
     row.put("lightExposure", str(p.getLightExposure()));
-    row.put("photoUrl", p.getPhotoUrl());
+    row.put(COL_PHOTO_URL, p.getPhotoUrl());
     row.put("createdAt", str(p.getCreatedAt()));
     return row;
   }
@@ -298,9 +308,9 @@ public class ExportServiceImpl implements ExportService {
   private Map<String, Object> careLogRow(CareLog c) {
     Map<String, Object> row = new LinkedHashMap<>();
     row.put("id", c.getId());
-    row.put("plantId", c.getPlantId());
+    row.put(COL_PLANT_ID, c.getPlantId());
     row.put("careType", str(c.getCareType()));
-    row.put("notes", c.getNotes());
+    row.put(COL_NOTES, c.getNotes());
     row.put("performedAt", str(c.getPerformedAt()));
     return row;
   }
@@ -308,18 +318,18 @@ public class ExportServiceImpl implements ExportService {
   private Map<String, Object> scanRow(Identification i) {
     Map<String, Object> row = new LinkedHashMap<>();
     row.put("id", i.getId());
-    row.put("plantId", i.getPlantId());
+    row.put(COL_PLANT_ID, i.getPlantId());
     row.put("dateTaken", str(i.getDateTaken()));
     row.put("scientificName", i.getScientificName());
-    row.put("commonName", i.getCommonName());
+    row.put(COL_COMMON_NAME, i.getCommonName());
     row.put("confidence", i.getConfidence());
-    row.put("status", str(i.getStatus()));
+    row.put(COL_STATUS, str(i.getStatus()));
     row.put("healthStatus", i.getHealthStatus());
     row.put("healthNotes", i.getHealthNotes());
     row.put("carePlan", i.getCarePlan());
     row.put("aiModelUsed", i.getAiModelUsed());
     row.put("userContext", i.getUserContext());
-    row.put("photoUrl", i.getPhotoUrl());
+    row.put(COL_PHOTO_URL, i.getPhotoUrl());
     return row;
   }
 

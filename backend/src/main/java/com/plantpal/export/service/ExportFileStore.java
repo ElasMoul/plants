@@ -64,6 +64,7 @@ public class ExportFileStore {
     try {
       uuid = UUID.fromString(id);
     } catch (IllegalArgumentException e) {
+      log.debug("Rejected malformed export id");
       return Optional.empty();
     }
     Path file = fileFor(userId, uuid.toString());
@@ -89,19 +90,23 @@ public class ExportFileStore {
     int deleted = 0;
     try (Stream<Path> files = Files.list(directory)) {
       for (Path file : (Iterable<Path>) files::iterator) {
-        if (Files.isRegularFile(file) && isExpired(file)) {
-          try {
-            Files.deleteIfExists(file);
-            deleted++;
-          } catch (IOException e) {
-            log.warn("Could not delete an expired export file", e);
-          }
+        if (Files.isRegularFile(file) && isExpired(file) && deleteQuietly(file)) {
+          deleted++;
         }
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
     return deleted;
+  }
+
+  private boolean deleteQuietly(Path file) {
+    try {
+      return Files.deleteIfExists(file);
+    } catch (IOException e) {
+      log.warn("Could not delete an expired export file", e);
+      return false;
+    }
   }
 
   private Path fileFor(Long userId, String id) {
