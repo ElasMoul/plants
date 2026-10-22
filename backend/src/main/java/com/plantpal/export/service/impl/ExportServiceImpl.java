@@ -135,46 +135,13 @@ public class ExportServiceImpl implements ExportService {
     List<String> skippedPhotos = new ArrayList<>();
     try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(target));
         ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
-      writeDataset(
-          zip,
-          "plants",
-          List.of(
-              "id",
-              "nickname",
-              "species",
-              COL_COMMON_NAME,
-              "location",
-              COL_NOTES,
-              COL_STATUS,
-              "acquiredAt",
-              "placement",
-              "lightExposure",
-              COL_PHOTO_URL,
-              "createdAt"),
-          p -> plantRepository.findByUserIdOrderByIdAsc(userId, p).map(this::plantRow));
+      writePlants(zip, userId);
       writeDataset(
           zip,
           "care-log",
           List.of("id", COL_PLANT_ID, "careType", COL_NOTES, "performedAt"),
           p -> careLogRepository.findByUserIdOrderByIdAsc(userId, p).map(this::careLogRow));
-      writeDataset(
-          zip,
-          "scan-history",
-          List.of(
-              "id",
-              COL_PLANT_ID,
-              "dateTaken",
-              "scientificName",
-              COL_COMMON_NAME,
-              "confidence",
-              COL_STATUS,
-              "healthStatus",
-              "healthNotes",
-              "carePlan",
-              "aiModelUsed",
-              "userContext",
-              COL_PHOTO_URL),
-          p -> identificationRepository.findByUserIdOrderByIdAsc(userId, p).map(this::scanRow));
+      writeScans(zip, userId);
       writeDataset(
           zip,
           "journal",
@@ -183,6 +150,47 @@ public class ExportServiceImpl implements ExportService {
       writePhotos(zip, userId, skippedPhotos);
       writeReadme(zip, skippedPhotos);
     }
+  }
+
+  private void writePlants(ZipOutputStream zip, Long userId) throws IOException {
+    writeDataset(
+        zip,
+        "plants",
+        List.of(
+            "id",
+            "nickname",
+            "species",
+            COL_COMMON_NAME,
+            "location",
+            COL_NOTES,
+            COL_STATUS,
+            "acquiredAt",
+            "placement",
+            "lightExposure",
+            COL_PHOTO_URL,
+            "createdAt"),
+        p -> plantRepository.findByUserIdOrderByIdAsc(userId, p).map(this::plantRow));
+  }
+
+  private void writeScans(ZipOutputStream zip, Long userId) throws IOException {
+    writeDataset(
+        zip,
+        "scan-history",
+        List.of(
+            "id",
+            COL_PLANT_ID,
+            "dateTaken",
+            "scientificName",
+            COL_COMMON_NAME,
+            "confidence",
+            COL_STATUS,
+            "healthStatus",
+            "healthNotes",
+            "carePlan",
+            "aiModelUsed",
+            "userContext",
+            COL_PHOTO_URL),
+        p -> identificationRepository.findByUserIdOrderByIdAsc(userId, p).map(this::scanRow));
   }
 
   private void writeDataset(
