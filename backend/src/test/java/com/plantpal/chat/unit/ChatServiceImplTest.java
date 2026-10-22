@@ -84,15 +84,15 @@ class ChatServiceImplTest {
   }
 
   @Test
-  void arabicChatAddsLanguageToTheProviderSystemPrompt() {
+  void unsupportedLanguageChatRespondsInEnglish() {
     when(anthropicClient.isAvailable()).thenReturn(true);
     when(gardenContextService.buildGardenContext(USER_ID)).thenReturn(EMPTY_GARDEN);
-    when(anthropicClient.chat(any(), any())).thenReturn("مرحبًا");
+    when(anthropicClient.chat(any(), any())).thenReturn("Hello");
     var french = request("Help with my garden");
     french.setLanguage("ar");
-    assertThat(chatService.chat(french, USER_ID).getReply()).isEqualTo("مرحبًا");
+    assertThat(chatService.chat(french, USER_ID).getReply()).isEqualTo("Hello");
     verify(anthropicClient)
-        .chat(org.mockito.ArgumentMatchers.contains("Respond in Modern Standard Arabic"), any());
+        .chat(org.mockito.ArgumentMatchers.contains("Respond in English"), any());
   }
 
   @Test

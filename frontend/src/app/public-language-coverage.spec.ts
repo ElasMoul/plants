@@ -12,7 +12,7 @@ describe('Public language URL handling', () => {
     expect(localStorage.getItem('plantpal.language')).toBe('fr');
     service.select('ar');
     err.mockRestore();
-    expect(localStorage.getItem('plantpal.language')).toBe('ar');
+    expect(localStorage.getItem('plantpal.language')).toBe('fr');
   });
 
   it('recognises the landing page at the root and under the language prefixes', () => {

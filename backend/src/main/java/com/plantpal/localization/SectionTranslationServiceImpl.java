@@ -214,10 +214,11 @@ public class SectionTranslationServiceImpl implements SectionTranslationService 
   }
 
   private String language(Long userId) {
-    return users
-        .findById(userId)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found"))
-        .getLanguage();
+    return SupportedLanguages.normalize(
+        users
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"))
+            .getLanguage());
   }
 
   private String encode(Object value) {

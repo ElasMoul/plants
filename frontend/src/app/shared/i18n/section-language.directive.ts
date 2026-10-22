@@ -81,7 +81,7 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
     this.clear();
     const host = this.element.nativeElement;
-    this.renderer.setAttribute(host, 'dir', this.state.language === 'ar' ? 'rtl' : 'ltr');
+    this.renderer.setAttribute(host, 'dir', 'ltr');
     const view = this.state.view;
     if (!view || (this.state.language === view.targetLanguage && !this.error && !this.state.awaitingOriginal)) return;
     const bar = this.renderer.createElement('span') as HTMLElement; this.toolbar = bar;
@@ -104,7 +104,7 @@ export class SectionLanguageDirective implements OnChanges, OnDestroy {
       if (header?.parentNode) this.renderer.insertBefore(header.parentNode, status, header.nextSibling);
       else this.renderer.appendChild(host, status);
     }
-    this.renderer.setAttribute(this.element.nativeElement, 'dir', this.state.language === 'ar' ? 'rtl' : 'ltr');
+    this.renderer.setAttribute(this.element.nativeElement, 'dir', 'ltr');
   }
   private button(bar: HTMLElement, text: string, action: () => void, disabled: boolean): void {
     const button = this.renderer.createElement('button') as HTMLButtonElement;

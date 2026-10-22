@@ -55,25 +55,25 @@ describe('Explicit section translations', () => {
   });
   it('uses the generation language even when the app language differs', () => {
     const fixture = TestBed.createComponent(Host); fixture.detectChanges();
-    http.expectOne(url).flush({ data: { ...original, originalLanguage: 'ar', variants: [...original.variants,
-      { language: 'ar', status: 'READY', texts: { 'Water roots.': 'اسقِ الجذور.' } }] } });
+    http.expectOne(url).flush({ data: { ...original, originalLanguage: 'fr', variants: [...original.variants,
+      { language: 'fr', status: 'READY', texts: { 'Water roots.': 'Arrosez les racines.' } }] } });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('p').textContent).toBe('اسقِ الجذور.');
-    expect(fixture.nativeElement.querySelector('section').dir).toBe('rtl');
+    expect(fixture.nativeElement.querySelector('p').textContent).toBe('Arrosez les racines.');
+    expect(fixture.nativeElement.querySelector('section').dir).toBe('ltr');
     fixture.destroy();
   });
-  it('never displays English while a new Arabic result is being prepared', fakeAsync(() => {
+  it('never displays English while a new French result is being prepared', fakeAsync(() => {
     const fixture = TestBed.createComponent(Host); fixture.detectChanges();
-    const pending = { ...original, originalLanguage: 'ar', targetLanguage: 'ar', variants: [
-      ...original.variants, { language: 'ar', status: 'PENDING', texts: {} }] };
+    const pending = { ...original, originalLanguage: 'fr', targetLanguage: 'fr', variants: [
+      ...original.variants, { language: 'fr', status: 'PENDING', texts: {} }] };
     http.expectOne(url).flush({ data: pending }); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('p').textContent).toBe('');
     expect(fixture.nativeElement.querySelector('[role=status]')).not.toBeNull();
     tick(1000);
     http.expectOne(url).flush({ data: { ...pending, variants: [...original.variants,
-      { language: 'ar', status: 'READY', texts: { 'Water roots.': 'اسقِ الجذور.' } }] } });
+      { language: 'fr', status: 'READY', texts: { 'Water roots.': 'Arrosez les racines.' } }] } });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('p').textContent).toBe('اسقِ الجذور.');
+    expect(fixture.nativeElement.querySelector('p').textContent).toBe('Arrosez les racines.');
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
     http.expectNone(url + '/translate'); fixture.destroy();
   }));

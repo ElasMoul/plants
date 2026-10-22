@@ -19,10 +19,6 @@ export class SpeechService implements OnDestroy {
     const request = this.request;
     const language = contentLanguage ?? readLanguage();
     const spoken = aiText(text);
-    if (language === 'ar' && !/[\u0600-\u06ff]/.test(spoken)) {
-      this.fail(text, 'Arabic text is not ready to read aloud yet.');
-      return;
-    }
     const voices = await this.loadVoices();
     if (request !== this.request) return;
     const locale = LANGUAGES.find(item => item.code === language)!.locale;

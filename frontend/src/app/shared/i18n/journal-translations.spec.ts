@@ -1,4 +1,3 @@
-import { AR } from './ar';
 import { FR } from './fr';
 import { JOURNAL_EVENT_LABELS } from '../../features/plant/models/journal-event.model';
 
@@ -11,8 +10,7 @@ describe('plant journal translations (PLA-111)', () => {
     'Cancel', 'Save', 'Edit',
   ];
 
-  it.each(keys)('has non-empty French and Arabic text for "%s"', (key) => {
+  it.each(keys)('has non-empty French text for "%s"', (key) => {
     expect(FR[key]?.trim()).toBeTruthy();
-    expect(AR[key]?.trim()).toBeTruthy();
   });
 });

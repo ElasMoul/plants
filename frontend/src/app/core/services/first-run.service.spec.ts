@@ -1,7 +1,6 @@
 import { FIRST_RUN_EVENTS, FirstRunService } from './first-run.service';
 import { FIRST_RUN_KEYS } from './first-run.keys.spec-data';
 import { FR } from '../../shared/i18n/fr';
-import { AR } from '../../shared/i18n/ar';
 import { FirstRunIntroComponent } from '../../shared/components/first-run-intro/first-run-intro.component';
 import { PhotoUploadComponent } from '../../features/identification/components/photo-upload/photo-upload.component';
 
@@ -132,10 +131,9 @@ describe('first-run guidance', () => {
     get.mockRestore();
   });
 
-  it('has non-empty FR and AR text for every new string', () => {
+  it('has non-empty FR text for every new string', () => {
     for (const key of FIRST_RUN_KEYS) {
       expect(FR[key]?.trim()).toBeTruthy();
-      expect(AR[key]?.trim()).toBeTruthy();
     }
   });
 });

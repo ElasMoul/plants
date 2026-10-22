@@ -38,7 +38,7 @@ public class TranslationServiceImpl implements TranslationService {
   @Override
   public TranslationResult prepare(
       List<String> texts, Long userId, boolean shared, String language) {
-    if (!List.of("fr", "ar").contains(language))
+    if (!SupportedLanguages.isSupported(language) || SupportedLanguages.DEFAULT.equals(language))
       throw new IllegalArgumentException("Unsupported language");
     if (texts.isEmpty()) return new TranslationResult("", language, "READY", Map.of());
     String source = encode(texts);
