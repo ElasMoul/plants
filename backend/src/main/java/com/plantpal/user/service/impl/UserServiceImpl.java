@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     User user =
         User.builder()
-            .language(request.getLanguage() == null ? "en" : request.getLanguage())
+            .language(com.plantpal.localization.SupportedLanguages.normalize(request.getLanguage()))
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .firstName(request.getFirstName())
@@ -213,7 +213,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
   private UserPreferencesResponse toPreferencesResponse(User user) {
     return UserPreferencesResponse.builder()
-        .language(user.getLanguage())
+        .language(com.plantpal.localization.SupportedLanguages.normalize(user.getLanguage()))
         .aiModelPreference(user.getAiModelPreference())
         .visionModelPreference(user.getVisionModelPreference())
         .reasoningModelPreference(user.getReasoningModelPreference())
@@ -272,7 +272,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
   private AuthResponse buildAuthResponse(User user, String token) {
     return AuthResponse.builder()
-        .language(user.getLanguage())
+        .language(com.plantpal.localization.SupportedLanguages.normalize(user.getLanguage()))
         .token(token)
         .role(user.getRole().name())
         .expiresIn(jwtExpirationMs)

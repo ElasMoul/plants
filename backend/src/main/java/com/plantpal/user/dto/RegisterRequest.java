@@ -13,7 +13,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class RegisterRequest {
 
-  @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
+  @jakarta.validation.constraints.Pattern(
+      regexp = com.plantpal.localization.SupportedLanguages.PATTERN)
   private String language;
 
   @NotBlank

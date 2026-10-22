@@ -5,7 +5,6 @@ import { UserService } from '@plantpal/shared-core';
 import { PlantNetConfigService } from '../../services/plantnet-config.service';
 import { DataExportService } from '../../services/data-export.service';
 import { FR } from '../../../../shared/i18n/fr';
-import { AR } from '../../../../shared/i18n/ar';
 import { PreferencesPageComponent } from './preferences-page.component';
 
 describe('PreferencesPageComponent region (PLA-107)', () => {
@@ -89,7 +88,7 @@ describe('PreferencesPageComponent data export (PLA-112)', () => {
     expect(component.exportError).toBe('failed');
   });
 
-  it('has a distinct FR and AR translation for every new string', () => {
+  it('has a distinct FR translation for every new string', () => {
     const keys = [
       'Export my data',
       'Download a ZIP with your plants, care log, scan history and photos (JSON and CSV).',
@@ -101,8 +100,6 @@ describe('PreferencesPageComponent data export (PLA-112)', () => {
     for (const key of keys) {
       expect(FR[key]).toBeTruthy();
       expect(FR[key]).not.toBe(key);
-      expect(AR[key]).toBeTruthy();
-      expect(AR[key]).not.toBe(key);
     }
   });
 });

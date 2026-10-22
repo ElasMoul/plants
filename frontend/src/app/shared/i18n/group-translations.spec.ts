@@ -1,4 +1,3 @@
-import { AR } from './ar';
 import { FR } from './fr';
 
 describe('plant group translations (PLA-110)', () => {
@@ -11,8 +10,7 @@ describe('plant group translations (PLA-110)', () => {
     'No group', 'Move to group', 'Plant moved.', 'Could not move the plant.', 'Cancel', 'Close',
   ];
 
-  it.each(keys)('has non-empty French and Arabic text for "%s"', (key) => {
+  it.each(keys)('has non-empty French text for "%s"', (key) => {
     expect(FR[key]?.trim()).toBeTruthy();
-    expect(AR[key]?.trim()).toBeTruthy();
   });
 });

@@ -3,6 +3,8 @@ package com.plantpal.reminder.scheduler;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.reminder.service.WebPushService;
+import com.plantpal.user.entity.User;
+import com.plantpal.user.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -20,12 +22,17 @@ public class ReminderScheduler {
 
   private final ReminderRepository reminderRepository;
   private final WebPushService webPushService;
+  private final UserRepository userRepository;
   private final Clock clock;
 
   public ReminderScheduler(
-      ReminderRepository reminderRepository, WebPushService webPushService, Clock clock) {
+      ReminderRepository reminderRepository,
+      WebPushService webPushService,
+      UserRepository userRepository,
+      Clock clock) {
     this.reminderRepository = reminderRepository;
     this.webPushService = webPushService;
+    this.userRepository = userRepository;
     this.clock = clock;
   }
 
@@ -41,10 +48,9 @@ public class ReminderScheduler {
       Long userId = entry.getKey();
       int count = entry.getValue().size();
       try {
+        String language = userRepository.findById(userId).map(User::getLanguage).orElse(null);
         webPushService.sendNotification(
-            userId,
-            "Plant care reminder",
-            "You have " + count + " plant" + (count == 1 ? "" : "s") + " to care for today");
+            userId, ReminderPushText.title(language), ReminderPushText.body(language, count));
         sent++;
       } catch (Exception e) {
         failed++;

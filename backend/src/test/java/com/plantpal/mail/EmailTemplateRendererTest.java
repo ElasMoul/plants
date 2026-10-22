@@ -51,10 +51,10 @@ class EmailTemplateRendererTest {
     @Test
     @DisplayName("falls back to English for languages without a template")
     void fallsBackToEnglish() {
-      RenderedEmail arabic = renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "ar", vars("Sara"));
+      RenderedEmail legacy = renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "ar", vars("Sara"));
       RenderedEmail unknown = renderer.render(EmailTemplate.ACCOUNT_RECOVERY, null, vars("Sara"));
 
-      assertThat(arabic.textBody()).startsWith("Hi Sara,");
+      assertThat(legacy.textBody()).startsWith("Hi Sara,");
       assertThat(unknown.textBody()).startsWith("Hi Sara,");
     }
 

@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FR } from '../../i18n/fr';
-import { AR } from '../../i18n/ar';
 import { BetaNoticeComponent } from './beta-notice.component';
 
 describe('BetaNoticeComponent', () => {
@@ -17,8 +16,7 @@ describe('BetaNoticeComponent', () => {
     expect(el.textContent).toContain('This app is still in beta');
   });
 
-  it('has FR and AR translations', () => {
+  it('has FR translations', () => {
     expect(FR['This app is still in beta']).toBeTruthy();
-    expect(AR['This app is still in beta']).toBeTruthy();
   });
 });

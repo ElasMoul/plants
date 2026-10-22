@@ -138,30 +138,10 @@ class TranslationIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void arabicAndFrenchHaveSeparateCachesAndRetryKeepsArabic() throws Exception {
-    when(client.translate(anyList(), anyLong(), eq("ar")))
-        .thenReturn(Map.of("Water every 7 days.", "اسقِ كل 7 أيام."));
-    var french = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "fr");
-    var arabic = service.prepare(List.of("Water every 7 days."), owner.getId(), false, "ar");
-    ready(french.id(), owner);
-    ready(arabic.id(), owner);
-    assertThat(arabic.id()).isNotEqualTo(french.id());
-    assertThat(service.get(arabic.id(), owner.getId()).language()).isEqualTo("ar");
-    assertThat(service.get(arabic.id(), owner.getId()).texts())
-        .containsEntry("Water every 7 days.", "اسقِ كل 7 أيام.");
-    jdbc.update(
-        "UPDATE ai_translations SET status='FAILED', updated_at=now()-interval '20 seconds' WHERE id=?",
-        arabic.id());
-    service.retry(arabic.id(), owner.getId());
-    ready(arabic.id(), owner);
-    verify(client, times(2)).translate(anyList(), eq(owner.getId()), eq("ar"));
-  }
-
-  @Test
-  void newArabicContentIsSavedBeforeReadAndReusedForSubsetsIncludingNames() throws Exception {
-    owner.setLanguage("ar");
+  void newFrenchContentIsSavedBeforeReadAndReusedForSubsetsIncludingNames() throws Exception {
+    owner.setLanguage("fr");
     owner = users.saveAndFlush(owner);
-    when(client.translate(anyList(), anyLong(), eq("ar")))
+    when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenAnswer(
             invocation -> {
               List<String> texts = invocation.getArgument(0);
@@ -179,12 +159,12 @@ class TranslationIT extends AbstractIntegrationTest {
             () ->
                 assertThat(
                         service.cached(
-                            List.of("Peace lily", "Use 5 ml."), owner.getId(), false, "ar"))
+                            List.of("Peace lily", "Use 5 ml."), owner.getId(), false, "fr"))
                     .containsKeys("Peace lily", "Use 5 ml."));
-    var subset = service.prepare(List.of("Use 5 ml."), owner.getId(), false, "ar");
+    var subset = service.prepare(List.of("Use 5 ml."), owner.getId(), false, "fr");
     assertThat(subset.status()).isEqualTo("READY");
-    verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("ar"));
-    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "ar")).isEmpty();
+    verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
+    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "fr")).isEmpty();
     assertThat(service.cached(List.of("Peace lily"), owner.getId(), false, "fr")).isEmpty();
   }
 
@@ -204,22 +184,22 @@ class TranslationIT extends AbstractIntegrationTest {
                 "lastName",
                 "Reader",
                 "language",
-                "ar"),
+                "fr"),
             Map.class);
     assertThat(registration.getStatusCode().is2xxSuccessful()).isTrue();
     User registered = users.findByEmail(email).orElseThrow();
-    assertThat(registered.getLanguage()).isEqualTo("ar");
-    assertThat(((Map<?, ?>) registration.getBody().get("data")).get("language")).isEqualTo("ar");
+    assertThat(registered.getLanguage()).isEqualTo("fr");
+    assertThat(((Map<?, ?>) registration.getBody().get("data")).get("language")).isEqualTo("fr");
     var headers = new HttpHeaders();
     headers.setBearerAuth(jwt.generateToken(registered, registered.getId()));
     var update =
         http.exchange(
             "/api/v1/users/me/preferences",
             HttpMethod.PUT,
-            new HttpEntity<>(Map.of("language", "fr"), headers),
+            new HttpEntity<>(Map.of("language", "en"), headers),
             Map.class);
     assertThat(update.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(users.findById(registered.getId()).orElseThrow().getLanguage()).isEqualTo("fr");
+    assertThat(users.findById(registered.getId()).orElseThrow().getLanguage()).isEqualTo("en");
     var invalid =
         http.exchange(
             "/api/v1/users/me/preferences",
@@ -227,14 +207,21 @@ class TranslationIT extends AbstractIntegrationTest {
             new HttpEntity<>(Map.of("language", "xx"), headers),
             Map.class);
     assertThat(invalid.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "ar")).isEmpty();
+    var unsupported =
+        http.exchange(
+            "/api/v1/users/me/preferences",
+            HttpMethod.PUT,
+            new HttpEntity<>(Map.of("language", "fr"), headers),
+            Map.class);
+    assertThat(unsupported.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "fr")).isEmpty();
   }
 
   @Test
-  void scanCompletionPersistsArabicWithoutOpeningItOrBackfillingOlderScans() throws Exception {
-    owner.setLanguage("ar");
+  void scanCompletionPersistsFrenchWithoutOpeningItOrBackfillingOlderScans() throws Exception {
+    owner.setLanguage("fr");
     owner = users.saveAndFlush(owner);
-    when(client.translate(anyList(), anyLong(), eq("ar")))
+    when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenAnswer(
             invocation -> {
               List<String> texts = invocation.getArgument(0);
@@ -262,9 +249,9 @@ class TranslationIT extends AbstractIntegrationTest {
             () ->
                 assertThat(
                         service.cached(
-                            List.of("Peace lily", "Apply 5 ml."), owner.getId(), false, "ar"))
+                            List.of("Peace lily", "Apply 5 ml."), owner.getId(), false, "fr"))
                     .containsKeys("Peace lily", "Apply 5 ml."));
-    assertThat(service.cached(List.of("Old care notes."), owner.getId(), false, "ar")).isEmpty();
+    assertThat(service.cached(List.of("Old care notes."), owner.getId(), false, "fr")).isEmpty();
     assertThat(
             jdbc.queryForObject(
                 "SELECT health_notes FROM identifications WHERE id=?", String.class, oldId))
@@ -294,21 +281,21 @@ class TranslationIT extends AbstractIntegrationTest {
     sectionReady(id, "fr");
     sections.translate("scan", id, "health", owner.getId());
     verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
-    owner.setLanguage("ar");
+    owner.setLanguage("fr");
     owner = users.saveAndFlush(owner);
     assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
         .isEqualTo("en");
-    verify(client, never()).translate(anyList(), anyLong(), eq("ar"));
-    when(client.translate(anyList(), anyLong(), eq("ar")))
+    verify(client, never()).translate(anyList(), anyLong(), eq("fr"));
+    when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenReturn(Map.of("Section care.", "رعاية النبات"));
     sections.translate("scan", id, "health", owner.getId());
-    sectionReady(id, "ar");
+    sectionReady(id, "fr");
     assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(3);
     assertThatThrownBy(() -> sections.get("scan", id, "health", other.getId()))
         .isInstanceOf(ResourceNotFoundException.class);
     jdbc.update("UPDATE identifications SET health_notes='Changed care.' WHERE id=?", id);
     assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(1);
-    verify(client, times(1)).translate(anyList(), anyLong(), eq("ar"));
+    verify(client, times(1)).translate(anyList(), anyLong(), eq("fr"));
   }
 
   @Test
@@ -322,12 +309,12 @@ class TranslationIT extends AbstractIntegrationTest {
             owner.getId());
     sections.generated("scan", id, owner.getId());
     sectionReady(id, "fr");
-    owner.setLanguage("ar");
+    owner.setLanguage("fr");
     owner = users.saveAndFlush(owner);
     sections.generated("scan", id, owner.getId());
     var view = sections.get("scan", id, "health", owner.getId());
     assertThat(view.originalLanguage()).isEqualTo("fr");
-    assertThat(view.targetLanguage()).isEqualTo("ar");
+    assertThat(view.targetLanguage()).isEqualTo("fr");
     assertThat(view.variants()).hasSize(2);
   }
 
@@ -372,29 +359,29 @@ class TranslationIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void newArabicScanIsPendingInArabicBeforeTheListenerAndKeepsItsCapturedLanguage()
+  void newFrenchScanIsPendingInFrenchBeforeTheListenerAndKeepsItsCapturedLanguage()
       throws Exception {
     Long id =
         jdbc.queryForObject(
-            "INSERT INTO identifications(user_id,status,content_language,health_notes) VALUES (?,'COMPLETED','ar','New Arabic scan.') RETURNING id",
+            "INSERT INTO identifications(user_id,status,content_language,health_notes) VALUES (?,'COMPLETED','fr','New French scan.') RETURNING id",
             Long.class,
             owner.getId());
     var pending = sections.get("scan", id, "health", owner.getId());
-    assertThat(pending.originalLanguage()).isEqualTo("ar");
+    assertThat(pending.originalLanguage()).isEqualTo("fr");
     assertThat(pending.variants())
-        .anyMatch(v -> "ar".equals(v.language()) && "PENDING".equals(v.status()));
+        .anyMatch(v -> "fr".equals(v.language()) && "PENDING".equals(v.status()));
     verifyNoInteractions(client);
-    when(client.translate(anyList(), anyLong(), eq("ar")))
-        .thenReturn(Map.of("New Arabic scan.", "فحص جديد بالعربية."));
+    when(client.translate(anyList(), anyLong(), eq("fr")))
+        .thenReturn(Map.of("New French scan.", "Nouvelle analyse."));
     sections.generated("scan", id, owner.getId());
-    sectionReady(id, "ar");
+    sectionReady(id, "fr");
     assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
-        .isEqualTo("ar");
+        .isEqualTo("fr");
   }
 
   @Test
-  void englishScanSnapshotIsNotChangedByLaterArabicPreference() {
-    owner.setLanguage("ar");
+  void englishScanSnapshotIsNotChangedByLaterFrenchPreference() {
+    owner.setLanguage("fr");
     owner = users.saveAndFlush(owner);
     Long id =
         jdbc.queryForObject(
