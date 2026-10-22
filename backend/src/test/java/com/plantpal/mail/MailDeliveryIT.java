@@ -120,9 +120,10 @@ class MailDeliveryIT extends AbstractIntegrationTest {
             .filter(item -> ((Number) item.get("id")).longValue() == id)
             .findFirst()
             .orElseThrow();
-    assertThat(mine.get("status")).isEqualTo("FAILED");
-    assertThat(mine.get("lastError")).isEqualTo("535 authentication failed");
-    assertThat(mine).doesNotContainKey("variables");
+    assertThat(mine)
+        .containsEntry("status", "FAILED")
+        .containsEntry("lastError", "535 authentication failed")
+        .doesNotContainKey("variables");
     assertThat(asMember.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
   }
 

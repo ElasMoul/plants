@@ -95,13 +95,10 @@ class MailServiceImplTest {
   @Test
   @DisplayName("send() fails fast on unusable variables instead of queueing a dead row")
   void rejectsBadVariables() {
+    Map<String, String> noLink = Map.of("name", "Sara");
+
     assertThatThrownBy(
-            () ->
-                service.send(
-                    EmailTemplate.ACCOUNT_RECOVERY,
-                    "sara@example.com",
-                    "en",
-                    Map.of("name", "Sara")))
+            () -> service.send(EmailTemplate.ACCOUNT_RECOVERY, "sara@example.com", "en", noLink))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("link");
 

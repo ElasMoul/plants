@@ -19,9 +19,11 @@ public class LoggingEmailSender implements EmailSender {
 
   @Override
   public void send(EmailMessage message) {
-    log.info(
-        "Email not delivered (app.mail.transport=log): to={} subject=\"{}\"",
-        MailAddresses.mask(message.to()),
-        message.subject());
+    if (log.isInfoEnabled()) {
+      log.info(
+          "Email not delivered (app.mail.transport=log): to={} subject=\"{}\"",
+          MailAddresses.mask(message.to()),
+          message.subject());
+    }
   }
 }

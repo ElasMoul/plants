@@ -56,7 +56,7 @@ class SmtpEmailSenderTest {
     assertThat(received).hasSize(1);
     MimeMessage message = received[0];
     assertThat(message.getSubject()).isEqualTo("Confirmez votre adresse e-mail pour Planotell");
-    assertThat(message.getAllRecipients()[0].toString()).isEqualTo("sara@example.com");
+    assertThat(message.getAllRecipients()[0]).hasToString("sara@example.com");
     assertThat(message.getFrom()[0].toString())
         .contains("no-reply@example.com")
         .contains("Planotell");

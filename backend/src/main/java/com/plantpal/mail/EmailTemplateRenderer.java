@@ -24,7 +24,7 @@ public class EmailTemplateRenderer {
   private static final Set<String> TEMPLATE_LANGUAGES = Set.of("en", "fr");
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(\\w+)}}");
 
-  private final Map<String, String> cache = new ConcurrentHashMap<>();
+  private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
 
   public RenderedEmail render(EmailTemplate template, String language, Map<String, String> vars) {
     validate(vars);
@@ -72,8 +72,8 @@ public class EmailTemplateRenderer {
     return out.toString();
   }
 
-  private String load(String path) {
-    return cache.computeIfAbsent(
+  private static String load(String path) {
+    return CACHE.computeIfAbsent(
         path,
         key -> {
           try (var in = new ClassPathResource(key).getInputStream()) {

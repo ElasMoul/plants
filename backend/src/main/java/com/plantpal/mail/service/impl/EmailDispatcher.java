@@ -40,6 +40,7 @@ public class EmailDispatcher {
   private static final int MAX_ERROR_LENGTH = 500;
   private static final TypeReference<Map<String, String>> VARIABLES_TYPE = new TypeReference<>() {};
   private static final String METRIC = "plantpal.mail.delivery";
+  private static final String OUTCOME_TAG = "outcome";
 
   private final EmailOutboxRepository outbox;
   private final EmailSender sender;
@@ -120,12 +121,12 @@ public class EmailDispatcher {
                       row.setLastError(null);
                       row.setVariables("{}");
                     }));
-    meters.counter(METRIC, "outcome", "sent").increment();
+    meters.counter(METRIC, OUTCOME_TAG, "sent").increment();
     log.info(
         "Email sent: id={} template={} to={} attempts={}",
         claim.id(),
         claim.template(),
-        MailAddresses.mask(claim.recipient()),
+        claim.maskedRecipient(),
         claim.attempts());
   }
 
@@ -150,21 +151,21 @@ public class EmailDispatcher {
                       }
                     }));
     if (giveUp) {
-      meters.counter(METRIC, "outcome", "failed").increment();
+      meters.counter(METRIC, OUTCOME_TAG, "failed").increment();
       log.error(
           "Email delivery FAILED permanently: id={} template={} to={} attempts={} error={}",
           claim.id(),
           claim.template(),
-          MailAddresses.mask(claim.recipient()),
+          claim.maskedRecipient(),
           claim.attempts(),
           message);
     } else {
-      meters.counter(METRIC, "outcome", "retry").increment();
+      meters.counter(METRIC, OUTCOME_TAG, "retry").increment();
       log.warn(
           "Email delivery failed, will retry: id={} template={} to={} attempt={}/{} retryAt={} error={}",
           claim.id(),
           claim.template(),
-          MailAddresses.mask(claim.recipient()),
+          claim.maskedRecipient(),
           claim.attempts(),
           properties.maxAttempts(),
           retryAt,
@@ -174,7 +175,7 @@ public class EmailDispatcher {
 
   /** 1x, 2x, 4x... the base delay: attempt 1 waits one base delay before attempt 2. */
   private java.time.Duration backoff(int attempts) {
-    return properties.retryBaseDelay().multipliedBy(1L << Math.min(Math.max(attempts - 1, 0), 10));
+    return properties.retryBaseDelay().multipliedBy(1L << Math.clamp(attempts - 1, 0, 10));
   }
 
   private static String truncate(String value) {
@@ -186,6 +187,7 @@ public class EmailDispatcher {
       Long id,
       EmailTemplate template,
       String recipient,
+      String maskedRecipient,
       String language,
       String variables,
       int attempts) {
@@ -195,6 +197,7 @@ public class EmailDispatcher {
           row.getId(),
           row.getTemplate(),
           row.getRecipient(),
+          MailAddresses.mask(row.getRecipient()),
           row.getLanguage(),
           row.getVariables(),
           row.getAttempts());

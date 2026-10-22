@@ -93,12 +93,9 @@ class EmailTemplateRendererTest {
     @Test
     @DisplayName("rejects links that are not http(s)")
     void rejectsNonHttpLinks() {
-      assertThatThrownBy(
-              () ->
-                  renderer.render(
-                      EmailTemplate.ACCOUNT_RECOVERY,
-                      "en",
-                      Map.of("name", "Sara", "link", "javascript:alert(1)")))
+      Map<String, String> unsafe = Map.of("name", "Sara", "link", "javascript:alert(1)");
+
+      assertThatThrownBy(() -> renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "en", unsafe))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("http(s)");
     }
@@ -106,14 +103,13 @@ class EmailTemplateRendererTest {
     @Test
     @DisplayName("rejects a missing or blank required variable")
     void rejectsMissingVariables() {
-      assertThatThrownBy(
-              () -> renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "en", Map.of("name", "Sara")))
+      Map<String, String> noLink = Map.of("name", "Sara");
+      Map<String, String> blankName = Map.of("name", " ", "link", LINK);
+
+      assertThatThrownBy(() -> renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "en", noLink))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("link");
-      assertThatThrownBy(
-              () ->
-                  renderer.render(
-                      EmailTemplate.ACCOUNT_RECOVERY, "en", Map.of("name", " ", "link", LINK)))
+      assertThatThrownBy(() -> renderer.render(EmailTemplate.ACCOUNT_RECOVERY, "en", blankName))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("name");
     }
