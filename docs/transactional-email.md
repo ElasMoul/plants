@@ -80,10 +80,15 @@ Staging and prod fail at startup if a required `MAIL_*` variable is missing. Loc
 
 ### Sending a real test email
 
-With the key in `backend/.env` (`MAIL_TRANSPORT=smtp`, `MAIL_FROM` on the verified domain), start the backend and
-trigger any flow that calls `MailService`, or until PLA-26/PLA-65 land, send one from a throwaway `jshell`/test
-using `MailService.send(EmailTemplate.ACCOUNT_VERIFICATION, "<your address>", "fr", Map.of("name", "…", "link", "https://…"))`.
-In Gmail choose **Show original** and confirm `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`.
+`SmtpSmokeManualTest` sends the verification and recovery emails in EN and FR through the real SMTP adapter and
+templates. It is skipped unless `MAIL_SMOKE_TO` is set, so CI never sends mail. Export the `MAIL_*` values from
+`backend/.env` (without printing them) and run:
+
+```bash
+MAIL_SMOKE_TO=you@example.com mvn test -Dtest=SmtpSmokeManualTest -Djacoco.skip=true
+```
+
+Then, in Gmail, open one message and choose **Show original**: `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`.
 
 ## For PLA-26 and PLA-65
 
