@@ -64,7 +64,7 @@ public class ExportFileStore {
     try {
       uuid = UUID.fromString(id);
     } catch (IllegalArgumentException e) {
-      log.debug("Rejected malformed export id");
+      log.debug("Rejected malformed export id: {}", e.getMessage());
       return Optional.empty();
     }
     Path file = fileFor(userId, uuid.toString());

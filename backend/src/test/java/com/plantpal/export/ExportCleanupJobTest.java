@@ -1,5 +1,7 @@
 package com.plantpal.export;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.plantpal.export.service.ExportCleanupJob;
@@ -25,6 +27,6 @@ class ExportCleanupJobTest {
     job.deleteExpiredExports();
     job.deleteExpiredExports();
 
-    org.mockito.Mockito.verify(fileStore, org.mockito.Mockito.times(2)).deleteExpired();
+    verify(fileStore, times(2)).deleteExpired();
   }
 }
