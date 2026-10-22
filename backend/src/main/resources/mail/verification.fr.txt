@@ -1,0 +1,11 @@
+Bonjour {{name}},
+
+Merci de confirmer votre adresse e-mail pour terminer la création de votre compte Planotell :
+
+{{link}}
+
+Si le lien a expiré, demandez-en un nouveau depuis l'application.
+
+Si vous n'avez pas créé de compte Planotell, vous pouvez ignorer ce message.
+
+L'équipe Planotell

@@ -1,0 +1,11 @@
+Hi {{name}},
+
+We received a request to recover access to your Planotell account. Use this link to continue:
+
+{{link}}
+
+If the link has expired, request a new one from the app.
+
+If you did not make this request, you can ignore this email. Nothing has changed on your account.
+
+The Planotell team

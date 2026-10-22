@@ -1,0 +1,11 @@
+Bonjour {{name}},
+
+Nous avons reçu une demande pour retrouver l'accès à votre compte Planotell. Utilisez ce lien pour continuer :
+
+{{link}}
+
+Si le lien a expiré, demandez-en un nouveau depuis l'application.
+
+Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce message. Rien n'a changé sur votre compte.
+
+L'équipe Planotell
