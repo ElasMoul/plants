@@ -165,7 +165,8 @@ class TranslationIT extends AbstractIntegrationTest {
     assertThat(subset.status()).isEqualTo("READY");
     verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
     assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "fr")).isEmpty();
-    assertThat(service.cached(List.of("Peace lily"), owner.getId(), false, "fr")).isEmpty();
+    assertThat(service.cached(List.of("Peace lily"), owner.getId(), false, "fr"))
+        .containsKey("Peace lily");
   }
 
   @Test
@@ -211,7 +212,7 @@ class TranslationIT extends AbstractIntegrationTest {
         http.exchange(
             "/api/v1/users/me/preferences",
             HttpMethod.PUT,
-            new HttpEntity<>(Map.of("language", "fr"), headers),
+            new HttpEntity<>(Map.of("language", "ar"), headers),
             Map.class);
     assertThat(unsupported.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(service.cached(List.of("Peace lily"), other.getId(), false, "fr")).isEmpty();
@@ -281,11 +282,13 @@ class TranslationIT extends AbstractIntegrationTest {
     sectionReady(id, "fr");
     sections.translate("scan", id, "health", owner.getId());
     verify(client, times(1)).translate(anyList(), eq(owner.getId()), eq("fr"));
-    owner.setLanguage("fr");
+    owner.setLanguage("en");
     owner = users.saveAndFlush(owner);
     assertThat(sections.get("scan", id, "health", owner.getId()).originalLanguage())
         .isEqualTo("en");
-    verify(client, never()).translate(anyList(), anyLong(), eq("fr"));
+    verify(client, never()).translate(anyList(), anyLong(), eq("en"));
+    owner.setLanguage("fr");
+    owner = users.saveAndFlush(owner);
     when(client.translate(anyList(), anyLong(), eq("fr")))
         .thenReturn(Map.of("Section care.", "رعاية النبات"));
     sections.translate("scan", id, "health", owner.getId());
