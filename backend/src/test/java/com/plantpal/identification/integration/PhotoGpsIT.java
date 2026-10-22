@@ -46,6 +46,7 @@ class PhotoGpsIT extends AbstractIntegrationTest {
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private IdentificationRepository identificationRepository;
   @Autowired private FileStorageService fileStorageService;
+  @Autowired private PhotoGpsCleaner cleaner;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private javax.sql.DataSource dataSource;
 
@@ -119,7 +120,6 @@ class PhotoGpsIT extends AbstractIntegrationTest {
     }
     assertThat(GpsPhotoFixtures.hasGps(fileStorageService.loadPhotoBytes(gpsUrl))).isTrue();
 
-    PhotoGpsCleaner cleaner = PhotoGpsCleaner.current();
     PhotoGpsCleaner.Summary first;
     PhotoGpsCleaner.Summary second;
     try (var connection = dataSource.getConnection()) {

@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>{{ (data.event ? 'Edit event' : 'Add event') | t }}</h2>
+<mat-dialog-content>
+  <form (ngSubmit)="save()" id="journal-event-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'Event type' | t }}</mat-label>
+      <mat-select name="type" [(ngModel)]="type" data-testid="journal-type">
+        <mat-option *ngFor="let t of types" [value]="t">{{ labels[t] | t }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'Date' | t }}</mat-label>
+      <input matInput id="journal-date" aria-label="Date" type="date" name="eventDate" required [(ngModel)]="eventDate" data-testid="journal-date" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'Note (optional)' | t }}</mat-label>
+      <textarea matInput id="journal-note" aria-label="Note" name="note" rows="3" [attr.maxlength]="noteMaxLength" [(ngModel)]="note" data-testid="journal-note"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">{{ 'Cancel' | t }}</button>
+  <button mat-flat-button color="primary" type="submit" form="journal-event-form" [disabled]="!valid" data-testid="journal-save">
+    {{ 'Save' | t }}
+  </button>
+</mat-dialog-actions>

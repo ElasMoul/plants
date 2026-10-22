@@ -24,6 +24,10 @@ import { CareType } from '../../../reminder/models/reminder.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 import { PlantActionsSheetComponent, PlantAction } from '../plant-actions-sheet/plant-actions-sheet.component';
 import { PlantGroupService } from '../../services/plant-group.service';
+import { JournalEventService } from '../../services/journal-event.service';
+import { JOURNAL_EVENT_LABELS, JournalEvent, JournalEventRequest } from '../../models/journal-event.model';
+import { JournalEventDialogComponent } from '../journal-event-dialog/journal-event-dialog.component';
+import { TimelineItem, mergeTimeline } from '../../utils/timeline-merge';
 import { GroupPickerSheetComponent } from '../group-picker-sheet/group-picker-sheet.component';
 import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-sheet/active-treatment-select-sheet.component';
 
@@ -64,6 +68,11 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
   scanHistoryLoaded = false;
   loadingScanHistory = false;
 
+  // Journal events (PLA-111) — merged with scans on the timeline
+  journalEvents: JournalEvent[] = [];
+  timeline: TimelineItem[] = [];
+  readonly journalLabels = JOURNAL_EVENT_LABELS;
+
   // All loaded identifications — feeds both the merged overview care plan and the scans list.
   allIdentifications: IdentificationResponse[] = [];
 
@@ -76,6 +85,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly plantService: PlantService,
     private readonly groupService: PlantGroupService,
+    private readonly journalService: JournalEventService,
     private readonly treatmentService: TreatmentService,
     private readonly identificationService: IdentificationService,
     private readonly reminderService: ReminderService,
@@ -319,12 +329,72 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
           this.allIdentifications = res.data.content;
           this.scanHistoryLoaded = true;
           this.loadingScanHistory = false;
+          this.rebuildTimeline();
         },
         error: () => {
           this.scanHistoryLoaded = true;
           this.loadingScanHistory = false;
         },
       });
+    this.loadJournalEvents();
+  }
+
+  loadJournalEvents(): void {
+    this.journalService.list(this.plantId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: res => {
+          this.journalEvents = res.data.content;
+          this.rebuildTimeline();
+        },
+        error: () => {
+          this.snackBar.open(translate('Could not load journal events.'), translate('Dismiss'), { duration: 4000 });
+        },
+      });
+  }
+
+  openJournalEventDialog(event?: JournalEvent): void {
+    this.dialog.open(JournalEventDialogComponent, { width: '420px', data: { event } })
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((body?: JournalEventRequest) => {
+        if (!body) return;
+        const request$ = event
+          ? this.journalService.update(this.plantId, event.id, body)
+          : this.journalService.create(this.plantId, body);
+        request$.pipe(takeUntil(this.destroy$)).subscribe({
+          next: () => {
+            this.snackBar.open(translate(event ? 'Event updated.' : 'Event added.'), undefined, { duration: 3000 });
+            this.loadJournalEvents();
+          },
+          error: () => {
+            this.snackBar.open(translate('Could not save the event.'), translate('Dismiss'), { duration: 4000 });
+          },
+        });
+      });
+  }
+
+  deleteJournalEvent(event: JournalEvent): void {
+    if (!window.confirm(translate('Delete this event?'))) return;
+    this.journalService.delete(this.plantId, event.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.snackBar.open(translate('Event deleted.'), undefined, { duration: 3000 });
+          this.loadJournalEvents();
+        },
+        error: () => {
+          this.snackBar.open(translate('Could not delete the event.'), translate('Dismiss'), { duration: 4000 });
+        },
+      });
+  }
+
+  trackByTimelineItem(_: number, item: TimelineItem): string {
+    return item.kind === 'scan' ? `s${item.scan.id}` : `e${item.event.id}`;
+  }
+
+  private rebuildTimeline(): void {
+    this.timeline = mergeTimeline(this.scanHistory, this.journalEvents, 'desc');
   }
 
   get cardSections(): Record<string, string> {

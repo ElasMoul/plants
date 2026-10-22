@@ -677,5 +677,22 @@ export const FR: Readonly<Record<string, string>> = {
   "No group": "Aucun groupe",
   "Move to group": "Déplacer vers un groupe",
   "Plant moved.": "Plante déplacée.",
-  "Could not move the plant.": "Impossible de déplacer la plante."
+  "Could not move the plant.": "Impossible de déplacer la plante.",
+  "Flowering": "Floraison",
+  "Fruiting": "Fructification",
+  "Propagation": "Multiplication",
+  "Date": "Date",
+  "Delete": "Supprimer",
+  "Add event": "Ajouter un événement",
+  "Edit event": "Modifier l’événement",
+  "Event type": "Type d’événement",
+  "Note (optional)": "Note (facultative)",
+  "Journal event": "Événement du journal",
+  "Delete this event?": "Supprimer cet événement ?",
+  "Event added.": "Événement ajouté.",
+  "Event updated.": "Événement mis à jour.",
+  "Event deleted.": "Événement supprimé.",
+  "Could not save the event.": "Impossible d’enregistrer l’événement.",
+  "Could not delete the event.": "Impossible de supprimer l’événement.",
+  "Could not load journal events.": "Impossible de charger les événements du journal."
 };

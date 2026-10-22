@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset plantpal:046-email-outbox
+--changeset plantpal:047-email-outbox
 -- Transactional email outbox (PLA-25). A row is written in the caller's transaction and a
 -- dispatcher sends it later, so a provider outage never fails a registration or recovery
 -- request and a failed send is retried. `variables` holds template placeholders (which may

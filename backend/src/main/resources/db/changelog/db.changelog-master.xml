@@ -123,5 +123,6 @@
     <include file="db/changelog/migrations/043_placement_light_region.sql"/>
     <include file="db/changelog/migrations/044_identification_verdict.sql"/>
     <include file="db/changelog/migrations/045_plant_groups.sql"/>
-    <include file="db/changelog/migrations/046_email_outbox.sql"/>
+    <include file="db/changelog/migrations/046_plant_journal_events.sql"/>
+    <include file="db/changelog/migrations/047_email_outbox.sql"/>
 </databaseChangeLog>
