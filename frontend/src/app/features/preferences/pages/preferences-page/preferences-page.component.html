@@ -116,6 +116,30 @@
     </p>
   </div>
 
+  <div class="preference-section" data-testid="data-export-section">
+    <h2>{{ 'Export my data' | t }}</h2>
+    <p class="section-hint">
+      {{ 'Download a ZIP with your plants, care log, scan history and photos (JSON and CSV).' | t }}
+      {{ 'The file is deleted from our servers {0} hours after it is created.' | t: [exportRetentionHours] }}
+    </p>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="data-export-button"
+      (click)="exportData()"
+      [disabled]="exportBusy"
+    >
+      <mat-icon>{{ exportDone ? 'check' : 'download' }}</mat-icon>
+      {{ exportBusy ? ('Preparing your export…' | t) : ('Export my data' | t) }}
+    </button>
+    <p class="section-hint error-hint" *ngIf="exportError === 'rate-limited'" data-testid="data-export-rate-limited">
+      {{ 'You have requested too many exports. Please try again later.' | t }}
+    </p>
+    <p class="section-hint error-hint" *ngIf="exportError === 'failed'" data-testid="data-export-failed">
+      {{ 'Could not create your export. Please try again.' | t }}
+    </p>
+  </div>
+
   <div class="preference-section">
     <h2>{{ 'Hitting a rate limit?' | t }}</h2>
     <p class="section-hint">

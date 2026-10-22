@@ -694,5 +694,11 @@ export const AR: Readonly<Record<string, string>> = {
   "Event deleted.": "تم حذف الحدث.",
   "Could not save the event.": "تعذر حفظ الحدث.",
   "Could not delete the event.": "تعذر حذف الحدث.",
-  "Could not load journal events.": "تعذر تحميل أحداث السجل."
+  "Could not load journal events.": "تعذر تحميل أحداث السجل.",
+  "Export my data": "تصدير بياناتي",
+  "Download a ZIP with your plants, care log, scan history and photos (JSON and CSV).": "نزّل ملف ZIP يحتوي على نباتاتك وسجل العناية وسجل الفحوصات وصورك (JSON وCSV).",
+  "The file is deleted from our servers {0} hours after it is created.": "يُحذف الملف من خوادمنا بعد {0} ساعة من إنشائه.",
+  "Preparing your export…": "جارٍ تجهيز التصدير…",
+  "You have requested too many exports. Please try again later.": "طلبتَ عددًا كبيرًا من عمليات التصدير. حاول مرة أخرى لاحقًا.",
+  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى."
 };
