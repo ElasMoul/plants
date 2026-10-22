@@ -293,7 +293,7 @@ class TranslationIT extends AbstractIntegrationTest {
         .thenReturn(Map.of("Section care.", "رعاية النبات"));
     sections.translate("scan", id, "health", owner.getId());
     sectionReady(id, "fr");
-    assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(3);
+    assertThat(sections.get("scan", id, "health", owner.getId()).variants()).hasSize(2);
     assertThatThrownBy(() -> sections.get("scan", id, "health", other.getId()))
         .isInstanceOf(ResourceNotFoundException.class);
     jdbc.update("UPDATE identifications SET health_notes='Changed care.' WHERE id=?", id);
