@@ -18,6 +18,7 @@ import java.util.zip.CRC32;
 import javax.imageio.ImageIO;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
 import org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants;
+import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 
 /** GPS-tagged photo fixtures (PLA-118). The committed JPEG is produced by {@link #main}. */
@@ -47,6 +48,37 @@ public final class GpsPhotoFixtures {
   /** A JPEG with pixels but no EXIF at all. */
   public static byte[] plainJpeg() {
     return encode("jpg");
+  }
+
+  /** A JPEG carrying EXIF orientation 6 (rotated) together with GPS and the fixture date. */
+  public static byte[] rotatedGpsJpeg() {
+    try {
+      TiffOutputSet set = new TiffOutputSet();
+      set.getOrCreateRootDirectory().add(TiffTagConstants.TIFF_TAG_ORIENTATION, (short) 6);
+      set.getOrCreateExifDirectory()
+          .add(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL, DATE_TAKEN_EXIF);
+      set.setGpsInDegrees(2.3522, 48.8566);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      new ExifRewriter().updateExifMetadataLossless(plainJpeg(), out, set);
+      return out.toByteArray();
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /** The EXIF orientation of the image, or -1 when absent. */
+  public static int orientation(byte[] bytes) {
+    try {
+      var dir =
+          ImageMetadataReader.readMetadata(new ByteArrayInputStream(bytes))
+              .getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
+      return dir != null
+              && dir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION)
+          ? dir.getInteger(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION)
+          : -1;
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   /** A PNG whose eXIf chunk carries the fixture's GPS and date. */
