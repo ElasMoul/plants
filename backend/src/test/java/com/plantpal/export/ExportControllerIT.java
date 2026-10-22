@@ -10,6 +10,9 @@ import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.entity.IdentificationStageStatus;
 import com.plantpal.identification.entity.IdentificationStatus;
 import com.plantpal.identification.repository.IdentificationRepository;
+import com.plantpal.journal.entity.JournalEventType;
+import com.plantpal.journal.entity.PlantJournalEvent;
+import com.plantpal.journal.repository.PlantJournalEventRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
@@ -62,6 +65,7 @@ class ExportControllerIT extends AbstractIntegrationTest {
   @Autowired private PlantRepository plantRepository;
   @Autowired private CareLogRepository careLogRepository;
   @Autowired private IdentificationRepository identificationRepository;
+  @Autowired private PlantJournalEventRepository journalRepository;
   @Autowired private ExportFileStore fileStore;
   @Autowired private ObjectMapper objectMapper;
 
@@ -86,6 +90,8 @@ class ExportControllerIT extends AbstractIntegrationTest {
             "care-log.csv",
             "scan-history.json",
             "scan-history.csv",
+            "journal.json",
+            "journal.csv",
             "README.txt");
     assertThat(zip.keySet()).anyMatch(n -> n.startsWith("photos/plant-"));
     assertThat(zip.keySet()).anyMatch(n -> n.startsWith("photos/scan-"));
@@ -98,6 +104,9 @@ class ExportControllerIT extends AbstractIntegrationTest {
         .containsExactly("care-alpha");
     assertThat(objectMapper.readTree(zip.get("scan-history.json")).findValuesAsText("userContext"))
         .containsExactly("scan-alpha");
+    assertThat(objectMapper.readTree(zip.get("journal.json")).findValuesAsText("notes"))
+        .containsExactly("journal-alpha");
+    assertThat(text(zip.get("journal.csv"))).contains("journal-alpha");
     assertThat(text(zip.get("plants.csv"))).contains("plant-alpha").contains("archived-alpha");
     assertThat(text(zip.get("care-log.csv"))).contains("care-alpha");
     assertThat(text(zip.get("scan-history.csv"))).contains("scan-alpha");
@@ -215,6 +224,14 @@ class ExportControllerIT extends AbstractIntegrationTest {
             .userId(id)
             .nickname("archived-" + marker)
             .status(PlantStatus.ARCHIVED)
+            .build());
+    journalRepository.save(
+        PlantJournalEvent.builder()
+            .plantId(plant.getId())
+            .userId(id)
+            .type(JournalEventType.values()[0])
+            .eventDate(java.time.LocalDate.of(2026, 1, 2))
+            .note("journal-" + marker)
             .build());
     careLogRepository.save(
         CareLog.builder()

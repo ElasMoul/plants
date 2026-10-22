@@ -8,6 +8,8 @@ import com.plantpal.export.service.ExportFileStore;
 import com.plantpal.export.service.ExportService;
 import com.plantpal.identification.entity.Identification;
 import com.plantpal.identification.repository.IdentificationRepository;
+import com.plantpal.journal.entity.PlantJournalEvent;
+import com.plantpal.journal.repository.PlantJournalEventRepository;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.entity.CareLog;
@@ -65,6 +67,7 @@ public class ExportServiceImpl implements ExportService {
   private final PlantRepository plantRepository;
   private final CareLogRepository careLogRepository;
   private final IdentificationRepository identificationRepository;
+  private final PlantJournalEventRepository journalRepository;
   private final FileStorageService fileStorageService;
   private final ExportFileStore fileStore;
   private final ObjectMapper objectMapper;
@@ -84,6 +87,7 @@ public class ExportServiceImpl implements ExportService {
       PlantRepository plantRepository,
       CareLogRepository careLogRepository,
       IdentificationRepository identificationRepository,
+      PlantJournalEventRepository journalRepository,
       FileStorageService fileStorageService,
       ExportFileStore fileStore,
       ObjectMapper objectMapper,
@@ -91,6 +95,7 @@ public class ExportServiceImpl implements ExportService {
     this.plantRepository = plantRepository;
     this.careLogRepository = careLogRepository;
     this.identificationRepository = identificationRepository;
+    this.journalRepository = journalRepository;
     this.fileStorageService = fileStorageService;
     this.fileStore = fileStore;
     this.objectMapper = objectMapper;
@@ -170,6 +175,11 @@ public class ExportServiceImpl implements ExportService {
               "userContext",
               COL_PHOTO_URL),
           p -> identificationRepository.findByUserIdOrderByIdAsc(userId, p).map(this::scanRow));
+      writeDataset(
+          zip,
+          "journal",
+          List.of("id", COL_PLANT_ID, "type", "eventDate", COL_NOTES),
+          p -> journalRepository.findByUserIdOrderByIdAsc(userId, p).map(this::journalRow));
       writePhotos(zip, userId, skippedPhotos);
       writeReadme(zip, skippedPhotos);
     }
@@ -277,8 +287,9 @@ public class ExportServiceImpl implements ExportService {
         .append("This file is deleted from our servers ")
         .append(fileStore.retentionHours())
         .append(" hours after it was created.\r\n\r\n")
-        .append("Contents: plants, care-log and scan-history (JSON and CSV) plus photos/.\r\n")
-        .append("Archived plants are included. This app has no journal, so none is exported.\r\n");
+        .append(
+            "Contents: plants, care-log, scan-history and journal (JSON and CSV) plus photos/.\r\n")
+        .append("Archived plants are included.\r\n");
     if (!skippedPhotos.isEmpty()) {
       text.append("\r\nPhotos not included:\r\n");
       skippedPhotos.forEach(s -> text.append(" - ").append(s).append("\r\n"));
@@ -312,6 +323,16 @@ public class ExportServiceImpl implements ExportService {
     row.put("careType", str(c.getCareType()));
     row.put(COL_NOTES, c.getNotes());
     row.put("performedAt", str(c.getPerformedAt()));
+    return row;
+  }
+
+  private Map<String, Object> journalRow(PlantJournalEvent e) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("id", e.getId());
+    row.put(COL_PLANT_ID, e.getPlantId());
+    row.put("type", str(e.getType()));
+    row.put("eventDate", str(e.getEventDate()));
+    row.put(COL_NOTES, e.getNote());
     return row;
   }
 

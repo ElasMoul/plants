@@ -10,5 +10,7 @@ public interface PlantJournalEventRepository extends JpaRepository<PlantJournalE
 
   Page<PlantJournalEvent> findAllByPlantIdAndUserId(Long plantId, Long userId, Pageable pageable);
 
+  Page<PlantJournalEvent> findByUserIdOrderByIdAsc(Long userId, Pageable pageable);
+
   Optional<PlantJournalEvent> findByIdAndPlantIdAndUserId(Long id, Long plantId, Long userId);
 }

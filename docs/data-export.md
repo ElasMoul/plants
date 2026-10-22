@@ -16,10 +16,9 @@ never from the path or body.
 
 ## Contents
 
-`plants`, `care-log` and `scan-history` as `.json` and `.csv`, a `photos/` folder (named from record
+`plants`, `care-log`, `scan-history` and `journal` (PLA-111 events) as `.json` and `.csv`, a `photos/` folder (named from record
 ids, e.g. `plant-12.jpg`, `scan-40.jpg`) and a `README.txt` with the creation time, the retention and
-any photo that could not be included. Archived plants are included. The app has no journal, so none
-is exported. CSV cells starting with `=`, `+`, `-` or `@` are prefixed with `'` so spreadsheets do
+any photo that could not be included. Archived plants are included. CSV cells starting with `=`, `+`, `-` or `@` are prefixed with `'` so spreadsheets do
 not run them as formulas. Chat history, push subscriptions and AI provider data are not exported.
 
 Rows come from user-scoped, id-ordered repository queries paged 200 at a time and are streamed into
