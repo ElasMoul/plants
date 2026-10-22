@@ -1,0 +1,46 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# PlantPal – e2e Profile (end-to-end smoke test)
+# Activate on top of dev: SPRING_PROFILES_ACTIVE=dev,e2e
+# Every AI call is answered by com.plantpal.e2e.StubGatewayClient and no email leaves the
+# process. Opt-in only: never set this profile in prod/staging (E2eProfileGuard refuses it).
+# ──────────────────────────────────────────────────────────────────────────────
+
+platform:
+  gateway:
+    enabled: true                      # routes all AI calls through the stub, not a provider
+    url: http://localhost:0            # never contacted; StubGatewayClient answers locally
+
+# Dummy keys only so the context starts; no client uses them under the stub.
+anthropic:
+  api:
+    key: e2e-not-a-real-key
+github:
+  token: e2e-not-a-real-token
+
+app:
+  jwt:
+    # Obviously-fake constant, same as application-test.yml. Valid Base64, >= 32 bytes decoded.
+    secret: TESTONLYFAKEKEY0TESTONLYFAKEKEY0TESTONLYFAKEKEY0TESTONLYFAKEKEY0
+  plantnet:
+    api-key: e2e-not-a-real-key
+  mail:
+    transport: log                     # never SMTP
+  identification:
+    transport: in-process              # same transport prod ships (T-DEPLOY.5); no Kafka broker
+  web-push:
+    # Test-only key pair (see application-test.yml); never used anywhere else.
+    public-key: BLhowkMbZpHjPN2xWYz6BRLQKNSJ35tZGtSUW7YtXmuvPZ8Q3D1QGi1z9ajYVk5K9dQwrFAlZS2yny8XSB3XmNo
+    private-key: adZn9Dosb0SoRcxR0G8VUzanNA9sLzFiGvH4jDVFqWA
+    subject: mailto:e2e@plantpal.app
+  rate-limit:
+    ai-calls-per-hour: 10000
+    auth-attempts-per-minute: 10000
+    register-per-hour: 10000
+    chat-messages-per-hour: 10000
+
+spring:
+  kafka:
+    listener:
+      auto-startup: false              # no consumer: identification runs in-process
+  mail:
+    host: invalid.invalid              # defence in depth: no SMTP host resolves
