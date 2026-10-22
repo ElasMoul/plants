@@ -61,7 +61,7 @@ public class JournalReviewSeeder implements ApplicationRunner {
     Long monstera = plant(ownerId, "Monstera");
     plant(otherId, "Other user's cactus");
 
-    LocalDate today = LocalDate.now();
+    LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
     event(
         ownerId,
         monstera,

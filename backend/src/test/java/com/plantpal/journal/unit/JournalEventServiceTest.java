@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +62,7 @@ class JournalEventServiceTest {
     assertThat(withNote.getNote()).isEqualTo("new pot");
     assertThat(noNote.getNote()).isNull();
     ArgumentCaptor<PlantJournalEvent> saved = ArgumentCaptor.forClass(PlantJournalEvent.class);
-    verify(eventRepository, org.mockito.Mockito.times(2)).save(saved.capture());
+    verify(eventRepository, times(2)).save(saved.capture());
     assertThat(saved.getAllValues()).allMatch(e -> USER.equals(e.getUserId()));
   }
 
@@ -71,12 +72,9 @@ class JournalEventServiceTest {
     when(plantRepository.findByIdAndUserIdAndStatus(PLANT, OTHER_USER, PlantStatus.ACTIVE))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(
-            () ->
-                service.createEvent(
-                    PLANT,
-                    new JournalEventRequest(JournalEventType.FLOWERING, DAY, null),
-                    OTHER_USER))
+    JournalEventRequest request = new JournalEventRequest(JournalEventType.FLOWERING, DAY, null);
+
+    assertThatThrownBy(() -> service.createEvent(PLANT, request, OTHER_USER))
         .isInstanceOf(ResourceNotFoundException.class);
     verify(eventRepository, never()).save(any());
   }
@@ -109,13 +107,9 @@ class JournalEventServiceTest {
     when(eventRepository.findByIdAndPlantIdAndUserId(EVENT, PLANT, OTHER_USER))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(
-            () ->
-                service.updateEvent(
-                    PLANT,
-                    EVENT,
-                    new JournalEventRequest(JournalEventType.PRUNING, DAY, null),
-                    OTHER_USER))
+    JournalEventRequest request = new JournalEventRequest(JournalEventType.PRUNING, DAY, null);
+
+    assertThatThrownBy(() -> service.updateEvent(PLANT, EVENT, request, OTHER_USER))
         .isInstanceOf(ResourceNotFoundException.class);
     assertThatThrownBy(() -> service.deleteEvent(PLANT, EVENT, OTHER_USER))
         .isInstanceOf(ResourceNotFoundException.class);

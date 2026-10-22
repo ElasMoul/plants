@@ -9,6 +9,7 @@ import com.plantpal.plant.entity.PlantStatus;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.util.HtmlSanitizer;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -44,7 +45,8 @@ public class JournalEventServiceImpl implements JournalEventService {
 
   @Override
   @Transactional
-  public JournalEventResponse createEvent(Long plantId, JournalEventRequest request, Long userId) {
+  public JournalEventResponse createEvent(
+      Long plantId, @Valid JournalEventRequest request, Long userId) {
     requireOwnedPlant(plantId, userId);
     PlantJournalEvent event =
         PlantJournalEvent.builder()
@@ -62,7 +64,7 @@ public class JournalEventServiceImpl implements JournalEventService {
   @Override
   @Transactional
   public JournalEventResponse updateEvent(
-      Long plantId, Long eventId, JournalEventRequest request, Long userId) {
+      Long plantId, Long eventId, @Valid JournalEventRequest request, Long userId) {
     PlantJournalEvent event = findOwnedEvent(plantId, eventId, userId);
     event.setType(request.getType());
     event.setEventDate(request.getEventDate());
