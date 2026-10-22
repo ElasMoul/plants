@@ -22,6 +22,22 @@ spring:
       max-file-size: 15MB
       max-request-size: 15MB
 
+  # Outgoing mail (PLA-25). Credentials are env-var only; staging/prod override host/user/password
+  # with no default. Dev defaults to app.mail.transport=log, so no SMTP server is needed locally.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      # Bounded so a stalled provider cannot hang the dispatcher; the retry policy takes over.
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
   # Jackson: ISO-8601 dates, omit null fields globally
   jackson:
     serialization:
@@ -58,6 +74,21 @@ logging:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+  # ── Transactional email (PLA-25) ─────────────────────────────────────────────
+  # transport 'log' (default): nothing leaves the process, only a masked line is logged.
+  # transport 'smtp': real delivery through spring.mail.* (Resend). A failed send is retried
+  # with exponential backoff (retry-base-delay x 1,2,4,8...) up to max-attempts, then the
+  # outbox row becomes FAILED, an ERROR is logged and /api/v1/admin/email-deliveries?status=FAILED
+  # lists it. See MailService / EmailDispatcher.
+  mail:
+    transport: ${MAIL_TRANSPORT:log}
+    from: ${MAIL_FROM:Planotell <no-reply@localhost>}
+    max-attempts: 5
+    retry-base-delay: PT1M
+    claim-lease: PT2M
+    batch-size: 10
+    poll-interval: PT10S
 
   # ── Identification transport (T-DEPLOY.5) ────────────────────────────────────
   # 'kafka' (default): identification runs through the async Kafka pipeline (identification

@@ -27,6 +27,13 @@ spring:
     redis:
       url: ${REDIS_URL}
 
+  # ── Mail — Resend over SMTP (PLA-25); same rules as application-prod.yml ──────
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
   # ── JPA / Hibernate ──────────────────────────────────────────────────────────
   jpa:
     hibernate:
@@ -98,6 +105,10 @@ app:
   # application.yml's app.identification.transport comment and KafkaTransportProperties.
   identification:
     transport: in-process
+
+  mail:
+    transport: ${MAIL_TRANSPORT:smtp}
+    from: ${MAIL_FROM}
 
   jwt:
     secret: ${JWT_SECRET}

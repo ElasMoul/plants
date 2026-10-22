@@ -29,6 +29,16 @@ spring:
     redis:
       url: ${REDIS_URL}
 
+  # ── Mail — Resend over SMTP (PLA-25) ─────────────────────────────────────────
+  # smtp.resend.com:587, username 'resend', password = the Resend API key. No defaults:
+  # an unset MAIL_* variable fails startup rather than silently dropping verification and
+  # recovery emails.
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
   # ── JPA / Hibernate ──────────────────────────────────────────────────────────
   jpa:
     hibernate:
@@ -97,6 +107,10 @@ app:
   # application.yml's app.identification.transport comment and KafkaTransportProperties.
   identification:
     transport: in-process
+
+  mail:
+    transport: ${MAIL_TRANSPORT:smtp}
+    from: ${MAIL_FROM}
 
   jwt:
     secret: ${JWT_SECRET}
