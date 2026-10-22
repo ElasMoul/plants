@@ -90,6 +90,16 @@ app:
     batch-size: 10
     poll-interval: PT10S
 
+  # ── Self-service data export (PLA-112) ────────────────────────────────────────
+  # ZIPs are written to `directory` as {userId}-{uuid}.zip and deleted by an hourly job once
+  # older than `retention-hours` (documented in docs/data-export.md and shown in the UI).
+  export:
+    directory: ${APP_EXPORT_DIRECTORY:${java.io.tmpdir}/plantpal-exports}
+    retention-hours: ${APP_EXPORT_RETENTION_HOURS:24}
+    rate-limit-per-hour: ${APP_EXPORT_RATE_LIMIT_PER_HOUR:3}
+    max-photos: ${APP_EXPORT_MAX_PHOTOS:200}
+    max-photo-bytes: ${APP_EXPORT_MAX_PHOTO_BYTES:209715200}
+
   # ── Identification transport (T-DEPLOY.5) ────────────────────────────────────
   # 'kafka' (default): identification runs through the async Kafka pipeline (identification
   # .requested topic + IdentificationConsumer) — unchanged dev/local/test behavior.

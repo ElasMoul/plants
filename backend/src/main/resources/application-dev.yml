@@ -133,3 +133,10 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.web: DEBUG
 
+
+# Dev sends no real mail (app.mail.transport=log), so the SMTP health probe would only report
+# DOWN and make /actuator/health return 503, failing container healthchecks on review stacks.
+management:
+  health:
+    mail:
+      enabled: false

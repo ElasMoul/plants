@@ -14,6 +14,9 @@ public interface PlantRepository extends JpaRepository<Plant, Long> {
 
   Optional<Plant> findByIdAndUserId(Long id, Long userId);
 
+  /** Every plant of one user, any status, id-ordered so internal paging is stable (export). */
+  Page<Plant> findByUserIdOrderByIdAsc(Long userId, Pageable pageable);
+
   Page<Plant> findAllByUserIdAndStatus(Long userId, PlantStatus status, Pageable pageable);
 
   Page<Plant> findAllByUserIdAndSpeciesIdAndStatus(

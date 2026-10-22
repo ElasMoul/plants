@@ -14,6 +14,9 @@ public interface IdentificationRepository extends JpaRepository<Identification, 
 
   Page<Identification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+  /** Every scan of one user, id-ordered so internal paging is stable (export). */
+  Page<Identification> findByUserIdOrderByIdAsc(Long userId, Pageable pageable);
+
   @Query(
       "SELECT i FROM Identification i WHERE i.id IN "
           + "(SELECT MAX(i2.id) FROM Identification i2 WHERE i2.plantId IN :plantIds GROUP BY i2.plantId)")

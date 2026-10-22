@@ -12,6 +12,10 @@ import {
   PlantNetProject,
   PlantNetQuota,
 } from '../../services/plantnet-config.service';
+import {
+  DataExportService,
+  DEFAULT_EXPORT_RETENTION_HOURS,
+} from '../../services/data-export.service';
 
 @Component({
     selector: 'app-preferences-page',
@@ -39,11 +43,17 @@ export class PreferencesPageComponent implements OnInit {
   businessTier = false;
   businessTierSaving = false;
 
+  exportBusy = false;
+  exportDone = false;
+  exportError: 'rate-limited' | 'failed' | null = null;
+  exportRetentionHours = DEFAULT_EXPORT_RETENTION_HOURS;
+
   constructor(
     private readonly location: Location,
     private readonly router: Router,
     private readonly userService: UserService,
     private readonly plantNetConfigService: PlantNetConfigService,
+    private readonly dataExportService: DataExportService,
   ) {}
 
   ngOnInit(): void {
@@ -114,6 +124,24 @@ export class PreferencesPageComponent implements OnInit {
       error: () => {
         this.businessTier = previous;
         this.businessTierSaving = false;
+      },
+    });
+  }
+
+  exportData(): void {
+    this.exportBusy = true;
+    this.exportDone = false;
+    this.exportError = null;
+    this.dataExportService.requestExport().subscribe({
+      next: ({ export: created, blob }) => {
+        this.exportRetentionHours = created.retentionHours;
+        this.dataExportService.save(blob);
+        this.exportBusy = false;
+        this.exportDone = true;
+      },
+      error: (err: { status?: number }) => {
+        this.exportBusy = false;
+        this.exportError = err?.status === 429 ? 'rate-limited' : 'failed';
       },
     });
   }

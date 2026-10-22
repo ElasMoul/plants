@@ -694,5 +694,11 @@ export const FR: Readonly<Record<string, string>> = {
   "Event deleted.": "Événement supprimé.",
   "Could not save the event.": "Impossible d’enregistrer l’événement.",
   "Could not delete the event.": "Impossible de supprimer l’événement.",
-  "Could not load journal events.": "Impossible de charger les événements du journal."
+  "Could not load journal events.": "Impossible de charger les événements du journal.",
+  "Export my data": "Exporter mes données",
+  "Download a ZIP with your plants, care log, scan history and photos (JSON and CSV).": "Téléchargez un ZIP contenant vos plantes, votre journal de soins, votre historique d’analyses et vos photos (JSON et CSV).",
+  "The file is deleted from our servers {0} hours after it is created.": "Le fichier est supprimé de nos serveurs {0} heures après sa création.",
+  "Preparing your export…": "Préparation de votre export…",
+  "You have requested too many exports. Please try again later.": "Vous avez demandé trop d’exports. Réessayez plus tard.",
+  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez."
 };

@@ -10,4 +10,7 @@ import org.springframework.stereotype.Repository;
 public interface CareLogRepository extends JpaRepository<CareLog, Long> {
 
   Page<CareLog> findByPlantIdOrderByPerformedAtDesc(Long plantId, Pageable pageable);
+
+  /** Every care log of one user, id-ordered so internal paging is stable (export). */
+  Page<CareLog> findByUserIdOrderByIdAsc(Long userId, Pageable pageable);
 }
