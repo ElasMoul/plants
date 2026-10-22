@@ -21,6 +21,8 @@ public interface PlantService {
 
   Page<PlantResponse> getUserPlants(Long userId, Long speciesId, Pageable pageable);
 
+  Page<PlantResponse> getUserPlantsInGroup(Long userId, Long groupId, Pageable pageable);
+
   PlantResponse getPlant(Long id, Long userId);
 
   PlantResponse saveFromIdentification(SaveIdentificationAsPlantRequest request, Long userId);

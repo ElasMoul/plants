@@ -200,6 +200,21 @@ public class PlantServiceImpl implements PlantService {
     return buildEnrichedPage(plants, pageable);
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  @Cacheable(
+      value = PLANTS_CACHE,
+      key =
+          "'u:' + #userId + ':g:' + #groupId + ':p:' + #pageable.pageNumber + ':s:'"
+              + " + #pageable.pageSize + ':o:' + #pageable.sort")
+  public Page<PlantResponse> getUserPlantsInGroup(Long userId, Long groupId, Pageable pageable) {
+    log.info("Fetching plants for userId={}, groupId={}", userId, groupId);
+    Page<Plant> plants =
+        plantRepository.findAllByUserIdAndGroupIdAndStatus(
+            userId, groupId, PlantStatus.ACTIVE, pageable);
+    return buildEnrichedPage(plants, pageable);
+  }
+
   private Page<PlantResponse> buildEnrichedPage(Page<Plant> plants, Pageable pageable) {
     Page<PlantResponse> page = plants.map(plantMapper::toResponse);
     List<Long> plantIds = page.getContent().stream().map(PlantResponse::getId).toList();

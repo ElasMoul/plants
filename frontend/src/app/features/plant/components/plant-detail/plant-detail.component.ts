@@ -23,6 +23,8 @@ import { IdentificationUploadDialogComponent } from '../../../identification/com
 import { CareType } from '../../../reminder/models/reminder.model';
 import { PLACEHOLDER_IMAGE } from '../../../../shared/constants/placeholder-image.constant';
 import { PlantActionsSheetComponent, PlantAction } from '../plant-actions-sheet/plant-actions-sheet.component';
+import { PlantGroupService } from '../../services/plant-group.service';
+import { GroupPickerSheetComponent } from '../group-picker-sheet/group-picker-sheet.component';
 import { ActiveTreatmentSelectSheetComponent } from '../active-treatment-select-sheet/active-treatment-select-sheet.component';
 
 
@@ -73,6 +75,7 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly plantService: PlantService,
+    private readonly groupService: PlantGroupService,
     private readonly treatmentService: TreatmentService,
     private readonly identificationService: IdentificationService,
     private readonly reminderService: ReminderService,
@@ -216,10 +219,38 @@ export class PlantDetailComponent implements OnInit, OnDestroy {
       case 'scan':
         this.openAddScanDialog();
         break;
+      case 'moveToGroup':
+        this.openGroupPicker();
+        break;
       case 'chat':
         this.router.navigate(['/chat'], { queryParams: { plantId: this.plant.id } });
         break;
     }
+  }
+
+  private openGroupPicker(): void {
+    if (!this.plant) return;
+    const ref = this.bottomSheet.open(GroupPickerSheetComponent, {
+      data: { currentGroupId: this.plant.groupId ?? null },
+    });
+    ref.afterDismissed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((groupId?: number | null) => {
+        if (groupId !== undefined) this.assignToGroup(groupId);
+      });
+  }
+
+  private assignToGroup(groupId: number | null): void {
+    if (!this.plant) return;
+    this.groupService.assignPlant(this.plant.id, groupId).subscribe({
+      next: (res) => {
+        this.plant = res.data ? { ...this.plant!, groupId: res.data.groupId ?? null } : this.plant;
+        this.snackBar.open(translate('Plant moved.'), undefined, { duration: 3000 });
+      },
+      error: () => {
+        this.snackBar.open(translate('Could not move the plant.'), translate('Dismiss'), { duration: 4000 });
+      },
+    });
   }
 
   openAddScanDialog(): void {

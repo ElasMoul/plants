@@ -1,7 +1,7 @@
 import { Component, Inject } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 
-export type PlantAction = 'updatePhoto' | 'archive' | 'scan' | 'chat';
+export type PlantAction = 'updatePhoto' | 'archive' | 'scan' | 'chat' | 'moveToGroup';
 
 export interface PlantActionsSheetData {
   nickname: string;

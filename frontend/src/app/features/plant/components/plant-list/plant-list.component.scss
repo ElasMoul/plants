@@ -158,3 +158,17 @@ mat-paginator {
   background: transparent;
   margin-top: 8px;
 }
+
+.group-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.group-filter {
+  flex: 1 1 180px;
+  min-width: 0;
+  max-width: 320px;
+}

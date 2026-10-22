@@ -122,4 +122,5 @@
     <include file="db/changelog/migrations/042_strip_photo_gps.xml"/>
     <include file="db/changelog/migrations/043_placement_light_region.sql"/>
     <include file="db/changelog/migrations/044_identification_verdict.sql"/>
+    <include file="db/changelog/migrations/045_plant_groups.sql"/>
 </databaseChangeLog>

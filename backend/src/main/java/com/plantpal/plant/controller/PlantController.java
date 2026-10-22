@@ -57,13 +57,18 @@ public class PlantController {
   @GetMapping
   public ResponseEntity<ApiResponse<Page<PlantResponse>>> getUserPlants(
       @RequestParam(required = false) Long speciesId,
+      @RequestParam(required = false) Long groupId,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     Long userId = getCurrentUserId();
-    Page<PlantResponse> plants =
-        speciesId != null
-            ? plantService.getUserPlants(userId, speciesId, pageable)
-            : plantService.getUserPlants(userId, pageable);
+    Page<PlantResponse> plants;
+    if (groupId != null) {
+      plants = plantService.getUserPlantsInGroup(userId, groupId, pageable);
+    } else if (speciesId != null) {
+      plants = plantService.getUserPlants(userId, speciesId, pageable);
+    } else {
+      plants = plantService.getUserPlants(userId, pageable);
+    }
     return ResponseEntity.ok(ApiResponse.success(plants));
   }
 

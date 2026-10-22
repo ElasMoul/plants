@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>{{ 'Manage groups' | t }}</h2>
+<mat-dialog-content class="manager">
+  <form class="create-row" (ngSubmit)="create()">
+    <mat-form-field appearance="outline" class="name-field">
+      <mat-label>{{ 'New group name' | t }}</mat-label>
+      <input matInput id="new-group-name" aria-label="New group name" name="newName" maxlength="100" [(ngModel)]="newName" data-testid="group-name-input" />
+    </mat-form-field>
+    <button mat-flat-button color="primary" type="submit" [disabled]="!newName.trim()" data-testid="group-create-btn">
+      {{ 'Add group' | t }}
+    </button>
+  </form>
+
+  <p *ngIf="!loading && groups.length === 0" class="empty">
+    {{ 'No groups yet. Create one for a room, bed or greenhouse.' | t }}
+  </p>
+
+  <ul class="group-list" *ngIf="groups.length > 0">
+    <li *ngFor="let group of groups; trackBy: trackById" class="group-row" data-testid="group-row">
+      <ng-container *ngIf="editingId !== group.id; else editing">
+        <span class="group-name">{{ group.name }}</span>
+        <span class="group-count">{{ group.plantCount }}</span>
+        <div class="group-actions">
+          <button mat-stroked-button type="button" (click)="care(group, 'WATERED')" [disabled]="group.plantCount === 0">
+            <mat-icon>water_drop</mat-icon> {{ 'Watered' | t }}
+          </button>
+          <button mat-stroked-button type="button" (click)="care(group, 'FED')" [disabled]="group.plantCount === 0">
+            <mat-icon>grass</mat-icon> {{ 'Fed' | t }}
+          </button>
+          <button mat-icon-button type="button" (click)="startEdit(group)" [attr.aria-label]="'Rename group' | t">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button type="button" (click)="remove(group)" [attr.aria-label]="'Delete group' | t">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </ng-container>
+      <ng-template #editing>
+        <mat-form-field appearance="outline" class="name-field">
+          <input matInput id="edit-group-name" aria-label="Group name" name="editName" maxlength="100" [(ngModel)]="editName" (keydown.enter)="saveEdit(group)" />
+        </mat-form-field>
+        <div class="group-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveEdit(group)" [disabled]="!editName.trim()">
+            {{ 'Save' | t }}
+          </button>
+          <button mat-button type="button" (click)="cancelEdit()">{{ 'Cancel' | t }}</button>
+        </div>
+      </ng-template>
+    </li>
+  </ul>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">{{ 'Close' | t }}</button>
+</mat-dialog-actions>

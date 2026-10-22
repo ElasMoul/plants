@@ -55,4 +55,7 @@ public class PlantResponse {
   private Placement placement;
 
   private LightExposure lightExposure;
+
+  /** Null when the plant is not in a group (PLA-110). */
+  private Long groupId;
 }

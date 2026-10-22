@@ -57,4 +57,5 @@ export interface PlantResponse {
   activeTreatmentId?: number | null;
   placement?: Placement | null;
   lightExposure?: LightExposure | null;
+  groupId?: number | null;
 }
