@@ -50,7 +50,9 @@ test('core care loop: sign in, scan, save plant, set reminder, ask chat', async 
 
   await test.step('save plant', async () => {
     // "Yes, add it" for a new species, plain "Yes" when an earlier run already created it; one test id covers both.
-    await page.getByRole('button', { name: /Yes/ }).click();
+    const yes = page.getByTestId('species-confirm-yes');
+    await expect(yes).toBeVisible({ timeout: 30_000 });
+    await yes.click();
     await expect(page).toHaveURL(/\/plants\/\d+/);
     await page.goto('/garden');
     await expect(page.getByText(COMMON_NAME).first()).toBeVisible();
