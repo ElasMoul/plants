@@ -2,6 +2,9 @@ package com.plantpal.user.controller;
 
 import com.plantpal.admin.dto.AdminDtos.Access;
 import com.plantpal.shared.dto.ApiResponse;
+import com.plantpal.shared.filter.JwtAuthFilter;
+import com.plantpal.user.dto.ChangeEmailRequest;
+import com.plantpal.user.dto.ChangePasswordRequest;
 import com.plantpal.user.dto.UserPreferencesRequest;
 import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -67,6 +71,48 @@ public class UserController {
     Long userId = getCurrentUserId();
     UserPreferencesResponse response = userService.updatePreferences(userId, request);
     return ResponseEntity.ok(ApiResponse.success(response, "Preferences updated successfully"));
+  }
+
+  @Operation(summary = "Change the current user's password")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Password changed; the user's other sessions are signed out"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error or wrong current password"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized")
+  })
+  @PutMapping("/me/password")
+  public ResponseEntity<ApiResponse<Void>> changePassword(
+      @Valid @RequestBody ChangePasswordRequest request, HttpServletRequest http) {
+    String jti = (String) http.getAttribute(JwtAuthFilter.JTI_ATTRIBUTE);
+    userService.changePassword(getCurrentUserId(), jti, request);
+    return ResponseEntity.ok(ApiResponse.success(null, "Password changed"));
+  }
+
+  @Operation(summary = "Start changing the current user's email; the new address is verified")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Confirmation link sent to the new address"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Invalid or taken address, or wrong current password"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "429",
+        description = "Too many verification emails requested")
+  })
+  @PutMapping("/me/email")
+  public ResponseEntity<ApiResponse<Void>> changeEmail(
+      @Valid @RequestBody ChangeEmailRequest request) {
+    userService.requestEmailChange(getCurrentUserId(), request);
+    return ResponseEntity.ok(ApiResponse.success(null, "Verification email sent"));
   }
 
   private Long getCurrentUserId() {

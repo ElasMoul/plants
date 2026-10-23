@@ -16,11 +16,14 @@ import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.entity.RevokedReason;
 import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
 import com.plantpal.user.dto.AuthResponse;
+import com.plantpal.user.dto.ChangeEmailRequest;
+import com.plantpal.user.dto.ChangePasswordRequest;
 import com.plantpal.user.dto.UserPreferencesRequest;
 import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
@@ -346,6 +349,90 @@ class UserServiceTest {
       // When / Then
       assertThatThrownBy(() -> userService.loadUserByUsername(email))
           .isInstanceOf(UsernameNotFoundException.class);
+    }
+  }
+
+  @Nested
+  @DisplayName("changePassword() / requestEmailChange()")
+  class AccountChanges {
+
+    @Test
+    @DisplayName("wrong current password is a 400 and changes nothing")
+    void wrongCurrentPassword() {
+      var user = aUser().withId(5L).withPasswordHash("old-hash").build();
+      when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+      when(passwordEncoder.matches("nope", "old-hash")).thenReturn(false);
+      var request = new ChangePasswordRequest();
+      request.setCurrentPassword("nope");
+      request.setNewPassword("brand-new-pass");
+
+      assertThatThrownBy(() -> userService.changePassword(5L, "jti-1", request))
+          .isInstanceOf(ValidationException.class)
+          .hasMessage("Current password is incorrect");
+      verify(userRepository, never()).save(any());
+      verify(sessionRegistryService, never()).revokeOthersForUser(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("a missing current password is refused the same way")
+    void missingCurrentPassword() {
+      var user = aUser().withId(5L).withPasswordHash("old-hash").build();
+      when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+      var request = new ChangePasswordRequest();
+      request.setNewPassword("brand-new-pass");
+
+      assertThatThrownBy(() -> userService.changePassword(5L, "jti-1", request))
+          .isInstanceOf(ValidationException.class);
+      verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("correct current password stores the new hash and revokes the other sessions")
+    void changesPasswordAndRevokesOthers() {
+      var user = aUser().withId(5L).withPasswordHash("old-hash").build();
+      when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+      when(passwordEncoder.matches("current-pass", "old-hash")).thenReturn(true);
+      when(passwordEncoder.encode("brand-new-pass")).thenReturn("new-hash");
+      var request = new ChangePasswordRequest();
+      request.setCurrentPassword("current-pass");
+      request.setNewPassword("brand-new-pass");
+
+      userService.changePassword(5L, "jti-1", request);
+
+      assertThat(user.getPassword()).isEqualTo("new-hash");
+      verify(userRepository).save(user);
+      verify(sessionRegistryService)
+          .revokeOthersForUser(5L, "jti-1", RevokedReason.PASSWORD_CHANGE);
+    }
+
+    @Test
+    @DisplayName("an email change with a wrong password never reaches verification")
+    void emailChangeNeedsPassword() {
+      var user = aUser().withId(5L).withPasswordHash("old-hash").build();
+      when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+      when(passwordEncoder.matches("nope", "old-hash")).thenReturn(false);
+      var request = new ChangeEmailRequest();
+      request.setNewEmail("new@example.test");
+      request.setCurrentPassword("nope");
+
+      assertThatThrownBy(() -> userService.requestEmailChange(5L, request))
+          .isInstanceOf(ValidationException.class);
+      verify(emailVerification, never()).requestEmailChange(any(), anyString());
+    }
+
+    @Test
+    @DisplayName("an email change with the right password hands off to verification")
+    void emailChangeHandsOff() {
+      var user = aUser().withId(5L).withPasswordHash("old-hash").build();
+      when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+      when(passwordEncoder.matches("current-pass", "old-hash")).thenReturn(true);
+      var request = new ChangeEmailRequest();
+      request.setNewEmail("new@example.test");
+      request.setCurrentPassword("current-pass");
+
+      userService.requestEmailChange(5L, request);
+
+      verify(emailVerification).requestEmailChange(5L, "new@example.test");
     }
   }
 }

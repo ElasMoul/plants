@@ -37,6 +37,25 @@ export class UserService {
     return this.http.post<ApiResponse<null>>(`${this.authUrl}/verify-email/resend`, {});
   }
 
+  updateProfile(firstName: string, lastName: string): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { firstName, lastName })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
+
+  /** Needs the current password; the other sessions of the account are signed out. */
+  changePassword(currentPassword: string, newPassword: string): Observable<ApiResponse<null>> {
+    return this.http.put<ApiResponse<null>>(`${this.baseUrl}/password`, {
+      currentPassword,
+      newPassword,
+    });
+  }
+
+  /** Mails a confirmation link to the new address; the login address changes only once used. */
+  requestEmailChange(newEmail: string, currentPassword: string): Observable<ApiResponse<null>> {
+    return this.http.put<ApiResponse<null>>(`${this.baseUrl}/email`, { newEmail, currentPassword });
+  }
+
   updateModelPreferences(
     visionModelPreference: VisionModelPreference,
     reasoningModelPreference: ReasoningModelPreference,

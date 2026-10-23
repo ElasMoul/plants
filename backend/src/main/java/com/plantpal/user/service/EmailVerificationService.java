@@ -27,6 +27,19 @@ public interface EmailVerificationService {
   void verify(String token);
 
   /**
+   * Starts an email change: mails a confirmation link to {@code newEmail}, in the account's
+   * language. The account keeps its current address (and login) until the link is used.
+   *
+   * @throws com.plantpal.shared.exception.ValidationException when the address is the current one
+   *     or belongs to another account
+   * @throws com.plantpal.shared.exception.RateLimitException when asked too often
+   */
+  void requestEmailChange(Long userId, String newEmail);
+
+  /** The address a not-yet-confirmed email change is waiting on, if any. */
+  java.util.Optional<String> pendingEmail(Long userId);
+
+  /**
    * Fails unless the user's address is verified.
    *
    * @throws com.plantpal.shared.exception.EmailNotVerifiedException when it is not

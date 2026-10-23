@@ -51,6 +51,18 @@ starts unverified** and is never treated as verified. They are not locked out (l
 do not read the column); they see "not verified" on the preferences page and can resend the link
 there. No mass email is sent.
 
+## Changing the address (PLA-24)
+
+`PUT /api/v1/users/me/email {newEmail, currentPassword}` (signed in). The password is checked, the
+address must differ from the current one and be unused, then a link is mailed to the NEW address in
+the account's language (same `ACCOUNT_VERIFICATION` template). Nothing on the user row changes yet:
+the account keeps its old address, login and verified status, and `pendingEmail` shows the waiting
+address. The link token carries a `chg_` prefix (part of the hashed value), which is what lets
+`verify` swap `users.email` to the token's address and mark it verified; an ordinary link for another
+address is still refused, and a taken address at confirmation time is refused with the generic 400.
+Existing sessions carry the old address, so the user signs in again with the new one. A change
+request retires every earlier open link; only the hourly cap (5) applies to it, not the 60 s cooldown.
+
 ## Password recovery (PLA-65)
 
 Independent. Recovery is not gated on verification, and completing a recovery does not mark the

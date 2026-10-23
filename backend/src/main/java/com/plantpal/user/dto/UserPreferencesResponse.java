@@ -18,6 +18,13 @@ public class UserPreferencesResponse {
 
   private String language;
 
+  // Profile (PLA-24). pendingEmail is an unconfirmed email change; the login address stays
+  // `email` until the link sent to pendingEmail is used.
+  private String firstName;
+  private String lastName;
+  private String email;
+  private String pendingEmail;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below.
   private AiModelPreference aiModelPreference;
 

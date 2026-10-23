@@ -28,6 +28,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
           + "WHERE u.id = :id AND u.emailVerifiedAt IS NULL")
   int markEmailVerified(@Param("id") Long id, @Param("now") Instant now);
 
+  /** Swaps in an address whose ownership the user has just proven, in one statement. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("UPDATE User u SET u.email = :email, u.emailVerifiedAt = :now WHERE u.id = :id")
+  int changeVerifiedEmail(
+      @Param("id") Long id, @Param("email") String email, @Param("now") Instant now);
+
   @Query(
       "SELECT u FROM User u WHERE (:status IS NULL OR u.status = :status) AND "
           + "(LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR "

@@ -139,6 +139,23 @@ public class SessionRegistryServiceImpl implements SessionRegistryService {
   }
 
   @Override
+  public void revokeOthersForUser(Long userId, String keepJti, RevokedReason reason) {
+    String userKey = userSessionsKey(userId);
+    Set<String> jtis = redisTemplate.opsForSet().members(userKey);
+    int revoked = 0;
+    if (jtis != null) {
+      for (String jti : jtis) {
+        if (!jti.equals(keepJti)) {
+          revoke(jti, reason);
+          redisTemplate.opsForSet().remove(userKey, jti);
+          revoked++;
+        }
+      }
+    }
+    log.info("Revoked other sessions for userId={}, reason={}, count={}", userId, reason, revoked);
+  }
+
+  @Override
   public void revokeAllForUser(Long userId, RevokedReason reason) {
     String userKey = userSessionsKey(userId);
     Set<String> jtis = redisTemplate.opsForSet().members(userKey);

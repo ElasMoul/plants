@@ -218,6 +218,28 @@ class SessionRegistryServiceImplTest {
     }
   }
 
+  @Nested
+  @DisplayName("revokeOthersForUser()")
+  class RevokeOthers {
+    @Test
+    @DisplayName("revokes every indexed jti except the kept one and leaves the kept one indexed")
+    void keepsTheCallersSession() {
+      when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+      when(redisTemplate.opsForSet()).thenReturn(setOperations);
+      when(setOperations.members("session:user:" + USER_ID))
+          .thenReturn(Set.of("jti-keep", "jti-other"));
+
+      service.revokeOthersForUser(USER_ID, "jti-keep", RevokedReason.PASSWORD_CHANGE);
+
+      verify(redisTemplate).delete("session:jti-other");
+      verify(redisTemplate, never()).delete("session:jti-keep");
+      verify(valueOperations)
+          .set("session:revoked:jti-other", "PASSWORD_CHANGE", Duration.ofMinutes(5));
+      verify(setOperations).remove("session:user:" + USER_ID, "jti-other");
+      verify(redisTemplate, never()).delete("session:user:" + USER_ID);
+    }
+  }
+
   private String recordJson(Instant lastSeenAt, Instant absoluteExpiresAt) {
     try {
       return objectMapper.writeValueAsString(

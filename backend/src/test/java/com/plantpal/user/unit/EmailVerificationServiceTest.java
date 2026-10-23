@@ -171,6 +171,97 @@ class EmailVerificationServiceTest {
   }
 
   @Nested
+  @DisplayName("email change")
+  class EmailChange {
+
+    @Test
+    @DisplayName("mails a marked link to the NEW address in the account language")
+    @SuppressWarnings("unchecked")
+    void mailsTheNewAddress() {
+      User user = aUser().withId(7L).withEmail("old@example.test").build();
+      user.setLanguage("ar");
+      when(users.findById(7L)).thenReturn(Optional.of(user));
+      when(users.existsByEmail("new@example.test")).thenReturn(false);
+
+      service.requestEmailChange(7L, " new@example.test ");
+
+      ArgumentCaptor<EmailVerificationToken> saved =
+          ArgumentCaptor.forClass(EmailVerificationToken.class);
+      verify(tokens).save(saved.capture());
+      assertThat(saved.getValue().getEmail()).isEqualTo("new@example.test");
+      ArgumentCaptor<Map<String, String>> vars = ArgumentCaptor.forClass(Map.class);
+      verify(mailService)
+          .send(
+              eq(EmailTemplate.ACCOUNT_VERIFICATION),
+              eq("new@example.test"),
+              eq("ar"),
+              vars.capture());
+      assertThat(vars.getValue().get("link")).contains("token=chg_");
+      verify(users, never()).changeVerifiedEmail(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("refuses the current address and one that another account holds")
+    void refusesSameAndTaken() {
+      User user = aUser().withId(7L).withEmail("old@example.test").build();
+      when(users.findById(7L)).thenReturn(Optional.of(user));
+      when(users.existsByEmail("taken@example.test")).thenReturn(true);
+
+      assertThatThrownBy(() -> service.requestEmailChange(7L, "OLD@example.test"))
+          .isInstanceOf(ValidationException.class);
+      assertThatThrownBy(() -> service.requestEmailChange(7L, "taken@example.test"))
+          .isInstanceOf(ValidationException.class);
+      verify(mailService, never()).send(any(), anyString(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("a marked link swaps in and verifies the new address")
+    void markedLinkChangesEmail() {
+      User user = aUser().withId(7L).withEmail("old@example.test").build();
+      when(tokens.consume(anyString(), any())).thenReturn(1);
+      when(tokens.findByTokenHash(anyString())).thenReturn(Optional.of(row("new@example.test")));
+      when(users.findById(7L)).thenReturn(Optional.of(user));
+      when(users.existsByEmail("new@example.test")).thenReturn(false);
+
+      service.verify("chg_abc");
+
+      verify(users).changeVerifiedEmail(7L, "new@example.test", NOW);
+    }
+
+    @Test
+    @DisplayName("a marked link is refused when the address was taken in the meantime")
+    void markedLinkRefusedWhenTaken() {
+      User user = aUser().withId(7L).withEmail("old@example.test").build();
+      when(tokens.consume(anyString(), any())).thenReturn(1);
+      when(tokens.findByTokenHash(anyString())).thenReturn(Optional.of(row("new@example.test")));
+      when(users.findById(7L)).thenReturn(Optional.of(user));
+      when(users.existsByEmail("new@example.test")).thenReturn(true);
+
+      assertThatThrownBy(() -> service.verify("chg_abc")).isInstanceOf(ValidationException.class);
+      verify(users, never()).changeVerifiedEmail(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("an unmarked link for another address is still refused")
+    void unmarkedLinkRefused() {
+      User user = aUser().withId(7L).withEmail("old@example.test").build();
+      when(tokens.consume(anyString(), any())).thenReturn(1);
+      when(tokens.findByTokenHash(anyString())).thenReturn(Optional.of(row("new@example.test")));
+      when(users.findById(7L)).thenReturn(Optional.of(user));
+
+      assertThatThrownBy(() -> service.verify("abc")).isInstanceOf(ValidationException.class);
+      verify(users, never()).changeVerifiedEmail(any(), any(), any());
+    }
+
+    private EmailVerificationToken row(String email) {
+      EmailVerificationToken t = new EmailVerificationToken();
+      t.setUserId(7L);
+      t.setEmail(email);
+      return t;
+    }
+  }
+
+  @Nested
   @DisplayName("resend()")
   class Resend {
 

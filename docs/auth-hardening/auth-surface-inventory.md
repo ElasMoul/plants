@@ -96,6 +96,8 @@ explicit in the Guard column.
 | BE-051 | POST | `/api/v1/auth/logout` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
 | BE-052 | POST | `/api/v1/auth/verify-email` | AuthController | POST permitAll | public | `backend/src/main/java/com/plantpal/user/controller/AuthController.java` |
 | BE-053 | POST | `/api/v1/auth/verify-email/resend` | AuthController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/user/controller/AuthController.java` |
+| BE-054 | PUT | `/api/v1/users/me/password` | UserController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/user/controller/UserController.java` |
+| BE-055 | PUT | `/api/v1/users/me/email` | UserController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/user/controller/UserController.java` |
 
 ## Security-filter public surfaces without controller declarations
 
