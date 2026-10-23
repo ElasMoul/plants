@@ -6,7 +6,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ClimateZone, UserService } from '@plantpal/shared-core';
 import { CLIMATE_ZONES, CountryOption, countryOptions } from '../../../../shared/region/region';
-import { readLanguage } from '../../../../shared/i18n/language.service';
+import { readLanguage, translate } from '../../../../shared/i18n/language.service';
 import {
   PlantNetConfigService,
   PlantNetProject,
@@ -16,6 +16,16 @@ import {
   DataExportService,
   DEFAULT_EXPORT_RETENTION_HOURS,
 } from '../../services/data-export.service';
+
+interface ServerError {
+  status?: number;
+  error?: { message?: string };
+}
+
+/** The server's own validation message (a 400), shown through the translation catalog. */
+function serverMessage(err: ServerError): string {
+  return err.status === 400 && err.error?.message ? translate(err.error.message) : '';
+}
 
 @Component({
     selector: 'app-preferences-page',
@@ -43,6 +53,27 @@ export class PreferencesPageComponent implements OnInit {
   emailVerified: boolean | null = null;
   verificationSending = false;
   verificationResult: 'sent' | 'wait' | 'failed' | null = null;
+
+  firstName = '';
+  lastName = '';
+  profileSaving = false;
+  profileResult: 'saved' | 'failed' | null = null;
+  profileError = '';
+
+  email = '';
+  pendingEmail: string | null = null;
+  newEmail = '';
+  emailPassword = '';
+  emailSaving = false;
+  emailResult: 'sent' | 'failed' | null = null;
+  emailError = '';
+
+  currentPassword = '';
+  newPassword = '';
+  confirmPassword = '';
+  passwordSaving = false;
+  passwordResult: 'changed' | 'failed' | null = null;
+  passwordError = '';
 
   businessTier = false;
   businessTierSaving = false;
@@ -76,6 +107,10 @@ export class PreferencesPageComponent implements OnInit {
         this.selectedLang = prefs.data.plantnetLang ?? 'en';
         this.businessTier = prefs.data.businessTier ?? false;
         this.emailVerified = prefs.data.emailVerified ?? null;
+        this.firstName = prefs.data.firstName ?? '';
+        this.lastName = prefs.data.lastName ?? '';
+        this.email = prefs.data.email ?? '';
+        this.pendingEmail = prefs.data.pendingEmail ?? null;
         this.regionCountry = prefs.data.regionCountry ?? null;
         this.regionClimate = prefs.data.regionClimate ?? null;
       },
@@ -99,6 +134,68 @@ export class PreferencesPageComponent implements OnInit {
           this.plantnetSaving = false;
         },
       });
+  }
+
+  get passwordsMatch(): boolean {
+    return this.newPassword === this.confirmPassword;
+  }
+
+  saveProfile(): void {
+    this.profileSaving = true;
+    this.profileResult = null;
+    this.userService.updateProfile(this.firstName.trim(), this.lastName.trim()).subscribe({
+      next: res => {
+        this.profileSaving = false;
+        this.profileResult = 'saved';
+        this.firstName = res.data.firstName ?? this.firstName;
+        this.lastName = res.data.lastName ?? this.lastName;
+      },
+      error: (err: ServerError) => {
+        this.profileSaving = false;
+        this.profileResult = 'failed';
+        this.profileError = serverMessage(err);
+      },
+    });
+  }
+
+  submitEmailChange(): void {
+    this.emailSaving = true;
+    this.emailResult = null;
+    this.userService.requestEmailChange(this.newEmail.trim(), this.emailPassword).subscribe({
+      next: () => {
+        this.emailSaving = false;
+        this.emailResult = 'sent';
+        this.pendingEmail = this.newEmail.trim();
+        this.newEmail = '';
+        this.emailPassword = '';
+      },
+      error: (err: ServerError) => {
+        this.emailSaving = false;
+        this.emailResult = 'failed';
+        this.emailError = serverMessage(err);
+      },
+    });
+  }
+
+  submitPasswordChange(): void {
+    if (!this.passwordsMatch) return;
+    this.passwordSaving = true;
+    this.passwordResult = null;
+    // The server keeps this session signed in, so there is nothing to refresh here.
+    this.userService.changePassword(this.currentPassword, this.newPassword).subscribe({
+      next: () => {
+        this.passwordSaving = false;
+        this.passwordResult = 'changed';
+        this.currentPassword = '';
+        this.newPassword = '';
+        this.confirmPassword = '';
+      },
+      error: (err: ServerError) => {
+        this.passwordSaving = false;
+        this.passwordResult = 'failed';
+        this.passwordError = serverMessage(err);
+      },
+    });
   }
 
   resendVerification(): void {

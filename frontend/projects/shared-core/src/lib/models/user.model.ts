@@ -28,6 +28,12 @@ export type ClimateZone = 'TROPICAL' | 'ARID' | 'TEMPERATE' | 'CONTINENTAL' | 'P
 
 export interface UserPreferences {
   language?: 'en' | 'fr' | 'ar';
+  // Profile (PLA-24). pendingEmail is an unconfirmed email change; `email` stays the login
+  // address until the link sent to pendingEmail is used.
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  pendingEmail?: string | null;
   visionModelVisibility?: Partial<Record<VisionModelPreference, boolean>>;
   reasoningModelVisibility?: Partial<Record<ReasoningModelPreference, boolean>>;
   // Deprecated by the vision/reasoning split below — backend keeps the column for now (T7.1),
