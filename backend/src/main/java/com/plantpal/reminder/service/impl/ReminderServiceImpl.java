@@ -15,8 +15,8 @@ import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
+import com.plantpal.user.repository.UserRepository;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,18 +41,21 @@ public class ReminderServiceImpl implements ReminderService {
   private final CareLogRepository careLogRepository;
   private final TreatmentPlanRepository treatmentPlanRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final UserRepository userRepository;
 
   public ReminderServiceImpl(
       ReminderRepository reminderRepository,
       PlantRepository plantRepository,
       CareLogRepository careLogRepository,
       TreatmentPlanRepository treatmentPlanRepository,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      UserRepository userRepository) {
     this.reminderRepository = reminderRepository;
     this.plantRepository = plantRepository;
     this.careLogRepository = careLogRepository;
     this.treatmentPlanRepository = treatmentPlanRepository;
     this.eventPublisher = eventPublisher;
+    this.userRepository = userRepository;
   }
 
   @Override
@@ -134,14 +137,24 @@ public class ReminderServiceImpl implements ReminderService {
 
   @Override
   public Instant calculateNextDueAt(Instant lastDone, int frequencyDays) {
-    return lastDone.plus(frequencyDays, ChronoUnit.DAYS);
+    return calculateNextDueAt(lastDone, frequencyDays, java.time.ZoneOffset.UTC);
+  }
+
+  @Override
+  public Instant calculateNextDueAt(Instant lastDone, int frequencyDays, java.time.ZoneId zone) {
+    return java.time.ZonedDateTime.ofInstant(lastDone, zone).plusDays(frequencyDays).toInstant();
   }
 
   @Override
   @Transactional
   public void applyCompletionToReminder(Reminder reminder, Instant performedAt) {
     if (reminder.isRecurring()) {
-      reminder.setNextDueAt(calculateNextDueAt(performedAt, reminder.getFrequencyDays()));
+      reminder.setNextDueAt(
+          calculateNextDueAt(
+              performedAt,
+              reminder.getFrequencyDays(),
+              com.plantpal.user.service.UserZones.of(
+                  userRepository.findTimeZoneById(reminder.getUserId()).orElse(null))));
       reminderRepository.save(reminder);
       return;
     }

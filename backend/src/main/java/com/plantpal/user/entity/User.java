@@ -117,6 +117,15 @@ public class User extends AuditableEntity implements UserDetails {
   @Column(name = "region_climate", length = 20)
   private ClimateZone regionClimate;
 
+  // Display units (PLA-132); null = default from region, else metric.
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Column(name = "unit_system", length = 10)
+  private UnitSystem unitSystem;
+
+  // IANA time zone id (PLA-132); null = UTC.
+  @Column(name = "time_zone", length = 64)
+  private String timeZone;
+
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

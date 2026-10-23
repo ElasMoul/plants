@@ -55,7 +55,8 @@ class TreatmentPlanServiceTest {
             org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
             treatmentPlanRepository,
             reminderRepository,
-            plantRepository);
+            plantRepository,
+            org.mockito.Mockito.mock(com.plantpal.user.repository.UserRepository.class));
   }
 
   private Plant plant() {

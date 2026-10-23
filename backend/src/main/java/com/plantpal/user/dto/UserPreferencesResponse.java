@@ -43,4 +43,9 @@ public class UserPreferencesResponse {
   // Coarse region (PLA-107); null when unset.
   private String regionCountry;
   private ClimateZone regionClimate;
+
+  // Display units and time zone (PLA-132). effectiveUnitSystem is never null.
+  private com.plantpal.user.entity.UnitSystem unitSystem;
+  private com.plantpal.user.entity.UnitSystem effectiveUnitSystem;
+  private String timeZone;
 }

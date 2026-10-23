@@ -180,6 +180,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       user.setBusinessTier(request.getBusinessTier());
     }
     applyRegion(user, request);
+    applyUnitsAndTimeZone(user, request);
     userRepository.save(user);
     log.info(
         "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
@@ -211,6 +212,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
   }
 
+  private void applyUnitsAndTimeZone(User user, UserPreferencesRequest request) {
+    if (request.getUnitSystem() != null) {
+      user.setUnitSystem(request.getUnitSystem());
+    }
+    if (request.getTimeZone() != null) {
+      try {
+        user.setTimeZone(java.time.ZoneId.of(request.getTimeZone()).getId());
+      } catch (java.time.DateTimeException e) {
+        throw new ValidationException("Unknown time zone: " + request.getTimeZone());
+      }
+    }
+  }
+
   private UserPreferencesResponse toPreferencesResponse(User user) {
     return UserPreferencesResponse.builder()
         .language(com.plantpal.localization.SupportedLanguages.normalize(user.getLanguage()))
@@ -226,6 +240,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .businessTier(user.isBusinessTier())
         .regionCountry(user.getRegionCountry())
         .regionClimate(user.getRegionClimate())
+        .unitSystem(user.getUnitSystem())
+        .effectiveUnitSystem(
+            com.plantpal.user.service.UnitSystemResolver.resolve(
+                user.getUnitSystem(), user.getRegionCountry()))
+        .timeZone(user.getTimeZone())
         .build();
   }
 

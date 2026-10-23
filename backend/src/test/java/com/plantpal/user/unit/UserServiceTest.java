@@ -248,6 +248,66 @@ class UserServiceTest {
   }
 
   @Nested
+  @DisplayName("updatePreferences() units and time zone (PLA-132)")
+  class UpdateUnitsAndZone {
+
+    private User stubbedUser() {
+      var user = aUser().withId(1L).build();
+      when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+      lenient().when(userRepository.save(any(User.class))).thenReturn(user);
+      return user;
+    }
+
+    @Test
+    @DisplayName("should persist the unit system and time zone and report the effective units")
+    void shouldSaveUnitsAndZone() {
+      stubbedUser();
+
+      var response =
+          userService.updatePreferences(
+              1L,
+              UserPreferencesRequest.builder()
+                  .unitSystem(com.plantpal.user.entity.UnitSystem.IMPERIAL)
+                  .timeZone("America/New_York")
+                  .build());
+
+      assertThat(response.getUnitSystem()).isEqualTo(com.plantpal.user.entity.UnitSystem.IMPERIAL);
+      assertThat(response.getEffectiveUnitSystem())
+          .isEqualTo(com.plantpal.user.entity.UnitSystem.IMPERIAL);
+      assertThat(response.getTimeZone()).isEqualTo("America/New_York");
+    }
+
+    @Test
+    @DisplayName("should default the effective units from the region, else metric")
+    void shouldDefaultFromRegion() {
+      var user = stubbedUser();
+      assertThat(
+              userService
+                  .updatePreferences(1L, UserPreferencesRequest.builder().build())
+                  .getEffectiveUnitSystem())
+          .isEqualTo(com.plantpal.user.entity.UnitSystem.METRIC);
+
+      user.setRegionCountry("US");
+      var response = userService.updatePreferences(1L, UserPreferencesRequest.builder().build());
+      assertThat(response.getUnitSystem()).isNull();
+      assertThat(response.getEffectiveUnitSystem())
+          .isEqualTo(com.plantpal.user.entity.UnitSystem.IMPERIAL);
+    }
+
+    @Test
+    @DisplayName("should reject an invalid time zone")
+    void shouldRejectInvalidZone() {
+      stubbedUser();
+
+      assertThatThrownBy(
+              () ->
+                  userService.updatePreferences(
+                      1L, UserPreferencesRequest.builder().timeZone("Mars/Olympus").build()))
+          .isInstanceOf(com.plantpal.shared.exception.ValidationException.class);
+    }
+  }
+
+  @Nested
   @DisplayName("updatePreferences() region (PLA-107)")
   class UpdateRegion {
 

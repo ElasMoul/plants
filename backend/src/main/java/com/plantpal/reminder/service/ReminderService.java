@@ -18,6 +18,9 @@ public interface ReminderService {
 
   Instant calculateNextDueAt(Instant lastDone, int frequencyDays);
 
+  /** Adds calendar days in the given zone, so the local wall-clock time survives DST changes. */
+  Instant calculateNextDueAt(Instant lastDone, int frequencyDays, java.time.ZoneId zone);
+
   /**
    * Applies the effect of a completed care action to a reminder and persists it. Recurring
    * reminders are rescheduled; one-time (treatment step) reminders are disabled, and — if that was
