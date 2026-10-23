@@ -1,0 +1,33 @@
+<div class="auth-container">
+  <mat-card class="auth-card">
+    <mat-card-header>
+      <img mat-card-avatar class="brand-avatar" src="assets/images/planotell-mark.svg" alt="">
+      <mat-card-title>{{ 'Verify your email' | t }}</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <p *ngIf="state === 'verifying'" data-testid="verify-pending">{{ 'Verifying your email…' | t }}</p>
+      <p *ngIf="state === 'verified'" data-testid="verify-success">{{ 'Your email address is verified. Thank you!' | t }}</p>
+      <ng-container *ngIf="state === 'invalid'">
+        <p data-testid="verify-invalid">{{ 'This verification link is invalid or has expired.' | t }}</p>
+        <button
+          *ngIf="signedIn"
+          mat-stroked-button
+          type="button"
+          (click)="resend()"
+          [disabled]="resendState === 'sending'"
+          data-testid="verify-resend"
+        >{{ resendState === 'sending' ? ('Sending…' | t) : ('Send me a new link' | t) }}</button>
+        <p *ngIf="!signedIn" data-testid="verify-sign-in-hint">{{ 'Sign in to request a new link.' | t }}</p>
+        <p *ngIf="resendState === 'sent'" data-testid="verify-resend-sent">{{ 'Verification email sent. Check your inbox.' | t }}</p>
+        <p *ngIf="resendState === 'wait'" data-testid="verify-resend-wait">{{ 'Please wait a moment before requesting another email.' | t }}</p>
+        <p *ngIf="resendState === 'failed'" data-testid="verify-resend-failed">{{ 'Could not send the verification email. Please try again.' | t }}</p>
+      </ng-container>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <a mat-raised-button color="primary" routerLink="/garden" *ngIf="signedIn" data-testid="verify-continue">{{ 'Go to my garden' | t }}</a>
+      <a mat-raised-button color="primary" routerLink="/login" *ngIf="!signedIn" data-testid="verify-sign-in">{{ 'Sign in' | t }}</a>
+    </mat-card-actions>
+  </mat-card>
+</div>

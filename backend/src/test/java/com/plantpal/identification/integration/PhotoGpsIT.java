@@ -195,6 +195,7 @@ class PhotoGpsIT extends AbstractIntegrationTest {
             "lastName", "Test");
     ResponseEntity<Map> response =
         restTemplate.postForEntity(url("/api/v1/auth/register"), request, Map.class);
+    jdbc.update("UPDATE users SET email_verified_at = NOW() WHERE email = ?", request.get("email"));
     return (String) ((Map<String, Object>) response.getBody().get("data")).get("token");
   }
 

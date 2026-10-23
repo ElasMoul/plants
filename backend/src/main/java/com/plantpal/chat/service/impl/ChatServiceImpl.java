@@ -16,6 +16,7 @@ import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.shared.ai.AiUsage;
 import com.plantpal.shared.ai.PromptSanitizer;
+import com.plantpal.shared.ai.RequiresVerifiedEmail;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.treatment.entity.Treatment;
@@ -98,6 +99,7 @@ public class ChatServiceImpl implements ChatService {
   }
 
   @Override
+  @RequiresVerifiedEmail(userArgument = 1)
   @AiUsage(userArgument = 1, scan = false)
   public ChatResponse chat(ChatRequest request, Long userId) {
     if (!consumeRateLimit(userId)) {
@@ -124,6 +126,7 @@ public class ChatServiceImpl implements ChatService {
   }
 
   @Override
+  @RequiresVerifiedEmail(userArgument = 1)
   @AiUsage(userArgument = 1, scan = false)
   public void chatStream(ChatRequest request, Long userId, Consumer<String> onToken) {
     if (!consumeRateLimit(userId)) {

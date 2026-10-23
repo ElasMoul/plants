@@ -20,6 +20,7 @@ import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.entity.VisionModelPreference;
 import com.plantpal.user.repository.UserRepository;
+import com.plantpal.user.service.EmailVerificationService;
 import com.plantpal.user.service.UserService;
 import java.time.Clock;
 import java.util.LinkedHashMap;
@@ -48,6 +49,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private final SessionProperties sessionProperties;
   private final Clock clock;
   private final ModelCatalogService modelCatalog;
+  private final EmailVerificationService emailVerification;
 
   @Value("${app.jwt.expiration-ms}")
   private long jwtExpirationMs;
@@ -61,7 +63,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       SessionRegistryService sessionRegistryService,
       SessionProperties sessionProperties,
       Clock clock,
-      ModelCatalogService modelCatalog) {
+      ModelCatalogService modelCatalog,
+      EmailVerificationService emailVerification) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
@@ -71,6 +74,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     this.sessionProperties = sessionProperties;
     this.clock = clock;
     this.modelCatalog = modelCatalog;
+    this.emailVerification = emailVerification;
   }
 
   @Override
@@ -92,6 +96,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     user = userRepository.save(user);
     log.info("New user registered: id={}, email={}", user.getId(), user.getEmail());
+    // Queued through the outbox, so a mail-provider outage never fails registration.
+    emailVerification.sendVerification(user);
 
     String token = jwtUtil.generateToken(user, user.getId());
     openSession(user, token);
@@ -226,6 +232,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .businessTier(user.isBusinessTier())
         .regionCountry(user.getRegionCountry())
         .regionClimate(user.getRegionClimate())
+        .emailVerified(user.isEmailVerified())
         .build();
   }
 

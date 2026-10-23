@@ -95,7 +95,11 @@ class ProtectedEndpointAuthTest {
           endpoint("BE-043", "POST", "/api/v1/notifications/subscribe"),
           endpoint("BE-044", "GET", "/api/v1/species/{id}"),
           endpoint("BE-045", "GET", "/api/v1/species/mine"),
-          endpoint("BE-046", "POST", "/api/v1/species/{id}/regenerate-description"));
+          endpoint("BE-046", "POST", "/api/v1/species/{id}/regenerate-description"),
+          endpoint("BE-049", "GET", "/api/v1/auth/session"),
+          endpoint("BE-050", "POST", "/api/v1/auth/session/renew"),
+          endpoint("BE-051", "POST", "/api/v1/auth/logout"),
+          endpoint("BE-053", "POST", "/api/v1/auth/verify-email/resend"));
 
   private final List<ExecutionCase> executionCases = new ArrayList<>();
   private AnnotationConfigWebApplicationContext context;

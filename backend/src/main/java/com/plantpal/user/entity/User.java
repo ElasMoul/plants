@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -116,6 +117,15 @@ public class User extends AuditableEntity implements UserDetails {
   @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
   @Column(name = "region_climate", length = 20)
   private ClimateZone regionClimate;
+
+  // Null = ownership of the address is not proven (every pre-existing user). Login and recovery
+  // never read it; only the server-side gate in EmailVerificationService does (PLA-26).
+  @Column(name = "email_verified_at")
+  private Instant emailVerifiedAt;
+
+  public boolean isEmailVerified() {
+    return emailVerifiedAt != null;
+  }
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {

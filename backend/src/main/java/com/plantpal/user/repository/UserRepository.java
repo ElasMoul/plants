@@ -3,11 +3,13 @@ package com.plantpal.user.repository;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByEmail(String email);
 
   boolean existsByEmail(String email);
+
+  boolean existsByIdAndEmailVerifiedAtIsNotNull(Long id);
+
+  /** Marks the address verified unless it already is; returns 0 when it was. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE User u SET u.emailVerifiedAt = :now "
+          + "WHERE u.id = :id AND u.emailVerifiedAt IS NULL")
+  int markEmailVerified(@Param("id") Long id, @Param("now") Instant now);
 
   @Query(
       "SELECT u FROM User u WHERE (:status IS NULL OR u.status = :status) AND "

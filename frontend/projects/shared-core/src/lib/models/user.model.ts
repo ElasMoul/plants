@@ -49,6 +49,9 @@ export interface UserPreferences {
   // Coarse region (PLA-107): ISO 3166-1 alpha-2 country + climate zone. Never a precise location.
   regionCountry?: string | null;
   regionClimate?: ClimateZone | null;
+  // Whether the account's email address is verified (PLA-26). Read-only; optional so cached
+  // pre-PLA-26 sessionStorage entries still parse (treated as unknown, not as verified).
+  emailVerified?: boolean;
 }
 
 export interface User {

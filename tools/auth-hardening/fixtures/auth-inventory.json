@@ -22,7 +22,8 @@
     {"ID": "FE-020", "App": "classic", "Method": "ROUTE", "Path": "/login", "Declaration": "LoginComponent", "Guard": "none", "Access": "public"},
     {"ID": "FE-021", "App": "classic", "Method": "ROUTE", "Path": "/register", "Declaration": "RegisterComponent", "Guard": "none", "Access": "public"},
     {"ID": "FE-022", "App": "classic", "Method": "REDIRECT", "Path": "/**", "Declaration": "/garden", "Guard": "redirect to AuthGuard target", "Access": "protected"},
-    {"ID": "FE-023", "App": "atlas", "Method": "DOCUMENT", "Path": "/", "Declaration": "App bootstrap", "Guard": "none", "Access": "public"}
+    {"ID": "FE-023", "App": "atlas", "Method": "DOCUMENT", "Path": "/", "Declaration": "App bootstrap", "Guard": "none", "Access": "public"},
+    {"ID": "FE-024", "App": "classic", "Method": "ROUTE", "Path": "/login/verify-email", "Declaration": "VerifyEmailComponent", "Guard": "none", "Access": "public"}
   ],
   "declaration_samples": [
     {

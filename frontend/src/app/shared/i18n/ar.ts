@@ -700,5 +700,21 @@ export const AR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "يُحذف الملف من خوادمنا بعد {0} ساعة من إنشائه.",
   "Preparing your export…": "جارٍ تجهيز التصدير…",
   "You have requested too many exports. Please try again later.": "طلبتَ عددًا كبيرًا من عمليات التصدير. حاول مرة أخرى لاحقًا.",
-  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى."
+  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى.",
+  "Verify your email": "تحقق من بريدك الإلكتروني",
+  "Verifying your email…": "جارٍ التحقق من بريدك الإلكتروني…",
+  "Your email address is verified. Thank you!": "تم التحقق من عنوان بريدك الإلكتروني. شكرًا لك!",
+  "This verification link is invalid or has expired.": "رابط التحقق هذا غير صالح أو انتهت صلاحيته.",
+  "Send me a new link": "أرسل لي رابطًا جديدًا",
+  "Sign in to request a new link.": "سجّل الدخول لطلب رابط جديد.",
+  "Go to my garden": "اذهب إلى حديقتي",
+  "Email verification": "التحقق من البريد الإلكتروني",
+  "Your email address is verified.": "تم التحقق من عنوان بريدك الإلكتروني.",
+  "Your email address is not verified yet. Check your inbox, or request a new link. Until then you cannot start new identifications or chats.": "لم يتم التحقق من عنوان بريدك الإلكتروني بعد. تحقق من صندوق الوارد أو اطلب رابطًا جديدًا. حتى ذلك الحين لا يمكنك بدء عمليات تعريف أو محادثات جديدة.",
+  "Resend verification email": "إعادة إرسال رسالة التحقق",
+  "Sending…": "جارٍ الإرسال…",
+  "Verification email sent. Check your inbox.": "تم إرسال رسالة التحقق. تحقق من صندوق الوارد.",
+  "Please wait a moment before requesting another email.": "يرجى الانتظار قليلًا قبل طلب رسالة أخرى.",
+  "Could not send the verification email. Please try again.": "تعذر إرسال رسالة التحقق. حاول مرة أخرى.",
+  "Verify your email address to use this feature. Check your inbox, or resend the link in Settings.": "تحقق من عنوان بريدك الإلكتروني لاستخدام هذه الميزة. تحقق من صندوق الوارد أو أعد إرسال الرابط من الإعدادات."
 };

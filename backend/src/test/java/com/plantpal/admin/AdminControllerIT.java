@@ -363,6 +363,7 @@ class AdminControllerIT extends AbstractIntegrationTest {
             .passwordHash("unused-test-password")
             .status(UserStatus.ACTIVE)
             .role(role)
+            .emailVerifiedAt(java.time.Instant.now())
             .build());
   }
 

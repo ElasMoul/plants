@@ -3,8 +3,11 @@ import { RouterModule, Routes } from '@angular/router';
 import { AuthCatchAllGuard } from '../../core/guards/auth-catch-all.guard';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
+import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 const routes: Routes = [
+  // Under the existing `login` client-route prefix, so the host route allowlist is untouched.
+  { path: 'login/verify-email', component: VerifyEmailComponent },
   { path: 'login',    component: LoginComponent },
   { path: 'register', component: RegisterComponent },
   // ADR-5: a signed-in-vs-signed-out decision, not a static redirect — see

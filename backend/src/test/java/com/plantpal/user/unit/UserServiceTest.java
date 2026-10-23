@@ -26,6 +26,7 @@ import com.plantpal.user.dto.UserPreferencesResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
+import com.plantpal.user.service.EmailVerificationService;
 import com.plantpal.user.service.impl.UserServiceImpl;
 import java.time.Clock;
 import java.util.Optional;
@@ -54,6 +55,7 @@ class UserServiceTest {
   @Mock private SessionProperties sessionProperties;
   @Mock private Clock clock;
   @Mock private ModelCatalogService modelCatalog;
+  @Mock private EmailVerificationService emailVerification;
 
   @InjectMocks private UserServiceImpl userService;
 
@@ -86,6 +88,7 @@ class UserServiceTest {
       assertThat(response.getUserId()).isEqualTo(42L);
       verify(userRepository).save(any(User.class));
       verify(passwordEncoder).encode(request.getPassword());
+      verify(emailVerification).sendVerification(savedUser);
     }
 
     @Test

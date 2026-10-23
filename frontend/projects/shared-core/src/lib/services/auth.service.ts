@@ -55,6 +55,11 @@ export class AuthService {
       .pipe(tap(res => this.storeSession(res.data)));
   }
 
+  /** Spends the emailed verification token. Public; the backend answers every failure alike. */
+  verifyEmail(token: string): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.baseUrl}/verify-email`, { token });
+  }
+
   logout(): void {
     if (!hasStorage()) return;
     localStorage.removeItem(TOKEN_KEY);

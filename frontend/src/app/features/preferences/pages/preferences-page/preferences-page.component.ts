@@ -40,6 +40,10 @@ export class PreferencesPageComponent implements OnInit {
   regionSaving = false;
   regionSaved = false;
 
+  emailVerified: boolean | null = null;
+  verificationSending = false;
+  verificationResult: 'sent' | 'wait' | 'failed' | null = null;
+
   businessTier = false;
   businessTierSaving = false;
 
@@ -71,6 +75,7 @@ export class PreferencesPageComponent implements OnInit {
         this.selectedProject = prefs.data.plantnetProject ?? 'all';
         this.selectedLang = prefs.data.plantnetLang ?? 'en';
         this.businessTier = prefs.data.businessTier ?? false;
+        this.emailVerified = prefs.data.emailVerified ?? null;
         this.regionCountry = prefs.data.regionCountry ?? null;
         this.regionClimate = prefs.data.regionClimate ?? null;
       },
@@ -94,6 +99,21 @@ export class PreferencesPageComponent implements OnInit {
           this.plantnetSaving = false;
         },
       });
+  }
+
+  resendVerification(): void {
+    this.verificationSending = true;
+    this.verificationResult = null;
+    this.userService.resendVerificationEmail().subscribe({
+      next: () => {
+        this.verificationSending = false;
+        this.verificationResult = 'sent';
+      },
+      error: (err: { status?: number }) => {
+        this.verificationSending = false;
+        this.verificationResult = err.status === 429 ? 'wait' : 'failed';
+      },
+    });
   }
 
   saveRegion(): void {

@@ -131,4 +131,18 @@ describe('AiErrorService', () => {
     });
     expect(service.handle(err)).toBe('Daily AI limit reached — try again tomorrow');
   });
+
+  it('explains an EMAIL_NOT_VERIFIED refusal instead of the generic message (PLA-26)', () => {
+    const err = new HttpErrorResponse({
+      status: 403,
+      error: { message: 'Verify your email address to use this feature', code: 'EMAIL_NOT_VERIFIED' },
+    });
+    expect(service.handle(err)).toMatch(/Verify your email address/);
+    expect(service.handle(err)).toMatch(/resend the link in Settings/);
+  });
+
+  it('leaves other 403s on the backend message', () => {
+    const err = new HttpErrorResponse({ status: 403, error: { message: 'Forbidden thing' } });
+    expect(service.handle(err)).toBe('Forbidden thing');
+  });
 });

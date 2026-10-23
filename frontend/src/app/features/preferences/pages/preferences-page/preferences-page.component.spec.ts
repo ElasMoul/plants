@@ -106,3 +106,49 @@ describe('PreferencesPageComponent data export (PLA-112)', () => {
     }
   });
 });
+
+
+describe('PreferencesPageComponent email verification (PLA-26)', () => {
+  function build(prefs: object, resend: unknown = of({ success: true })) {
+    const userService = {
+      getPreferences: jest.fn(() => of({ data: prefs })),
+      resendVerificationEmail: jest.fn(() => resend),
+    };
+    const plantnet = {
+      getProjects: jest.fn(() => of([])),
+      getLanguages: jest.fn(() => of([])),
+      getQuota: jest.fn(() => of(null)),
+    };
+    const component = new PreferencesPageComponent(
+      {} as Location, {} as Router,
+      userService as unknown as UserService, plantnet as unknown as PlantNetConfigService,
+      {} as DataExportService,
+    );
+    component.ngOnInit();
+    return { component, userService };
+  }
+
+  it('shows the status from the preferences response', () => {
+    expect(build({ emailVerified: false }).component.emailVerified).toBe(false);
+    expect(build({ emailVerified: true }).component.emailVerified).toBe(true);
+  });
+
+  it('shows no status when the server did not say (stale cached preferences)', () => {
+    expect(build({}).component.emailVerified).toBeNull();
+  });
+
+  it('resends and reports success, a 429 wait, or a failure', () => {
+    const ok = build({ emailVerified: false });
+    ok.component.resendVerification();
+    expect(ok.component.verificationResult).toBe('sent');
+
+    const wait = build({ emailVerified: false }, throwError(() => ({ status: 429 })));
+    wait.component.resendVerification();
+    expect(wait.component.verificationResult).toBe('wait');
+
+    const failed = build({ emailVerified: false }, throwError(() => ({ status: 500 })));
+    failed.component.resendVerification();
+    expect(failed.component.verificationResult).toBe('failed');
+    expect(failed.component.verificationSending).toBe(false);
+  });
+});

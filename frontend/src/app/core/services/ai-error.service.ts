@@ -27,6 +27,9 @@ export class AiErrorService {
     if (err.status === 402) {
       return this.blockedMessage(err);
     }
+    if (err.status === 403 && this.parseBody(err)?.code === 'EMAIL_NOT_VERIFIED') {
+      return translate('Verify your email address to use this feature. Check your inbox, or resend the link in Settings.');
+    }
     if (err.status === 0) {
       return translate('Connection problem — check your internet and try again');
     }

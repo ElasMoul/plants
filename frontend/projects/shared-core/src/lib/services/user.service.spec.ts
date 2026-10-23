@@ -53,4 +53,11 @@ describe('UserService (shared-core)', () => {
     expect(region.request.body).toEqual({ regionCountry: 'FR', regionClimate: 'TEMPERATE' });
     region.flush({ data: { v: 4 } });
   });
+
+  it('asks for a new verification email via the auth endpoint', () => {
+    service.resendVerificationEmail().subscribe();
+    const req = http.expectOne('/api/v1/auth/verify-email/resend');
+    expect(req.request.method).toBe('POST');
+    req.flush({ success: true });
+  });
 });
