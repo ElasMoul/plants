@@ -19,6 +19,16 @@ public class UserPreferencesRequest {
   @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
   private String language;
 
+  // Profile names (PLA-24). Nullable - omit to leave unchanged; when present they must be
+  // non-blank and at most 100 characters (the registration limit).
+  @jakarta.validation.constraints.Size(max = 100)
+  @jakarta.validation.constraints.Pattern(regexp = ".*\\S.*", message = "must not be blank")
+  private String firstName;
+
+  @jakarta.validation.constraints.Size(max = 100)
+  @jakarta.validation.constraints.Pattern(regexp = ".*\\S.*", message = "must not be blank")
+  private String lastName;
+
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below. Nullable:
   // the current frontend never sends this field anymore (it only sends the two below), so a
   // @NotNull here made every save fail with a 400. When omitted, the user's existing stored

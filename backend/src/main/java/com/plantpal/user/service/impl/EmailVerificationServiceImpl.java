@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,10 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
   static final Duration RESEND_COOLDOWN = Duration.ofSeconds(60);
   static final Duration RESEND_WINDOW = Duration.ofHours(1);
   static final int MAX_PER_WINDOW = 5;
+
+  // Marks a link as an email change. Part of the hashed token, so a registration link cannot be
+  // replayed as one and the change flow needs no extra column.
+  static final String CHANGE_PREFIX = "chg_";
 
   private static final int TOKEN_BYTES = 32;
   private static final String INVALID_LINK = "This verification link is invalid or has expired";
@@ -67,17 +72,50 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
   @Override
   @Transactional
   public void sendVerification(User user) {
+    issue(user, user.getEmail(), "");
+  }
+
+  @Override
+  @Transactional
+  public void requestEmailChange(Long userId, String newEmail) {
+    User user =
+        users.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    String target = newEmail.trim();
+    if (target.equalsIgnoreCase(user.getEmail())) {
+      throw new ValidationException("That is already your email address");
+    }
+    if (users.existsByEmail(target)) {
+      throw new ValidationException("Email already registered");
+    }
+    // Hourly cap only: the registration link must not delay a first change by its 60 s cooldown,
+    // and the current-password check already stands in front of this call.
+    enforceWindowLimit(userId, clock.instant());
+    issue(user, target, CHANGE_PREFIX);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<String> pendingEmail(Long userId) {
+    return tokens
+        .findFirstByUserIdAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+            userId, clock.instant())
+        .map(EmailVerificationToken::getEmail)
+        .filter(
+            email -> users.findById(userId).map(u -> !email.equals(u.getEmail())).orElse(false));
+  }
+
+  private void issue(User user, String email, String prefix) {
     Instant now = clock.instant();
     tokens.invalidateOpen(user.getId(), now);
 
     byte[] raw = new byte[TOKEN_BYTES];
     RANDOM.nextBytes(raw);
-    String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+    String token = prefix + Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
 
     EmailVerificationToken row = new EmailVerificationToken();
     row.setUserId(user.getId());
     row.setTokenHash(hash(token));
-    row.setEmail(user.getEmail());
+    row.setEmail(email);
     row.setCreatedAt(now);
     row.setExpiresAt(now.plus(TOKEN_LIFETIME));
     tokens.save(row);
@@ -88,10 +126,11 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
             + URLEncoder.encode(token, StandardCharsets.UTF_8);
     mailService.send(
         EmailTemplate.ACCOUNT_VERIFICATION,
-        user.getEmail(),
+        email,
         user.getLanguage(),
         Map.of("name", user.getFirstName(), "link", link));
-    log.info("Verification email queued: userId={}", user.getId());
+    log.info(
+        "Verification email queued: userId={}, emailChange={}", user.getId(), !prefix.isEmpty());
   }
 
   @Override
@@ -117,12 +156,25 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     EmailVerificationToken row = tokens.findByTokenHash(hash).orElseThrow();
     User user =
         users.findById(row.getUserId()).orElseThrow(() -> new ValidationException(INVALID_LINK));
+    if (token.startsWith(CHANGE_PREFIX) && !row.getEmail().equals(user.getEmail())) {
+      applyEmailChange(user, row.getEmail(), now);
+      return;
+    }
     if (!row.getEmail().equals(user.getEmail())) {
       // Rolls back the spend: a link for an address the user no longer has proves nothing.
       throw new ValidationException(INVALID_LINK);
     }
     users.markEmailVerified(user.getId(), now);
     log.info("Email verified: userId={}", user.getId());
+  }
+
+  private void applyEmailChange(User user, String newEmail, Instant now) {
+    // Rolls back the spend when the address was taken in the meantime.
+    if (users.existsByEmail(newEmail)) {
+      throw new ValidationException(INVALID_LINK);
+    }
+    users.changeVerifiedEmail(user.getId(), newEmail, now);
+    log.info("Email changed and verified: userId={}", user.getId());
   }
 
   @Override
@@ -145,6 +197,10 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
                     Duration.between(now, next).toSeconds() + 1);
               }
             });
+    enforceWindowLimit(userId, now);
+  }
+
+  private void enforceWindowLimit(Long userId, Instant now) {
     if (tokens.countByUserIdAndCreatedAtAfter(userId, now.minus(RESEND_WINDOW)) >= MAX_PER_WINDOW) {
       throw new RateLimitException(
           "Too many verification emails requested; try again later", RESEND_WINDOW.toSeconds());

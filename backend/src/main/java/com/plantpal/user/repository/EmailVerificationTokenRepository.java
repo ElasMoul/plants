@@ -33,4 +33,8 @@ public interface EmailVerificationTokenRepository
   long countByUserIdAndCreatedAtAfter(Long userId, Instant since);
 
   Optional<EmailVerificationToken> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
+  Optional<EmailVerificationToken>
+      findFirstByUserIdAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+          Long userId, Instant now);
 }

@@ -4,12 +4,15 @@ import com.plantpal.admin.service.ModelCatalogService;
 import com.plantpal.identification.client.AnthropicClient;
 import com.plantpal.identification.client.DeepSeekDirectClient;
 import com.plantpal.session.config.SessionProperties;
+import com.plantpal.session.entity.RevokedReason;
 import com.plantpal.session.service.SessionRegistryService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.UnauthorizedException;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.shared.util.JwtUtil;
 import com.plantpal.user.dto.AuthResponse;
+import com.plantpal.user.dto.ChangeEmailRequest;
+import com.plantpal.user.dto.ChangePasswordRequest;
 import com.plantpal.user.dto.LoginRequest;
 import com.plantpal.user.dto.RegisterRequest;
 import com.plantpal.user.dto.UserPreferencesRequest;
@@ -161,6 +164,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             .findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     if (request.getLanguage() != null) user.setLanguage(request.getLanguage());
+    if (request.getFirstName() != null) user.setFirstName(request.getFirstName().trim());
+    if (request.getLastName() != null) user.setLastName(request.getLastName().trim());
     if (request.getAiModelPreference() != null) {
       user.setAiModelPreference(request.getAiModelPreference());
     }
@@ -199,6 +204,39 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     return toPreferencesResponse(user);
   }
 
+  @Override
+  @Transactional
+  public void changePassword(Long userId, String currentJti, ChangePasswordRequest request) {
+    User user = requireUser(userId);
+    requireCurrentPassword(user, request.getCurrentPassword());
+    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+    userRepository.save(user);
+    sessionRegistryService.revokeOthersForUser(userId, currentJti, RevokedReason.PASSWORD_CHANGE);
+    log.info("Password changed: userId={}", userId);
+  }
+
+  @Override
+  @Transactional
+  public void requestEmailChange(Long userId, ChangeEmailRequest request) {
+    requireCurrentPassword(requireUser(userId), request.getCurrentPassword());
+    emailVerification.requestEmailChange(userId, request.getNewEmail());
+  }
+
+  private User requireUser(Long userId) {
+    return userRepository
+        .findById(userId)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+  }
+
+  // 400 rather than 401: the caller IS authenticated, and a 401 makes the client sign them out.
+  private void requireCurrentPassword(User user, String currentPassword) {
+    if (currentPassword == null
+        || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+      log.warn("Wrong current password: userId={}", user.getId());
+      throw new ValidationException("Current password is incorrect");
+    }
+  }
+
   private void applyRegion(User user, UserPreferencesRequest request) {
     if (request.getRegionCountry() != null) {
       String code = request.getRegionCountry().toUpperCase(java.util.Locale.ROOT);
@@ -220,6 +258,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
   private UserPreferencesResponse toPreferencesResponse(User user) {
     return UserPreferencesResponse.builder()
         .language(user.getLanguage())
+        .firstName(user.getFirstName())
+        .lastName(user.getLastName())
+        .email(user.getEmail())
+        .pendingEmail(emailVerification.pendingEmail(user.getId()).orElse(null))
         .aiModelPreference(user.getAiModelPreference())
         .visionModelPreference(user.getVisionModelPreference())
         .reasoningModelPreference(user.getReasoningModelPreference())

@@ -34,6 +34,12 @@ public interface SessionRegistryService {
    */
   void revoke(String jti, RevokedReason reason);
 
+  /**
+   * Revokes every live session of a user except {@code keepJti} (the caller's own session), which
+   * stays registered. A null {@code keepJti} revokes all of them.
+   */
+  void revokeOthersForUser(Long userId, String keepJti, RevokedReason reason);
+
   /** Revokes every live session belonging to a user — password change, account suspension. */
   void revokeAllForUser(Long userId, RevokedReason reason);
 }
