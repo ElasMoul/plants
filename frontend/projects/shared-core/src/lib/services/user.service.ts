@@ -7,6 +7,7 @@ import { ApiResponse } from '../models/api-response.model';
 import {
   ClimateZone,
   ReasoningModelPreference,
+  UnitSystem,
   UserPreferences,
   VisionModelPreference,
 } from '../models/user.model';
@@ -60,6 +61,18 @@ export class UserService {
   ): Observable<ApiResponse<UserPreferences>> {
     return this.http
       .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { regionCountry, regionClimate })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
+
+  updateUnitSystem(unitSystem: UnitSystem): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { unitSystem })
+      .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
+  }
+
+  updateTimeZone(timeZone: string): Observable<ApiResponse<UserPreferences>> {
+    return this.http
+      .put<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`, { timeZone })
       .pipe(tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))));
   }
 

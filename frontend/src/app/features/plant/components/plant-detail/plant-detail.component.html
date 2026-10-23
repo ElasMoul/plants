@@ -122,7 +122,7 @@
           <div class="journal-event-item" *ngIf="item.kind === 'event' && item.event as ev" data-testid="journal-event">
             <mat-icon class="journal-event-icon">event_note</mat-icon>
             <div class="scan-meta">
-              <div class="scan-date">{{ ev.eventDate | date:'mediumDate' }}</div>
+              <div class="scan-date">{{ ev.eventDate | localeDate:'mediumDate' }}</div>
               <div class="journal-event-type">{{ journalLabels[ev.type] | t }}</div>
               <div class="journal-event-note" *ngIf="ev.note">{{ ev.note }}</div>
             </div>
@@ -143,11 +143,11 @@
           >
             <img
               [src]="scan.photoUrl || placeholderImage"
-              [alt]="('Scan ' | t) + (scan.createdAt | date:'shortDate')"
+              [alt]="('Scan ' | t) + (scan.createdAt | localeDate:'shortDate')"
               class="scan-thumb"
             />
             <div class="scan-meta">
-              <div class="scan-date">{{ scan.createdAt | date:'mediumDate' }}</div>
+              <div class="scan-date">{{ scan.createdAt | localeDate:'mediumDate' }}</div>
               <div class="scan-chips">
                 <span class="health-chip" [ngClass]="scanHealthClass(scan)">
                   {{ scanHealthLabel(scan) | t }}

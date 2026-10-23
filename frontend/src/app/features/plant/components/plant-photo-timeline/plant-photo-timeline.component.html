@@ -24,7 +24,7 @@
         class="timeline-thumb"
         [ngClass]="healthClass(scan)"
       />
-      <span class="timeline-date">{{ scan.createdAt | date:'mediumDate' }}</span>
+      <span class="timeline-date">{{ scan.createdAt | localeDate:'mediumDate' }}</span>
     </div>
   </div>
 

@@ -1,11 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Optional } from '@angular/core';
 import { Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ClimateZone, UserService } from '@plantpal/shared-core';
+import { ClimateZone, UnitSystem, UserService } from '@plantpal/shared-core';
 import { CLIMATE_ZONES, CountryOption, countryOptions } from '../../../../shared/region/region';
+import { LocalePreferencesService } from '../../../../shared/units/locale-preferences.service';
 import { readLanguage } from '../../../../shared/i18n/language.service';
 import {
   PlantNetConfigService,
@@ -40,6 +41,10 @@ export class PreferencesPageComponent implements OnInit {
   regionSaving = false;
   regionSaved = false;
 
+  unitSystem: UnitSystem = 'METRIC';
+  unitsSaving = false;
+  unitsSaved = false;
+
   businessTier = false;
   businessTierSaving = false;
 
@@ -54,6 +59,7 @@ export class PreferencesPageComponent implements OnInit {
     private readonly userService: UserService,
     private readonly plantNetConfigService: PlantNetConfigService,
     private readonly dataExportService: DataExportService,
+    @Optional() private readonly localePreferences: LocalePreferencesService | null = null,
   ) {}
 
   ngOnInit(): void {
@@ -73,6 +79,7 @@ export class PreferencesPageComponent implements OnInit {
         this.businessTier = prefs.data.businessTier ?? false;
         this.regionCountry = prefs.data.regionCountry ?? null;
         this.regionClimate = prefs.data.regionClimate ?? null;
+        this.unitSystem = prefs.data.effectiveUnitSystem ?? prefs.data.unitSystem ?? 'METRIC';
       },
       error: () => {
         this.plantnetLoadError = true;
@@ -110,6 +117,22 @@ export class PreferencesPageComponent implements OnInit {
           this.regionSaving = false;
         },
       });
+  }
+
+  saveUnits(unitSystem: UnitSystem): void {
+    this.unitSystem = unitSystem;
+    this.unitsSaving = true;
+    this.unitsSaved = false;
+    this.userService.updateUnitSystem(unitSystem).subscribe({
+      next: res => {
+        this.unitsSaving = false;
+        this.unitsSaved = true;
+        this.localePreferences?.apply(res.data);
+      },
+      error: () => {
+        this.unitsSaving = false;
+      },
+    });
   }
 
   onBusinessTierChange(event: MatSlideToggleChange): void {

@@ -2,6 +2,7 @@ import { SectionLanguageDirective } from './i18n/section-language.directive';
 import { AiDiagramPipe, AiDetailPipe, AiTextPipe } from './i18n/ai-text.pipe';
 import { LanguageSwitchComponent } from './i18n/language-switch.component';
 import { PluralSuffixPipe, TranslatePipe } from './i18n/translate.pipe';
+import { LocaleDatePipe, LocaleNumberPipe, UnitPipe } from './units/unit.pipes';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -69,8 +70,8 @@ const MATERIAL_MODULES = [
     FirstRunIntroComponent,
     VerdictControlComponent,
   ],
-  imports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
-  exports: [SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
+  imports: [LocaleDatePipe, LocaleNumberPipe, UnitPipe, SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ...MATERIAL_MODULES],
+  exports: [LocaleDatePipe, LocaleNumberPipe, UnitPipe, SectionLanguageDirective, AiDiagramPipe, AiDetailPipe, AiTextPipe, LanguageSwitchComponent, PluralSuffixPipe, TranslatePipe,
     CommonModule,
     RouterModule,
     FormsModule,

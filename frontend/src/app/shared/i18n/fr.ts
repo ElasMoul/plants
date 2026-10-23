@@ -700,5 +700,10 @@ export const FR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "Le fichier est supprimé de nos serveurs {0} heures après sa création.",
   "Preparing your export…": "Préparation de votre export…",
   "You have requested too many exports. Please try again later.": "Vous avez demandé trop d’exports. Réessayez plus tard.",
-  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez."
+  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez.",
+  "Units": "Unités",
+  "Measurement units": "Unités de mesure",
+  "Metric (°C, cm, ml)": "Métrique (°C, cm, ml)",
+  "Imperial (°F, in, fl oz)": "Impérial (°F, po, oz liq.)",
+  "Without a choice, units follow your country, otherwise metric.": "Sans choix, les unités suivent votre pays, sinon le système métrique.",
 };

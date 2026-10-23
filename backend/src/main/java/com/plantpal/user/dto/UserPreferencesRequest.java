@@ -43,4 +43,8 @@ public class UserPreferencesRequest {
   // country against ISO 3166-1 alpha-2, climate against ClimateZone; anything else is a 400.
   private String regionCountry;
   private String regionClimate;
+
+  // Display units and IANA time zone (PLA-132). Nullable — omit to leave unchanged.
+  private com.plantpal.user.entity.UnitSystem unitSystem;
+  private String timeZone;
 }

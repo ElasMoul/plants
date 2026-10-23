@@ -50,6 +50,7 @@ class ReminderServiceTest {
   @Mock private CareLogRepository careLogRepository;
   @Mock private TreatmentPlanRepository treatmentPlanRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private com.plantpal.user.repository.UserRepository userRepository;
 
   private ReminderServiceImpl reminderService;
 
@@ -64,7 +65,8 @@ class ReminderServiceTest {
             plantRepository,
             careLogRepository,
             treatmentPlanRepository,
-            eventPublisher);
+            eventPublisher,
+            userRepository);
   }
 
   private Plant plant() {
@@ -261,6 +263,39 @@ class ReminderServiceTest {
       Instant nextDueAt = reminderService.calculateNextDueAt(lastDone, 0);
 
       assertThat(nextDueAt).isEqualTo(lastDone);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}: {1} + {3}d keeps local time")
+    @org.junit.jupiter.params.provider.CsvSource({
+      // zone, local before, instant before (UTC), days, expected instant (UTC)
+      "America/New_York, 2026-03-07T08:00, 2026-03-07T13:00:00Z, 1, 2026-03-08T12:00:00Z",
+      "America/New_York, 2026-10-31T08:00, 2026-10-31T12:00:00Z, 1, 2026-11-01T13:00:00Z",
+      "Europe/Berlin, 2026-03-28T08:00, 2026-03-28T07:00:00Z, 1, 2026-03-29T06:00:00Z",
+      "Europe/Berlin, 2026-10-24T08:00, 2026-10-24T06:00:00Z, 1, 2026-10-25T07:00:00Z",
+      "UTC, 2026-03-07T08:00, 2026-03-07T08:00:00Z, 1, 2026-03-08T08:00:00Z"
+    })
+    @DisplayName("should keep the local wall-clock time across DST changes")
+    void shouldKeepLocalTimeAcrossDst(
+        String zoneId, String localBefore, String before, int days, String expected) {
+      java.time.ZoneId zone = java.time.ZoneId.of(zoneId);
+
+      Instant next = reminderService.calculateNextDueAt(Instant.parse(before), days, zone);
+
+      assertThat(next).isEqualTo(Instant.parse(expected));
+      assertThat(next.atZone(zone).toLocalTime())
+          .isEqualTo(java.time.LocalDateTime.parse(localBefore).toLocalTime());
+    }
+
+    @Test
+    @DisplayName("should differ from fixed 24h arithmetic across spring-forward")
+    void shouldDifferFromUtcArithmetic() {
+      Instant before = Instant.parse("2026-03-07T13:00:00Z");
+      java.time.ZoneId ny = java.time.ZoneId.of("America/New_York");
+
+      assertThat(reminderService.calculateNextDueAt(before, 1, ny))
+          .isEqualTo(before.plus(23, ChronoUnit.HOURS));
+      assertThat(reminderService.calculateNextDueAt(before, 1))
+          .isEqualTo(before.plus(24, ChronoUnit.HOURS));
     }
   }
 

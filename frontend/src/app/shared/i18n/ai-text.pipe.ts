@@ -2,6 +2,8 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { Optional } from '@angular/core';
 import { SectionLanguageState } from './section-language.state';
 import { parseDetailAsList } from '../utils/detail-list.util';
+import { LocalePreferencesService } from '../units/locale-preferences.service';
+import { convertUnitsInText } from '../units/units.util';
 
 /** Content only changes inside an explicit section language context. */
 export function aiText(source: string | null | undefined, section?: SectionLanguageState | null): string {
@@ -20,8 +22,13 @@ export function aiDiagram(source: string, section?: SectionLanguageState | null)
 
 @Pipe({ name: 'aiText', standalone: true, pure: false })
 export class AiTextPipe implements PipeTransform {
-  constructor(@Optional() private readonly section: SectionLanguageState | null = null) {}
-  transform(source: string | null | undefined): string { return aiText(source, this.section); }
+  constructor(
+    @Optional() private readonly section: SectionLanguageState | null = null,
+    @Optional() private readonly prefs: LocalePreferencesService | null = null,
+  ) {}
+  transform(source: string | null | undefined): string {
+    return convertUnitsInText(aiText(source, this.section), this.prefs?.unitSystem() ?? 'METRIC');
+  }
 }
 
 @Pipe({ name: 'aiDiagram', standalone: true, pure: false })
@@ -31,6 +38,11 @@ export class AiDiagramPipe implements PipeTransform {
 }
 @Pipe({ name: 'aiDetail', standalone: true, pure: false })
 export class AiDetailPipe implements PipeTransform {
-  constructor(@Optional() private readonly section: SectionLanguageState | null = null) {}
-  transform(source: string | null | undefined) { return parseDetailAsList(aiText(source, this.section)); }
+  constructor(
+    @Optional() private readonly section: SectionLanguageState | null = null,
+    @Optional() private readonly prefs: LocalePreferencesService | null = null,
+  ) {}
+  transform(source: string | null | undefined) {
+    return parseDetailAsList(convertUnitsInText(aiText(source, this.section), this.prefs?.unitSystem() ?? 'METRIC'));
+  }
 }
