@@ -36,7 +36,7 @@
         ></app-read-aloud-button>
       </div>
       <p class="step-due">
-        <ng-container *ngIf="!step.enabled">{{ 'Completed {0}' | t : [(step.completedAt | date:'mediumDate')] }}</ng-container>
+        <ng-container *ngIf="!step.enabled">{{ 'Completed {0}' | t : [(step.completedAt | localeDate:'mediumDate')] }}</ng-container>
         <ng-container *ngIf="step.enabled">{{ dueLabel(step) }}</ng-container>
       </p>
       <button

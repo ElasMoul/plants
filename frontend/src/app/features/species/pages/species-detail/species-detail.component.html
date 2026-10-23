@@ -200,7 +200,7 @@
               </div>
               <ol *ngIf="plant.photos.length > 0" class="gallery-timeline">
                 <li *ngFor="let photo of plant.photos" class="timeline-item">
-                  <time class="timeline-date">{{ photo.dateTaken | date:'mediumDate' }}</time>
+                  <time class="timeline-date">{{ photo.dateTaken | localeDate:'mediumDate' }}</time>
                   <img class="timeline-photo" [src]="photo.photoUrl" [alt]="plant.nickname" loading="lazy" />
                 </li>
               </ol>

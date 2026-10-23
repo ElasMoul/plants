@@ -17,7 +17,7 @@
       <img [src]="scan.photoUrl || placeholderImage" [alt]="(scan.commonName | aiText) || scan.scientificName" class="history-thumb" />
       <div class="history-meta">
         <span class="history-name">{{ (scan.commonName | aiText) || scan.scientificName }}</span>
-        <span class="history-date">{{ scan.createdAt | date:'medium' }}</span>
+        <span class="history-date">{{ scan.createdAt | localeDate:'medium' }}</span>
       </div>
     </button>
   </div>

@@ -20,7 +20,7 @@
         <mat-icon class="directional-icon">arrow_back</mat-icon>
       </button>
       <div class="header-meta">
-        <div class="header-date">{{ scan.createdAt | date:'mediumDate' }}</div>
+        <div class="header-date">{{ scan.createdAt | localeDate:'mediumDate' }}</div>
         <div class="health-chip" [ngClass]="healthClass">{{ healthLabel | t }}</div>
       </div>
     </div>

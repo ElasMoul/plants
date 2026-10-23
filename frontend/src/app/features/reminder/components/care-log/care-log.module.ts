@@ -1,3 +1,4 @@
+import { LocaleDatePipe } from '../../../../shared/units/unit.pipes';
 import { TranslatePipe } from '../../../../shared/i18n/translate.pipe';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -9,7 +10,7 @@ import { CareLogDetailDialogComponent } from './care-log-detail-dialog.component
 
 @NgModule({
   declarations: [CareLogComponent, CareLogDetailDialogComponent],
-  imports: [TranslatePipe,CommonModule, MatIconModule, MatButtonModule, MatDialogModule],
+  imports: [LocaleDatePipe, TranslatePipe,CommonModule, MatIconModule, MatButtonModule, MatDialogModule],
   exports: [CareLogComponent],
 })
 export class CareLogModule {}

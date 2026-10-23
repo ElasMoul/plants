@@ -79,6 +79,18 @@
   </div>
 
   <div class="preference-section">
+    <h2>{{ 'Units' | t }}</h2>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'Measurement units' | t }}</mat-label>
+      <mat-select [value]="unitSystem" (selectionChange)="saveUnits($event.value)" [disabled]="unitsSaving" data-testid="unit-system-select">
+        <mat-option value="METRIC">{{ 'Metric (°C, cm, ml)' | t }}</mat-option>
+        <mat-option value="IMPERIAL">{{ 'Imperial (°F, in, fl oz)' | t }}</mat-option>
+      </mat-select>
+      <mat-hint>{{ unitsSaved ? ('Saved' | t) : ('Without a choice, units follow your country, otherwise metric.' | t) }}</mat-hint>
+    </mat-form-field>
+  </div>
+
+  <div class="preference-section">
     <h2>{{ 'Region' | t }}</h2>
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>{{ 'Country' | t }}</mat-label>

@@ -1,6 +1,6 @@
 import { translate } from './shared/i18n/language.service';
 import { isPlatformBrowser } from '@angular/common';
-import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, OnInit, Optional, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NavigationEnd, Router } from '@angular/router';
 import { EMPTY } from 'rxjs';
@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
 import { AdminService } from './features/admin/admin.service';
+import { LocalePreferencesService } from './shared/units/locale-preferences.service';
 import { SessionMonitorService } from './core/services/session-monitor.service';
 
 const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
@@ -42,6 +43,7 @@ export class AppComponent implements OnInit {
     private router: Router,
     private readonly adminService: AdminService,
     @Inject(PLATFORM_ID) private readonly platformId: object,
+    @Optional() private readonly localePreferences: LocalePreferencesService | null = null,
   ) {}
 
   ngOnInit(): void {
@@ -49,6 +51,7 @@ export class AppComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
     this.sessionMonitorService.start();
+    if (this.authService.isLoggedIn()) this.localePreferences?.load();
     this.refreshAccess();
 
     // Always land at the top of the new page — Angular's own scroll restoration only resets

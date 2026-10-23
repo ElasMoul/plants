@@ -22,7 +22,7 @@
       </div>
       <div class="log-body">
         <p class="log-type">{{ log.careType | t }}</p>
-        <p class="log-date">{{ '{0} at {1}' | t : [(log.performedAt | date:'mediumDate'), (log.performedAt | date:'shortTime')] }}</p>
+        <p class="log-date">{{ '{0} at {1}' | t : [(log.performedAt | localeDate:'mediumDate'), (log.performedAt | localeDate:'shortTime')] }}</p>
         <p class="log-notes" *ngIf="log.notes">{{ log.notes }}</p>
         <button type="button" class="log-details-btn" (click)="viewDetails(log)">{{ 'View details' | t }}</button>
       </div>
