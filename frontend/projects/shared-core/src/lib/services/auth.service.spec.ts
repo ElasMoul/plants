@@ -102,4 +102,12 @@ describe('AuthService (shared-core)', () => {
     expect(service.isLoggedIn()).toBe(false);
     expect(service.getCurrentUser()).toBeNull();
   });
+
+  it('verifyEmail posts the token to the public endpoint', () => {
+    service.verifyEmail('tok-1').subscribe();
+    const req = http.expectOne('/api/v1/auth/verify-email');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ token: 'tok-1' });
+    req.flush({ success: true });
+  });
 });

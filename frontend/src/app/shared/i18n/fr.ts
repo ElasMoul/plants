@@ -700,5 +700,21 @@ export const FR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "Le fichier est supprimé de nos serveurs {0} heures après sa création.",
   "Preparing your export…": "Préparation de votre export…",
   "You have requested too many exports. Please try again later.": "Vous avez demandé trop d’exports. Réessayez plus tard.",
-  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez."
+  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez.",
+  "Verify your email": "Vérifiez votre e-mail",
+  "Verifying your email…": "Vérification de votre e-mail…",
+  "Your email address is verified. Thank you!": "Votre adresse e-mail est vérifiée. Merci !",
+  "This verification link is invalid or has expired.": "Ce lien de vérification est invalide ou a expiré.",
+  "Send me a new link": "Envoyez-moi un nouveau lien",
+  "Sign in to request a new link.": "Connectez-vous pour demander un nouveau lien.",
+  "Go to my garden": "Aller à mon jardin",
+  "Email verification": "Vérification de l’e-mail",
+  "Your email address is verified.": "Votre adresse e-mail est vérifiée.",
+  "Your email address is not verified yet. Check your inbox, or request a new link. Until then you cannot start new identifications or chats.": "Votre adresse e-mail n’est pas encore vérifiée. Consultez votre boîte de réception ou demandez un nouveau lien. D’ici là, vous ne pouvez pas lancer de nouvelles identifications ni de conversations.",
+  "Resend verification email": "Renvoyer l’e-mail de vérification",
+  "Sending…": "Envoi…",
+  "Verification email sent. Check your inbox.": "E-mail de vérification envoyé. Consultez votre boîte de réception.",
+  "Please wait a moment before requesting another email.": "Patientez un instant avant de demander un autre e-mail.",
+  "Could not send the verification email. Please try again.": "Impossible d’envoyer l’e-mail de vérification. Réessayez.",
+  "Verify your email address to use this feature. Check your inbox, or resend the link in Settings.": "Vérifiez votre adresse e-mail pour utiliser cette fonction. Consultez votre boîte de réception ou renvoyez le lien dans les réglages."
 };

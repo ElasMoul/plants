@@ -43,4 +43,7 @@ public class UserPreferencesResponse {
   // Coarse region (PLA-107); null when unset.
   private String regionCountry;
   private ClimateZone regionClimate;
+
+  // Whether the account's email address has been verified (PLA-26); read-only.
+  private boolean emailVerified;
 }

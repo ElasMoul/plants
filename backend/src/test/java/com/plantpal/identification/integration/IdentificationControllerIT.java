@@ -42,6 +42,7 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
 
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private IdentificationRepository identificationRepository;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @MockBean private KafkaTemplate<String, Object> kafkaTemplate;
   @MockBean private GitHubModelsClient gitHubModelsClient;
@@ -218,6 +219,8 @@ class IdentificationControllerIT extends AbstractIntegrationTest {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+    // Identification needs a verified address (PLA-26); this suite is not about verification.
+    jdbc.update("UPDATE users SET email_verified_at = NOW() WHERE email = ?", email);
     return data;
   }
 

@@ -61,6 +61,7 @@ import com.plantpal.reminder.entity.CareType;
 import com.plantpal.reminder.entity.Reminder;
 import com.plantpal.reminder.repository.ReminderRepository;
 import com.plantpal.shared.ai.AiUsage;
+import com.plantpal.shared.ai.RequiresVerifiedEmail;
 import com.plantpal.shared.config.KafkaTransportProperties;
 import com.plantpal.shared.exception.PlantPalException;
 import com.plantpal.shared.exception.RateLimitException;
@@ -288,6 +289,7 @@ public class IdentificationServiceImpl implements IdentificationService {
   }
 
   @Override
+  @RequiresVerifiedEmail(userArgument = 3)
   @AiUsage(userArgument = 3, scan = true)
   public CompletableFuture<IdentificationPendingResponse> submitIdentification(
       List<MultipartFile> images,

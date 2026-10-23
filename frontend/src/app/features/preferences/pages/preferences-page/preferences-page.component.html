@@ -100,6 +100,25 @@
     </p>
   </div>
 
+  <div class="preference-section" *ngIf="emailVerified !== null" data-testid="email-verification-section">
+    <h2>{{ 'Email verification' | t }}</h2>
+    <p class="section-hint" *ngIf="emailVerified" data-testid="email-verified">
+      <mat-icon class="hint-icon">verified</mat-icon>
+      {{ 'Your email address is verified.' | t }}
+    </p>
+    <ng-container *ngIf="!emailVerified">
+      <p class="section-hint" data-testid="email-unverified">
+        {{ 'Your email address is not verified yet. Check your inbox, or request a new link. Until then you cannot start new identifications or chats.' | t }}
+      </p>
+      <button mat-stroked-button type="button" (click)="resendVerification()" [disabled]="verificationSending" data-testid="email-resend">
+        {{ verificationSending ? ('Sending…' | t) : ('Resend verification email' | t) }}
+      </button>
+      <p class="section-hint" *ngIf="verificationResult === 'sent'" data-testid="email-resend-sent">{{ 'Verification email sent. Check your inbox.' | t }}</p>
+      <p class="section-hint error-hint" *ngIf="verificationResult === 'wait'" data-testid="email-resend-wait">{{ 'Please wait a moment before requesting another email.' | t }}</p>
+      <p class="section-hint error-hint" *ngIf="verificationResult === 'failed'" data-testid="email-resend-failed">{{ 'Could not send the verification email. Please try again.' | t }}</p>
+    </ng-container>
+  </div>
+
   <div class="preference-section">
     <h2>{{ 'Garden type' | t }}</h2>
     <div class="toggle-row">

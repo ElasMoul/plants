@@ -68,6 +68,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/verify-email")
+                    .permitAll()
                     .requestMatchers(
                         "/actuator/health",
                         "/actuator/info",

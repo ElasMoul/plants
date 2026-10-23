@@ -165,6 +165,7 @@ openssl req -x509 -newkey rsa:2048 -keyout self.key -out self.crt -days 365 \
 | `KAFKA_BOOTSTRAP_SERVERS` | Yes | Async identification pipeline |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Yes | Web push notifications |
 | `CORS_ALLOWED_ORIGINS` | Yes | Frontend origin(s) |
+| `APP_MAIL_PUBLIC_BASE_URL` | Staging/prod: yes (else links point at `http://localhost:4200`). Dev: no | Frontend origin used in verification email links (PLA-26), e.g. `https://plants.moulworks.com`. Must be http(s). See `docs/email-verification.md` |
 | `MAIL_TRANSPORT` / `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | Staging/prod: yes. Dev: no (`MAIL_TRANSPORT=log`) | Transactional email over SMTP (Resend: `smtp.resend.com`, user `resend`, password = API key). `MAIL_FROM` must use the verified sending domain. See `docs/transactional-email.md` |
 
 **All of the above are held directly by PlantPal today** (Ollama, PlantNet, GitHub

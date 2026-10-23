@@ -16,18 +16,25 @@ const SESSION_KEY = 'ai_model_preferences';
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly baseUrl: string;
+  private readonly authUrl: string;
 
   constructor(
     private readonly http: HttpClient,
     @Inject(API_BASE_URL) apiBaseUrl: string,
   ) {
     this.baseUrl = `${apiBaseUrl}/users/me`;
+    this.authUrl = `${apiBaseUrl}/auth`;
   }
 
   getPreferences(): Observable<ApiResponse<UserPreferences>> {
     return this.http.get<ApiResponse<UserPreferences>>(`${this.baseUrl}/preferences`).pipe(
       tap(res => sessionStorage.setItem(SESSION_KEY, JSON.stringify(res.data))),
     );
+  }
+
+  /** Asks for a new verification email; the backend rate limits this per user (429). */
+  resendVerificationEmail(): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.authUrl}/verify-email/resend`, {});
   }
 
   updateModelPreferences(

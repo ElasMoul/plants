@@ -37,6 +37,7 @@ explicit in the Guard column.
 | FE-021 | classic | ROUTE | `/register` | RegisterComponent | none | public | `frontend/src/app/app-routing.module.ts`; `frontend/src/app/features/auth/auth-routing.module.ts` |
 | FE-022 | classic | REDIRECT | `/**` | `/garden` | redirect to AuthGuard target | protected | `frontend/src/app/features/auth/auth-routing.module.ts` |
 | FE-023 | atlas | DOCUMENT | `/` | App bootstrap | none | public | `frontend/projects/atlas/src/main.ts`; `frontend/projects/atlas/src/app/app.ts` |
+| FE-024 | classic | ROUTE | `/login/verify-email` | VerifyEmailComponent | none | public | `frontend/src/app/app-routing.module.ts`; `frontend/src/app/features/auth/auth-routing.module.ts` |
 
 ## Backend endpoint records
 
@@ -93,6 +94,8 @@ explicit in the Guard column.
 | BE-049 | GET | `/api/v1/auth/session` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
 | BE-050 | POST | `/api/v1/auth/session/renew` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
 | BE-051 | POST | `/api/v1/auth/logout` | SessionController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/session/web/SessionController.java` |
+| BE-052 | POST | `/api/v1/auth/verify-email` | AuthController | POST permitAll | public | `backend/src/main/java/com/plantpal/user/controller/AuthController.java` |
+| BE-053 | POST | `/api/v1/auth/verify-email/resend` | AuthController | anyRequest authenticated | protected | `backend/src/main/java/com/plantpal/user/controller/AuthController.java` |
 
 ## Security-filter public surfaces without controller declarations
 
