@@ -1,7 +1,12 @@
 package com.plantpal.admin.service.impl;
 
 import com.plantpal.admin.dto.AdminDtos.Activity;
+import com.plantpal.admin.dto.AdminDtos.AiUsage;
+import com.plantpal.admin.dto.AdminDtos.Cost;
+import com.plantpal.admin.dto.AdminDtos.Errors;
+import com.plantpal.admin.dto.AdminDtos.Metrics;
 import com.plantpal.admin.dto.AdminDtos.Overview;
+import com.plantpal.admin.dto.AdminDtos.UsageDay;
 import com.plantpal.admin.dto.AdminDtos.UserUpdate;
 import com.plantpal.admin.dto.AdminDtos.UserView;
 import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
@@ -15,6 +20,11 @@ import com.plantpal.user.entity.UserRole;
 import com.plantpal.user.entity.UserStatus;
 import com.plantpal.user.repository.UserRepository;
 import com.plantpal.user.service.UsageService;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,9 +33,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class AdminServiceImpl implements AdminService {
+  private static final int MAX_METRIC_DAYS = 92;
+
   private final UsageService usage;
   private final UserRepository users;
   private final AdminRepository repository;
+
+  @Value("${app.admin.metrics.ai-cost-per-request:0}")
+  private BigDecimal aiCostPerRequest;
 
   public AdminServiceImpl(UserRepository users, AdminRepository repository, UsageService usage) {
     this.usage = usage;
@@ -41,6 +56,40 @@ public class AdminServiceImpl implements AdminService {
     return repository.verdictCounts(
         from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
         to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+  }
+
+  @Override
+  public Metrics metrics(LocalDate from, LocalDate to) {
+    LocalDate end = to != null ? to : LocalDate.now(ZoneOffset.UTC);
+    LocalDate start = from != null ? from : end.minusDays(29);
+    if (end.isBefore(start)) throw new ValidationException("to must not precede from");
+    if (ChronoUnit.DAYS.between(start, end) + 1 > MAX_METRIC_DAYS) {
+      throw new ValidationException("Range must not exceed " + MAX_METRIC_DAYS + " days");
+    }
+    var scans =
+        repository.scanCounts(
+            start.atStartOfDay(ZoneOffset.UTC).toInstant(),
+            end.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant());
+    var days = repository.usageDays(start, end);
+    long requests = days.stream().mapToLong(UsageDay::aiRequests).sum();
+    long scanRequests = days.stream().mapToLong(UsageDay::scans).sum();
+    return new Metrics(
+        start.toString(),
+        end.toString(),
+        scans,
+        new Errors(scans.failed()),
+        new AiUsage(requests, scanRequests, days),
+        cost(requests));
+  }
+
+  private Cost cost(long requests) {
+    if (aiCostPerRequest == null || aiCostPerRequest.signum() <= 0) {
+      return new Cost(null, null, "rate not configured");
+    }
+    return new Cost(
+        aiCostPerRequest.multiply(BigDecimal.valueOf(requests)),
+        aiCostPerRequest,
+        "estimate: AI requests x configured per-request rate (no billed cost recorded)");
   }
 
   @Override

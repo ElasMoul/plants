@@ -3,8 +3,11 @@ package com.plantpal.admin.repository;
 import com.plantpal.admin.dto.AdminDtos.Activity;
 import com.plantpal.admin.dto.AdminDtos.Day;
 import com.plantpal.admin.dto.AdminDtos.Overview;
+import com.plantpal.admin.dto.AdminDtos.Scans;
+import com.plantpal.admin.dto.AdminDtos.UsageDay;
 import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +67,41 @@ public class AdminRepository {
                 rs.getLong("right_count"), rs.getLong("wrong_count"), rs.getLong("unsure_count")),
         java.sql.Timestamp.from(from),
         java.sql.Timestamp.from(to));
+  }
+
+  /** Scan counts from identifications whose created_at is in [from, to). */
+  public Scans scanCounts(Instant from, Instant to) {
+    return jdbc.queryForObject(
+        """
+        SELECT count(*) AS total,
+          count(*) FILTER (WHERE status = 'COMPLETED') AS completed,
+          count(*) FILTER (WHERE status = 'FAILED') AS failed,
+          count(*) FILTER (WHERE status IN ('PENDING', 'PROCESSING')) AS pending
+        FROM identifications WHERE created_at >= ? AND created_at < ?
+        """,
+        (rs, row) ->
+            new Scans(
+                rs.getLong("total"),
+                rs.getLong("completed"),
+                rs.getLong("failed"),
+                rs.getLong("pending")),
+        java.sql.Timestamp.from(from),
+        java.sql.Timestamp.from(to));
+  }
+
+  /** Per-day AI usage from user_daily_usage for usage_date in [from, to] (inclusive). */
+  public List<UsageDay> usageDays(LocalDate from, LocalDate to) {
+    return jdbc.query(
+        """
+        SELECT to_char(usage_date, 'YYYY-MM-DD') AS day,
+          COALESCE(SUM(ai_requests), 0) AS ai_requests, COALESCE(SUM(scans), 0) AS scans
+        FROM user_daily_usage WHERE usage_date >= ? AND usage_date <= ?
+        GROUP BY usage_date ORDER BY usage_date
+        """,
+        (rs, row) ->
+            new UsageDay(rs.getString("day"), rs.getLong("ai_requests"), rs.getLong("scans")),
+        java.sql.Date.valueOf(from),
+        java.sql.Date.valueOf(to));
   }
 
   public Page<Activity> activity(Pageable page) {

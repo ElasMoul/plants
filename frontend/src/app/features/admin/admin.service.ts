@@ -86,6 +86,19 @@ export interface AdminVerdictCounts {
   unsure: number;
 }
 
+export interface AdminMetrics {
+  from: string;
+  to: string;
+  scans: { total: number; completed: number; failed: number; pending: number };
+  errors: { failedScans: number };
+  aiUsage: {
+    totalRequests: number;
+    scanRequests: number;
+    perDay: { date: string; aiRequests: number; scans: number }[];
+  };
+  cost: { estimated: number | null; perRequestRate: number | null; basis: string };
+}
+
 @Injectable({ providedIn: "root" })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -104,6 +117,12 @@ export class AdminService {
   verdictCounts(from: string, to: string) {
     return this.get<AdminVerdictCounts>(
       "identification-verdicts",
+      new HttpParams().set("from", from).set("to", to),
+    );
+  }
+  metrics(from: string, to: string) {
+    return this.get<AdminMetrics>(
+      "metrics",
       new HttpParams().set("from", from).set("to", to),
     );
   }
