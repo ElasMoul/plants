@@ -120,15 +120,12 @@ public class AdminServiceImpl implements AdminService {
             .findForAdminUpdate(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     validateUpdate(user, request, actorId);
-    String changes =
-        "User updated: role "
-            + user.getRole()
-            + " → "
-            + request.role()
-            + ", status "
-            + user.getStatus()
-            + " → "
-            + request.status();
+    UserRole oldRole = user.getRole();
+    UserStatus oldStatus = user.getStatus();
+    boolean oldTier = user.isBusinessTier();
+    var oldPlants = user.getMaxPlants();
+    var oldScans = user.getDailyScanLimit();
+    var oldAi = user.getDailyAiLimit();
     user.setFirstName(request.firstName().trim());
     user.setLastName(request.lastName().trim());
     user.setStatus(request.status());
@@ -138,14 +135,32 @@ public class AdminServiceImpl implements AdminService {
     if (request.dailyScanLimit() != null) user.setDailyScanLimit(request.dailyScanLimit());
     if (request.dailyAiLimit() != null) user.setDailyAiLimit(request.dailyAiLimit());
     users.saveAndFlush(user);
+    // Enum names, booleans and numbers only: never names, email, tokens or request bodies.
     repository.record(
         actorId,
-        changes
-            + "; limits plants="
+        "User updated: role "
+            + oldRole
+            + " → "
+            + user.getRole()
+            + ", status "
+            + oldStatus
+            + " → "
+            + user.getStatus()
+            + ", businessTier "
+            + oldTier
+            + " → "
+            + user.isBusinessTier()
+            + "; limits plants "
+            + oldPlants
+            + " → "
             + user.getMaxPlants()
-            + ", scans/day="
+            + ", scans/day "
+            + oldScans
+            + " → "
             + user.getDailyScanLimit()
-            + ", AI/day="
+            + ", AI/day "
+            + oldAi
+            + " → "
             + user.getDailyAiLimit(),
         "user:" + id);
     return view(user);
