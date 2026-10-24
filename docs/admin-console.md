@@ -232,3 +232,14 @@ The overview has an **Online now** tile: how many active accounts were seen with
 Expected load is about `open visible tabs / 60` requests per second, each at most one single-row indexed `UPDATE` (primary key) that is skipped by the 30 s throttle; the count is one `count(*)` over `users` per overview load.
 
 **Measured on plantpal/dev: not yet.** This delivery ran without access to the dev environment, so no p50/p95 latency, DB-writes-per-heartbeat or count-query-time figure exists; none is claimed here. Method to run on dev and record below (date, N, figures): N simulated users, each `POST /presence/heartbeat` every 60 s for a few minutes plus a short burst, against a baseline of the same traffic without heartbeats; capture heartbeat p50/p95, `pg_stat_user_tables.n_tup_upd` delta per heartbeat, and `EXPLAIN ANALYZE` of the count query.
+
+## Deployed version (PLA-50)
+
+The overview shows a "Deployed version" panel with the commit each half was built from.
+Backend: `GET /api/v1/admin/deployment` (administrators only; 403/401 otherwise) returns the
+same identity as `/actuator/info` -> `deployment`, from the `APP_REVISION` baked into the image.
+Frontend: a static `/version.json` (`{"revision": ...}`) written after each production build
+from `APP_REVISION`, else `GITHUB_SHA` (Classic: `dist/plantpal`, Atlas: `dist/atlas/browser`);
+the dev-delivery Dockerfiles take the same `APP_REVISION` build arg as the backend. A value is
+only reported if it is a full 40-character lowercase SHA; "not reported" means null or unreachable.
+It does not depend on release automation.

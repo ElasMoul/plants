@@ -5,6 +5,7 @@ import { Component, DestroyRef, inject, OnInit } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
+import { DeployedVersionComponent } from "./deployed-version.component";
 import { AdminIconComponent } from "./admin-icon.component";
 import { TranslatePipe } from "../../shared/i18n/translate.pipe";
 import { HttpErrorResponse } from "@angular/common/http";
@@ -35,7 +36,7 @@ import {
 @Component({
   selector: "app-admin",
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, AdminIconComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule, AdminIconComponent, TranslatePipe, DeployedVersionComponent],
   templateUrl: "./admin.component.html",
   styleUrls: [
     "./admin.component.scss",

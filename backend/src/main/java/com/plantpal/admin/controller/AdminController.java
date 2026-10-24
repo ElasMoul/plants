@@ -10,11 +10,13 @@ import com.plantpal.admin.dto.AdminDtos.UserView;
 import com.plantpal.admin.dto.AdminDtos.VerdictCounts;
 import com.plantpal.admin.service.AdminService;
 import com.plantpal.admin.service.ModelCatalogService;
+import com.plantpal.shared.config.DeploymentIdentityInfoContributor;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
 import com.plantpal.user.entity.UserStatus;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,10 +36,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
   private final AdminService admin;
   private final ModelCatalogService models;
+  private final DeploymentIdentityInfoContributor deployment;
 
-  public AdminController(AdminService admin, ModelCatalogService models) {
+  public AdminController(
+      AdminService admin,
+      ModelCatalogService models,
+      DeploymentIdentityInfoContributor deployment) {
     this.admin = admin;
     this.models = models;
+    this.deployment = deployment;
+  }
+
+  /** The running backend's stamped identity (same map as /actuator/info deployment). */
+  @GetMapping("/deployment")
+  public ApiResponse<Map<String, Object>> deployment() {
+    return ApiResponse.success(deployment.identity());
   }
 
   @GetMapping("/overview")

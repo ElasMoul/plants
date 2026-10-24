@@ -8,6 +8,12 @@ export interface AdminAccess {
   name: string;
   administrator: boolean;
 }
+export interface AdminDeployment {
+  appIdentity: string | null;
+  revision: string | null;
+  deploymentId: string | null;
+  environment: string | null;
+}
 export interface AdminPage<T> {
   content: T[];
   totalElements: number;
@@ -107,6 +113,9 @@ export class AdminService {
     return this.http
       .get<ApiResponse<AdminAccess>>(`${this.base}/users/me/access`)
       .pipe(map((r) => r.data));
+  }
+  deployment() {
+    return this.get<AdminDeployment>("deployment");
   }
   overview() {
     return this.get<AdminOverview>("overview");

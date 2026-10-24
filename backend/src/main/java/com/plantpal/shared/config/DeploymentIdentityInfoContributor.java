@@ -47,7 +47,7 @@ public class DeploymentIdentityInfoContributor implements InfoContributor {
     builder.withDetail("deployment", identity());
   }
 
-  Map<String, Object> identity() {
+  public Map<String, Object> identity() {
     // LinkedHashMap, not Map.of: null values are the point (unknown stays unknown).
     Map<String, Object> identity = new LinkedHashMap<>();
     identity.put("appIdentity", APP_IDENTITY);
