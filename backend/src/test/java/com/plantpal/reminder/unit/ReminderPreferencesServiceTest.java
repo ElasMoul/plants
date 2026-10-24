@@ -144,17 +144,17 @@ class ReminderPreferencesServiceTest {
     @Test
     @DisplayName("rejects half-set quiet hours")
     void rejectsHalfSet() {
-      assertThatThrownBy(() -> service.update(1L, request(ReminderChannel.PUSH, "22:00", null)))
-          .isInstanceOf(ValidationException.class);
-      assertThatThrownBy(() -> service.update(1L, request(ReminderChannel.PUSH, null, "07:00")))
-          .isInstanceOf(ValidationException.class);
+      var noEnd = request(ReminderChannel.PUSH, "22:00", null);
+      var noStart = request(ReminderChannel.PUSH, null, "07:00");
+      assertThatThrownBy(() -> service.update(1L, noEnd)).isInstanceOf(ValidationException.class);
+      assertThatThrownBy(() -> service.update(1L, noStart)).isInstanceOf(ValidationException.class);
     }
 
     @Test
     @DisplayName("rejects equal quiet-hours bounds")
     void rejectsEqualBounds() {
-      assertThatThrownBy(() -> service.update(1L, request(ReminderChannel.PUSH, "22:00", "22:00")))
-          .isInstanceOf(ValidationException.class);
+      var same = request(ReminderChannel.PUSH, "22:00", "22:00");
+      assertThatThrownBy(() -> service.update(1L, same)).isInstanceOf(ValidationException.class);
     }
   }
 

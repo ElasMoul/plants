@@ -155,7 +155,7 @@ describe('PhotoUploadComponent file handling', () => {
     await (c as unknown as { processFiles(l: FileList): Promise<void> }).processFiles(
       list(asFile(heicBytes(), 'a.heic'), asFile(new TextEncoder().encode('%PDF-1.7 .........'), 'b.pdf', 'application/pdf')),
     );
-    expect(c.entries.length).toBe(1);
+    expect(c.entries).toHaveLength(1);
     expect(c.entries[0].file.type).toBe('image/jpeg');
     expect(c.validationErrors).toEqual([rejectionMessage('unsupported', 'b.pdf')]);
     localStorage.removeItem('plantpal.language');

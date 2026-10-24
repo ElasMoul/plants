@@ -146,6 +146,7 @@ public class ReminderScheduler {
     try {
       return ZoneId.of(prefs.getTimeZone());
     } catch (DateTimeException e) {
+      log.warn("Invalid stored time zone '{}', using UTC: {}", prefs.getTimeZone(), e.getMessage());
       return ZoneId.of("UTC");
     }
   }

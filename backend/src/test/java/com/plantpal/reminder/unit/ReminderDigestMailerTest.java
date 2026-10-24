@@ -35,7 +35,11 @@ class ReminderDigestMailerTest {
   @SuppressWarnings("unchecked")
   void enqueuesDigest() {
     ReminderDigestMailer mailer =
-        new ReminderDigestMailer(mailService, plantRepository, "https://www.planotell.com/");
+        new ReminderDigestMailer(
+            mailService,
+            plantRepository,
+            "https://www.planotell.com/",
+            "/api/v1/email/unsubscribe");
     User user = User.builder().email("sara@example.com").firstName("Sara").language("fr").build();
     Plant plant = Plant.builder().userId(1L).nickname("Monstera").build();
     plant.setId(5L);

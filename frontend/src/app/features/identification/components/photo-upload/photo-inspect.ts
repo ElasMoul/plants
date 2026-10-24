@@ -11,10 +11,10 @@ export interface PhotoInfo {
 /** Bytes read from the start of a file; enough for the JPEG EXIF block and frame header. */
 export const INSPECT_BYTES = 262144;
 
-const HEIC_BRANDS = ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1', 'heif'];
+const HEIC_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1', 'heif']);
 
 const ascii = (b: Uint8Array, at: number, len: number): string =>
-  String.fromCharCode(...Array.from(b.subarray(at, at + len)));
+  String.fromCodePoint(...Array.from(b.subarray(at, at + len)));
 
 /** Detects the real format from magic bytes (file.type is empty for HEIC on many platforms). */
 export function inspectPhoto(b: Uint8Array): PhotoInfo | null {
@@ -24,7 +24,7 @@ export function inspectPhoto(b: Uint8Array): PhotoInfo | null {
     return { kind: 'png', width: v.getUint32(16), height: v.getUint32(20) };
   }
   if (b.length >= 16 && ascii(b, 0, 4) === 'RIFF' && ascii(b, 8, 4) === 'WEBP') return inspectWebp(b);
-  if (b.length >= 12 && ascii(b, 4, 4) === 'ftyp' && HEIC_BRANDS.includes(ascii(b, 8, 4))) return { kind: 'heic' };
+  if (b.length >= 12 && ascii(b, 4, 4) === 'ftyp' && HEIC_BRANDS.has(ascii(b, 8, 4))) return { kind: 'heic' };
   return null;
 }
 
@@ -35,12 +35,11 @@ function inspectJpeg(b: Uint8Array): PhotoInfo {
   while (pos + 4 <= b.length && b[pos] === 0xff) {
     const marker = b[pos + 1];
     if (marker === 0xff) { pos++; continue; }
-    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { pos += 2; continue; }
+    if (isStandaloneMarker(marker)) { pos += 2; continue; }
     if (marker === 0xda || marker === 0xd9) break;
     const len = v.getUint16(pos + 2);
     if (marker === 0xe1 && ascii(b, pos + 4, 4) === 'Exif') info.orientation = exifOrientation(b, pos + 10, pos + 2 + len);
-    const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
-    if (isSof && pos + 9 <= b.length) {
+    if (isSofMarker(marker) && pos + 9 <= b.length) {
       info.height = v.getUint16(pos + 5);
       info.width = v.getUint16(pos + 7);
       break;
@@ -48,6 +47,14 @@ function inspectJpeg(b: Uint8Array): PhotoInfo {
     pos += 2 + len;
   }
   return info;
+}
+
+function isStandaloneMarker(marker: number): boolean {
+  return marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7);
+}
+
+function isSofMarker(marker: number): boolean {
+  return marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
 }
 
 function exifOrientation(b: Uint8Array, tiff: number, end: number): number | undefined {

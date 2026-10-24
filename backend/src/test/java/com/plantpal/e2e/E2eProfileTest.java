@@ -91,8 +91,8 @@ class E2eProfileTest {
       for (String deployed : List.of("prod", "staging", "platform")) {
         var env = new MockEnvironment();
         env.setActiveProfiles("e2e", deployed);
-        assertThatThrownBy(() -> new E2eProfileGuard(env).rejectDeployedProfiles())
-            .isInstanceOf(IllegalStateException.class);
+        var guard = new E2eProfileGuard(env);
+        assertThatThrownBy(guard::rejectDeployedProfiles).isInstanceOf(IllegalStateException.class);
       }
     }
   }
