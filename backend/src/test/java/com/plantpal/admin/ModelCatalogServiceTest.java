@@ -51,4 +51,17 @@ class ModelCatalogServiceTest {
     verify(settings, never()).saveAndFlush(any());
     verifyNoInteractions(audit);
   }
+
+  @Test
+  void successfulUpdateAuditsActorTextAndModelAfterSave() {
+    var model = new AiModelSetting();
+    model.setId("VISION:PLANTNET");
+    model.setVersion(2);
+    when(settings.findById(model.getId())).thenReturn(Optional.of(model));
+    service.update(model.getId(), new ModelUpdate(false, 2L), 7L);
+    var order = inOrder(settings, audit);
+    order.verify(settings).saveAndFlush(model);
+    order.verify(audit).record(7L, "Model hidden from Settings", "VISION:PLANTNET");
+    verifyNoMoreInteractions(audit);
+  }
 }

@@ -126,4 +126,5 @@
     <include file="db/changelog/migrations/046_plant_journal_events.sql"/>
     <include file="db/changelog/migrations/047_email_outbox.sql"/>
     <include file="db/changelog/migrations/048_user_last_active.sql"/>
+    <include file="db/changelog/migrations/049_admin_activity_append_only.sql"/>
 </databaseChangeLog>
