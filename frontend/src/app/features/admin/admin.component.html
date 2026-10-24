@@ -165,6 +165,22 @@
               ><strong>{{ data.totals["treatments"] | number }}</strong
               ><span class="stat-note">Plants on the road to recovery</span>
             </article>
+            <article class="stat" data-testid="online-now">
+              <span class="stat-icon mint"
+                ><app-admin-icon name="people_outline"></app-admin-icon></span
+              ><span class="stat-title">Online now</span
+              ><strong>{{
+                presence ? (presence.onlineCount | number) : "—"
+              }}</strong
+              ><span class="stat-note">
+                @if (presence) {
+                  Active in the last {{ presenceWindow(presence.windowSeconds) }}.
+                  Counts classic-app sessions only.
+                } @else if (presenceError) {
+                  Could not load.
+                }
+              </span>
+            </article>
           </div>
           <article class="panel verdict-panel" data-testid="verdict-counts">
             <div class="panel-heading">

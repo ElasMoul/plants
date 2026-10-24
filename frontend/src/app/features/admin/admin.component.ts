@@ -24,6 +24,7 @@ import {
   AdminActivity,
   AdminModel,
   AdminOverview,
+  AdminPresence,
   AdminVerdictCounts,
   AdminPage,
   AdminService,
@@ -93,6 +94,8 @@ export class AdminComponent implements OnInit {
   overview?: AdminOverview;
   verdicts?: AdminVerdictCounts;
   verdictError = false;
+  presence?: AdminPresence;
+  presenceError = false;
   verdictTo = new Date().toISOString().slice(0, 10);
   verdictFrom = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
   people?: AdminPage<AdminUser>;
@@ -371,6 +374,19 @@ export class AdminComponent implements OnInit {
       this.overview?.scans.reduce((s, d) => s + d.completed, 0) ?? 0;
     return total ? `${Math.round((completed / total) * 100)}%` : "—";
   }
+  loadPresence(): void {
+    this.presenceError = false;
+    this.api
+      .presence()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (presence) => (this.presence = presence),
+        error: () => (this.presenceError = true),
+      });
+  }
+  presenceWindow(seconds: number): string {
+    return seconds % 60 === 0 ? `${seconds / 60} min` : `${seconds} s`;
+  }
   loadVerdicts(): void {
     this.verdictError = false;
     if (!this.verdictFrom || !this.verdictTo) return;
@@ -395,6 +411,7 @@ export class AdminComponent implements OnInit {
         tap((data) => {
           this.overview = data.overview;
           this.loadVerdicts();
+          this.loadPresence();
           this.events = data.activity;
         }),
       );

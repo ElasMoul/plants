@@ -16,3 +16,9 @@ geolocation prompt, geocoding or IP lookup behind these fields. Nothing consumes
 
 > The canonical PLA-57 map was not found in this repository; this file records the entries so they
 > can be merged into it.
+
+## Live-user presence (PLA-33)
+
+| Field | Stored in | Purpose | Notes |
+|---|---|---|---|
+| Last activity time | `users.last_active_at` (nullable `timestamptz`) | Lets administrators see how many users are online now | Refreshed at most every 30 s by a heartbeat from the signed-in classic app. Counted only within `app.presence.online-window` (default 5 min). Exposed to administrators only as an aggregate count; never listed per user, never logged. No IP, user agent, route or history. Removed with the account. |

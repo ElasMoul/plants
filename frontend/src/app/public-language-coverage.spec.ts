@@ -28,7 +28,7 @@ describe('Public language URL handling', () => {
     const auth = { isLoggedIn: jest.fn() };
     const monitor = { start: jest.fn() };
     new AppComponent(auth as never, {} as never, monitor as never, {} as never, {} as never,
-      {} as never, {} as never, 'server' as never).ngOnInit();
+      {} as never, {} as never, {} as never, 'server' as never).ngOnInit();
     expect(auth.isLoggedIn).not.toHaveBeenCalled();
     expect(monitor.start).not.toHaveBeenCalled();
   });
