@@ -1,0 +1,15 @@
+Hi {{name}},
+
+These plants need your care today:
+
+{{reminders}}
+
+Open Planotell to mark them as done:
+
+{{link}}
+
+You receive this daily summary because reminders are set to email. To stop these emails, unsubscribe here:
+
+{{unsubscribeUrl}}
+
+The Planotell team

@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 public interface PushSubscriptionRepository extends JpaRepository<PushSubscription, Long> {
 
   List<PushSubscription> findByUserIdAndEnabledTrue(Long userId);
+
+  boolean existsByUserIdAndEnabledTrue(Long userId);
 }

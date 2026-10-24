@@ -139,6 +139,7 @@
           color="primary"
           class="btn-pill"
           [disabled]="submitting"
+          data-testid="species-confirm-yes"
           (click)="onConfirmLegacy()">
           <mat-icon>check</mat-icon>
           {{ match.matched ? ('Yes' | t) : ('Yes, add it' | t) }}
