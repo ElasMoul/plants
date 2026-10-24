@@ -14,3 +14,11 @@ d0737114e1fbc386a5aad158e5327559c3254c36:frontend/e2e/journeys/session-monitor-r
 4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927103855-e3bcd1f889de-producer-result.json:generic-api-key:6
 4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927104017-35e82764a24f-receipt.json:generic-api-key:14
 4fcc50cb3b1878186f3caa71efb63b766008bab4:docs/dev-delivery-evidence/evidence/pla-dev-20260927104017-35e82764a24f-producer-result.json:generic-api-key:6
+
+# PLA-120 end-to-end smoke test profile (commit 5f7dcd9, merged via 77d4390). The
+# flagged value is the e2e profile's web-push private key, a test-only key pair
+# copied from application-test.yml and used nowhere else; it is not a credential
+# and nothing needs rotating. This is the exact fingerprint (commit + file + rule
+# + line): it suppresses that one line in that one commit and cannot mask any
+# other value, file or rule. The tip of the file no longer trips the rule.
+5f7dcd9127fa48ef613c30c66cd0d40a722d3087:backend/src/main/resources/application-e2e.yml:generic-api-key:33
