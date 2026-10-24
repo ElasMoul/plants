@@ -74,6 +74,9 @@ export interface AdminOverview {
   refreshedAt: string;
 }
 
+/** The backend's stamped identity; null fields mean "not reported". */
+export type AdminDeployment = Record<string, string | null>;
+
 export interface AdminVerdictCounts {
   right: number;
   wrong: number;
@@ -91,6 +94,9 @@ export class AdminService {
   }
   overview() {
     return this.get<AdminOverview>("overview");
+  }
+  deployment() {
+    return this.get<AdminDeployment>("deployment");
   }
   verdictCounts(from: string, to: string) {
     return this.get<AdminVerdictCounts>(

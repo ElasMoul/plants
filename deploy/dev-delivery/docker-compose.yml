@@ -89,6 +89,8 @@ services:
       dockerfile: ../deploy/dev-delivery/frontend.Dockerfile
       additional_contexts:
         devdelivery: .
+      args:
+        APP_REVISION: ${APP_REVISION}
     restart: unless-stopped
     environment:
       # Preferred-host redirect (PLA-73): only the declared alias is redirected.

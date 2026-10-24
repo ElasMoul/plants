@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { AdminIconComponent } from "./admin-icon.component";
+import { DeployedVersionComponent } from "./deployed-version.component";
 import { TranslatePipe } from "../../shared/i18n/translate.pipe";
 import { HttpErrorResponse } from "@angular/common/http";
 import {
@@ -33,7 +34,14 @@ import {
 @Component({
   selector: "app-admin",
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, AdminIconComponent, TranslatePipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    AdminIconComponent,
+    DeployedVersionComponent,
+    TranslatePipe,
+  ],
   templateUrl: "./admin.component.html",
   styleUrls: [
     "./admin.component.scss",

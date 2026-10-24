@@ -7,6 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Stamped into version.json by the postbuild step (PLA-50); same build arg as backend/Dockerfile.
+ARG APP_REVISION=
+ENV APP_REVISION=${APP_REVISION}
 RUN npm run build:atlas:prod
 
 # Stage 2 — serve with Nginx (reuses the shared nginx.conf: /api → backend:8080)

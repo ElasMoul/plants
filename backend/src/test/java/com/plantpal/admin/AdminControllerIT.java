@@ -163,8 +163,19 @@ class AdminControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void deploymentIdentityIsReadableByAdministratorsOnly() {
+    var response = call("/api/v1/admin/deployment", HttpMethod.GET, adminToken, null);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(data(response)).containsEntry("appIdentity", "plantpal");
+    assertThat(call("/api/v1/admin/deployment", HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(http.getForEntity("/api/v1/admin/deployment", Map.class).getStatusCode())
+        .isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  @Test
   void requiresAdministratorForReadsAndWrites() {
-    for (String path : new String[] {"overview", "users", "models", "activity"}) {
+    for (String path : new String[] {"overview", "users", "models", "activity", "deployment"}) {
       assertThat(call("/api/v1/admin/" + path, HttpMethod.GET, memberToken, null).getStatusCode())
           .isEqualTo(HttpStatus.FORBIDDEN);
     }

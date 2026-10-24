@@ -217,3 +217,12 @@ Escape and focus restoration. `screenshots/admin-plant-modal.png` uses fixture d
 ## Identification feedback (PLA-102)
 
 The overview shows how many scans users marked right, wrong or not sure in a chosen period (`GET /api/v1/admin/identification-verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD`, inclusive UTC days, counted by the date of each scan's latest verdict). Administrators only; other roles get 403.
+
+## Deployed version (PLA-50)
+
+The overview's **Deployed version** panel shows which commit each deployed artifact was built from. Each side is read independently and fails independently:
+
+- **Backend** — `GET /api/v1/admin/deployment` (administrators only: 403 for other roles, 401 without a token). It returns the identity already served at `/actuator/info` under `deployment`; `revision` is the `APP_REVISION` build arg baked into the backend image.
+- **Frontend** — `/version.json` from the app's own origin, written after the production build by `frontend/scripts/write-version.mjs` (`postbuild:prod` for Classic, `postbuild:atlas:prod` for Atlas, which gets the file but no panel). It reads `APP_REVISION`, else `GITHUB_SHA`; the Dockerfiles take the same `APP_REVISION` build arg as the backend.
+
+A revision is only ever a full 40-character lowercase hex SHA. Unset, short, uppercase or non-hex values are reported as `null`, shown as "not reported" — never a default. Neither value depends on release automation, tags or version files.
