@@ -372,18 +372,20 @@ jobs:
           retention-days: 14
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # SonarQube quality gate (D112) — required check on PRs into dev.
+  # SonarQube quality gate (D112) — required check on PRs into dev and epic/**.
   # Runs on ci-runner's self-hosted runner: only it can reach the host-native
   # SonarQube server. Scans the PR merge ref (actions/checkout's default for
   # pull_request) into the single Community Edition project; the gate's
   # new-code conditions decide, and sonar.qualitygate.wait fails the job.
   # Fork safety (D112): fork heads never reach the self-hosted runner — they are
   # routed to ubuntu-latest and fail, so a fork PR cannot pass by skipping.
+  # Epic branches (epic/**) get the same gate so a task PR into an epic is checked
+  # before it reaches the epic PR into dev; scans stay serialized (concurrency below).
   # ─────────────────────────────────────────────────────────────────────────────
   sonar-gate:
     name: sonar-gate
     needs: [backend-ci, frontend-ci]
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    if: github.event_name == 'pull_request' && (github.base_ref == 'dev' || startsWith(github.base_ref, 'epic/'))
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","platform"]') || 'ubuntu-latest' }}
     # Community Edition keeps one analysis history per project — serialize scans.
     concurrency:

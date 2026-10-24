@@ -306,6 +306,21 @@ A start that reuses the environment already running for the same revision record
 idempotency key as an alias, so `review stop` under the newer key stops the running
 environment instead of exiting 4 (`review_environment_not_found`).
 
+## SonarQube quality gate (D112)
+
+The `sonar-gate` job of `.github/workflows/ci.yml` runs on every pull request whose base is `dev`
+or an epic branch (`epic/**`), after `Backend CI` and `Frontend CI` pass. It scans the PR merge ref
+on the self-hosted runner and fails the job when the SonarQube quality gate fails (new-code
+conditions). Fork PRs never reach the self-hosted runner and fail by design.
+
+- **Why epics too:** a change that would fail the gate is caught on the task PR into the epic,
+  not later on the epic PR into `dev`.
+- **Scans are serialized** (one `sonar-gate` concurrency group: Community Edition keeps a single
+  analysis history), so PRs into epic branches queue behind PRs into `dev` and each other and wait
+  their turn.
+- **Forge setting (owner):** the check is only enforced on GitHub when `sonar-gate` is a required
+  status check in the branch rules; add it to the `epic/**` rule as well as `dev`.
+
 ## Secret scanning (required check)
 
 The `Secret Scanning` workflow (`.github/workflows/secret-scan.yml`, gitleaks) has one job,
