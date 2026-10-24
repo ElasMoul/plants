@@ -28,7 +28,7 @@ async function userSession(page: Page) {
 test('switches languages before login and retains the choice after a reload', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByText('Sign in to Planotell')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('fr');
+  await page.getByRole('combobox', { name: 'Language / Langue' }).selectOption('fr');
   await expect(page.getByText('Connexion à Planotell')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await page.getByTestId('login-email').fill('invalid');
@@ -36,8 +36,15 @@ test('switches languages before login and retains the choice after a reload', as
   await expect(page.getByText('Saisissez une adresse e-mail valide')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Connexion à Planotell')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).selectOption('en');
+  await page.getByRole('combobox', { name: 'Language / Langue' }).selectOption('en');
   await expect(page.getByText('Sign in to Planotell')).toBeVisible();
+});
+
+test('language switcher offers English and French only and never sets a right-to-left direction', async ({ page }) => {
+  await page.goto('/login');
+  const selector = page.getByRole('combobox', { name: 'Language / Langue' });
+  await expect(selector.locator('option')).toHaveText(['EN', 'FR']);
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 });
 
 test('French user journeys cover home, garden, identification, reminders and settings', async ({ page }) => {
@@ -86,11 +93,10 @@ test('plant sections translate only on request and retain their selected languag
     const path = new URL(route.request().url()).pathname.replace('/translate', '');
     const language = await page.evaluate(() => localStorage.getItem('plantpal.language'));
     if (route.request().method() === 'POST') { posts++; (saved[path] ??= []).push(language!); }
-    const texts = language === 'ar' ? { 'A tropical climbing plant.': 'نبات استوائي متسلق.' }
-      : { 'A tropical climbing plant.': 'Une plante grimpante tropicale.' };
+    const texts = { 'A tropical climbing plant.': 'Une plante grimpante tropicale.' };
     await route.fulfill({ json: { success: true, data: { id: path, originalLanguage: 'en', targetLanguage: language,
       variants: [{ language: 'en', status: 'READY', texts: {} }, ...(saved[path] ?? []).map(lang => ({
-        language: lang, status: 'READY', texts: lang === 'fr' ? { 'A tropical climbing plant.': 'Une plante grimpante tropicale.' } : texts,
+        language: lang, status: 'READY', texts: texts,
       }))],
     } } });
   });
@@ -105,14 +111,6 @@ test('plant sections translate only on request and retain their selected languag
   await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
   await expect(page.getByText('Water roots', { exact: true })).toBeVisible();
   expect(posts).toBe(1);
-  await page.evaluate(() => localStorage.setItem('plantpal.language', 'ar')); await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
-  expect(posts).toBe(1);
-  await description.getByRole('button', { name: 'ترجمة إلى AR' }).click();
-  await expect(page.getByText('نبات استوائي متسلق.', { exact: true })).toBeVisible();
-  await expect(description.getByRole('combobox')).toHaveCount(0);
-  await expect(description.getByRole('button', { name: 'ترجمة إلى AR' })).toHaveCount(0);
   await page.evaluate(() => localStorage.setItem('plantpal.language', 'fr')); await page.reload();
   await expect(page.getByText('Une plante grimpante tropicale.', { exact: true })).toBeVisible();
   await expect(description.getByRole('button', { name: 'Traduire en FR' })).toHaveCount(0);
@@ -132,39 +130,6 @@ test('plant sections translate only on request and retain their selected languag
   await page.screenshot({ path: '../backend/target/section-translations-mobile.png', fullPage: true });
 });
 
-test('Arabic selector, RTL forms and calendar work on mobile and switching back restores LTR', async ({ page }) => {
-  await page.goto('/login');
-  const selector = page.getByRole('combobox', { name: 'Language / Langue / اللغة' });
-  await expect(selector.locator('option')).toHaveText(['EN', 'FR', 'AR']);
-  await expect(page.locator('app-language-switch')).not.toContainText('◎');
-  await selector.selectOption('ar');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByText('تسجيل الدخول إلى Planotell')).toBeVisible();
-  await page.getByTestId('login-email').fill('reader@example.test');
-  await expect(page.getByTestId('login-email')).toHaveCSS('direction', 'ltr');
-  await userSession(page);
-  await page.goto('/plants/new');
-  await page.getByTestId('plant-nickname-input').fill('نبتتي Monstera');
-  await expect(page.getByTestId('plant-nickname-input')).toHaveValue('نبتتي Monstera');
-  await page.locator('mat-datepicker-toggle button').click();
-  await expect(page.locator('mat-calendar')).toContainText(/[\u0600-\u06ff]/);
-  await expect(page.locator('mat-calendar')).toHaveCSS('direction', 'rtl');
-  await page.locator('mat-calendar .mat-calendar-body-cell').first().click();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await expect(page.locator('mat-calendar')).not.toBeVisible();
-  await expect(page.locator('.cdk-overlay-pane')).toHaveCount(0);
-  await page.screenshot({ path: '../docs/screenshots/arabic-plant-form.png', fullPage: true });
-  for (const route of ['/home', '/garden', '/reminders', '/preferences']) {
-    await page.goto(route);
-    await expect(page.locator('h1, h2').first()).toContainText(/[\u0600-\u06ff]/);
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  }
-  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).first().selectOption('en');
-  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-});
-
 test('language changes are saved to the account before the interface reloads', async ({ page }) => {
   await userSession(page);
   let saved = '';
@@ -173,60 +138,15 @@ test('language changes are saved to the account before the interface reloads', a
     await route.fulfill({ json: { success: true, data: { language: saved || 'fr' } } });
   });
   await page.goto('/preferences');
-  await page.getByRole('combobox', { name: 'Language / Langue / اللغة' }).first().selectOption('ar');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-  expect(saved).toBe('ar');
+  await page.getByRole('combobox', { name: 'Language / Langue' }).first().selectOption('en');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(saved).toBe('en');
 });
 
-test.describe('Registration browser language', () => {
-  test.use({ locale: 'ar-MA' });
-  test('detects Arabic and sends it with registration', async ({ page }) => {
-    let language = '';
-    await page.route('**/api/v1/auth/register', async route => {
-      language = route.request().postDataJSON().language;
-      await route.fulfill({ status: 400, json: { success: false, message: 'Synthetic test response' } });
-    });
-    await page.goto('/register');
-    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-    await page.getByTestId('register-name').fill('قارئ');
-    await page.locator('[formControlName="lastName"]').fill('اختبار');
-    await page.getByTestId('register-email').fill('reader@example.test');
-    await page.getByTestId('register-password').fill('TestPassword123!');
-    await page.locator('[formControlName="confirmPassword"]').fill('TestPassword123!');
-    await page.locator('button[type="submit"]').click();
-    await expect.poll(() => language).toBe('ar');
-  });
-});
-
-
-test('new Arabic content waits for its Arabic version without showing English or requiring translation clicks', async ({ page }) => {
-  await userSession(page);
-  await page.addInitScript(() => localStorage.setItem('plantpal.language', 'ar'));
-  await page.route('**/api/v1/species/80', route => route.fulfill({ json: { success: true, data: {
-    id: 80, scientificName: 'Aloe vera', descriptionStatus: 'READY',
-    description: 'English care must not flash.', careCards: [],
-  } } }));
-  let reads = 0;
-  let posts = 0;
-  await page.route('**/api/v1/content-sections/**', route => {
-    if (route.request().method() === 'POST') posts++;
-    return route.fulfill({ json: { success: true, data: { id: 'native-arabic', originalLanguage: 'ar', targetLanguage: 'ar',
-      variants: [{ language: 'en', status: 'READY', texts: {} },
-        { language: 'ar', status: ++reads > 1 ? 'READY' : 'PENDING', texts: { 'English care must not flash.': 'اسقِ النبات بعد جفاف التربة.' } }],
-    } } });
-  });
-  await page.goto('/garden/species/80');
-  await expect(page.getByText('English care must not flash.', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('اسقِ النبات بعد جفاف التربة.', { exact: true })).toBeVisible();
-  await expect(page.locator('.info-block .section-translate-button')).toHaveCount(0);
-  expect(posts).toBe(0);
-});
-
-test('shows the beta notice once on login and register in EN, FR and AR', async ({ page }) => {
+test('shows the beta notice once on login and register in EN and FR', async ({ page }) => {
   const expected = {
     en: 'This app is still in beta',
     fr: 'Cette application est encore en version bêta',
-    ar: 'هذا التطبيق لا يزال في مرحلة تجريبية (بيتا)',
   };
   for (const [lang, text] of Object.entries(expected)) {
     for (const path of ['/login', '/register']) {
