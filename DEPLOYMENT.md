@@ -305,6 +305,21 @@ A start that reuses the environment already running for the same revision record
 idempotency key as an alias, so `review stop` under the newer key stops the running
 environment instead of exiting 4 (`review_environment_not_found`).
 
+## Secret scanning (required check)
+
+The `Secret Scanning` workflow (`.github/workflows/secret-scan.yml`, gitleaks) has one job,
+`Detect secrets`. It runs on every push and on every pull request into `dev`, `main` and
+`epic/**`, and it is a **required check** (`app.yaml` `delivery.requiredChecks`). Do not rename
+the job: the name is the check name.
+
+- **A finding is real until proven otherwise.** If it is a real secret, rotate it first (the
+  value stays in git history), then remove it.
+- **Allowlisting a fixture** that only looks like a secret: add the exact finding fingerprint
+  (`<commit>:<file>:<rule>:<line>`, printed by `gitleaks detect -v`) to `.gitleaksignore`, with a
+  comment saying why it is not a credential. Never allowlist a directory or a whole rule.
+- **Forge setting (owner):** the check is only enforced on GitHub when `Detect secrets` is a
+  required status check in the branch rules for `dev`, `main` and `epic/**`.
+
 ## Security posture
 
 - JWT-authenticated REST API — PlantPal's own auth, entirely unaffected by the
