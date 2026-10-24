@@ -14,6 +14,8 @@ public interface ReminderService {
 
   ReminderResponse completeReminder(Long id, Long userId);
 
+  ReminderResponse updateInterval(Long id, Integer frequencyDays, Long userId);
+
   void deleteReminder(Long id, Long userId);
 
   Instant calculateNextDueAt(Instant lastDone, int frequencyDays);

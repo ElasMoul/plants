@@ -700,5 +700,13 @@ export const FR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "Le fichier est supprimé de nos serveurs {0} heures après sa création.",
   "Preparing your export…": "Préparation de votre export…",
   "You have requested too many exports. Please try again later.": "Vous avez demandé trop d’exports. Réessayez plus tard.",
-  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez."
+  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez.",
+  "Every {0} days · {1}": "Tous les {0} jours · {1}",
+  "Change": "Modifier",
+  "Reset": "Réinitialiser",
+  "Custom interval": "Intervalle personnalisé",
+  "Resting season": "Saison de repos",
+  "Growing season": "Saison de croissance",
+  "Days between care (1-365)": "Jours entre deux soins (1-365)",
+  "Enter a whole number of days between 1 and 365.": "Saisissez un nombre entier de jours entre 1 et 365."
 };

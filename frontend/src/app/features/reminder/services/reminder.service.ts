@@ -20,6 +20,15 @@ export class ReminderService {
     return this.http.post<ApiResponse<ReminderResponse>>(this.baseUrl, request);
   }
 
+  setIntervalOverride(
+    reminderId: number,
+    frequencyDays: number | null,
+  ): Observable<ApiResponse<ReminderResponse>> {
+    return this.http.patch<ApiResponse<ReminderResponse>>(`${this.baseUrl}/${reminderId}/interval`, {
+      frequencyDays,
+    });
+  }
+
   markCareDone(reminderId: number): Observable<ApiResponse<ReminderResponse>> {
     return this.http.post<ApiResponse<ReminderResponse>>(`${this.careUrl}/done`, { reminderId });
   }

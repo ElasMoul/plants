@@ -187,6 +187,23 @@
   color: var(--color-text-primary);
 }
 
+.reminder-interval {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+
+  .interval-edit {
+    margin-left: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--color-primary);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
 .reminder-detail {
   margin: 2px 0 0;
   font-size: 0.78rem;

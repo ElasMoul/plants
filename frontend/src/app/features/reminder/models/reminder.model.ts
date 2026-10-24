@@ -19,6 +19,11 @@ export interface ReminderResponse {
   plantPhotoUrl: string | null;
   careType: CareType;
   frequencyDays: number;
+  // Seasonal/placement-adjusted interval, computed server-side (PLA-108)
+  effectiveFrequencyDays?: number;
+  overrideFrequencyDays?: number | null;
+  season?: 'GROWING' | 'RESTING' | null;
+  adjustmentReason?: string | null;
   nextDueAt: string;
   enabled: boolean;
   treatmentPlanId?: number | null;

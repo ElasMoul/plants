@@ -1,6 +1,7 @@
 package com.plantpal.reminder.mapper;
 
 import com.plantpal.plant.entity.Plant;
+import com.plantpal.reminder.CareIntervalCalculator;
 import com.plantpal.reminder.dto.ReminderResponse;
 import com.plantpal.reminder.entity.Reminder;
 
@@ -15,6 +16,14 @@ public final class ReminderMapper {
   private ReminderMapper() {}
 
   public static ReminderResponse toResponse(Reminder reminder, Plant plant) {
+    return toResponse(
+        reminder,
+        plant,
+        new CareIntervalCalculator.CareInterval(reminder.getFrequencyDays(), null, null));
+  }
+
+  public static ReminderResponse toResponse(
+      Reminder reminder, Plant plant, CareIntervalCalculator.CareInterval interval) {
     return ReminderResponse.builder()
         .id(reminder.getId())
         .plantId(reminder.getPlantId())
@@ -22,6 +31,10 @@ public final class ReminderMapper {
         .plantPhotoUrl(plant != null ? plant.getPhotoUrl() : null)
         .careType(reminder.getCareType())
         .frequencyDays(reminder.getFrequencyDays())
+        .effectiveFrequencyDays(interval.days())
+        .overrideFrequencyDays(reminder.getOverrideFrequencyDays())
+        .season(interval.season())
+        .adjustmentReason(interval.reason())
         .nextDueAt(reminder.getNextDueAt())
         .enabled(reminder.isEnabled())
         .recurring(reminder.isRecurring())

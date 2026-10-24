@@ -1,5 +1,6 @@
 package com.plantpal.reminder.dto;
 
+import com.plantpal.reminder.entity.CareSeason;
 import com.plantpal.reminder.entity.CareType;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -21,6 +22,10 @@ public class ReminderResponse {
   private String plantPhotoUrl;
   private CareType careType;
   private int frequencyDays;
+  private int effectiveFrequencyDays;
+  private Integer overrideFrequencyDays;
+  private CareSeason season;
+  private String adjustmentReason;
   private Instant nextDueAt;
   private boolean enabled;
   private boolean recurring;

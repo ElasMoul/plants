@@ -124,6 +124,46 @@ export class ReminderListComponent implements OnInit, OnDestroy {
       });
   }
 
+  // Short translated label for why the interval is what it is; the full sentence is the tooltip.
+  intervalLabel(reminder: ReminderResponse): string {
+    if (reminder.overrideFrequencyDays) return 'Custom interval';
+    return reminder.season === 'RESTING' ? 'Resting season' : 'Growing season';
+  }
+
+  editInterval(reminder: ReminderResponse, event: Event): void {
+    event.stopPropagation();
+    const answer = window.prompt(
+      translate('Days between care (1-365)'),
+      String(reminder.effectiveFrequencyDays ?? reminder.frequencyDays),
+    );
+    if (answer === null) return;
+    const days = Number(answer);
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      this.snackBar.open(translate('Enter a whole number of days between 1 and 365.'), translate('Dismiss'), {
+        duration: 4000,
+      });
+      return;
+    }
+    this.saveInterval(reminder, days);
+  }
+
+  clearInterval(reminder: ReminderResponse, event: Event): void {
+    event.stopPropagation();
+    this.saveInterval(reminder, null);
+  }
+
+  private saveInterval(reminder: ReminderResponse, days: number | null): void {
+    this.reminderService.setIntervalOverride(reminder.id, days)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => this.loadReminders(),
+        error: () => {
+          this.snackBar.open(translate('Could not update reminder.'), translate('Dismiss'), { duration: 4000 });
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
   goToPlant(plantId: number): void {
     this.router.navigate(['/plants', plantId]);
   }
