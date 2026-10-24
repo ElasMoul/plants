@@ -49,6 +49,16 @@ class AdminControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void deploymentIdentityIsAdminOnly() {
+    var ok = call("/api/v1/admin/deployment", HttpMethod.GET, adminToken, null);
+    assertThat(data(ok)).containsEntry("appIdentity", "plantpal").containsKey("revision");
+    assertThat(call("/api/v1/admin/deployment", HttpMethod.GET, memberToken, null).getStatusCode())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(http.getForEntity("/api/v1/admin/deployment", Map.class).getStatusCode())
+        .isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  @Test
   void plantViewerIncludesCompletedTreatmentCareAndScansWithBoundedOwnerScopedHistory() {
     var created =
         call("/api/v1/plants", HttpMethod.POST, memberToken, Map.of("nickname", "History fern"));

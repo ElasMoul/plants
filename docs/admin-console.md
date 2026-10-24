@@ -217,3 +217,14 @@ Escape and focus restoration. `screenshots/admin-plant-modal.png` uses fixture d
 ## Identification feedback (PLA-102)
 
 The overview shows how many scans users marked right, wrong or not sure in a chosen period (`GET /api/v1/admin/identification-verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD`, inclusive UTC days, counted by the date of each scan's latest verdict). Administrators only; other roles get 403.
+
+## Deployed version (PLA-50)
+
+The overview shows a "Deployed version" panel with the commit each half was built from.
+Backend: `GET /api/v1/admin/deployment` (administrators only; 403/401 otherwise) returns the
+same identity as `/actuator/info` -> `deployment`, from the `APP_REVISION` baked into the image.
+Frontend: a static `/version.json` (`{"revision": ...}`) written after each production build
+from `APP_REVISION`, else `GITHUB_SHA` (Classic: `dist/plantpal`, Atlas: `dist/atlas/browser`);
+the dev-delivery Dockerfiles take the same `APP_REVISION` build arg as the backend. A value is
+only reported if it is a full 40-character lowercase SHA; "not reported" means null or unreachable.
+It does not depend on release automation.

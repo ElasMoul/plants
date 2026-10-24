@@ -7,6 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# PLA-50: stamped into version.json by the postbuild step (same arg as the backend).
+ARG APP_REVISION=
+ENV APP_REVISION=${APP_REVISION}
 RUN npm run build:prod
 
 FROM nginx:alpine
