@@ -74,6 +74,12 @@ export interface AdminOverview {
   refreshedAt: string;
 }
 
+export interface AdminPresence {
+  onlineCount: number;
+  windowSeconds: number;
+  asOf: string;
+}
+
 export interface AdminVerdictCounts {
   right: number;
   wrong: number;
@@ -91,6 +97,9 @@ export class AdminService {
   }
   overview() {
     return this.get<AdminOverview>("overview");
+  }
+  presence() {
+    return this.get<AdminPresence>("presence");
   }
   verdictCounts(from: string, to: string) {
     return this.get<AdminVerdictCounts>(

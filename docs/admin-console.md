@@ -217,3 +217,18 @@ Escape and focus restoration. `screenshots/admin-plant-modal.png` uses fixture d
 ## Identification feedback (PLA-102)
 
 The overview shows how many scans users marked right, wrong or not sure in a chosen period (`GET /api/v1/admin/identification-verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD`, inclusive UTC days, counted by the date of each scan's latest verdict). Administrators only; other roles get 403.
+
+## Live-user presence (PLA-33)
+
+The overview has an **Online now** tile: how many active accounts were seen within the online window. It is an aggregate only; no per-user list, history, IP, user agent or route is stored or exposed.
+
+- **Signal:** the classic app sends `POST /api/v1/presence/heartbeat` (no body, 204) every 60 s while a tab is visible and the user is signed in, and once when a tab becomes visible. The server sets `users.last_active_at` only if it is NULL or older than 30 s, so most heartbeats write nothing.
+- **Window:** `app.presence.online-window` (ISO-8601 duration, default `PT5M`). A user is counted when `last_active_at` is strictly newer than `now - window` and the account is `ACTIVE`; they drop out with no cleanup job.
+- **Read:** `GET /api/v1/admin/presence` returns `{onlineCount, windowSeconds, asOf}`. It sits under `/api/v1/admin/**`, so non-admins get 403 and anonymous callers 401.
+- **Limits:** Atlas sessions and API-only clients send no heartbeat and are not counted, so the number undercounts.
+
+### Presence and load
+
+Expected load is about `open visible tabs / 60` requests per second, each at most one single-row indexed `UPDATE` (primary key) that is skipped by the 30 s throttle; the count is one `count(*)` over `users` per overview load.
+
+**Measured on plantpal/dev: not yet.** This delivery ran without access to the dev environment, so no p50/p95 latency, DB-writes-per-heartbeat or count-query-time figure exists; none is claimed here. Method to run on dev and record below (date, N, figures): N simulated users, each `POST /presence/heartbeat` every 60 s for a few minutes plus a short burst, against a baseline of the same traffic without heartbeats; capture heartbeat p50/p95, `pg_stat_user_tables.n_tup_upd` delta per heartbeat, and `EXPLAIN ANALYZE` of the count query.

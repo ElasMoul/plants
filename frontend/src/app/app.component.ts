@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '@plantpal/shared-core';
 import { PushNotificationService } from './core/services/push-notification.service';
 import { AdminService } from './features/admin/admin.service';
+import { PresenceHeartbeatService } from './core/services/presence-heartbeat.service';
 import { SessionMonitorService } from './core/services/session-monitor.service';
 
 const NOTIFICATION_PROMPT_KEY = 'plantpal_notifications_prompted';
@@ -37,6 +38,7 @@ export class AppComponent implements OnInit {
     public authService: AuthService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly sessionMonitorService: SessionMonitorService,
+    private readonly presenceHeartbeat: PresenceHeartbeatService,
     private readonly snackBar: MatSnackBar,
     private readonly http: HttpClient,
     private router: Router,
@@ -49,6 +51,7 @@ export class AppComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     this.showNotificationBanner = this.authService.isLoggedIn() && this.shouldPromptForNotifications();
     this.sessionMonitorService.start();
+    this.presenceHeartbeat.start();
     this.refreshAccess();
 
     // Always land at the top of the new page — Angular's own scroll restoration only resets
