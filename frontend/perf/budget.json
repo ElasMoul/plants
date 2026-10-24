@@ -1,0 +1,29 @@
+{
+  "_comment": "Single source of truth for the public-page performance budget (PLA-123). See docs/performance-budget.md.",
+  "budget": { "lcpMs": 2500, "cls": 0.1, "inpMs": 200 },
+  "runs": 5,
+  "device": {
+    "name": "Emulated mid-range Android phone",
+    "viewport": { "width": 412, "height": 823 },
+    "deviceScaleFactor": 2.625,
+    "isMobile": true,
+    "hasTouch": true,
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; Pixel 6a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+    "cpuSlowdown": 4,
+    "network": { "name": "Slow 4G", "downloadKbps": 1600, "uploadKbps": 750, "latencyMs": 150 }
+  },
+  "languages": ["en", "fr"],
+  "pages": [
+    {
+      "id": "home",
+      "path": "/{lang}/",
+      "interaction": [".hero-cta", "h1"]
+    },
+    {
+      "id": "faq",
+      "path": "/{lang}/faq",
+      "optional": true,
+      "interaction": ["[data-faq-toggle]", "summary", "button[aria-expanded]"]
+    }
+  ]
+}

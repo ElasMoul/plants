@@ -25,3 +25,4 @@ tools/dev-delivery/__pycache__/
 .claude/*
 .Codex/*
 PROGRESS.md
+frontend/perf/last-run.json
