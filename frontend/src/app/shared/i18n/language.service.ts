@@ -20,9 +20,9 @@ const EN_LABELS: Readonly<Record<string, string>> = {
   'climate.TROPICAL': 'Tropical', 'climate.ARID': 'Arid', 'climate.TEMPERATE': 'Temperate',
   'climate.CONTINENTAL': 'Continental', 'climate.POLAR': 'Polar',
 };
-export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: string; direction: 'ltr' | 'rtl' }> = [
-  { code: 'en', label: 'English', locale: 'en-US', direction: 'ltr' },
-  { code: 'fr', label: 'Français', locale: 'fr-FR', direction: 'ltr' },
+export const LANGUAGES: ReadonlyArray<{ code: Language; label: string; locale: string }> = [
+  { code: 'en', label: 'English', locale: 'en-US' },
+  { code: 'fr', label: 'Français', locale: 'fr-FR' },
 ];
 
 /** A supported code, or English for null, empty and unsupported values (e.g. a stored 'ar'). */
@@ -80,7 +80,7 @@ export class LanguageService {
 
   constructor(@Inject(DOCUMENT) document: Document, @Optional() private readonly http?: HttpClient) {
     document.documentElement.lang = this.language;
-    document.documentElement.dir = LANGUAGES.find(item => item.code === this.language)!.direction;
+    document.documentElement.dir = 'ltr';
   }
 
   select(language: string): void {
