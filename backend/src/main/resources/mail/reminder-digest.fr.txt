@@ -1,0 +1,15 @@
+Bonjour {{name}},
+
+Ces plantes ont besoin de vos soins aujourd'hui :
+
+{{reminders}}
+
+Ouvrez Planotell pour les marquer comme faits :
+
+{{link}}
+
+Vous recevez ce résumé quotidien parce que vos rappels sont envoyés par e-mail. Pour ne plus recevoir ces e-mails, désabonnez-vous ici :
+
+{{unsubscribeUrl}}
+
+L'équipe Planotell

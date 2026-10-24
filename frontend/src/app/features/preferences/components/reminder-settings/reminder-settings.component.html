@@ -1,0 +1,78 @@
+<div class="preference-section" data-testid="reminder-settings">
+  <h2>{{ 'Reminders' | t }}</h2>
+  <p class="section-hint">{{ 'Choose how Planotell tells you when your plants need care.' | t }}</p>
+
+  <ng-container *ngIf="!loadError; else loadFailed">
+    <fieldset style="border: 0; padding: 0; margin: 0 0 12px">
+      <legend class="section-hint">{{ 'Send reminders by' | t }}</legend>
+      <label *ngFor="let c of channels" style="display: block; margin: 6px 0">
+        <input
+          type="radio"
+          name="reminder-channel"
+          [value]="c"
+          [(ngModel)]="channel"
+          (ngModelChange)="changed()"
+          [attr.data-testid]="'reminder-channel-' + c"
+        />
+        {{ 'reminderChannel.' + c | t }}
+      </label>
+    </fieldset>
+
+    <p class="section-hint" *ngIf="emailUnsubscribed && !emailSelected" data-testid="reminder-unsubscribed">
+      {{ 'You unsubscribed from reminder emails. Choose Email or Both to receive them again.' | t }}
+    </p>
+    <p class="section-hint" *ngIf="emailUnsubscribed && emailSelected" data-testid="reminder-resubscribe">
+      {{ 'Saving will turn reminder emails back on.' | t }}
+    </p>
+
+    <div>
+      <span class="section-hint">{{ 'Quiet hours (no reminders)' | t }}</span>
+      <div style="display: flex; gap: 12px; align-items: center; margin: 6px 0">
+        <label>
+          {{ 'Quiet hours start' | t }}
+          <input
+            type="time"
+            [(ngModel)]="quietHoursStart"
+            (ngModelChange)="changed()"
+            data-testid="reminder-quiet-start"
+          />
+        </label>
+        <label>
+          {{ 'Quiet hours end' | t }}
+          <input
+            type="time"
+            [(ngModel)]="quietHoursEnd"
+            (ngModelChange)="changed()"
+            data-testid="reminder-quiet-end"
+          />
+        </label>
+      </div>
+      <p class="section-hint">
+        {{ 'Leave both empty for no quiet hours. Reminders are sent after 08:00 in your time zone.' | t }}
+      </p>
+    </div>
+
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="save()"
+      [disabled]="saving"
+      data-testid="reminder-save"
+    >
+      {{ saving ? ('Saving…' | t) : saved ? ('Saved' | t) : ('Save reminder settings' | t) }}
+    </button>
+    <p class="section-hint error-hint" *ngIf="error === 'invalid'" data-testid="reminder-invalid">
+      {{ 'Set both a start and an end time, and make them different.' | t }}
+    </p>
+    <p class="section-hint error-hint" *ngIf="error === 'failed'" data-testid="reminder-failed">
+      {{ 'Could not save your reminder settings. Please try again.' | t }}
+    </p>
+  </ng-container>
+
+  <ng-template #loadFailed>
+    <p class="section-hint error-hint">
+      {{ 'Could not load your reminder settings — check your connection and try again.' | t }}
+    </p>
+  </ng-template>
+</div>

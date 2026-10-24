@@ -702,5 +702,20 @@ export const AR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "يُحذف الملف من خوادمنا بعد {0} ساعة من إنشائه.",
   "Preparing your export…": "جارٍ تجهيز التصدير…",
   "You have requested too many exports. Please try again later.": "طلبتَ عددًا كبيرًا من عمليات التصدير. حاول مرة أخرى لاحقًا.",
-  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى."
+  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى.",
+  "Choose how Planotell tells you when your plants need care.": "اختر كيف ينبهك Planotell عندما تحتاج نباتاتك إلى العناية.",
+  "Send reminders by": "إرسال التذكيرات عبر",
+  "reminderChannel.PUSH": "إشعار فوري",
+  "reminderChannel.EMAIL": "البريد الإلكتروني",
+  "reminderChannel.BOTH": "إشعار فوري وبريد إلكتروني",
+  "You unsubscribed from reminder emails. Choose Email or Both to receive them again.": "ألغيتَ الاشتراك في رسائل التذكير. اختر البريد الإلكتروني أو الاثنين معًا لتلقيها من جديد.",
+  "Saving will turn reminder emails back on.": "سيؤدي الحفظ إلى إعادة تفعيل رسائل التذكير بالبريد.",
+  "Quiet hours (no reminders)": "ساعات الهدوء (بلا تذكيرات)",
+  "Leave both empty for no quiet hours. Reminders are sent after 08:00 in your time zone.": "اترك الحقلين فارغين لعدم تحديد ساعات هدوء. تُرسل التذكيرات بعد الساعة 08:00 بتوقيت منطقتك.",
+  "Save reminder settings": "حفظ إعدادات التذكير",
+  "Set both a start and an end time, and make them different.": "حدّد وقت بداية ووقت نهاية مختلفين.",
+  "Could not save your reminder settings. Please try again.": "تعذر حفظ إعدادات التذكير. حاول مرة أخرى.",
+  "Could not load your reminder settings — check your connection and try again.": "تعذر تحميل إعدادات التذكير — تحقق من اتصالك وحاول مرة أخرى.",
+  "Quiet hours start": "بداية ساعات الهدوء",
+  "Quiet hours end": "نهاية ساعات الهدوء"
 };
