@@ -702,5 +702,20 @@ export const FR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "Le fichier est supprimé de nos serveurs {0} heures après sa création.",
   "Preparing your export…": "Préparation de votre export…",
   "You have requested too many exports. Please try again later.": "Vous avez demandé trop d’exports. Réessayez plus tard.",
-  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez."
+  "Could not create your export. Please try again.": "Impossible de créer votre export. Réessayez.",
+  "Choose how Planotell tells you when your plants need care.": "Choisissez comment Planotell vous prévient lorsque vos plantes ont besoin de soins.",
+  "Send reminders by": "Envoyer les rappels par",
+  "reminderChannel.PUSH": "Notification push",
+  "reminderChannel.EMAIL": "E-mail",
+  "reminderChannel.BOTH": "Notification push et e-mail",
+  "You unsubscribed from reminder emails. Choose Email or Both to receive them again.": "Vous vous êtes désabonné(e) des rappels par e-mail. Choisissez E-mail ou Notification push et e-mail pour les recevoir de nouveau.",
+  "Saving will turn reminder emails back on.": "L’enregistrement réactivera les rappels par e-mail.",
+  "Quiet hours (no reminders)": "Heures calmes (aucun rappel)",
+  "Leave both empty for no quiet hours. Reminders are sent after 08:00 in your time zone.": "Laissez les deux champs vides pour ne pas avoir d’heures calmes. Les rappels sont envoyés après 8 h 00, dans votre fuseau horaire.",
+  "Save reminder settings": "Enregistrer les réglages de rappel",
+  "Set both a start and an end time, and make them different.": "Indiquez une heure de début et une heure de fin différentes.",
+  "Could not save your reminder settings. Please try again.": "Impossible d’enregistrer vos réglages de rappel. Réessayez.",
+  "Could not load your reminder settings — check your connection and try again.": "Impossible de charger vos réglages de rappel — vérifiez votre connexion et réessayez.",
+  "Quiet hours start": "Début des heures calmes",
+  "Quiet hours end": "Fin des heures calmes"
 };

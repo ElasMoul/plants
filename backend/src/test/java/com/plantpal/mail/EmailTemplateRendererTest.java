@@ -13,12 +13,22 @@ import org.junit.jupiter.params.provider.EnumSource;
 @DisplayName("EmailTemplateRenderer - Unit Tests")
 class EmailTemplateRendererTest {
 
+  private static final String UNSUBSCRIBE_URL =
+      "https://www.planotell.com/api/v1/email/unsubscribe?token=abc_DEF-123";
   private static final String LINK = "https://www.planotell.com/verify?token=abc&x=1";
 
   private final EmailTemplateRenderer renderer = new EmailTemplateRenderer();
 
   private Map<String, String> vars(String name) {
-    return Map.of("name", name, "link", LINK);
+    return Map.of(
+        "name",
+        name,
+        "link",
+        LINK,
+        "reminders",
+        "- Monstera: Watering",
+        "unsubscribeUrl",
+        UNSUBSCRIBE_URL);
   }
 
   @Nested
