@@ -2,10 +2,11 @@ import { NgModule } from '@angular/core';
 import { SharedModule } from '../../shared/shared.module';
 import { PreferencesRoutingModule } from './preferences-routing.module';
 import { PreferencesPageComponent } from './pages/preferences-page/preferences-page.component';
+import { ReminderSettingsComponent } from './components/reminder-settings/reminder-settings.component';
 import { PlantNetConfigService } from './services/plantnet-config.service';
 
 @NgModule({
-  declarations: [PreferencesPageComponent],
+  declarations: [PreferencesPageComponent, ReminderSettingsComponent],
   imports: [SharedModule, PreferencesRoutingModule],
   providers: [PlantNetConfigService],
 })
