@@ -173,6 +173,7 @@
                 <h2>{{ "Was this right?" | t }}</h2>
               </div>
             </div>
+            <div class="verdict-body">
             <p>{{ "Right, wrong and not-sure answers users gave to scan results." | t }}</p>
             <div class="verdict-range">
               <label
@@ -195,20 +196,21 @@
             }
             @if (verdicts; as counts) {
               <div class="verdict-counts">
-                <span
+                <span class="stat-title"
                   ><strong data-testid="verdict-right">{{ counts.right | number }}</strong>
                   {{ "Right" | t }}</span
                 >
-                <span
+                <span class="stat-title"
                   ><strong data-testid="verdict-wrong">{{ counts.wrong | number }}</strong>
                   {{ "Wrong" | t }}</span
                 >
-                <span
+                <span class="stat-title"
                   ><strong data-testid="verdict-unsure">{{ counts.unsure | number }}</strong>
                   {{ "Not sure" | t }}</span
                 >
               </div>
             }
+            </div>
           </article>
           <div class="overview-grid">
             <article class="panel chart-panel">
