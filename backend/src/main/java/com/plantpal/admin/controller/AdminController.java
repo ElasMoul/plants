@@ -1,6 +1,7 @@
 package com.plantpal.admin.controller;
 
 import com.plantpal.admin.dto.AdminDtos.Activity;
+import com.plantpal.admin.dto.AdminDtos.Metrics;
 import com.plantpal.admin.dto.AdminDtos.ModelUpdate;
 import com.plantpal.admin.dto.AdminDtos.ModelView;
 import com.plantpal.admin.dto.AdminDtos.Overview;
@@ -88,6 +89,13 @@ public class AdminController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ApiResponse.success(admin.verdictCounts(from, to));
+  }
+
+  @GetMapping("/metrics")
+  public ApiResponse<Metrics> metrics(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(admin.metrics(from, to));
   }
 
   private Pageable bounded(Pageable page, String sort) {

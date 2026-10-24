@@ -6,6 +6,7 @@ import com.plantpal.user.service.UsageService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -70,4 +71,17 @@ public final class AdminDtos {
   public record Day(String date, long completed, long failed, long pending) {}
 
   public record VerdictCounts(long right, long wrong, long unsure) {}
+
+  public record Metrics(
+      String from, String to, Scans scans, Errors errors, AiUsage aiUsage, Cost cost) {}
+
+  public record Scans(long total, long completed, long failed, long pending) {}
+
+  public record Errors(long failedScans) {}
+
+  public record AiUsage(long totalRequests, long scanRequests, List<UsageDay> perDay) {}
+
+  public record UsageDay(String date, long aiRequests, long scans) {}
+
+  public record Cost(BigDecimal estimated, BigDecimal perRequestRate, String basis) {}
 }

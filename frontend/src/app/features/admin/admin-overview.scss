@@ -405,3 +405,5 @@
 .verdict-range label { display: flex; flex-direction: column; gap: 4px; }
 .verdict-counts { display: flex; flex-wrap: wrap; gap: 32px; }
 .verdict-counts strong { display: block; font-size: 2rem; }
+.metrics-panel { margin-bottom: 24px; }
+.metrics-panel small { display: block; max-width: 22ch; }

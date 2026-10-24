@@ -1,6 +1,7 @@
 package com.plantpal.admin.service;
 
 import com.plantpal.admin.dto.AdminDtos.Activity;
+import com.plantpal.admin.dto.AdminDtos.Metrics;
 import com.plantpal.admin.dto.AdminDtos.Overview;
 import com.plantpal.admin.dto.AdminDtos.UserUpdate;
 import com.plantpal.admin.dto.AdminDtos.UserView;
@@ -19,6 +20,9 @@ public interface AdminService {
   UserView updateUser(Long id, UserUpdate request, Long actorId);
 
   Page<Activity> activity(Pageable pageable);
+
+  /** Operational metrics over inclusive UTC days; null bounds default to the last 30 days. */
+  Metrics metrics(java.time.LocalDate from, java.time.LocalDate to);
 
   /** Inclusive calendar days, UTC. */
   VerdictCounts verdictCounts(java.time.LocalDate from, java.time.LocalDate to);

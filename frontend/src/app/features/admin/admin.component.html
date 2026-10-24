@@ -226,6 +226,66 @@
               </div>
             }
           </article>
+          <article class="panel metrics-panel" data-testid="operational-metrics">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">{{ "Operations" | t }}</p>
+                <h2>{{ "Operational metrics" | t }}</h2>
+              </div>
+              <span class="pill">UTC</span>
+            </div>
+            <div class="verdict-range">
+              <label
+                >{{ "From" | t }}
+                <input
+                  type="date"
+                  [(ngModel)]="metricsFrom"
+                  (ngModelChange)="loadMetrics()"
+              /></label>
+              <label
+                >{{ "To" | t }}
+                <input
+                  type="date"
+                  [(ngModel)]="metricsTo"
+                  (ngModelChange)="loadMetrics()"
+              /></label>
+            </div>
+            @if (metricsError) {
+              <p role="alert">{{ "Could not load metrics (maximum range 92 days)." | t }}</p>
+            }
+            @if (metrics; as m) {
+              <div class="verdict-counts">
+                <span
+                  ><strong data-testid="metric-scans">{{ m.scans.total | number }}</strong>
+                  {{ "Scans" | t }}
+                  <small class="stat-note"
+                    >Identification attempts created in the range.</small
+                  ></span
+                >
+                <span
+                  ><strong data-testid="metric-errors">{{ m.errors.failedScans | number }}</strong>
+                  {{ "Errors" | t }}
+                  <small class="stat-note">Scans whose pipeline ended FAILED.</small></span
+                >
+                <span
+                  ><strong data-testid="metric-ai">{{ m.aiUsage.totalRequests | number }}</strong>
+                  {{ "AI requests" | t }}
+                  <small class="stat-note"
+                    >Accepted AI attempts, including provider failures.</small
+                  ></span
+                >
+                <span
+                  ><strong data-testid="metric-cost">{{
+                    m.cost.estimated === null ? "—" : (m.cost.estimated | number: "1.2-4")
+                  }}</strong>
+                  {{ "Estimated cost" | t }}
+                  <small class="stat-note" data-testid="metric-cost-basis">{{
+                    m.cost.basis
+                  }}</small></span
+                >
+              </div>
+            }
+          </article>
           <div class="overview-grid">
             <article class="panel chart-panel">
               <div class="panel-heading">
