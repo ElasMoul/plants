@@ -9,6 +9,8 @@
     "build:prod": "ng build --configuration production",
     "build:atlas": "ng build atlas",
     "build:atlas:prod": "ng build atlas --configuration production",
+    "postbuild:prod": "node scripts/write-version.mjs dist/plantpal",
+    "postbuild:atlas:prod": "node scripts/write-version.mjs dist/atlas/browser",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
     "test:auth-guard": "jest --config jest.auth-guard.config.js --runInBand --ci --passWithNoTests=false",

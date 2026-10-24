@@ -87,6 +87,8 @@ services:
     build:
       context: ../../frontend
       dockerfile: ../deploy/dev-delivery/frontend.Dockerfile
+      args:
+        APP_REVISION: ${APP_REVISION}
       additional_contexts:
         devdelivery: .
     restart: unless-stopped
