@@ -30,20 +30,22 @@ public class ReminderDigestMailer {
   private static final Set<String> LABEL_LANGUAGES = Set.of("en", "fr");
   private static final int MAX_LISTED = 25;
   private static final String FALLBACK_LANGUAGE = "en";
-  private static final String UNSUBSCRIBE_PATH = "/api/v1/email/unsubscribe?token=";
   private static final Map<String, Properties> LABELS = new ConcurrentHashMap<>();
 
   private final MailService mailService;
   private final PlantRepository plantRepository;
   private final String publicBaseUrl;
+  private final String unsubscribePath;
 
   public ReminderDigestMailer(
       MailService mailService,
       PlantRepository plantRepository,
-      @Value("${app.public-base-url:http://localhost:4200}") String publicBaseUrl) {
+      @Value("${app.public-base-url:http://localhost:4200}") String publicBaseUrl,
+      @Value("${app.email.unsubscribe-path:/api/v1/email/unsubscribe}") String unsubscribePath) {
     this.mailService = mailService;
     this.plantRepository = plantRepository;
-    this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
+    this.publicBaseUrl = stripTrailingSlashes(publicBaseUrl);
+    this.unsubscribePath = unsubscribePath;
   }
 
   /** Queues the digest; joins the caller's transaction like every other send. */
@@ -57,8 +59,16 @@ public class ReminderDigestMailer {
     mailService.send(EmailTemplate.REMINDER_DIGEST, user.getEmail(), language, variables);
   }
 
+  private static String stripTrailingSlashes(String url) {
+    int end = url.length();
+    while (end > 0 && url.charAt(end - 1) == '/') {
+      end--;
+    }
+    return url.substring(0, end);
+  }
+
   String unsubscribeUrl(String token) {
-    return publicBaseUrl + UNSUBSCRIBE_PATH + token;
+    return publicBaseUrl + unsubscribePath + "?token=" + token;
   }
 
   private String renderReminders(List<Reminder> due, String language) {

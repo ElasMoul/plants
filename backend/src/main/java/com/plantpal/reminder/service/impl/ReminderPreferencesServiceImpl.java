@@ -12,6 +12,7 @@ import com.plantpal.reminder.repository.ReminderPreferencesRepository;
 import com.plantpal.reminder.service.ReminderPreferencesService;
 import com.plantpal.shared.exception.ValidationException;
 import com.plantpal.user.repository.UserRepository;
+import jakarta.validation.Valid;
 import java.security.SecureRandom;
 import java.time.DateTimeException;
 import java.time.LocalTime;
@@ -28,13 +29,13 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
 
   private static final Logger log = LoggerFactory.getLogger(ReminderPreferencesServiceImpl.class);
   private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
+  private static final SecureRandom RANDOM = new SecureRandom();
   private static final int TOKEN_BYTES = 32;
   private static final String UNSUBSCRIBED_ERROR = "unsubscribed";
 
   private final ReminderPreferencesRepository preferencesRepository;
   private final EmailOutboxRepository outboxRepository;
   private final UserRepository userRepository;
-  private final SecureRandom random = new SecureRandom();
 
   public ReminderPreferencesServiceImpl(
       ReminderPreferencesRepository preferencesRepository,
@@ -56,7 +57,8 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
 
   @Override
   @Transactional
-  public ReminderPreferencesResponse update(Long userId, ReminderPreferencesRequest request) {
+  public ReminderPreferencesResponse update(
+      Long userId, @Valid ReminderPreferencesRequest request) {
     ZoneId zone = parseZone(request.getTimeZone());
     LocalTime start = parseTime(request.getQuietHoursStart());
     LocalTime end = parseTime(request.getQuietHoursEnd());
@@ -66,7 +68,7 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
     if (start != null && start.equals(end)) {
       throw new ValidationException("Quiet hours start and end must differ");
     }
-    ReminderPreferences prefs = getOrCreate(userId);
+    ReminderPreferences prefs = loadOrCreate(userId);
     prefs.setChannel(request.getChannel());
     prefs.setQuietHoursStart(start);
     prefs.setQuietHoursEnd(end);
@@ -80,6 +82,10 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
   @Override
   @Transactional
   public ReminderPreferences getOrCreate(Long userId) {
+    return loadOrCreate(userId);
+  }
+
+  private ReminderPreferences loadOrCreate(Long userId) {
     return preferencesRepository
         .findById(userId)
         .orElseGet(
@@ -123,7 +129,7 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
 
   private String newToken() {
     byte[] bytes = new byte[TOKEN_BYTES];
-    random.nextBytes(bytes);
+    RANDOM.nextBytes(bytes);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
@@ -131,6 +137,7 @@ public class ReminderPreferencesServiceImpl implements ReminderPreferencesServic
     try {
       return ZoneId.of(value);
     } catch (DateTimeException e) {
+      log.debug("Rejected time zone '{}': {}", value, e.getMessage());
       throw new ValidationException("Unknown time zone: " + value);
     }
   }

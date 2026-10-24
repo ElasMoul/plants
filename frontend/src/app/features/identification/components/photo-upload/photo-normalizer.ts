@@ -41,13 +41,8 @@ export const browserCodec: PhotoCodec = {
   },
 };
 
-export function readLeadingBytes(file: Blob): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file.slice(0, INSPECT_BYTES));
-  });
+export async function readLeadingBytes(file: Blob): Promise<Uint8Array> {
+  return new Uint8Array(await file.slice(0, INSPECT_BYTES).arrayBuffer());
 }
 
 /**

@@ -325,7 +325,7 @@ export class PhotoUploadComponent implements OnInit, OnDestroy {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => (typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('preview')));
-      reader.onerror = () => reject(reader.error);
+      reader.onerror = () => reject(reader.error ?? new Error('preview'));
       reader.readAsDataURL(file);
     });
   }
