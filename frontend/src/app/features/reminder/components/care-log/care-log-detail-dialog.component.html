@@ -6,7 +6,7 @@
 <mat-dialog-content>
   <p class="detail-row">
     <mat-icon class="row-icon">event</mat-icon>
-    {{ '{0} at {1}' | t : [(data.performedAt | date:'fullDate'), (data.performedAt | date:'shortTime')] }}
+    {{ '{0} at {1}' | t : [(data.performedAt | localeDate:'fullDate'), (data.performedAt | localeDate:'shortTime')] }}
   </p>
 
   <p class="detail-row" *ngIf="data.plantNickname">

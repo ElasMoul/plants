@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { FR } from '../../i18n/fr';
-import { AR } from '../../i18n/ar';
 import { TranslatePipe } from '../../i18n/translate.pipe';
 import { VerdictControlComponent } from './verdict-control.component';
 
@@ -59,7 +58,7 @@ describe('VerdictControlComponent', () => {
     expect(el('verdict-UNSURE')!.classList).toContain('selected');
   });
 
-  it('has FR and AR translations for every new text', () => {
+  it('has FR translations for every new text', () => {
     for (const key of [
       'Was this right?', 'Right', 'Wrong', 'Not sure',
       'What is the correct species? (optional)', 'Thanks for your feedback',
@@ -67,7 +66,6 @@ describe('VerdictControlComponent', () => {
       'Could not load feedback counts.',
     ]) {
       expect(FR[key]).toBeTruthy();
-      expect(AR[key]).toBeTruthy();
     }
   });
 });

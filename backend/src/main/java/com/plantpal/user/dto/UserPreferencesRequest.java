@@ -16,7 +16,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UserPreferencesRequest {
 
-  @jakarta.validation.constraints.Pattern(regexp = "en|fr|ar")
+  @jakarta.validation.constraints.Pattern(
+      regexp = com.plantpal.localization.SupportedLanguages.PATTERN)
   private String language;
 
   // Deprecated — superseded by visionModelPreference/reasoningModelPreference below. Nullable:
@@ -42,4 +43,8 @@ public class UserPreferencesRequest {
   // country against ISO 3166-1 alpha-2, climate against ClimateZone; anything else is a 400.
   private String regionCountry;
   private String regionClimate;
+
+  // Display units and IANA time zone (PLA-132). Nullable — omit to leave unchanged.
+  private com.plantpal.user.entity.UnitSystem unitSystem;
+  private String timeZone;
 }

@@ -319,7 +319,8 @@ public class IdentificationServiceImpl implements IdentificationService {
                 userRepository
                     .findById(userId)
                     .map(com.plantpal.user.entity.User::getLanguage)
-                    .orElse("en"))
+                    .map(com.plantpal.localization.SupportedLanguages::normalize)
+                    .orElse(com.plantpal.localization.SupportedLanguages.DEFAULT))
             .userId(userId)
             .plantId(plantId)
             .speciesId(speciesId)

@@ -49,8 +49,8 @@
     <!-- Due status -->
     <div class="step-meta">
       <mat-icon class="meta-icon">{{ step.enabled ? 'schedule' : 'check_circle' }}</mat-icon>
-      <span *ngIf="!step.enabled">{{ 'Completed {0}' | t : [(step.completedAt | date:'longDate')] }}</span>
-      <span *ngIf="step.enabled && step.nextDueAt">{{ 'Due {0}' | t : [(step.nextDueAt | date:'longDate')] }}</span>
+      <span *ngIf="!step.enabled">{{ 'Completed {0}' | t : [(step.completedAt | localeDate:'longDate')] }}</span>
+      <span *ngIf="step.enabled && step.nextDueAt">{{ 'Due {0}' | t : [(step.nextDueAt | localeDate:'longDate')] }}</span>
     </div>
 
     <!-- Mark done -->

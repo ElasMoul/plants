@@ -78,7 +78,7 @@ public class TranslationClient {
 
   private Map<String, String> translateBatch(List<String> texts, Long userId, String language)
       throws Exception {
-    String prompt = PROMPT.formatted("ar".equals(language) ? "Modern Standard Arabic" : "French");
+    String prompt = PROMPT.formatted(SupportedLanguages.displayName(language));
     var bucket =
         buckets.resolveBucket(
             userId.toString(),

@@ -1,6 +1,5 @@
-import { AR } from './ar';
 import { FR } from './fr';
-import { LanguageService, pluralSuffix, readLanguage, translate } from './language.service';
+import { DEFAULT_LANGUAGE, LanguageService, SUPPORTED_LANGUAGES, adoptProfileLanguage, pluralSuffix, readLanguage, translate } from './language.service';
 import { localizedPaginator } from './localized-paginator';
 
 describe('User interface languages', () => {
@@ -32,7 +31,7 @@ describe('User interface languages', () => {
 
   it('keeps all translation placeholders aligned with their source', () => {
     const placeholders = (text: string) => [...new Set(text.match(/\{\d+\}/g))].sort();
-    for (const [source, translation] of Object.entries({ ...FR, ...AR })) {
+    for (const [source, translation] of Object.entries(FR)) {
       expect({ source, placeholders: placeholders(translation) })
         .toEqual({ source, placeholders: placeholders(source) });
     }
@@ -64,29 +63,56 @@ describe('User interface languages', () => {
 });
 
 
-describe('Arabic locale', () => {
-  afterEach(() => localStorage.removeItem('plantpal.language'));
-  it('sets RTL and uses full Arabic catalog with matching keys', () => {
-    localStorage.setItem('plantpal.language', 'ar');
-    const service = new LanguageService(document);
-    expect(service.locale).toBe('ar-MA');
-    expect(document.documentElement.dir).toBe('rtl');
-    expect(Object.keys(AR).sort()).toEqual(Object.keys(FR).sort());
-    expect(translate('Sign in')).toMatch(/[\u0600-\u06ff]/);
-    expect(pluralSuffix(5)).toBe('');
-    expect([0, 1, 2, 3, 11, 100].map(n => translate('{0} plant{1}', [n, ''])))
-      .toEqual(['لا نباتات', 'نبتة واحدة', 'نبتتان', '3 نباتات', '11 نبتة', '100 نبتة']);
-  });
-});
-
-
-describe('Detected language', () => {
+describe('Language policy', () => {
   afterEach(() => { localStorage.clear(); jest.restoreAllMocks(); });
-  it('detects supported browser locales and lets an explicit selection override detection', () => {
-    jest.spyOn(navigator, 'languages', 'get').mockReturnValue(['ar-MA', 'fr-FR']);
+
+  it('defines exactly English and French, with English as the default', () => {
+    expect([...SUPPORTED_LANGUAGES]).toEqual(['en', 'fr']);
+    expect(DEFAULT_LANGUAGE).toBe('en');
+  });
+
+  it('shows English to a visitor with no choice whatever the browser language is', () => {
+    jest.spyOn(navigator, 'languages', 'get').mockReturnValue(['fr-FR', 'fr']);
+    jest.spyOn(navigator, 'language', 'get').mockReturnValue('fr-FR');
     localStorage.clear();
-    expect(readLanguage()).toBe('ar');
-    localStorage.setItem('plantpal.language', 'en');
     expect(readLanguage()).toBe('en');
+    expect(translate('Sign in')).toBe('Sign in');
+    expect(new LanguageService(document).language).toBe('en');
+  });
+
+  it('shows English for a stored unsupported language such as ar', () => {
+    localStorage.setItem('plantpal.language', 'ar');
+    expect(readLanguage()).toBe('en');
+    expect(translate('Sign in')).toBe('Sign in');
+  });
+
+  it('persists a French choice across a fresh service instance and rejects unsupported codes', () => {
+    const service = new LanguageService(document);
+    service.select('ar');
+    expect(localStorage.getItem('plantpal.language')).toBeNull();
+    localStorage.setItem('plantpal.language', 'fr');
+    expect(new LanguageService(document).language).toBe('fr');
+  });
+
+  it('lets the profile language win over the device value and reports when a reload is needed', () => {
+    localStorage.setItem('plantpal.language', 'en');
+    document.documentElement.lang = 'en';
+    expect(adoptProfileLanguage('fr')).toBe(true);
+    expect(localStorage.getItem('plantpal.language')).toBe('fr');
+    document.documentElement.lang = 'fr';
+    expect(adoptProfileLanguage('fr')).toBe(false);
+    expect(adoptProfileLanguage('ar')).toBe(true);
+    expect(localStorage.getItem('plantpal.language')).toBe('en');
+    expect(adoptProfileLanguage(null)).toBe(false);
+  });
+
+  it('falls back to the English text for a missing or empty French entry, never a blank or key', () => {
+    localStorage.setItem('plantpal.language', 'fr');
+    const original = FR['Sign in'];
+    expect(translate('Message with no French entry')).toBe('Message with no French entry');
+    (FR as Record<string, string>)['Sign in'] = '';
+    try {
+      expect(translate('Sign in')).toBe('Sign in');
+    } finally { (FR as Record<string, string>)['Sign in'] = original; }
   });
 });

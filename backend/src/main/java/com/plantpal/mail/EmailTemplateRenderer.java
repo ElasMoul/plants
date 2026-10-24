@@ -1,11 +1,11 @@
 package com.plantpal.mail;
 
+import com.plantpal.localization.SupportedLanguages;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,13 +15,13 @@ import org.springframework.web.util.HtmlUtils;
 
 /**
  * Renders the EN/FR templates under {@code classpath:mail/}. Accounts can also be set to a language
- * with no template (Arabic today); those fall back to English rather than failing a send.
+ * with no template (e.g. a legacy "ar" value); those fall back to English rather than failing a
+ * send.
  */
 @Component
 public class EmailTemplateRenderer {
 
   static final String FALLBACK_LANGUAGE = "en";
-  private static final Set<String> TEMPLATE_LANGUAGES = Set.of("en", "fr");
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(\\w+)}}");
 
   private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public class EmailTemplateRenderer {
       return FALLBACK_LANGUAGE;
     }
     String code = language.substring(0, 2).toLowerCase(Locale.ROOT);
-    return TEMPLATE_LANGUAGES.contains(code) ? code : FALLBACK_LANGUAGE;
+    return SupportedLanguages.isSupported(code) ? code : FALLBACK_LANGUAGE;
   }
 
   private void validate(Map<String, String> vars) {

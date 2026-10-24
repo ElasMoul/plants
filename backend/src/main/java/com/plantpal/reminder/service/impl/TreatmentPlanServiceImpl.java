@@ -18,7 +18,6 @@ import com.plantpal.reminder.service.TreatmentPlanService;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,16 +37,19 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
   private final PlantRepository plantRepository;
 
   private final ApplicationEventPublisher events;
+  private final com.plantpal.user.repository.UserRepository userRepository;
 
   public TreatmentPlanServiceImpl(
       ApplicationEventPublisher events,
       TreatmentPlanRepository treatmentPlanRepository,
       ReminderRepository reminderRepository,
-      PlantRepository plantRepository) {
+      PlantRepository plantRepository,
+      com.plantpal.user.repository.UserRepository userRepository) {
     this.events = events;
     this.treatmentPlanRepository = treatmentPlanRepository;
     this.reminderRepository = reminderRepository;
     this.plantRepository = plantRepository;
+    this.userRepository = userRepository;
   }
 
   @Override
@@ -86,6 +88,9 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     plan = treatmentPlanRepository.save(plan);
 
     Instant now = Instant.now();
+    java.time.ZoneId zone =
+        com.plantpal.user.service.UserZones.of(
+            userRepository.findTimeZoneById(userId).orElse(null));
     for (TreatmentStepDto step : actionPlan.getSteps()) {
       reminderRepository.save(
           Reminder.builder()
@@ -93,7 +98,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
               .userId(userId)
               .careType(careType)
               .frequencyDays(0)
-              .nextDueAt(now.plus(step.getDueOffsetDays(), ChronoUnit.DAYS))
+              .nextDueAt(
+                  java.time.ZonedDateTime.ofInstant(now, zone)
+                      .plusDays(step.getDueOffsetDays())
+                      .toInstant())
               .enabled(true)
               .recurring(false)
               .treatmentPlanId(plan.getId())

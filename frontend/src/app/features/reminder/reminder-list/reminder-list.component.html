@@ -77,7 +77,7 @@
             {{ '· Overdue by {0} day{1}' | t : [(daysOverdue(reminder)), (daysOverdue(reminder) | pluralSuffix)] }}
           </ng-container>
           <ng-container *ngIf="!isOverdue(reminder)">
-            {{ '· Due {0}' | t : [(reminder.nextDueAt | date:'mediumDate')] }}
+            {{ '· Due {0}' | t : [(reminder.nextDueAt | localeDate:'mediumDate')] }}
           </ng-container>
         </p>
       </div>

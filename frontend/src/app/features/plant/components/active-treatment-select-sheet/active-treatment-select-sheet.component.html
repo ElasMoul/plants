@@ -12,7 +12,7 @@
       <div class="treatment-select-meta">
         <span class="treatment-select-name">{{ row.treatment.diseaseName | aiText }}</span>
         <span class="treatment-select-date" *ngIf="row.treatment.startedAt">
-          {{ 'Started {0}' | t : [(row.treatment.startedAt | date:'mediumDate')] }}
+          {{ 'Started {0}' | t : [(row.treatment.startedAt | localeDate:'mediumDate')] }}
         </span>
       </div>
       <span class="status-chip" [ngClass]="'status-' + row.treatment.status.toLowerCase()">

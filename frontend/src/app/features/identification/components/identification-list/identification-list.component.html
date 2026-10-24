@@ -30,7 +30,7 @@
           {{ (item.commonName | aiText) || item.scientificName || ('Identifying…' | t) }}
         </p>
         <p class="row-date">
-          {{ item.createdAt | date:'short' }}
+          {{ item.createdAt | localeDate:'short' }}
           <span class="model-chip" *ngIf="modelLabel(item) as model">{{ model }}</span>
         </p>
       </div>

@@ -24,6 +24,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Page<User> searchForAdmin(
       @Param("query") String query, @Param("status") UserStatus status, Pageable pageable);
 
+  @Query("SELECT u.timeZone FROM User u WHERE u.id = :id")
+  Optional<String> findTimeZoneById(@Param("id") Long id);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT u FROM User u WHERE u.id = :id")
   Optional<User> findForAdminUpdate(@Param("id") Long id);

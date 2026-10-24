@@ -1,4 +1,4 @@
-import { translate } from '../../../shared/i18n/language.service';
+import { adoptProfileLanguage, translate } from '../../../shared/i18n/language.service';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -61,7 +61,7 @@ export class LoginComponent {
         // poll may evict synchronously, and must preserve the destination rather
         // than the transient /login route.
         Promise.resolve(destination).then(() => {
-          if (res.data.language && document.documentElement.lang !== res.data.language) window.location.reload();
+          if (adoptProfileLanguage(res.data.language)) window.location.reload();
           else this.sessionMonitorService.start(this.returnUrl ?? '/garden');
         });
       },

@@ -1,13 +1,12 @@
 # PlantPal languages
 
-The standard user app supports EN, FR and AR. Registration detects the first supported
-browser language unless the user chooses one. The language is saved on the account;
+The standard user app supports EN (default) and FR (PLA-126; Arabic was removed, stored `ar` values read as EN). The browser language is never used. Registration uses the language the visitor chose (English if none). The language is saved on the account;
 settings/header changes save it before reloading. Login restores the account preference.
 Admin and Atlas remain outside this localization rollout.
 
 ## Interface and plant content
 
-Changing language updates static interface text, dates and layout. Arabic uses RTL.
+Changing language updates static interface text, dates and layout.
 Existing plant content automatically displays a saved version in the selected language.
 If that version is missing, its current text remains until explicitly translated. Scientific names, nicknames and
 user notes remain unchanged. New AI content is prepared in the saved account language;

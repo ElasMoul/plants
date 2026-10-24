@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     User user =
         User.builder()
-            .language(request.getLanguage() == null ? "en" : request.getLanguage())
+            .language(com.plantpal.localization.SupportedLanguages.normalize(request.getLanguage()))
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .firstName(request.getFirstName())
@@ -180,6 +180,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
       user.setBusinessTier(request.getBusinessTier());
     }
     applyRegion(user, request);
+    applyUnitsAndTimeZone(user, request);
     userRepository.save(user);
     log.info(
         "User preference updated: userId={}, visionModelPreference={}, reasoningModelPreference={},"
@@ -211,9 +212,22 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
   }
 
+  private void applyUnitsAndTimeZone(User user, UserPreferencesRequest request) {
+    if (request.getUnitSystem() != null) {
+      user.setUnitSystem(request.getUnitSystem());
+    }
+    if (request.getTimeZone() != null) {
+      try {
+        user.setTimeZone(java.time.ZoneId.of(request.getTimeZone()).getId());
+      } catch (java.time.DateTimeException e) {
+        throw new ValidationException("Unknown time zone: " + request.getTimeZone());
+      }
+    }
+  }
+
   private UserPreferencesResponse toPreferencesResponse(User user) {
     return UserPreferencesResponse.builder()
-        .language(user.getLanguage())
+        .language(com.plantpal.localization.SupportedLanguages.normalize(user.getLanguage()))
         .aiModelPreference(user.getAiModelPreference())
         .visionModelPreference(user.getVisionModelPreference())
         .reasoningModelPreference(user.getReasoningModelPreference())
@@ -226,6 +240,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .businessTier(user.isBusinessTier())
         .regionCountry(user.getRegionCountry())
         .regionClimate(user.getRegionClimate())
+        .unitSystem(user.getUnitSystem())
+        .effectiveUnitSystem(
+            com.plantpal.user.service.UnitSystemResolver.resolve(
+                user.getUnitSystem(), user.getRegionCountry()))
+        .timeZone(user.getTimeZone())
         .build();
   }
 
@@ -272,7 +291,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
   private AuthResponse buildAuthResponse(User user, String token) {
     return AuthResponse.builder()
-        .language(user.getLanguage())
+        .language(com.plantpal.localization.SupportedLanguages.normalize(user.getLanguage()))
         .token(token)
         .role(user.getRole().name())
         .expiresIn(jwtExpirationMs)

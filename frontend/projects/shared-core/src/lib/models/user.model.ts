@@ -26,6 +26,8 @@ export type ReasoningModelPreference =
 
 export type ClimateZone = 'TROPICAL' | 'ARID' | 'TEMPERATE' | 'CONTINENTAL' | 'POLAR';
 
+export type UnitSystem = 'METRIC' | 'IMPERIAL';
+
 export interface UserPreferences {
   language?: 'en' | 'fr' | 'ar';
   visionModelVisibility?: Partial<Record<VisionModelPreference, boolean>>;
@@ -49,6 +51,11 @@ export interface UserPreferences {
   // Coarse region (PLA-107): ISO 3166-1 alpha-2 country + climate zone. Never a precise location.
   regionCountry?: string | null;
   regionClimate?: ClimateZone | null;
+  // Display units (PLA-132). unitSystem is the stored choice (null = default); effectiveUnitSystem
+  // is what to render. timeZone is an IANA id, null until the browser zone is first stored.
+  unitSystem?: UnitSystem | null;
+  effectiveUnitSystem?: UnitSystem;
+  timeZone?: string | null;
 }
 
 export interface User {

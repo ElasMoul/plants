@@ -201,11 +201,9 @@ public class ChatServiceImpl implements ChatService {
     String historyBlock = buildHistoryBlock(request.getHistory());
     return SYSTEM_PROMPT_TEMPLATE.formatted(contextBlock)
         + historyBlock
-        + ("fr".equals(request.getLanguage())
-            ? "\nRespond in French. Preserve scientific names, quantities, units and safety warnings."
-            : "ar".equals(request.getLanguage())
-                ? "\nRespond in Modern Standard Arabic. Preserve scientific names, quantities, units and safety warnings."
-                : "\nRespond in English. Preserve scientific names, quantities, units and safety warnings.");
+        + "\nRespond in "
+        + com.plantpal.localization.SupportedLanguages.displayName(request.getLanguage())
+        + ". Preserve scientific names, quantities, units and safety warnings.";
   }
 
   /**
