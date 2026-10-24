@@ -8,13 +8,9 @@ if (typeof Blob.prototype.arrayBuffer !== 'function') {
   Blob.prototype.arrayBuffer = function (this: Blob): Promise<ArrayBuffer> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = String(reader.result).split(',')[1] ?? '';
-        const bytes = Uint8Array.from(atob(base64), (c) => c.codePointAt(0) ?? 0);
-        resolve(bytes.buffer);
-      };
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
       reader.onerror = () => reject(reader.error ?? new Error('read failed'));
-      reader.readAsDataURL(this);
+      reader.readAsArrayBuffer(this);
     });
   };
 }
