@@ -700,5 +700,13 @@ export const AR: Readonly<Record<string, string>> = {
   "The file is deleted from our servers {0} hours after it is created.": "يُحذف الملف من خوادمنا بعد {0} ساعة من إنشائه.",
   "Preparing your export…": "جارٍ تجهيز التصدير…",
   "You have requested too many exports. Please try again later.": "طلبتَ عددًا كبيرًا من عمليات التصدير. حاول مرة أخرى لاحقًا.",
-  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى."
+  "Could not create your export. Please try again.": "تعذر إنشاء التصدير. حاول مرة أخرى.",
+  "Every {0} days · {1}": "كل {0} يومًا · {1}",
+  "Change": "تغيير",
+  "Reset": "إعادة ضبط",
+  "Custom interval": "فترة مخصصة",
+  "Resting season": "موسم السكون",
+  "Growing season": "موسم النمو",
+  "Days between care (1-365)": "الأيام بين كل عناية (1-365)",
+  "Enter a whole number of days between 1 and 365.": "أدخل عددًا صحيحًا من الأيام بين 1 و365."
 };

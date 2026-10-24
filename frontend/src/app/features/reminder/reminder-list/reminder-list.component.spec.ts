@@ -19,7 +19,7 @@ function reminder(id: number, dueInHours: number, recurring = true): ReminderRes
 }
 
 describe('ReminderListComponent', () => {
-  let service: { getReminders: jest.Mock; markCareDone: jest.Mock };
+  let service: { getReminders: jest.Mock; markCareDone: jest.Mock; setIntervalOverride: jest.Mock };
   let dialog: { open: jest.Mock };
   let snackBar: { open: jest.Mock };
   let router: { navigate: jest.Mock };
@@ -31,6 +31,7 @@ describe('ReminderListComponent', () => {
     service = {
       getReminders: jest.fn(() => of({ data: [reminder(1, 5), reminder(2, -30)] })),
       markCareDone: jest.fn(() => of({ data: {} })),
+      setIntervalOverride: jest.fn(() => of({ data: {} })),
     };
     dialog = { open: jest.fn(() => ({ afterClosed: () => of(true) })) };
     snackBar = { open: jest.fn() };
@@ -127,5 +128,31 @@ describe('ReminderListComponent', () => {
     service.getReminders.mockReturnValue(throwError(() => new Error('down')));
     component.openCreateDialog();
     expect(component.loading).toBe(false);
+  });
+
+  it('labels the interval by season, or as custom when overridden', () => {
+    const base = reminder(1, 5);
+    expect(component.intervalLabel({ ...base, season: 'GROWING' })).toBe('Growing season');
+    expect(component.intervalLabel({ ...base, season: 'RESTING' })).toBe('Resting season');
+    expect(component.intervalLabel({ ...base, season: 'RESTING', overrideFrequencyDays: 4 })).toBe('Custom interval');
+  });
+
+  it('clears the override with null and reloads', () => {
+    component.clearInterval(component.reminders[0], click);
+    expect(service.setIntervalOverride).toHaveBeenCalledWith(component.reminders[0].id, null);
+    expect(service.getReminders).toHaveBeenCalledTimes(2);
+  });
+
+  it('sets an override from a valid prompt answer and rejects an invalid one', () => {
+    const prompt = jest.spyOn(window, 'prompt').mockReturnValue('4');
+    component.editInterval(component.reminders[0], click);
+    expect(service.setIntervalOverride).toHaveBeenCalledWith(component.reminders[0].id, 4);
+
+    service.setIntervalOverride.mockClear();
+    prompt.mockReturnValue('366');
+    component.editInterval(component.reminders[0], click);
+    expect(service.setIntervalOverride).not.toHaveBeenCalled();
+    expect(snackBar.open).toHaveBeenCalled();
+    prompt.mockRestore();
   });
 });

@@ -125,4 +125,5 @@
     <include file="db/changelog/migrations/045_plant_groups.sql"/>
     <include file="db/changelog/migrations/046_plant_journal_events.sql"/>
     <include file="db/changelog/migrations/047_email_outbox.sql"/>
+    <include file="db/changelog/migrations/048_reminder_interval_override.sql"/>
 </databaseChangeLog>

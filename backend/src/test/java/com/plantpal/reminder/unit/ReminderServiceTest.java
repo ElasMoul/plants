@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.plantpal.plant.entity.Placement;
 import com.plantpal.plant.entity.Plant;
 import com.plantpal.plant.repository.PlantRepository;
 import com.plantpal.reminder.dto.CreateReminderRequest;
@@ -23,7 +24,11 @@ import com.plantpal.reminder.repository.TreatmentPlanRepository;
 import com.plantpal.reminder.service.impl.ReminderServiceImpl;
 import com.plantpal.shared.exception.ResourceNotFoundException;
 import com.plantpal.shared.exception.ValidationException;
+import com.plantpal.user.entity.User;
+import com.plantpal.user.repository.UserRepository;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +55,7 @@ class ReminderServiceTest {
   @Mock private CareLogRepository careLogRepository;
   @Mock private TreatmentPlanRepository treatmentPlanRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private UserRepository userRepository;
 
   private ReminderServiceImpl reminderService;
 
@@ -64,7 +70,9 @@ class ReminderServiceTest {
             plantRepository,
             careLogRepository,
             treatmentPlanRepository,
-            eventPublisher);
+            eventPublisher,
+            userRepository,
+            Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC));
   }
 
   private Plant plant() {
@@ -74,6 +82,12 @@ class ReminderServiceTest {
         .nickname("Monty")
         .photoUrl("/photos/monty.jpg")
         .build();
+  }
+
+  private Plant plant(Placement placement) {
+    Plant plant = plant();
+    plant.setPlacement(placement);
+    return plant;
   }
 
   @Nested
@@ -391,6 +405,104 @@ class ReminderServiceTest {
       verify(treatmentPlanRepository, never()).findById(any());
       verify(treatmentPlanRepository, never()).save(any());
       verify(eventPublisher, never()).publishEvent(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("seasonal interval and override (PLA-108)")
+  class SeasonalInterval {
+
+    @BeforeEach
+    void winterClock() {
+      reminderService =
+          new ReminderServiceImpl(
+              reminderRepository,
+              plantRepository,
+              careLogRepository,
+              treatmentPlanRepository,
+              eventPublisher,
+              userRepository,
+              Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC));
+    }
+
+    private Reminder watering() {
+      return Reminder.builder()
+          .id(1L)
+          .plantId(PLANT_ID)
+          .userId(USER_ID)
+          .careType(CareType.WATERING)
+          .frequencyDays(7)
+          .nextDueAt(Instant.parse("2026-01-10T08:00:00Z"))
+          .enabled(true)
+          .recurring(true)
+          .build();
+    }
+
+    private void givenUserIn(String country) {
+      when(userRepository.findById(USER_ID))
+          .thenReturn(Optional.of(User.builder().id(USER_ID).regionCountry(country).build()));
+    }
+
+    @Test
+    @DisplayName("should reschedule with the resting-season interval in January up north")
+    void shouldUseRestingIntervalInNorthernWinter() {
+      Reminder reminder = watering();
+      Instant performedAt = Instant.parse("2026-01-15T12:00:00Z");
+      givenUserIn("FR");
+      when(plantRepository.findById(PLANT_ID)).thenReturn(Optional.of(plant(Placement.INDOOR)));
+
+      reminderService.applyCompletionToReminder(reminder, performedAt);
+
+      assertThat(reminder.getNextDueAt()).isEqualTo(performedAt.plus(11, ChronoUnit.DAYS));
+    }
+
+    @Test
+    @DisplayName("should use the growing-season interval in January in the south")
+    void shouldUseGrowingIntervalInSouthernSummer() {
+      Reminder reminder = watering();
+      Instant performedAt = Instant.parse("2026-01-15T12:00:00Z");
+      givenUserIn("AU");
+      when(plantRepository.findById(PLANT_ID)).thenReturn(Optional.of(plant(Placement.INDOOR)));
+
+      reminderService.applyCompletionToReminder(reminder, performedAt);
+
+      assertThat(reminder.getNextDueAt()).isEqualTo(performedAt.plus(7, ChronoUnit.DAYS));
+    }
+
+    @Test
+    @DisplayName("should let the override beat the calculation until it is cleared")
+    void shouldApplyAndClearOverride() {
+      Reminder reminder = watering();
+      Instant performedAt = Instant.parse("2026-01-15T12:00:00Z");
+      when(reminderRepository.findByIdAndUserId(1L, USER_ID)).thenReturn(Optional.of(reminder));
+      when(reminderRepository.save(any(Reminder.class))).thenAnswer(i -> i.getArgument(0));
+      when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+      ReminderResponse set = reminderService.updateInterval(1L, 4, USER_ID);
+
+      assertThat(reminder.getOverrideFrequencyDays()).isEqualTo(4);
+      assertThat(set.getOverrideFrequencyDays()).isEqualTo(4);
+      assertThat(set.getEffectiveFrequencyDays()).isEqualTo(4);
+      assertThat(set.getAdjustmentReason()).contains("User-set");
+      reminderService.applyCompletionToReminder(reminder, performedAt);
+      assertThat(reminder.getNextDueAt()).isEqualTo(performedAt.plus(4, ChronoUnit.DAYS));
+
+      ReminderResponse cleared = reminderService.updateInterval(1L, null, USER_ID);
+
+      assertThat(reminder.getOverrideFrequencyDays()).isNull();
+      assertThat(cleared.getEffectiveFrequencyDays()).isEqualTo(11);
+      reminderService.applyCompletionToReminder(reminder, performedAt);
+      assertThat(reminder.getNextDueAt()).isEqualTo(performedAt.plus(11, ChronoUnit.DAYS));
+    }
+
+    @Test
+    @DisplayName("should reject an override on another user reminder")
+    void shouldRejectOverrideForOtherUser() {
+      when(reminderRepository.findByIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
+
+      assertThatThrownBy(() -> reminderService.updateInterval(1L, 4, 99L))
+          .isInstanceOf(ResourceNotFoundException.class);
+      verify(reminderRepository, never()).save(any());
     }
   }
 }

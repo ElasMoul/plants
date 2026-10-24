@@ -46,6 +46,9 @@ public class Reminder {
   @Column(name = "next_due_at", nullable = false)
   private Instant nextDueAt;
 
+  @Column(name = "override_frequency_days")
+  private Integer overrideFrequencyDays;
+
   @Column(name = "enabled", nullable = false)
   @Builder.Default
   private boolean enabled = true;

@@ -80,6 +80,24 @@
             {{ '· Due {0}' | t : [(reminder.nextDueAt | date:'mediumDate')] }}
           </ng-container>
         </p>
+        <p
+          class="reminder-interval"
+          *ngIf="reminder.recurring && reminder.season"
+          [attr.title]="reminder.adjustmentReason"
+        >
+          {{ 'Every {0} days · {1}' | t : [(reminder.effectiveFrequencyDays), (intervalLabel(reminder) | t)] }}
+          <button type="button" class="interval-edit" (click)="editInterval(reminder, $event)">
+            {{ 'Change' | t }}
+          </button>
+          <button
+            type="button"
+            class="interval-edit"
+            *ngIf="reminder.overrideFrequencyDays"
+            (click)="clearInterval(reminder, $event)"
+          >
+            {{ 'Reset' | t }}
+          </button>
+        </p>
       </div>
 
       <button

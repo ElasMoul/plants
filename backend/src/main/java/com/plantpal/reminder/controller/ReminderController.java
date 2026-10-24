@@ -2,6 +2,7 @@ package com.plantpal.reminder.controller;
 
 import com.plantpal.reminder.dto.CreateReminderRequest;
 import com.plantpal.reminder.dto.ReminderResponse;
+import com.plantpal.reminder.dto.UpdateReminderIntervalRequest;
 import com.plantpal.reminder.service.ReminderService;
 import com.plantpal.shared.dto.ApiResponse;
 import com.plantpal.user.entity.User;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -90,6 +92,27 @@ public class ReminderController {
     Long userId = getCurrentUserId();
     ReminderResponse response = reminderService.completeReminder(id, userId);
     return ResponseEntity.ok(ApiResponse.success(response, "Reminder completed"));
+  }
+
+  @Operation(summary = "Set (or clear with null) a user-chosen interval override for a reminder")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Interval updated"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "400",
+        description = "Validation error"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "404",
+        description = "Reminder not found")
+  })
+  @PatchMapping("/{id}/interval")
+  public ResponseEntity<ApiResponse<ReminderResponse>> updateInterval(
+      @Parameter(description = "Reminder ID") @PathVariable Long id,
+      @Valid @RequestBody UpdateReminderIntervalRequest request) {
+    ReminderResponse response =
+        reminderService.updateInterval(id, request.getFrequencyDays(), getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success(response, "Reminder interval updated"));
   }
 
   @Operation(summary = "Disable a reminder (soft delete)")
