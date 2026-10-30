@@ -45,7 +45,7 @@ projects/
 
 ## The constitution gate
 
-Design tokens are a **pin** — Atlas serves the Herbarium 1.1.0 design pack:
+Design tokens are a **pin** — Atlas serves the Herbarium 1.2.0 design pack:
 `design-pack/tokens.css` (the pack's tokens) and `design-pack/atlas-theme.css` (the accepted
 theme-b) are byte-identical copies; `src/styles/tokens-pin.spec.ts` guards them (never hand-edit;
 re-pin instead). `world/constitution.spec.ts` asserts the Rhizome laws (determinism

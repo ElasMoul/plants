@@ -59,56 +59,56 @@ export const OVERVIEW_HTML = `<div id="app-caption">
         <div class="palettes" id="palettes" role="group" aria-label="Colour palette">
           <button class="palette" type="button" data-palette="first-light" aria-pressed="true" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-accent-ink)"></i><i style="background:var(--hbm-info)"></i>
-              <i style="background:var(--vs-chrome-key)"></i><i style="background:var(--hbm-accent)"></i>
+              <i style="background:var(--hbm-swatch-first-light-1)"></i><i style="background:var(--hbm-swatch-first-light-2)"></i>
+              <i style="background:var(--hbm-swatch-first-light-3)"></i><i style="background:var(--hbm-swatch-first-light-4)"></i>
             </span>
             <span class="palette__name">First light</span>
             <span class="palette__note">default · sill light; green kept for health</span>
           </button>
           <button class="palette" type="button" data-palette="night-canopy" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-bg-world)"></i><i style="background:var(--hbm-bg-sheet)"></i>
-              <i style="background:var(--hbm-growth)"></i><i style="background:var(--hbm-accent)"></i>
+              <i style="background:var(--hbm-swatch-night-canopy-1)"></i><i style="background:var(--hbm-swatch-night-canopy-2)"></i>
+              <i style="background:var(--hbm-swatch-night-canopy-3)"></i><i style="background:var(--hbm-swatch-night-canopy-4)"></i>
             </span>
             <span class="palette__name">Night canopy</span>
             <span class="palette__note">theme-a's key, at this density</span>
           </button>
           <button class="palette" type="button" data-palette="terrarium" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-accent-ink)"></i><i style="background:var(--vs-sheet)"></i>
-              <i style="background:var(--vs-chrome-key)"></i><i style="background:var(--hbm-accent-hover)"></i>
+              <i style="background:var(--hbm-swatch-terrarium-1)"></i><i style="background:var(--hbm-swatch-terrarium-2)"></i>
+              <i style="background:var(--hbm-swatch-terrarium-3)"></i><i style="background:var(--hbm-swatch-terrarium-4)"></i>
             </span>
             <span class="palette__name">Terrarium</span>
             <span class="palette__note">glass and condensation</span>
           </button>
           <button class="palette" type="button" data-palette="potting-shed" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-raised)"></i>
-              <i style="background:var(--hbm-accent)"></i><i style="background:var(--hbm-growth)"></i>
+              <i style="background:var(--hbm-swatch-potting-shed-1)"></i><i style="background:var(--hbm-swatch-potting-shed-2)"></i>
+              <i style="background:var(--hbm-swatch-potting-shed-3)"></i><i style="background:var(--hbm-swatch-potting-shed-4)"></i>
             </span>
             <span class="palette__name">Potting shed</span>
             <span class="palette__note">terracotta at dusk</span>
           </button>
           <button class="palette" type="button" data-palette="pressed-sheet" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-sheet)"></i>
-              <i style="background:var(--hbm-health-thriving)"></i><i style="background:var(--hbm-marker)"></i>
+              <i style="background:var(--hbm-swatch-pressed-sheet-1)"></i><i style="background:var(--hbm-swatch-pressed-sheet-2)"></i>
+              <i style="background:var(--hbm-swatch-pressed-sheet-3)"></i><i style="background:var(--hbm-swatch-pressed-sheet-4)"></i>
             </span>
             <span class="palette__name">Pressed sheet</span>
             <span class="palette__note">the herbarium sheet, in daylight</span>
           </button>
           <button class="palette" type="button" data-palette="late-bench" aria-pressed="false" data-for-ui="glasshouse-table" hidden>
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-bg-sheet)"></i><i style="background:var(--hbm-bg-hover)"></i>
-              <i style="background:var(--hbm-health-stable)"></i><i style="background:var(--hbm-accent)"></i>
+              <i style="background:var(--hbm-swatch-late-bench-1)"></i><i style="background:var(--hbm-swatch-late-bench-2)"></i>
+              <i style="background:var(--hbm-swatch-late-bench-3)"></i><i style="background:var(--hbm-swatch-late-bench-4)"></i>
             </span>
             <span class="palette__name">Late bench</span>
             <span class="palette__note">the same glasshouse an hour after sunset</span>
           </button>
           <button class="palette" type="button" data-palette="glasshouse-table" aria-pressed="true" data-for-ui="glasshouse-table" hidden>
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-sheet)"></i>
-              <i style="background:var(--vs-kind-plant)"></i><i style="background:var(--hbm-marker)"></i>
+              <i style="background:var(--hbm-swatch-glasshouse-table-1)"></i><i style="background:var(--hbm-swatch-glasshouse-table-2)"></i>
+              <i style="background:var(--hbm-swatch-glasshouse-table-3)"></i><i style="background:var(--hbm-swatch-glasshouse-table-4)"></i>
             </span>
             <span class="palette__name">Glasshouse table</span>
             <span class="palette__note">default for this reading · daylight on the bench</span>
