@@ -45,8 +45,9 @@ projects/
 
 ## The constitution gate
 
-Design tokens are a **pin** — `src/styles/tokens.css` is byte-identical to
-`frontend-atlas/theme-a/tokens.css`; `tokens-pin.spec.ts` guards it (never hand-edit;
+Design tokens are a **pin** — Atlas serves the Herbarium 1.1.0 design pack:
+`design-pack/tokens.css` (the pack's tokens) and `design-pack/atlas-theme.css` (the accepted
+theme-b) are byte-identical copies; `src/styles/tokens-pin.spec.ts` guards them (never hand-edit;
 re-pin instead). `world/constitution.spec.ts` asserts the Rhizome laws (determinism
 C7-C9, one plane C1/C4, rank C12, camera-on-polyline C10/C11/C21, degradation
 invariance C9/C22-C25) against the real fixture + store + engine.

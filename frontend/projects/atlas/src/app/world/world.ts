@@ -391,8 +391,8 @@ export class World {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     const styles = getComputedStyle(document.documentElement);
-    const mote = styles.getPropertyValue('--vs-mote').trim() || 'rgba(143,178,106,.55)';
-    const link = styles.getPropertyValue('--vs-mote-link').trim() || 'rgba(143,178,106,.16)';
+    const mote = styles.getPropertyValue('--vs-mote').trim() || styles.getPropertyValue('--hbm-growth').trim();
+    const link = styles.getPropertyValue('--vs-mote-link').trim() || styles.getPropertyValue('--hbm-growth-quiet').trim();
     const frame = (): void => {
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const w = canvas.width;

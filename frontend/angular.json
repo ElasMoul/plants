@@ -136,7 +136,8 @@
               }
             ],
             "styles": [
-              "projects/atlas/src/styles/tokens.css",
+              "design-pack/tokens.css",
+              "design-pack/atlas-theme.css",
               "projects/atlas/src/styles/rhizome.css",
               "projects/atlas/src/styles.scss"
             ]

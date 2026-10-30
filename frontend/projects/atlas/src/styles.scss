@@ -32,7 +32,7 @@ rz-chrome { display: contents; }
 }
 #settings .pane .rz-field span {
   color: var(--vs-face-label);
-  font-size: var(--vs-type-label);
+  font-size: var(--vs-type-label, var(--vs-rung-18));
   letter-spacing: var(--vs-track-label);
 }
 #settings .pane .rz-field input {

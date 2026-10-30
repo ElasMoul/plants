@@ -156,11 +156,11 @@ body[data-mode="overview"] #world { pointer-events: none; }
   box-shadow: none;
   backdrop-filter: var(--vs-chrome-blur);
   color: var(--vs-chrome-ink);
-  font-family: var(--vs-chrome-face);
-  font-size: var(--vs-chrome-size);
+  font-family: var(--vs-chrome-face, var(--vs-face-label));
+  font-size: var(--vs-chrome-size, var(--vs-rung-18));
   letter-spacing: var(--vs-chrome-track);
-  text-transform: var(--vs-chrome-case);
-  font-variant: var(--vs-chrome-variant);
+  text-transform: var(--vs-chrome-case, uppercase);
+  font-variant: var(--vs-chrome-variant, normal);
   line-height: var(--vs-lead-snug);
 }
 /* SILL LINE'S CHROME EXPRESSION: solid, machined, keylined. Where theme-a's
@@ -202,11 +202,11 @@ body[data-mode="overview"] #world { pointer-events: none; }
   width: 100%;
   padding: var(--vs-chrome-pad) var(--vs-gutter-tight);
   border-radius: var(--vs-corner-chrome);
-  font-family: var(--vs-chrome-face);
-  font-size: var(--vs-chrome-size);
+  font-family: var(--vs-chrome-face, var(--vs-face-label));
+  font-size: var(--vs-chrome-size, var(--vs-rung-18));
   letter-spacing: var(--vs-chrome-track);
-  text-transform: var(--vs-chrome-case);
-  font-variant: var(--vs-chrome-variant);
+  text-transform: var(--vs-chrome-case, uppercase);
+  font-variant: var(--vs-chrome-variant, normal);
   color: var(--vs-chrome-ink);
   text-align: start;
   border-bottom: var(--vs-hair) solid transparent;
@@ -378,10 +378,10 @@ body[data-mode="overview"] #world { pointer-events: none; }
   content: "";
   position: absolute;
   top: 0; inset-inline-start: 0;
-  height: var(--vs-tick-weight);
-  width: var(--vs-tick-fringe);
+  height: var(--vs-tick-weight, var(--vs-mount));
+  width: var(--vs-tick-fringe, 1.25rem);
   background: var(--kind, var(--vs-membrane));
-  opacity: var(--vs-tick-op);
+  opacity: var(--vs-tick-op, 0.7);
   transition: width var(--vs-dur-nav) var(--vs-ease-travel),
               height var(--vs-dur-nav) var(--vs-ease-travel);
 }
@@ -389,9 +389,9 @@ body[data-mode="overview"] #world { pointer-events: none; }
    re-pitches them — a stub / half / long tick at Sill Line's density
    becomes a hair-thin ruled pencil line at the Table's. Same law either
    way: with the text blurred, LENGTH is rank and COLOUR is kind. */
-.n[data-rank="far"]::before   { width: var(--vs-tick-far); }
-.n[data-rank="near"]::before  { width: var(--vs-tick-near); }
-.n[data-focus="true"]::before { width: var(--vs-tick-focus); opacity: 1; }
+.n[data-rank="far"]::before   { width: var(--vs-tick-far, 1.75rem); }
+.n[data-rank="near"]::before  { width: var(--vs-tick-near, 3rem); }
+.n[data-focus="true"]::before { width: var(--vs-tick-focus, 7rem); opacity: 1; }
 .n[data-kindkey="collection"] { --kind: var(--vs-kind-collection); }
 .n[data-kindkey="species"]    { --kind: var(--vs-kind-species); }
 .n[data-kindkey="plant"]      { --kind: var(--vs-kind-plant); }

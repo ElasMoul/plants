@@ -1,16 +1,11 @@
-# Vendored Rhizome design tokens
+# Atlas styles
 
-`tokens.css` here is a **byte-identical, pinned copy** of the Rhizome theme tokens:
+Atlas serves the Herbarium design pack (`plantpal-e8e4b3e5` 1.1.0) and its accepted
+theme-b. The two pinned, byte-identical copies live in `frontend/design-pack/`
+(`tokens.css`, `atlas-theme.css`) and are loaded from `angular.json` before
+`rhizome.css`. They are pins, never hand-edited: a missing token is raised as a gap
+against the design pack. `tokens-pin.spec.ts` guards them. The old Rhizome round-8
+`tokens.css` is gone.
 
-- Source: `frontend-atlas/theme-a/tokens.css` (Rhizome `plantpal-cae942ee` v1.0.0).
-- Provenance / rules: `frontend-atlas/design-system/DESIGN_SYSTEM.md`.
-
-## Do not hand-edit
-
-This file is a pin, not a fork. If a token is wrong or missing, raise it as a
-proposal back to the design-studio registry, re-pin `frontend-atlas/`, then
-re-copy the file here — never patch it locally. Keeping it byte-identical is
-what lets us diff this copy against the registry snapshot.
-
-A CI guard asserting `projects/atlas/src/styles/tokens.css` still matches
-`frontend-atlas/theme-a/tokens.css` is wired in Phase F.
+`rhizome.css` is Atlas's own layout/screen CSS and uses only semantic Herbarium or
+theme tokens (checked by `node design/check.mjs` from the hexagon root).

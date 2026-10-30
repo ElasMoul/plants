@@ -1,6 +1,6 @@
-/** The prototype overview/settings overlay, extracted VERBATIM from the pin
- * (frontend-atlas/theme-a/index.html 2152-2281). Regenerate from the pin —
- * never hand-edit. Rendered as the #overview host innerHTML; behavior is wired
+/** The overview/settings overlay, originally extracted from the Rhizome prototype.
+ * Swatches use semantic Herbarium / theme tokens (design pack 1.1.0), so they follow
+ * the active key. Rendered as the #overview host innerHTML; behavior is wired
  * by delegation in the Chrome component. */
 export const OVERVIEW_HTML = `<div id="app-caption">
     <span class="label">PlantPal application</span>
@@ -38,16 +38,16 @@ export const OVERVIEW_HTML = `<div id="app-caption">
         <div class="palettes" id="interfaces" role="group" aria-label="Interface">
           <button class="palette" type="button" data-ui="sill-line" aria-pressed="true">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-sill-500)"></i>
-              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+              <i style="background:var(--hbm-accent-ink)"></i><i style="background:var(--hbm-info)"></i>
+              <i style="background:var(--vs-chrome-key)"></i><i style="background:var(--hbm-accent)"></i>
             </span>
             <span class="palette__name">Sill line</span>
             <span class="palette__note">default · instrument density, 300×180, machined chrome, compressed type</span>
           </button>
           <button class="palette" type="button" data-ui="glasshouse-table" aria-pressed="false">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
-              <i style="background:var(--hbm-leaf-600)"></i><i style="background:var(--hbm-terra-500)"></i>
+              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-sheet)"></i>
+              <i style="background:var(--vs-kind-plant)"></i><i style="background:var(--hbm-marker)"></i>
             </span>
             <span class="palette__name">Glasshouse table</span>
             <span class="palette__note">airy sheets, 380×210, gauze chrome, serif plate names</span>
@@ -59,56 +59,56 @@ export const OVERVIEW_HTML = `<div id="app-caption">
         <div class="palettes" id="palettes" role="group" aria-label="Colour palette">
           <button class="palette" type="button" data-palette="first-light" aria-pressed="true" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-sill-500)"></i>
-              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+              <i style="background:var(--hbm-accent-ink)"></i><i style="background:var(--hbm-info)"></i>
+              <i style="background:var(--vs-chrome-key)"></i><i style="background:var(--hbm-accent)"></i>
             </span>
             <span class="palette__name">First light</span>
             <span class="palette__note">default · sill light; green kept for health</span>
           </button>
           <button class="palette" type="button" data-palette="night-canopy" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-humus-700)"></i><i style="background:var(--hbm-humus-500)"></i>
-              <i style="background:var(--hbm-leaf-300)"></i><i style="background:var(--hbm-terra-300)"></i>
+              <i style="background:var(--hbm-bg-world)"></i><i style="background:var(--hbm-bg-sheet)"></i>
+              <i style="background:var(--hbm-growth)"></i><i style="background:var(--hbm-accent)"></i>
             </span>
             <span class="palette__name">Night canopy</span>
             <span class="palette__note">theme-a's key, at this density</span>
           </button>
           <button class="palette" type="button" data-palette="terrarium" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-ink-700)"></i><i style="background:var(--hbm-ink-500)"></i>
-              <i style="background:var(--hbm-sill-200)"></i><i style="background:var(--hbm-terra-200)"></i>
+              <i style="background:var(--hbm-accent-ink)"></i><i style="background:var(--vs-sheet)"></i>
+              <i style="background:var(--vs-chrome-key)"></i><i style="background:var(--hbm-accent-hover)"></i>
             </span>
             <span class="palette__name">Terrarium</span>
             <span class="palette__note">glass and condensation</span>
           </button>
           <button class="palette" type="button" data-palette="potting-shed" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-humus-600)"></i><i style="background:var(--hbm-humus-400)"></i>
-              <i style="background:var(--hbm-terra-300)"></i><i style="background:var(--hbm-leaf-300)"></i>
+              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-raised)"></i>
+              <i style="background:var(--hbm-accent)"></i><i style="background:var(--hbm-growth)"></i>
             </span>
             <span class="palette__name">Potting shed</span>
             <span class="palette__note">terracotta at dusk</span>
           </button>
           <button class="palette" type="button" data-palette="pressed-sheet" aria-pressed="false" data-for-ui="sill-line">
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
-              <i style="background:var(--hbm-leaf-500)"></i><i style="background:var(--hbm-terra-500)"></i>
+              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-sheet)"></i>
+              <i style="background:var(--hbm-health-thriving)"></i><i style="background:var(--hbm-marker)"></i>
             </span>
             <span class="palette__name">Pressed sheet</span>
             <span class="palette__note">the herbarium sheet, in daylight</span>
           </button>
           <button class="palette" type="button" data-palette="late-bench" aria-pressed="false" data-for-ui="glasshouse-table" hidden>
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-humus-500)"></i><i style="background:var(--hbm-humus-300)"></i>
-              <i style="background:var(--hbm-leaf-200)"></i><i style="background:var(--hbm-terra-300)"></i>
+              <i style="background:var(--hbm-bg-sheet)"></i><i style="background:var(--hbm-bg-hover)"></i>
+              <i style="background:var(--hbm-health-stable)"></i><i style="background:var(--hbm-accent)"></i>
             </span>
             <span class="palette__name">Late bench</span>
             <span class="palette__note">the same glasshouse an hour after sunset</span>
           </button>
           <button class="palette" type="button" data-palette="glasshouse-table" aria-pressed="true" data-for-ui="glasshouse-table" hidden>
             <span class="palette__swatches" aria-hidden="true">
-              <i style="background:var(--hbm-paper-200)"></i><i style="background:var(--hbm-paper-50)"></i>
-              <i style="background:var(--hbm-leaf-600)"></i><i style="background:var(--hbm-terra-500)"></i>
+              <i style="background:var(--hbm-bg-mount)"></i><i style="background:var(--hbm-bg-sheet)"></i>
+              <i style="background:var(--vs-kind-plant)"></i><i style="background:var(--hbm-marker)"></i>
             </span>
             <span class="palette__name">Glasshouse table</span>
             <span class="palette__note">default for this reading · daylight on the bench</span>

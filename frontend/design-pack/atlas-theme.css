@@ -1,28 +1,38 @@
 /* ==========================================================================
-   ROUND 8 · PROPOSITION A — "SILL LINE, WITH THE TABLE AS A READING"
-   PlantPal · atlas-class · bound to Rhizome (plantpal-cae942ee v1.0.0)
-   --------------------------------------------------------------------------
-   THE DIRECTION THIS ANSWERS. Round 7 was rejected with one instruction:
-   "i want theme b but add ui of theme a as option in setting." So the
-   interface here IS round 7's theme-b — Vascular · Sill Line, unchanged in
-   key, density, type ladder, geometry and signature — and round 7's
-   theme-a, Glasshouse Table, is now a thing you can turn on, in Settings,
-   in one press, with the world still behind the panel.
+   THEME B — "VASCULAR · SILL LINE"        PlantPal atlas · round 10
+   A variation INSIDE Theme A (owner direction round 9 § 0), not a rival
+   direction. Same lattice, same veins, same travel; a different system on
+   top of them.
+   Bound to: Herbarium @ v1.0.0 (the pinned design system)
 
-   PROPOSITION A'S ANSWER TO "AS AN OPTION": the Table is a COUPLED READING.
-   Choosing it brings its own key with it — the warm cream bench, the gauze
-   chrome, the serif plate — because that key and that density were designed
-   together and neither half is the point on its own. Interface and palette
-   are therefore ONE control with two settings, and each setting offers its
-   own two keys. (Proposition B splits them into two independent axes; read
-   both and pick the product, not the palette.)
-
-   WHAT AN INTERFACE MAY MOVE. Layer 2 (the key) and layer 3 (density, type
-   ladder, geometry, the signature's four lengths). It may NOT move the
-   lattice cells, the edge set, the travel timing, or anything the
-   constitution pins. The pitch changes; which cell a node sits in does not,
-   so switching interface is a uniform rescale of the same geography and
-   every node keeps its place relative to every other (C7, C8).
+   HOW IT DIFFERS FROM "NIGHT CANOPY"
+   -------------------------------------------------------------------------
+   1. KEY. Chlorophyll steps back to being the HEALTH voice only. Traversal,
+      focus and the whole cool structure of the screen are carried by SILL —
+      Herbarium's diffuse window light. The result reads as a plant room seen
+      through glass at first light rather than a canopy at night, and health
+      green now means something because it is the only green on screen.
+   2. DENSITY. HIGH, not low: 12px inside a card, 2.5rem between nodes,
+      narrower cards. More of the world is on screen at once, and a recap is
+      two tight lines rather than a paragraph.
+   3. TYPE. The display rung comes down hard — 2.125rem, not 3.25rem — and
+      the ladder is compressed with it, so the focus reads as an INSTRUMENT
+      PANEL rather than a botanical plate. The serif survives in exactly one
+      place: the italic binomial. Everything else is the hand sans and the
+      monospace label.
+   4. GEOMETRY. Sharp. 5px on a card, 2px inside, 1px on a well. Veins are
+      thinner and unbudded.
+   5. SIGNATURE ELEMENT — THE MEASURE TICK. Where Night Canopy runs a
+      coloured kind-spine down a card's leading edge, Sill Line rules the
+      card's head with a hairline and drops a short TICK beneath it, in the
+      kind's own colour, like a graduation on a rule. Its length is the
+      card's rank: long at focus, short at the fringe, so rank is legible
+      from the tick alone with the text blurred.
+   6. CHROME. Same principle as every proposition this round — chrome is a
+      register of its own — but expressed as an INVERTED KEYLINE BAND: solid
+      near-black, a 2px key rule along the edge it is attached to, no blur,
+      no translucency. Sill Line's chrome looks machined; Night Canopy's
+      looks like smoked glass. Neither can be mistaken for a card.
    ========================================================================== */
 
 :root {
@@ -342,25 +352,6 @@
   --vs-ease-travel: var(--hbm-ease-unfurl);
   --vs-ease-settle: var(--hbm-ease-settle);
 
-
-  /* -- ROUND 8. Tokens the two interfaces both read. The measure tick's
-        four lengths were literal rem values in the page's own stylesheet;
-        they are lifted here because the second interface re-pitches them,
-        and a value an interface moves is a token by definition. --------- */
-  --vs-tick-focus:  7rem;
-  --vs-tick-near:   3rem;
-  --vs-tick-far:    1.75rem;
-  --vs-tick-fringe: 1.25rem;
-  --vs-tick-weight: var(--vs-mount);
-  --vs-tick-op:     0.7;
-
-  /* -- Chrome's own voice, likewise: Sill Line speaks chrome in tracked
-        monospace capitals; the Table speaks it in serif small capitals. -- */
-  --vs-chrome-face:    var(--hbm-family-label);
-  --vs-chrome-case:    uppercase;
-  --vs-chrome-variant: normal;
-  --vs-chrome-size:    var(--vs-rung-18);
-
   --vs-z-world:  var(--hbm-z-world);
   --vs-z-node:   var(--hbm-z-raised);
   --vs-z-panel:  var(--hbm-z-menu);
@@ -550,252 +541,5 @@
   --vs-kind-problem:    var(--hbm-necrosis-400);
   --vs-kind-journal:    var(--hbm-ink-200);
   --vs-kind-platform:   var(--hbm-chlorosis-500);
-  --vs-kind-region:     var(--hbm-paper-600);
-}
-
-
-/* ==========================================================================
-   THE SECOND INTERFACE — [data-ui="glasshouse-table"]
-   Round 7 theme-a, entire: its key AND its density, type, geometry and
-   signature, restated here in Sill Line's own token vocabulary so that one
-   attribute on <html> re-keys and re-pitches the whole world, the chrome,
-   the panels and the particle field together. Declared LAST so it wins over
-   the palette blocks above — under this interface the palette list is its
-   own two keys, which is the whole of proposition A's argument.
-   ========================================================================== */
-
-[data-ui="glasshouse-table"] {
-
-  --vs-void:        var(--hbm-paper-200);   /* the bench    #f0e9d9 */
-  --vs-void-deep:   var(--hbm-paper-300);   /* its far edge #e4dac3 */
-  --vs-sheet:       var(--hbm-paper-50);
-  --vs-sheet-quiet: var(--hbm-paper-100);
-  --vs-well:        var(--hbm-paper-200);
-  --vs-hover:       var(--hbm-paper-200);
-
-  --vs-ink:         var(--hbm-ink-600);
-  --vs-ink-second:  var(--hbm-ink-400);
-  --vs-ink-muted:   var(--hbm-ink-200);
-  --vs-ink-faint:   var(--hbm-ink-100);
-  --vs-ink-on-fill: var(--hbm-paper-50);
-  --vs-binomial:    var(--hbm-ink-200);
-
-  /* GAUZE chrome: translucent paper over the world, blurred, serif small
-     capitals, and no shadow ever. Sill Line's chrome is a machined band;
-     the Table's is smoked glass. Both are one register, and neither can be
-     mistaken for a card. */
-  --vs-chrome:       color-mix(in srgb, var(--hbm-paper-100) 88%, transparent);
-  --vs-chrome-solid: var(--hbm-paper-100);
-  --vs-chrome-blur:  blur(10px) saturate(1.1);
-  --vs-chrome-rule:     var(--hbm-paper-400);
-  --vs-chrome-rule-lit: var(--hbm-paper-500);
-  --vs-chrome-key:      var(--hbm-leaf-400);
-  --vs-chrome-ink:      var(--hbm-ink-300);
-  --vs-chrome-ink-lit:  var(--hbm-ink-600);
-  --vs-chrome-hover:    var(--hbm-paper-200);
-
-  /* The travel voice is SILL. The one deliberate exception: the trail
-     stays deep leaf, because the path you just walked is a living thing. */
-  --vs-vital:        var(--hbm-sill-500);
-  --vs-vital-bright: var(--hbm-leaf-600);
-  --vs-vital-deep:   var(--hbm-sill-400);
-  --vs-vital-quiet:  var(--hbm-sill-100);
-  --vs-vital-edge:   var(--hbm-sill-500);
-
-  --vs-mutate:       var(--hbm-terra-500);
-  --vs-mutate-quiet: var(--hbm-terra-100);
-  --vs-mutate-ink:   var(--hbm-paper-50);
-
-  --vs-membrane:      var(--hbm-paper-300);
-  --vs-membrane-lit:  var(--hbm-leaf-300);
-  --vs-membrane-rule: var(--hbm-paper-400);
-  --vs-halo-quiet:    0 1px 2px rgba(20, 17, 14, 0.06), 0 8px 22px rgba(20, 17, 14, 0.07);
-  --vs-halo-lit:      0 2px 6px rgba(20, 17, 14, 0.10), 0 22px 54px rgba(39, 57, 26, 0.16);
-
-  --vs-vein:            var(--hbm-paper-500);
-  --vs-vein-live:       var(--hbm-leaf-400);
-  --vs-vein-unknown:    var(--hbm-paper-400);
-  --vs-vein-width:      1.6px;
-  --vs-vein-width-live: 2.6px;
-  --vs-vein-node:       var(--hbm-paper-500);
-  --vs-mote:      rgba(147, 129, 95, 0.26);
-  --vs-mote-link: rgba(147, 129, 95, 0.09);
-
-  --vs-focus:        var(--hbm-sill-500);
-  --vs-focus-offset: 3px;
-
-  --vs-thriving: var(--hbm-leaf-500);
-  --vs-stable:   var(--hbm-leaf-400);
-  --vs-watch:    var(--hbm-chlorosis-500);
-  --vs-ailing:   var(--hbm-necrosis-400);
-  --vs-lost:     var(--hbm-ink-200);
-
-  --vs-conf-high:   var(--hbm-leaf-500);
-  --vs-conf-medium: var(--hbm-chlorosis-500);
-  --vs-conf-low:    var(--hbm-ink-200);
-  --vs-conf-track:  var(--hbm-paper-200);
-
-  --vs-unknown:      var(--hbm-ink-100);
-  --vs-unknown-fill: rgba(147, 129, 95, 0.08);
-  --vs-stale:        var(--hbm-chlorosis-600);
-  --vs-offline:      var(--hbm-ink-200);
-  --vs-error:        var(--hbm-necrosis-400);
-  --vs-error-quiet:  var(--hbm-necrosis-100);
-  --vs-skeleton:     var(--hbm-paper-200);
-  --vs-skeleton-lit: var(--hbm-paper-300);
-
-  /* KIND. Green here, and only here, is a living thing. */
-  --vs-kind-collection: var(--hbm-ink-300);
-  --vs-kind-species:    var(--hbm-leaf-400);
-  --vs-kind-plant:      var(--hbm-leaf-600);
-  --vs-kind-guide:      var(--hbm-sill-500);
-  --vs-kind-problem:    var(--hbm-necrosis-400);
-  --vs-kind-journal:    var(--hbm-paper-600);
-  --vs-kind-platform:   var(--hbm-chlorosis-500);
-  --vs-kind-region:     var(--hbm-ink-100);
-
-  --vs-chrome-face:    var(--hbm-family-plate);
-  --vs-chrome-case:    lowercase;
-  --vs-chrome-variant: small-caps;
-  --vs-chrome-track:   0.14em;
-  --vs-chrome-pad:     var(--hbm-space-3);
-  --vs-chrome-size:    0.8125rem;
-
-  /* ---- TYPE. The plate name in a book face, the working hand around it,
-     and the labels in the same book face, letter-spaced wide: a
-     determination label is typeset, not typed. Round 5 theme-a's ladder. -- */
-  --vs-face-name:  var(--hbm-family-plate);
-  --vs-face-body:  var(--hbm-family-hand);
-  --vs-face-label: var(--hbm-family-plate);
-  --vs-face-latin: var(--hbm-family-plate);
-  --vs-rung-100: 3.25rem;
-  --vs-rung-75:  2rem;
-  --vs-rung-55:  1.3125rem;
-  --vs-rung-30:  1rem;
-  --vs-rung-25:  0.875rem;
-  --vs-rung-18:  0.8125rem;
-  --vs-track-name:  -0.015em;
-  --vs-track-label: 0.14em;
-  --vs-lead-name: var(--hbm-leading-tight);
-  --vs-lead-body: var(--hbm-leading-body);
-  --vs-lead-snug: var(--hbm-leading-snug);
-
-  /* ---- DENSITY. Airy. Sheets lie apart on a big table with wood showing
-     between them. Pitch 380 x 210 — round 5's own. ---------------------- */
-  --vs-gutter-tight: var(--hbm-space-2);
-  --vs-gutter:       var(--hbm-space-4);
-  --vs-gutter-card:  var(--hbm-space-6);
-  --vs-gutter-wide:  var(--hbm-space-7);
-  --vs-gutter-air:   var(--hbm-space-8);
-
-  --vs-pitch-x: 380px;
-  --vs-pitch-y: 210px;
-
-  --vs-card-focus:  clamp(29rem, 39vw, 38.75rem);
-  --vs-card-near:   15rem;
-  --vs-card-far:    12rem;
-  --vs-card-fringe: 8rem;
-  --vs-cap-near:   16rem;
-  --vs-cap-far:    12rem;
-  --vs-cap-fringe: 7.5rem;
-  --vs-atlas-h:    7rem;
-
-  /* ---- SIGNATURE. The tick grows into a PENCIL RULE — long, hair-thin,
-     ruled along the head of the sheet. 2px, 84 / 52 / 30 / 14. At fringe
-     scale, where no word is legible, the mark's LENGTH is still the rank
-     and its COLOUR is still the kind. ---------------------------------- */
-  --vs-tick-focus:  84px;
-  --vs-tick-near:   52px;
-  --vs-tick-far:    30px;
-  --vs-tick-fringe: 14px;
-  --vs-tick-weight: var(--hbm-rule-strong);
-  --vs-tick-op:     0.85;
-
-  /* ---- GEOMETRY. A sheet cut soft at 14px, wells at 9px, chrome
-     machined at 3px. --------------------------------------------------- */
-  --vs-corner-card:  14px;
-  --vs-corner-inner: var(--hbm-radius-1);
-  --vs-corner-chip:  var(--hbm-radius-pill);
-  --vs-corner-well:  9px;
-  --vs-corner-chrome: 3px;
-}
-
-/* The Table's second key — the same glasshouse an hour after sunset. */
-[data-ui="glasshouse-table"][data-palette="late-bench"] {
-
-  --vs-void:        var(--hbm-humus-500);
-  --vs-void-deep:   var(--hbm-humus-700);
-  --vs-sheet:       var(--hbm-humus-300);
-  --vs-sheet-quiet: var(--hbm-humus-400);
-  --vs-well:        var(--hbm-humus-500);
-  --vs-hover:       var(--hbm-humus-400);
-
-  --vs-ink:         var(--hbm-paper-100);
-  --vs-ink-second:  var(--hbm-paper-300);
-  --vs-ink-muted:   var(--hbm-paper-500);
-  --vs-ink-faint:   var(--hbm-humus-100);
-  --vs-ink-on-fill: var(--hbm-humus-700);
-  --vs-binomial:    var(--hbm-paper-500);
-
-  --vs-chrome:       color-mix(in srgb, var(--hbm-humus-600) 88%, transparent);
-  --vs-chrome-solid: var(--hbm-humus-600);
-  --vs-chrome-rule:     var(--hbm-humus-200);
-  --vs-chrome-rule-lit: var(--hbm-humus-100);
-  --vs-chrome-key:      var(--hbm-leaf-400);
-  --vs-chrome-ink:      var(--hbm-paper-400);
-  --vs-chrome-ink-lit:  var(--hbm-paper-100);
-  --vs-chrome-hover:    var(--hbm-humus-400);
-
-  --vs-vital:        var(--hbm-sill-300);
-  --vs-vital-bright: var(--hbm-leaf-200);
-  --vs-vital-deep:   var(--hbm-sill-200);
-  --vs-vital-quiet:  var(--hbm-sill-500);
-  --vs-vital-edge:   var(--hbm-sill-300);
-
-  --vs-mutate:       var(--hbm-terra-300);
-  --vs-mutate-quiet: var(--hbm-terra-600);
-  --vs-mutate-ink:   var(--hbm-humus-700);
-
-  --vs-membrane:      var(--hbm-humus-200);
-  --vs-membrane-lit:  var(--hbm-leaf-400);
-  --vs-membrane-rule: var(--hbm-humus-200);
-  --vs-halo-quiet:    0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 22px rgba(0, 0, 0, 0.34);
-  --vs-halo-lit:      0 2px 8px rgba(0, 0, 0, 0.42), 0 22px 54px rgba(0, 0, 0, 0.46);
-
-  --vs-vein:         var(--hbm-humus-100);
-  --vs-vein-live:    var(--hbm-leaf-300);
-  --vs-vein-unknown: var(--hbm-humus-200);
-  --vs-vein-node:    var(--hbm-humus-100);
-  --vs-mote:      rgba(106, 97, 84, 0.30);
-  --vs-mote-link: rgba(106, 97, 84, 0.10);
-
-  --vs-focus:    var(--hbm-sill-200);
-  --vs-thriving: var(--hbm-leaf-300);
-  --vs-stable:   var(--hbm-leaf-400);
-  --vs-watch:    var(--hbm-chlorosis-300);
-  --vs-ailing:   var(--hbm-necrosis-300);
-  --vs-lost:     var(--hbm-paper-600);
-
-  --vs-conf-high:   var(--hbm-leaf-300);
-  --vs-conf-medium: var(--hbm-chlorosis-300);
-  --vs-conf-low:    var(--hbm-paper-600);
-  --vs-conf-track:  var(--hbm-humus-400);
-
-  --vs-unknown:      var(--hbm-paper-600);
-  --vs-unknown-fill: rgba(106, 97, 84, 0.12);
-  --vs-stale:        var(--hbm-chlorosis-300);
-  --vs-offline:      var(--hbm-paper-600);
-  --vs-error:        var(--hbm-necrosis-300);
-  --vs-error-quiet:  var(--hbm-necrosis-600);
-  --vs-skeleton:     rgba(253, 251, 246, 0.06);
-  --vs-skeleton-lit: rgba(253, 251, 246, 0.12);
-
-  --vs-kind-collection: var(--hbm-paper-400);
-  --vs-kind-species:    var(--hbm-leaf-300);
-  --vs-kind-plant:      var(--hbm-leaf-200);
-  --vs-kind-guide:      var(--hbm-sill-300);
-  --vs-kind-problem:    var(--hbm-necrosis-300);
-  --vs-kind-journal:    var(--hbm-paper-500);
-  --vs-kind-platform:   var(--hbm-chlorosis-300);
   --vs-kind-region:     var(--hbm-paper-600);
 }
