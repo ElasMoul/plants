@@ -378,6 +378,48 @@
 }
 
 
+/* Swatch tokens (1.2.0). Fixed colours that show a palette key while another key is active.
+   They live on :root only and no theme or key redefines them, so they never follow the
+   active key. For picker chips and previews of a key - never for styling the live UI.
+   Name: --hbm-swatch-<key>-<1..4>, slots in the order a chip shows them. */
+:root {
+  --hbm-swatch-first-light-1: #14110e;   /* ink-700 */
+  --hbm-swatch-first-light-2: #456060;   /* sill-500 */
+  --hbm-swatch-first-light-3: #b3c6c5;   /* sill-200 */
+  --hbm-swatch-first-light-4: #d08a61;   /* terra-300 */
+
+  --hbm-swatch-night-canopy-1: #12100d;   /* humus-700 */
+  --hbm-swatch-night-canopy-2: #201d18;   /* humus-500 */
+  --hbm-swatch-night-canopy-3: #8fb26a;   /* leaf-300 */
+  --hbm-swatch-night-canopy-4: #d08a61;   /* terra-300 */
+
+  --hbm-swatch-terrarium-1: #14110e;   /* ink-700 */
+  --hbm-swatch-terrarium-2: #2c261f;   /* ink-500 */
+  --hbm-swatch-terrarium-3: #b3c6c5;   /* sill-200 */
+  --hbm-swatch-terrarium-4: #e6b494;   /* terra-200 */
+
+  --hbm-swatch-potting-shed-1: #191612;   /* humus-600 */
+  --hbm-swatch-potting-shed-2: #2a2620;   /* humus-400 */
+  --hbm-swatch-potting-shed-3: #d08a61;   /* terra-300 */
+  --hbm-swatch-potting-shed-4: #8fb26a;   /* leaf-300 */
+
+  --hbm-swatch-pressed-sheet-1: #f0e9d9;   /* paper-200 */
+  --hbm-swatch-pressed-sheet-2: #fdfbf6;   /* paper-50 */
+  --hbm-swatch-pressed-sheet-3: #4f7333;   /* leaf-500 */
+  --hbm-swatch-pressed-sheet-4: #9a5330;   /* terra-500 */
+
+  --hbm-swatch-late-bench-1: #201d18;   /* humus-500 */
+  --hbm-swatch-late-bench-2: #38332a;   /* humus-300 */
+  --hbm-swatch-late-bench-3: #b9d09c;   /* leaf-200 */
+  --hbm-swatch-late-bench-4: #d08a61;   /* terra-300 */
+
+  --hbm-swatch-glasshouse-table-1: #f0e9d9;   /* paper-200 */
+  --hbm-swatch-glasshouse-table-2: #fdfbf6;   /* paper-50 */
+  --hbm-swatch-glasshouse-table-3: #3a5626;   /* leaf-600 */
+  --hbm-swatch-glasshouse-table-4: #9a5330;   /* terra-500 */
+}
+
+
 /* Reduced motion: durations collapse, but nothing becomes an abrupt swap —
    direction and the you-are-here marker are still drawn and still update. */
 @media (prefers-reduced-motion: reduce) {

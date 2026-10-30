@@ -1,4 +1,4 @@
-# Herbarium pin for Atlas (design pack plantpal-e8e4b3e5 1.1.0)
+# Herbarium pin for Atlas (design pack plantpal-e8e4b3e5 1.2.0)
 
 - `tokens.css` is a byte-identical copy of the pack's `design/tokens.css`.
 - `atlas-theme.css` is a byte-identical copy of the accepted theme-b,

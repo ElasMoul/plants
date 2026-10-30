@@ -1,5 +1,5 @@
 /**
- * The tokens pin guard. Atlas serves the Herbarium design pack (plantpal-e8e4b3e5 1.1.0):
+ * The tokens pin guard. Atlas serves the Herbarium design pack (plantpal-e8e4b3e5 1.2.0):
  * frontend/design-pack/tokens.css is the pack's tokens.css and
  * frontend/design-pack/atlas-theme.css is the accepted theme-b, both byte-identical pins.
  * The sha256 pins below hold in every checkout (this product repo is built without the
@@ -19,7 +19,7 @@ describe('Herbarium tokens pin guard', () => {
   const frontend = join(__dirname, '../../../..');
   const pack = join(frontend, 'design-pack');
   const hexagon = join(frontend, '../..');
-  const PACK_CSS_DIGEST = '6a8feb714156b6891918b845111b1a6de23ebd01ed3a6d00ff10586ba7b1bf78';
+  const PACK_CSS_DIGEST = 'd21d34d902aab6cfb765da895297025747565fbc57ed2f4ea2ed99a699ad7362';
   const THEME_CSS_DIGEST = '4e343b8a23e31f92794accf8a83c6fe8b9e411a27380e081c86438d3896e41cb';
 
   it('serves the pack tokens.css and the theme copy unchanged', () => {

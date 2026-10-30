@@ -1,6 +1,6 @@
 # Atlas styles
 
-Atlas serves the Herbarium design pack (`plantpal-e8e4b3e5` 1.1.0) and its accepted
+Atlas serves the Herbarium design pack (`plantpal-e8e4b3e5` 1.2.0) and its accepted
 theme-b. The two pinned, byte-identical copies live in `frontend/design-pack/`
 (`tokens.css`, `atlas-theme.css`) and are loaded from `angular.json` before
 `rhizome.css`. They are pins, never hand-edited: a missing token is raised as a gap
