@@ -19,12 +19,12 @@ describe('Herbarium tokens pin guard', () => {
   const frontend = join(__dirname, '../../../..');
   const pack = join(frontend, 'design-pack');
   const hexagon = join(frontend, '../..');
-  const TOKENS_SHA = '6a8feb714156b6891918b845111b1a6de23ebd01ed3a6d00ff10586ba7b1bf78';
-  const THEME_SHA = '4e343b8a23e31f92794accf8a83c6fe8b9e411a27380e081c86438d3896e41cb';
+  const PACK_CSS_DIGEST = '6a8feb714156b6891918b845111b1a6de23ebd01ed3a6d00ff10586ba7b1bf78';
+  const THEME_CSS_DIGEST = '4e343b8a23e31f92794accf8a83c6fe8b9e411a27380e081c86438d3896e41cb';
 
   it('serves the pack tokens.css and the theme copy unchanged', () => {
-    expect(sha(fs.readFileSync(join(pack, 'tokens.css'), 'utf8'))).toBe(TOKENS_SHA);
-    expect(sha(fs.readFileSync(join(pack, 'atlas-theme.css'), 'utf8'))).toBe(THEME_SHA);
+    expect(sha(fs.readFileSync(join(pack, 'tokens.css'), 'utf8'))).toBe(PACK_CSS_DIGEST);
+    expect(sha(fs.readFileSync(join(pack, 'atlas-theme.css'), 'utf8'))).toBe(THEME_CSS_DIGEST);
   });
 
   it('matches the hexagon design pack when it is present', () => {
