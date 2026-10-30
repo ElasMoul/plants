@@ -1,0 +1,391 @@
+/* ==========================================================================
+   Herbarium — token layer  (PlantPal design system, v1.0.0)
+
+   Layer 1: PRIMITIVES  --hbm-<family>-<step>
+            Raw scales. Never referenced by a component or a page.
+   Layer 2: SEMANTICS   --hbm-<role>[-<variant>]
+            What a primitive MEANS. This is the ONLY layer components and
+            pages may reference.
+
+   :root carries the default theme — "dusk", a potting shed at evening.
+   [data-theme="light"] carries "paper", the herbarium-sheet mode, and
+   overrides EVERY semantic token. Pages ship with data-theme="light".
+   ========================================================================== */
+
+:root {
+
+  /* ----------------------------------------------------------------------
+     LAYER 1 — PRIMITIVES
+     ---------------------------------------------------------------------- */
+
+  /* Paper — warm bone / ecru, the mounted sheet */
+  --hbm-paper-50:  #fdfbf6;
+  --hbm-paper-100: #f8f4ea;
+  --hbm-paper-200: #f0e9d9;
+  --hbm-paper-300: #e4dac3;
+  --hbm-paper-400: #d2c4a6;
+  --hbm-paper-500: #b8a684;
+  --hbm-paper-600: #93815f;
+
+  /* Ink — sepia through soft black, the collector's hand */
+  --hbm-ink-100: #8a7f70;
+  --hbm-ink-200: #6d6154;
+  --hbm-ink-300: #52483d;
+  --hbm-ink-400: #3d352c;
+  --hbm-ink-500: #2c261f;
+  --hbm-ink-600: #1e1a15;
+  --hbm-ink-700: #14110e;
+
+  /* Humus — damp soil, the dusk surface family */
+  --hbm-humus-100: #6a6154;
+  --hbm-humus-200: #4c463b;
+  --hbm-humus-300: #38332a;
+  --hbm-humus-400: #2a2620;
+  --hbm-humus-500: #201d18;
+  --hbm-humus-600: #191612;
+  --hbm-humus-700: #12100d;
+
+  /* Leaf — chlorophyll */
+  --hbm-leaf-100: #dfe9d2;
+  --hbm-leaf-200: #b9d09c;
+  --hbm-leaf-300: #8fb26a;
+  --hbm-leaf-400: #6b9247;
+  --hbm-leaf-500: #4f7333;
+  --hbm-leaf-600: #3a5626;
+  --hbm-leaf-700: #27391a;
+
+  /* Chlorosis — the yellowing that asks for attention */
+  --hbm-chlorosis-100: #f7ecc9;
+  --hbm-chlorosis-200: #eed894;
+  --hbm-chlorosis-300: #dcb94f;
+  --hbm-chlorosis-400: #bf9a2c;
+  --hbm-chlorosis-500: #97781f;
+  --hbm-chlorosis-600: #6d5615;
+
+  /* Necrosis — the brown that means harm */
+  --hbm-necrosis-100: #efd8cd;
+  --hbm-necrosis-200: #d9ab96;
+  --hbm-necrosis-300: #b8735a;
+  --hbm-necrosis-400: #96513a;
+  --hbm-necrosis-500: #763c2a;
+  --hbm-necrosis-600: #55291c;
+
+  /* Terra — terracotta, the resident's own voice */
+  --hbm-terra-100: #f6ddcd;
+  --hbm-terra-200: #e6b494;
+  --hbm-terra-300: #d08a61;
+  --hbm-terra-400: #b96b40;
+  --hbm-terra-500: #9a5330;
+  --hbm-terra-600: #763d22;
+
+  /* Sill — the diffuse cool light of a window, used sparingly */
+  --hbm-sill-100: #dfe7e6;
+  --hbm-sill-200: #b3c6c5;
+  --hbm-sill-300: #86a3a3;
+  --hbm-sill-400: #5f8080;
+  --hbm-sill-500: #456060;
+
+  /* Space — a specimen sheet's generous margins (4px base) */
+  --hbm-space-0:  0;
+  --hbm-space-1:  0.25rem;
+  --hbm-space-2:  0.5rem;
+  --hbm-space-3:  0.75rem;
+  --hbm-space-4:  1rem;
+  --hbm-space-5:  1.5rem;
+  --hbm-space-6:  2rem;
+  --hbm-space-7:  3rem;
+  --hbm-space-8:  4rem;
+  --hbm-space-9:  6rem;
+  --hbm-space-10: 8rem;
+
+  /* Type families */
+  --hbm-family-plate: "Iowan Old Style", "Palatino Linotype", Palatino,
+                      "Book Antiqua", Georgia, "Noto Naskh Arabic", serif;
+  --hbm-family-hand:  ui-sans-serif, system-ui, "Segoe UI", Inter,
+                      "Noto Sans Arabic", "Helvetica Neue", Arial, sans-serif;
+  --hbm-family-label: ui-monospace, "SFMono-Regular", "Cascadia Mono",
+                      "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* Type sizes — the 100 / 75 / 55 / 30 / 18–25 prominence ladder.
+     Blur the page: hierarchy must survive from scale alone. */
+  --hbm-size-100: 3.25rem;   /* rung 100 — display */
+  --hbm-size-75:  2.125rem;  /* rung 75  — title   */
+  --hbm-size-55:  1.4375rem; /* rung 55  — heading */
+  --hbm-size-30:  1rem;      /* rung 30  — body    */
+  --hbm-size-25:  0.875rem;  /* rung 25  — caption */
+  --hbm-size-18:  0.75rem;   /* rung 18  — label   */
+
+  --hbm-weight-regular: 400;
+  --hbm-weight-medium:  500;
+  --hbm-weight-bold:    650;
+
+  --hbm-leading-tight: 1.15;
+  --hbm-leading-snug:  1.35;
+  --hbm-leading-body:  1.65;
+
+  --hbm-tracking-plate: 0.01em;
+  --hbm-tracking-label: 0.14em;
+
+  /* Rules — hairlines, as on a mounting sheet */
+  --hbm-rule-hair:   1px;
+  --hbm-rule-strong: 2px;
+  --hbm-rule-mount:  4px;
+
+  /* Radii — pressed corners, a plant tag's rounded stake */
+  --hbm-radius-0:   0;
+  --hbm-radius-1:   2px;
+  --hbm-radius-2:   5px;
+  --hbm-radius-3:   10px;
+  --hbm-radius-4:   18px;
+  --hbm-radius-pill: 999px;
+
+  /* Lift — a specimen raised a millimetre off the mount. Never a glow. */
+  --hbm-lift-0: none;
+  --hbm-lift-1: 0 1px 2px rgba(30, 26, 21, 0.10);
+  --hbm-lift-2: 0 2px 6px rgba(30, 26, 21, 0.14);
+  --hbm-lift-3: 0 8px 24px rgba(30, 26, 21, 0.20);
+
+  /* Motion — growth: slow, continuous, never a pop */
+  --hbm-dur-1: 120ms;
+  --hbm-dur-2: 240ms;
+  --hbm-dur-3: 420ms;
+  --hbm-dur-4: 700ms;
+  --hbm-ease-unfurl: cubic-bezier(0.22, 0.61, 0.20, 1);
+  --hbm-ease-settle: cubic-bezier(0.33, 0, 0.15, 1);
+
+  /* Measure */
+  --hbm-measure-prose: 68ch;
+  --hbm-measure-note:  46ch;
+
+  --hbm-z-world:  0;
+  --hbm-z-raised: 10;
+  --hbm-z-menu:   40;
+  --hbm-z-drawer: 60;
+  --hbm-z-toast:  80;
+
+
+  /* ----------------------------------------------------------------------
+     LAYER 2 — SEMANTICS  (default theme: "dusk")
+     Components and pages reference ONLY these.
+     ---------------------------------------------------------------------- */
+
+  /* Surfaces */
+  --hbm-bg-world:   var(--hbm-humus-700); /* the persistent world behind everything */
+  --hbm-bg-mount:   var(--hbm-humus-600); /* page ground, the mounting board       */
+  --hbm-bg-sheet:   var(--hbm-humus-500); /* the specimen sheet / card             */
+  --hbm-bg-raised:  var(--hbm-humus-400); /* menus, popovers, drawers              */
+  --hbm-bg-sunken:  var(--hbm-humus-700); /* wells, code, inputs                   */
+  --hbm-bg-hover:   var(--hbm-humus-300);
+  --hbm-bg-selected: var(--hbm-humus-200);
+
+  /* Ink */
+  --hbm-text-primary:   var(--hbm-paper-100);
+  --hbm-text-secondary: var(--hbm-paper-300);
+  --hbm-text-muted:     var(--hbm-paper-500);
+  --hbm-text-inverse:   var(--hbm-ink-600);
+  --hbm-text-binomial:  var(--hbm-paper-400); /* italic Latin, always secondary */
+
+  /* Accent — terracotta, the resident's voice */
+  --hbm-accent:         var(--hbm-terra-300);
+  --hbm-accent-hover:   var(--hbm-terra-200);
+  --hbm-accent-quiet:   rgba(208, 138, 97, 0.16);
+  --hbm-accent-ink:     var(--hbm-ink-700); /* text on an accent fill */
+
+  /* Growth — chlorophyll, the affirmative */
+  --hbm-growth:       var(--hbm-leaf-300);
+  --hbm-growth-quiet: rgba(143, 178, 106, 0.16);
+
+  /* Rules and borders */
+  --hbm-border-hair:   rgba(216, 205, 184, 0.16);
+  --hbm-border-rule:   rgba(216, 205, 184, 0.28);
+  --hbm-border-strong: rgba(216, 205, 184, 0.48);
+  --hbm-border-accent: var(--hbm-terra-400);
+
+  /* Focus — visible at every scale, never removed */
+  --hbm-focus:        var(--hbm-chlorosis-200);
+  --hbm-focus-offset: 2px;
+  --hbm-focus-width:  var(--hbm-rule-strong);
+
+  /* Health scale — HealthStatus, straight from the domain */
+  --hbm-health-thriving: var(--hbm-leaf-300);
+  --hbm-health-stable:   var(--hbm-leaf-200);
+  --hbm-health-watch:    var(--hbm-chlorosis-300);
+  --hbm-health-ailing:   var(--hbm-necrosis-300);
+  --hbm-health-lost:     var(--hbm-ink-100);
+
+  /* Confidence — HIGH / MEDIUM / LOW, carried at claim weight */
+  --hbm-confidence-high:   var(--hbm-leaf-300);
+  --hbm-confidence-medium: var(--hbm-chlorosis-300);
+  --hbm-confidence-low:    var(--hbm-sill-300);
+  --hbm-confidence-track:  rgba(216, 205, 184, 0.20);
+
+  /* Tones */
+  --hbm-positive:      var(--hbm-leaf-300);
+  --hbm-caution:       var(--hbm-chlorosis-300);
+  --hbm-danger:        var(--hbm-necrosis-300);
+  --hbm-info:          var(--hbm-sill-300);
+  --hbm-positive-quiet: rgba(143, 178, 106, 0.14);
+  --hbm-caution-quiet:  rgba(220, 185, 79, 0.14);
+  --hbm-danger-quiet:   rgba(184, 115, 90, 0.16);
+  --hbm-info-quiet:     rgba(134, 163, 163, 0.14);
+
+  /* World / traversal — the atlas layer */
+  --hbm-edge:          var(--hbm-border-rule);   /* a drawn, traversable edge   */
+  --hbm-edge-active:   var(--hbm-accent);        /* the edge being travelled    */
+  --hbm-edge-dim:      rgba(216, 205, 184, 0.12);
+  --hbm-node:          var(--hbm-bg-sheet);
+  --hbm-node-focus:    var(--hbm-accent);        /* the single focal point      */
+  --hbm-marker:        var(--hbm-chlorosis-200); /* you-are-here                */
+  --hbm-marker-halo:   rgba(238, 216, 148, 0.22);
+
+  /* Honesty states */
+  --hbm-unknown:       var(--hbm-ink-100);       /* not loaded — NOT empty      */
+  --hbm-unknown-hatch: rgba(138, 127, 112, 0.30);
+  --hbm-empty:         var(--hbm-text-muted);    /* loaded and genuinely empty  */
+  --hbm-stale:         var(--hbm-chlorosis-400);
+  --hbm-offline:       var(--hbm-sill-400);
+
+  /* Type roles */
+  --hbm-font-display: var(--hbm-weight-regular) var(--hbm-size-100)/var(--hbm-leading-tight) var(--hbm-family-plate);
+  --hbm-font-title:   var(--hbm-weight-regular) var(--hbm-size-75)/var(--hbm-leading-tight) var(--hbm-family-plate);
+  --hbm-font-heading: var(--hbm-weight-medium) var(--hbm-size-55)/var(--hbm-leading-snug) var(--hbm-family-plate);
+  --hbm-font-body:    var(--hbm-weight-regular) var(--hbm-size-30)/var(--hbm-leading-body) var(--hbm-family-hand);
+  --hbm-font-caption: var(--hbm-weight-regular) var(--hbm-size-25)/var(--hbm-leading-snug) var(--hbm-family-hand);
+  --hbm-font-label:   var(--hbm-weight-medium) var(--hbm-size-18)/var(--hbm-leading-snug) var(--hbm-family-label);
+
+  /* Shape roles */
+  --hbm-radius-control: var(--hbm-radius-2);
+  --hbm-radius-sheet:   var(--hbm-radius-3);
+  --hbm-radius-tag:     var(--hbm-radius-4);
+
+  /* Elevation roles */
+  --hbm-lift-sheet:  var(--hbm-lift-1);
+  --hbm-lift-raised: var(--hbm-lift-2);
+  --hbm-lift-drawer: var(--hbm-lift-3);
+
+  /* Motion roles */
+  --hbm-motion-state:  var(--hbm-dur-1) var(--hbm-ease-settle);
+  --hbm-motion-unfurl: var(--hbm-dur-3) var(--hbm-ease-unfurl);
+  --hbm-motion-travel: var(--hbm-dur-4) var(--hbm-ease-unfurl);
+}
+
+
+/* ==========================================================================
+   THEME: paper — the herbarium sheet under windowsill light.
+   Every semantic token declared above is re-declared here.
+   ========================================================================== */
+
+[data-theme="light"] {
+
+  /* Surfaces */
+  --hbm-bg-world:   var(--hbm-paper-300);
+  --hbm-bg-mount:   var(--hbm-paper-200);
+  --hbm-bg-sheet:   var(--hbm-paper-50);
+  --hbm-bg-raised:  #ffffff;
+  --hbm-bg-sunken:  var(--hbm-paper-100);
+  --hbm-bg-hover:   var(--hbm-paper-100);
+  --hbm-bg-selected: var(--hbm-paper-200);
+
+  /* Ink */
+  --hbm-text-primary:   var(--hbm-ink-600);
+  --hbm-text-secondary: var(--hbm-ink-300);
+  --hbm-text-muted:     var(--hbm-ink-100);
+  --hbm-text-inverse:   var(--hbm-paper-50);
+  --hbm-text-binomial:  var(--hbm-ink-200);
+
+  /* Accent */
+  --hbm-accent:         var(--hbm-terra-500);
+  --hbm-accent-hover:   var(--hbm-terra-600);
+  --hbm-accent-quiet:   rgba(154, 83, 48, 0.10);
+  --hbm-accent-ink:     var(--hbm-paper-50);
+
+  /* Growth */
+  --hbm-growth:       var(--hbm-leaf-500);
+  --hbm-growth-quiet: rgba(79, 115, 51, 0.10);
+
+  /* Rules */
+  --hbm-border-hair:   rgba(44, 38, 31, 0.12);
+  --hbm-border-rule:   rgba(44, 38, 31, 0.22);
+  --hbm-border-strong: rgba(44, 38, 31, 0.44);
+  --hbm-border-accent: var(--hbm-terra-400);
+
+  /* Focus */
+  --hbm-focus:        var(--hbm-terra-500);
+  --hbm-focus-offset: 2px;
+  --hbm-focus-width:  var(--hbm-rule-strong);
+
+  /* Health */
+  --hbm-health-thriving: var(--hbm-leaf-500);
+  --hbm-health-stable:   var(--hbm-leaf-400);
+  --hbm-health-watch:    var(--hbm-chlorosis-500);
+  --hbm-health-ailing:   var(--hbm-necrosis-400);
+  --hbm-health-lost:     var(--hbm-ink-200);
+
+  /* Confidence */
+  --hbm-confidence-high:   var(--hbm-leaf-500);
+  --hbm-confidence-medium: var(--hbm-chlorosis-500);
+  --hbm-confidence-low:    var(--hbm-sill-500);
+  --hbm-confidence-track:  rgba(44, 38, 31, 0.14);
+
+  /* Tones */
+  --hbm-positive:      var(--hbm-leaf-500);
+  --hbm-caution:       var(--hbm-chlorosis-500);
+  --hbm-danger:        var(--hbm-necrosis-500);
+  --hbm-info:          var(--hbm-sill-500);
+  --hbm-positive-quiet: rgba(79, 115, 51, 0.10);
+  --hbm-caution-quiet:  rgba(151, 120, 31, 0.12);
+  --hbm-danger-quiet:   rgba(118, 60, 42, 0.10);
+  --hbm-info-quiet:     rgba(69, 96, 96, 0.10);
+
+  /* World / traversal */
+  --hbm-edge:        var(--hbm-border-rule);
+  --hbm-edge-active: var(--hbm-accent);
+  --hbm-edge-dim:    rgba(44, 38, 31, 0.10);
+  --hbm-node:        var(--hbm-bg-sheet);
+  --hbm-node-focus:  var(--hbm-accent);
+  --hbm-marker:      var(--hbm-terra-500);
+  --hbm-marker-halo: rgba(154, 83, 48, 0.16);
+
+  /* Honesty states */
+  --hbm-unknown:       var(--hbm-paper-600);
+  --hbm-unknown-hatch: rgba(147, 129, 95, 0.35);
+  --hbm-empty:         var(--hbm-text-muted);
+  --hbm-stale:         var(--hbm-chlorosis-600);
+  --hbm-offline:       var(--hbm-sill-500);
+
+  /* Type roles — unchanged shapes, restated so the theme block is total */
+  --hbm-font-display: var(--hbm-weight-regular) var(--hbm-size-100)/var(--hbm-leading-tight) var(--hbm-family-plate);
+  --hbm-font-title:   var(--hbm-weight-regular) var(--hbm-size-75)/var(--hbm-leading-tight) var(--hbm-family-plate);
+  --hbm-font-heading: var(--hbm-weight-medium) var(--hbm-size-55)/var(--hbm-leading-snug) var(--hbm-family-plate);
+  --hbm-font-body:    var(--hbm-weight-regular) var(--hbm-size-30)/var(--hbm-leading-body) var(--hbm-family-hand);
+  --hbm-font-caption: var(--hbm-weight-regular) var(--hbm-size-25)/var(--hbm-leading-snug) var(--hbm-family-hand);
+  --hbm-font-label:   var(--hbm-weight-medium) var(--hbm-size-18)/var(--hbm-leading-snug) var(--hbm-family-label);
+
+  /* Shape roles */
+  --hbm-radius-control: var(--hbm-radius-2);
+  --hbm-radius-sheet:   var(--hbm-radius-3);
+  --hbm-radius-tag:     var(--hbm-radius-4);
+
+  /* Elevation roles — paper casts a softer shadow */
+  --hbm-lift-sheet:  0 1px 2px rgba(93, 129, 95, 0.10);
+  --hbm-lift-raised: 0 2px 8px rgba(60, 52, 40, 0.12);
+  --hbm-lift-drawer: 0 10px 30px rgba(60, 52, 40, 0.18);
+
+  /* Motion roles */
+  --hbm-motion-state:  var(--hbm-dur-1) var(--hbm-ease-settle);
+  --hbm-motion-unfurl: var(--hbm-dur-3) var(--hbm-ease-unfurl);
+  --hbm-motion-travel: var(--hbm-dur-4) var(--hbm-ease-unfurl);
+}
+
+
+/* Reduced motion: durations collapse, but nothing becomes an abrupt swap —
+   direction and the you-are-here marker are still drawn and still update. */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme="light"] {
+    --hbm-dur-1: 1ms;
+    --hbm-dur-2: 1ms;
+    --hbm-dur-3: 1ms;
+    --hbm-dur-4: 1ms;
+  }
+}

@@ -22,3 +22,9 @@ d0737114e1fbc386a5aad158e5327559c3254c36:frontend/e2e/journeys/session-monitor-r
 # + line): it suppresses that one line in that one commit and cannot mask any
 # other value, file or rule. The tip of the file no longer trips the rule.
 5f7dcd9127fa48ef613c30c66cd0d40a722d3087:backend/src/main/resources/application-e2e.yml:generic-api-key:33
+
+# PLA-141: an intermediate commit of the Atlas tokens pin spec held sha256 digests of the
+# design-pack css files in constants named TOKENS_SHA/THEME_SHA; they are public content
+# hashes, not credentials. Later commits rename the constants and no longer trip the rule.
+d96bc9029728aeda16674f3e65af5fdf02b07773:frontend/projects/atlas/src/styles/tokens-pin.spec.ts:generic-api-key:22
+d96bc9029728aeda16674f3e65af5fdf02b07773:frontend/projects/atlas/src/styles/tokens-pin.spec.ts:generic-api-key:23
